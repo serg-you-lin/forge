@@ -1,0 +1,117 @@
+"""
+validator.py
+------------
+Valida la salute geometrica di un modelspace o di un ForgeResult.
+
+Non modifica nulla — solo legge e restituisce warning/errori.
+"""
+
+from .models import ForgeResult, ForgePart
+
+
+def validate(result: ForgeResult) -> ForgeResult:
+    """
+    Valida i ForgePart dentro un ForgeResult.
+    Aggiunge warning ed errori direttamente nel result passato.
+
+    Controlli:
+    - Poligono valido (non self-intersecting)
+    - Poligono chiuso
+    - Area > 0
+    - Geometria 2D (z == 0)
+    - Fori effettivamente dentro l'outer
+
+    Args:
+        result: ForgeResult già popolato da heal() o split()
+
+    Returns:
+        Lo stesso ForgeResult con warning/errori aggiunti.
+    """
+    for i, part in enumerate(result.parts):
+        label = part.label or f"Part {i}"
+
+        poly = part.outer.polygon
+        if poly is None:
+            result.errors.append(f"{label}: poligono outer è None.")
+            result.is_valid = False
+            continue
+
+        if not poly.is_valid:
+            result.warnings.append(f"{label}: poligono outer non valido (self-intersection?).")
+
+        if poly.is_empty:
+            result.errors.append(f"{label}: poligono outer è vuoto.")
+            result.is_valid = False
+            continue
+
+        if poly.area <= 0:
+            result.errors.append(f"{label}: area outer <= 0.")
+            result.is_valid = False
+
+        # Controlla fori
+        for j, hole in enumerate(part.inners):
+            if not part.outer.polygon.contains(hole.polygon):
+                result.warnings.append(
+                    f"{label}: foro {j} non completamente contenuto nell'outer."
+                )
+
+    return result
+
+
+def validate_msp(msp) -> ForgeResult:
+    """
+    Validazione rapida di un modelspace grezzo (prima di heal/split).
+    Controlla se ci sono entità 3D, layer vuoti, geometrie aperte.
+
+    Args:
+        msp: modelspace ezdxf
+
+    Returns:
+        ForgeResult con solo warning/errori (parts vuoto).
+    """
+    result = ForgeResult()
+
+    lines   = list(msp.query('LINE'))
+    arcs    = list(msp.query('ARC'))
+    plines  = list(msp.query('LWPOLYLINE'))
+    circles = list(msp.query('CIRCLE'))
+    ellipsises = list(msp.query('ELLIPSE'))
+    inserts = list(msp.query('INSERT'))
+
+    if not lines and not arcs and not plines and not circles and not ellipsises and not inserts:
+        result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
+        result.is_valid = False
+        return result
+
+    # Controlla geometria 3D
+    for entity in lines:
+        if entity.dxf.start.z != 0 or entity.dxf.end.z != 0:
+            result.errors.append("Geometria 3D rilevata (LINE con z != 0). dxf-forge lavora solo in 2D.")
+            result.is_valid = False
+            break
+
+    for entity in arcs:
+        if entity.dxf.center.z != 0:
+            result.errors.append("Geometria 3D rilevata (ARC con z != 0). dxf-forge lavora solo in 2D.")
+            result.is_valid = False
+            break
+
+    if lines or arcs:
+        result.warnings.append(
+            f"Trovate {len(lines)} LINE e {len(arcs)} ARC — potrebbe essere necessario heal()."
+        )
+
+    if plines:
+        open_plines = [p for p in plines if not p.closed]
+        if open_plines:
+            result.warnings.append(
+                f"{len(open_plines)} LWPOLYLINE non chiuse trovate."
+            )
+
+    if inserts:
+        result.warnings.append(
+            f"Trovati {len(inserts)} INSERT (blocchi). "
+            f"Usa explode_inserts=True in heal() per esploderli."
+        )
+
+    return result

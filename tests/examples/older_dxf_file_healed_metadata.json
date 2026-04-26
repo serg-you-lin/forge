@@ -1,0 +1,29 @@
+{
+  "source_file": "older_dxf_file.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "older_dxf_file",
+      "source_file": "older_dxf_file.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 6091.8791,
+      "holes_count": 2,
+      "outer_perimeter_mm": 350.0,
+      "inner_perimeter_mm": 113.0519,
+      "total_perimeter_mm": 463.0519,
+      "bbox": {
+        "minx": 0.0,
+        "miny": 0.0,
+        "maxx": 55.0,
+        "maxy": 120.0
+      }
+    }
+  ]
+}

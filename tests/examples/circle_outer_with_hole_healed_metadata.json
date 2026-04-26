@@ -1,0 +1,29 @@
+{
+  "source_file": "circle_outer_with_hole.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "circle_outer_with_hole",
+      "source_file": "circle_outer_with_hole.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 7527.7164,
+      "holes_count": 1,
+      "outer_perimeter_mm": 314.0331,
+      "inner_perimeter_mm": 62.8066,
+      "total_perimeter_mm": 376.8397,
+      "bbox": {
+        "minx": -50.0,
+        "miny": -50.0,
+        "maxx": 50.0,
+        "maxy": 50.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "source_file": "la_104.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "la_104",
+      "source_file": "la_104.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 152.6934,
+      "area_mm2": 19167.3791,
+      "holes_count": 2,
+      "outer_perimeter_mm": 550.6102,
+      "inner_perimeter_mm": 113.0519,
+      "total_perimeter_mm": 663.6621,
+      "bbox": {
+        "minx": 0.0,
+        "miny": 0.0,
+        "maxx": 150.0,
+        "maxy": 142.0
+      }
+    }
+  ]
+}

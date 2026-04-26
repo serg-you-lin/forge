@@ -1,0 +1,78 @@
+Metadata-Version: 2.4
+Name: dxf-forge
+Version: 0.1.0
+Summary: DXF geometry preprocessing for manufacturing pipelines
+Author: Federico
+License: MIT
+Keywords: dxf,cad,manufacturing,geometry,nesting
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: ezdxf>=1.1
+Requires-Dist: shapely>=2.0
+Requires-Dist: numpy>=1.24
+Provides-Extra: snapmark
+Requires-Dist: snapmark; extra == "snapmark"
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+
+# dxf-forge
+
+DXF geometry preprocessor for manufacturing pipelines.
+
+Prepares raw DXF files (from CAD, clients, or machines) into clean, structured data
+ready for downstream tools like **snapmark** (marking) and **nester** (nesting).
+
+## What it does
+
+- **Heals** broken geometry: reconnects LINE + ARC segments into closed LWPOLYLINE contours
+- **Splits** multi-part DXF files into individual part files
+- **Validates** geometry: checks 2D, closed contours, no self-intersections
+- **Exports** structured metadata: polygons, bounding boxes, areas — as Python objects or JSON
+
+## Philosophy
+
+`dxf-forge` never opens or closes files by itself.
+It works on `msp` (modelspace) objects already loaded by the caller.
+The caller decides when to open, when to save, when to close.
+
+```python
+import ezdxf
+import dxf_forge as forge
+
+doc = ezdxf.readfile("part.dxf")
+result = forge.heal(doc.modelspace())
+doc.saveas("part_healed.dxf")
+```
+
+## Use with snapmark
+
+```python
+from snapmark import IterationManager
+from dxf_forge.snapmark_ops import ForgeHeal, ForgeSplit
+
+manager = IterationManager("folder/")
+manager.add_operation(ForgeHeal(), ForgeSplit())
+manager.execute()
+```
+
+## Install
+
+```bash
+pip install dxf-forge
+```
+
+## Structure
+
+```
+dxf_forge/
+├── healer.py       — repairs broken geometry (LINE + ARC → LWPOLYLINE)
+├── splitter.py     — splits multi-part DXF into separate files
+├── validator.py    — validates geometry health
+├── exporter.py     — exports structured metadata (ForgeResult)
+└── snapmark_ops.py — Operation-compatible classes for snapmark pipelines
+```

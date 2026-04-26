@@ -1,0 +1,29 @@
+{
+  "source_file": "poly_spline_part.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "poly_spline_part",
+      "source_file": "poly_spline_part.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 1107015.0067,
+      "holes_count": 0,
+      "outer_perimeter_mm": 4431.3259,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 4431.3259,
+      "bbox": {
+        "minx": -796.0,
+        "miny": -1036.0,
+        "maxx": 796.0,
+        "maxy": -152.0647
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "source_file": "spline_completa.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "spline_completa",
+      "source_file": "spline_completa.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 4491.7085,
+      "holes_count": 0,
+      "outer_perimeter_mm": 306.1486,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 306.1486,
+      "bbox": {
+        "minx": -16.2432,
+        "miny": -73.197,
+        "maxx": 46.3504,
+        "maxy": 30.3867
+      }
+    }
+  ]
+}

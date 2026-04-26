@@ -1,0 +1,29 @@
+{
+  "source_file": "polilinea_con_marcatura.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "polilinea_con_marcatura",
+      "source_file": "polilinea_con_marcatura.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 81.5397,
+      "area_mm2": 28918.9175,
+      "holes_count": 0,
+      "outer_perimeter_mm": 1987.9278,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 1987.9278,
+      "bbox": {
+        "minx": 0.0115,
+        "miny": 0.0,
+        "maxx": 963.9755,
+        "maxy": 30.0
+      }
+    }
+  ]
+}

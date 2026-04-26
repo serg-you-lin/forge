@@ -1,0 +1,75 @@
+{
+  "source_file": "tests\\examples\\batch\\1412DS159-12A_P3_S235JR_SP15_Q4.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [
+    "1412DS159-12A_P3_S235JR_SP15_Q4: materiale non specificato.",
+    "1412DS159-12A_P3_S235JR_SP15_Q4: spessore non specificato.",
+    "1412DS159-12A_P3_S235JR_SP15_Q4: 4 entità non riconosciute in trash. Verificare layer e colori."
+  ],
+  "errors": [],
+  "parts": [
+    {
+      "label": "1412DS159-12A_P3_S235JR_SP15_Q4",
+      "source_file": "tests\\examples\\batch\\1412DS159-12A_P3_S235JR_SP15_Q4.DXF",
+      "area": 122500.0,
+      "holes_count": 0,
+      "bbox": {
+        "minx": 825.0,
+        "miny": -1175.0,
+        "maxx": 1175.0,
+        "maxy": -825.0
+      },
+      "outer": [
+        [
+          1175.0,
+          -1175.0
+        ],
+        [
+          1175.0,
+          -825.0
+        ],
+        [
+          825.0,
+          -825.0
+        ],
+        [
+          825.0,
+          -1175.0
+        ],
+        [
+          1175.0,
+          -1175.0
+        ]
+      ],
+      "holes": [],
+      "custom": {
+        "fold_lines": [],
+        "punch": [],
+        "mark": [],
+        "trash": [
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          }
+        ]
+      }
+    }
+  ]
+}

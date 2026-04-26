@@ -1,0 +1,13 @@
+{
+  "source_file": "trapezio_3sides.dxf",
+  "is_valid": false,
+  "part_count": 0,
+  "warnings": [
+    "Nessun loop trovato via grafo, uso polygonize come fallback.",
+    "LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta."
+  ],
+  "errors": [
+    "Nessuna geometria chiusa trovata dopo healing."
+  ],
+  "parts": []
+}

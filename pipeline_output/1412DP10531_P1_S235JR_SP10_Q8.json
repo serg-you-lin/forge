@@ -1,0 +1,53 @@
+{
+  "source_file": "tests\\examples\\batch\\1412DP10531_P1_S235JR_SP10_Q8.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [
+    "1412DP10531_P1_S235JR_SP10_Q8: materiale non specificato.",
+    "1412DP10531_P1_S235JR_SP10_Q8: spessore non specificato."
+  ],
+  "errors": [],
+  "parts": [
+    {
+      "label": "1412DP10531_P1_S235JR_SP10_Q8",
+      "source_file": "tests\\examples\\batch\\1412DP10531_P1_S235JR_SP10_Q8.DXF",
+      "area": 5000.0,
+      "holes_count": 0,
+      "bbox": {
+        "minx": 591.3054,
+        "miny": 29.2932,
+        "maxx": 641.3054,
+        "maxy": 129.2932
+      },
+      "outer": [
+        [
+          591.305351299,
+          129.2932111117
+        ],
+        [
+          591.305351299,
+          29.2932111117
+        ],
+        [
+          641.305351299,
+          29.2932111117
+        ],
+        [
+          641.305351299,
+          129.2932111117
+        ],
+        [
+          591.305351299,
+          129.2932111117
+        ]
+      ],
+      "holes": [],
+      "custom": {
+        "fold_lines": [],
+        "punch": [],
+        "mark": [],
+        "trash": []
+      }
+    }
+  ]
+}

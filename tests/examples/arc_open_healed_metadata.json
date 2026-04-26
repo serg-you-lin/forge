@@ -1,0 +1,29 @@
+{
+  "source_file": "arc_open.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "arc_open",
+      "source_file": "arc_open.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 2495.1066,
+      "holes_count": 0,
+      "outer_perimeter_mm": 178.6662,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 178.6662,
+      "bbox": {
+        "minx": 82.4729,
+        "miny": -41.9109,
+        "maxx": 142.5531,
+        "maxy": 10.4945
+      }
+    }
+  ]
+}

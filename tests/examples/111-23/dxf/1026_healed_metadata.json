@@ -1,0 +1,10 @@
+{
+  "source_file": "1026.dxf",
+  "is_valid": false,
+  "part_count": 0,
+  "warnings": [],
+  "errors": [
+    "Modelspace vuoto: nessuna geometria trovata."
+  ],
+  "parts": []
+}

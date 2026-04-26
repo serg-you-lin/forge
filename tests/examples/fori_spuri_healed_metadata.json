@@ -1,0 +1,29 @@
+{
+  "source_file": "fori_spuri.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "fori_spuri",
+      "source_file": "fori_spuri.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 590895.8846,
+      "holes_count": 4,
+      "outer_perimeter_mm": 3190.0,
+      "inner_perimeter_mm": 524.4353,
+      "total_perimeter_mm": 3714.4353,
+      "bbox": {
+        "minx": -300.0,
+        "miny": -1065.0,
+        "maxx": 300.0,
+        "maxy": -70.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "source_file": "",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "",
+      "source_file": "",
+      "quantity": 1,
+      "material": "",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 66572.6374,
+      "holes_count": 0,
+      "outer_perimeter_mm": 1032.0992,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 1032.0992,
+      "bbox": {
+        "minx": -617.4675,
+        "miny": -564.7861,
+        "maxx": -357.4019,
+        "maxy": -308.8021
+      }
+    }
+  ]
+}

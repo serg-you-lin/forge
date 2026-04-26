@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>flangia con fori.DXF</source_file>
+  <is_valid>true</is_valid>
+  <part_count>1</part_count>
+  <parts>
+    <part>
+      <label>flangia con fori</label>
+      <source_file>flangia con fori.DXF</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>18969.8453</area_mm2>
+      <holes_count>9</holes_count>
+      <outer_perimeter_mm>706.5745</outer_perimeter_mm>
+      <inner_perimeter_mm>706.5745</inner_perimeter_mm>
+      <total_perimeter_mm>1413.149</total_perimeter_mm>
+      <bbox>
+        <minx>531.5041</minx>
+        <miny>-1109.2884</miny>
+        <maxx>756.5041</maxx>
+        <maxy>-884.2884</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

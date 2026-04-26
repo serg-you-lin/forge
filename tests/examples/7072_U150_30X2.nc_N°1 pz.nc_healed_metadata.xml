@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
+  <is_valid>true</is_valid>
+  <part_count>4</part_count>
+  <parts>
+    <part>
+      <label>7072_U150_30X2.nc_N°1 pz.nc</label>
+      <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>181.6972</total_engrave_length_mm>
+      <area_mm2>93749.7</area_mm2>
+      <holes_count>0</holes_count>
+      <outer_perimeter_mm>1549.996</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>1549.996</total_perimeter_mm>
+      <bbox>
+        <minx>0.0</minx>
+        <miny>50.0</miny>
+        <maxx>624.998</maxx>
+        <maxy>200.0</maxy>
+      </bbox>
+    </part>
+    <part>
+      <label>7072_U150_30X2.nc_N°1 pz.nc</label>
+      <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>181.6972</total_engrave_length_mm>
+      <area_mm2>93749.7</area_mm2>
+      <holes_count>0</holes_count>
+      <outer_perimeter_mm>1549.996</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>1549.996</total_perimeter_mm>
+      <bbox>
+        <minx>0.0</minx>
+        <miny>270.0</miny>
+        <maxx>624.998</maxx>
+        <maxy>420.0</maxy>
+      </bbox>
+    </part>
+    <part>
+      <label>7072_U150_30X2.nc_N°1 pz.nc</label>
+      <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>181.6972</total_engrave_length_mm>
+      <area_mm2>18749.94</area_mm2>
+      <holes_count>0</holes_count>
+      <outer_perimeter_mm>1309.996</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>1309.996</total_perimeter_mm>
+      <bbox>
+        <minx>0.0</minx>
+        <miny>0.0</miny>
+        <maxx>624.998</maxx>
+        <maxy>30.0</maxy>
+      </bbox>
+    </part>
+    <part>
+      <label>7072_U150_30X2.nc_N°1 pz.nc</label>
+      <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>181.6972</total_engrave_length_mm>
+      <area_mm2>18749.94</area_mm2>
+      <holes_count>0</holes_count>
+      <outer_perimeter_mm>1309.996</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>1309.996</total_perimeter_mm>
+      <bbox>
+        <minx>0.0</minx>
+        <miny>220.0</miny>
+        <maxx>624.998</maxx>
+        <maxy>250.0</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

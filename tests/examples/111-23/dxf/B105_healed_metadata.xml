@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>B105.DXF</source_file>
+  <is_valid>true</is_valid>
+  <part_count>1</part_count>
+  <parts>
+    <part>
+      <label>B105</label>
+      <source_file>B105.DXF</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>37175.2127</area_mm2>
+      <holes_count>4</holes_count>
+      <outer_perimeter_mm>774.2289</outer_perimeter_mm>
+      <inner_perimeter_mm>463.8896</inner_perimeter_mm>
+      <total_perimeter_mm>1238.1185</total_perimeter_mm>
+      <bbox>
+        <minx>-35.67</minx>
+        <miny>0.0</miny>
+        <maxx>164.33</maxx>
+        <maxy>200.0</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

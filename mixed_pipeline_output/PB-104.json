@@ -1,0 +1,69 @@
+{
+  "source_file": "tests\\examples\\mixed_pipeline\\PB-104.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [
+    "PB-104: materiale non specificato.",
+    "PB-104: spessore non specificato.",
+    "PB-104: 2 entità non riconosciute in trash. Verificare layer e colori."
+  ],
+  "errors": [],
+  "parts": [
+    {
+      "label": "PB-104",
+      "source_file": "tests\\examples\\mixed_pipeline\\PB-104.DXF",
+      "area": 19675.5,
+      "holes_count": 0,
+      "bbox": {
+        "minx": 0.0,
+        "miny": 0.0,
+        "maxx": 150.0,
+        "maxy": 142.0
+      },
+      "outer": [
+        [
+          93.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          142.0
+        ],
+        [
+          150.0,
+          142.0
+        ],
+        [
+          150.0,
+          57.0
+        ],
+        [
+          93.0,
+          0.0
+        ]
+      ],
+      "holes": [],
+      "custom": {
+        "fold_lines": [],
+        "punch": [],
+        "mark": [],
+        "trash": [
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 1
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 1
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+ezdxf>=1.1
+shapely>=2.0
+numpy>=1.24
+
+[dev]
+pytest
+pytest-cov
+
+[snapmark]
+snapmark

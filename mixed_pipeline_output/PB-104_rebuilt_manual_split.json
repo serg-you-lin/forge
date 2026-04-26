@@ -1,0 +1,225 @@
+{
+  "source_file": "tests\\examples\\mixed_pipeline\\PB-104_rebuilt_manual.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [
+    "PB-104_rebuilt_manual_P1: materiale non specificato.",
+    "PB-104_rebuilt_manual_P1: spessore non specificato.",
+    "PB-104_rebuilt_manual_P1: 2 entità non riconosciute in trash. Verificare layer e colori."
+  ],
+  "errors": [],
+  "parts": [
+    {
+      "label": "PB-104_rebuilt_manual_P1",
+      "source_file": "tests\\examples\\mixed_pipeline\\PB-104_rebuilt_manual.DXF",
+      "area": 19561.6137,
+      "holes_count": 2,
+      "bbox": {
+        "minx": 0.0,
+        "miny": 0.0,
+        "maxx": 150.0,
+        "maxy": 142.0
+      },
+      "outer": [
+        [
+          93.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          142.0
+        ],
+        [
+          150.0,
+          142.0
+        ],
+        [
+          150.0,
+          57.0
+        ],
+        [
+          93.0,
+          0.0
+        ]
+      ],
+      "holes": [
+        [
+          [
+            38.223,
+            10.0
+          ],
+          [
+            38.223,
+            15.68
+          ],
+          [
+            38.223,
+            21.36
+          ],
+          [
+            42.483,
+            21.36
+          ],
+          [
+            43.903,
+            19.939999999999998
+          ],
+          [
+            43.903,
+            17.1
+          ],
+          [
+            42.483,
+            15.68
+          ],
+          [
+            43.903,
+            14.26
+          ],
+          [
+            43.903,
+            11.42
+          ],
+          [
+            42.483,
+            10.0
+          ],
+          [
+            38.223,
+            10.0
+          ]
+        ],
+        [
+          [
+            60.375,
+            10.852
+          ],
+          [
+            60.375,
+            20.508
+          ],
+          [
+            61.227,
+            21.36
+          ],
+          [
+            64.351,
+            21.36
+          ],
+          [
+            65.203,
+            20.508
+          ],
+          [
+            65.203,
+            10.852
+          ],
+          [
+            64.351,
+            10.0
+          ],
+          [
+            61.227,
+            10.0
+          ],
+          [
+            60.375,
+            10.852
+          ]
+        ]
+      ],
+      "custom": {
+        "fold_lines": [],
+        "punch": [],
+        "mark": [
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          },
+          {
+            "type": "LINE",
+            "layer": "MARK",
+            "color": null
+          }
+        ],
+        "trash": [
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 1
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 1
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "source_file": "maniglia_no_raccordi.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "maniglia_no_raccordi",
+      "source_file": "maniglia_no_raccordi.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 15596.3168,
+      "holes_count": 5,
+      "outer_perimeter_mm": 622.5741,
+      "inner_perimeter_mm": 362.0221,
+      "total_perimeter_mm": 984.5962,
+      "bbox": {
+        "minx": -295.2541,
+        "miny": -86.92,
+        "maxx": -126.2353,
+        "maxy": 130.6828
+      }
+    }
+  ]
+}

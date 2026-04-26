@@ -1,0 +1,138 @@
+{
+  "source_file": "tests\\examples\\batch\\1412SD0711A_P1_S235JR_SP6_Q2.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [
+    "1412SD0711A_P1_S235JR_SP6_Q2: materiale non specificato.",
+    "1412SD0711A_P1_S235JR_SP6_Q2: spessore non specificato.",
+    "1412SD0711A_P1_S235JR_SP6_Q2: 12 entità non riconosciute in trash. Verificare layer e colori."
+  ],
+  "errors": [],
+  "parts": [
+    {
+      "label": "1412SD0711A_P1_S235JR_SP6_Q2",
+      "source_file": "tests\\examples\\batch\\1412SD0711A_P1_S235JR_SP6_Q2.DXF",
+      "area": 572647.0609,
+      "holes_count": 1,
+      "bbox": {
+        "minx": -630.0,
+        "miny": -298.6695,
+        "maxx": 630.0,
+        "maxy": 298.6695
+      },
+      "outer": [
+        [
+          -630.0,
+          298.6694686131
+        ],
+        [
+          -630.0,
+          -298.6694686131
+        ],
+        [
+          630.0,
+          -298.6694686131
+        ],
+        [
+          630.0,
+          298.6694686131
+        ],
+        [
+          -630.0,
+          298.6694686131
+        ]
+      ],
+      "holes": [
+        [
+          [
+            -300.0,
+            -150.0
+          ],
+          [
+            300.0,
+            -150.0
+          ],
+          [
+            300.0,
+            150.0
+          ],
+          [
+            -300.0,
+            150.0
+          ],
+          [
+            -300.0,
+            -150.0
+          ]
+        ]
+      ],
+      "custom": {
+        "fold_lines": [],
+        "punch": [],
+        "mark": [],
+        "trash": [
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          }
+        ]
+      }
+    }
+  ]
+}

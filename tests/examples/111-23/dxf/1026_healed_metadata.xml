@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>1026.dxf</source_file>
+  <is_valid>false</is_valid>
+  <part_count>0</part_count>
+  <errors>
+    <error>Modelspace vuoto: nessuna geometria trovata.</error>
+  </errors>
+  <parts/>
+</forge>

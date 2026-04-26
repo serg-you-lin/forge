@@ -1,0 +1,65 @@
+{
+  "source_file": "tests\\examples\\mixed_pipeline\\F3.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [
+    "F3: materiale non specificato.",
+    "F3: spessore non specificato.",
+    "F3: 2 entità non riconosciute in trash. Verificare layer e colori."
+  ],
+  "errors": [],
+  "parts": [
+    {
+      "label": "F3",
+      "source_file": "tests\\examples\\mixed_pipeline\\F3.dxf",
+      "area": 12000.0,
+      "holes_count": 0,
+      "bbox": {
+        "minx": -40.0,
+        "miny": 250.0,
+        "maxx": 160.0,
+        "maxy": 310.0
+      },
+      "outer": [
+        [
+          -40.0,
+          250.0
+        ],
+        [
+          160.0,
+          250.0
+        ],
+        [
+          160.0,
+          310.0
+        ],
+        [
+          -40.0,
+          310.0
+        ],
+        [
+          -40.0,
+          250.0
+        ]
+      ],
+      "holes": [],
+      "custom": {
+        "fold_lines": [],
+        "punch": [],
+        "mark": [],
+        "trash": [
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          }
+        ]
+      }
+    }
+  ]
+}

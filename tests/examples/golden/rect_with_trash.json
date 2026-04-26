@@ -1,0 +1,17 @@
+{
+  "source_file": "rect_with_trash.dxf",
+  "part_count": 1,
+  "parts": [
+    {
+      "area_mm2": 8000.0,
+      "holes_count": 0,
+      "outer_perimeter_mm": 360.0,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 360.0,
+      "outer_wkt": "POLYGON ((0 0, 100 0, 100 80, 0 80, 0 0))",
+      "inners_wkt": [],
+      "outer_layer": "OuterContour",
+      "inners_layers": []
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "source_file": "flangia_scantonata.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "flangia_scantonata",
+      "source_file": "flangia_scantonata.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 75792.4515,
+      "holes_count": 5,
+      "outer_perimeter_mm": 1118.146,
+      "inner_perimeter_mm": 778.8021,
+      "total_perimeter_mm": 1896.9481,
+      "bbox": {
+        "minx": -150.0,
+        "miny": -179.9361,
+        "maxx": 180.0,
+        "maxy": 179.9361
+      }
+    }
+  ]
+}

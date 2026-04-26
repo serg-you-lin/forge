@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>linee_di_piegatura_interne.dxf</source_file>
+  <is_valid>true</is_valid>
+  <part_count>1</part_count>
+  <parts>
+    <part>
+      <label>linee_di_piegatura_interne</label>
+      <source_file>linee_di_piegatura_interne.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>894515.4179</area_mm2>
+      <holes_count>0</holes_count>
+      <outer_perimeter_mm>4264.3513</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>4264.3513</total_perimeter_mm>
+      <bbox>
+        <minx>1268.7277</minx>
+        <miny>934.0463</miny>
+        <maxx>2832.1513</maxx>
+        <maxy>1508.2011</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

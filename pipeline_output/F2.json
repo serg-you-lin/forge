@@ -1,0 +1,49 @@
+{
+  "source_file": "tests\\examples\\edge_cases\\F2.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [
+    "F2: materiale non specificato.",
+    "F2: spessore non specificato."
+  ],
+  "errors": [],
+  "parts": [
+    {
+      "label": "F2",
+      "source_file": "tests\\examples\\edge_cases\\F2.dxf",
+      "area": 710.543,
+      "holes_count": 0,
+      "bbox": {
+        "minx": -1.8301,
+        "miny": 11.6901,
+        "maxx": 228.8968,
+        "maxy": 22.5
+      },
+      "outer": [
+        [
+          -1.830069394724478,
+          11.690050339053098
+        ],
+        [
+          97.43587634953086,
+          22.49999999997629
+        ],
+        [
+          228.8968108122,
+          22.5
+        ],
+        [
+          -1.830069394724478,
+          11.690050339053098
+        ]
+      ],
+      "holes": [],
+      "custom": {
+        "fold_lines": [],
+        "punch": [],
+        "mark": [],
+        "trash": []
+      }
+    }
+  ]
+}

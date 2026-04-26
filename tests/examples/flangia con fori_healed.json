@@ -1,0 +1,29 @@
+{
+  "source_file": "flangia con fori.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "flangia con fori",
+      "source_file": "flangia con fori.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 18969.8453,
+      "holes_count": 9,
+      "outer_perimeter_mm": 706.5745,
+      "inner_perimeter_mm": 706.5745,
+      "total_perimeter_mm": 1413.149,
+      "bbox": {
+        "minx": 531.5041,
+        "miny": -1109.2884,
+        "maxx": 756.5041,
+        "maxy": -884.2884
+      }
+    }
+  ]
+}

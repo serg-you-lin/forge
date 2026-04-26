@@ -1,0 +1,29 @@
+{
+  "source_file": "linee_di_piegatura_interne.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "linee_di_piegatura_interne",
+      "source_file": "linee_di_piegatura_interne.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 894515.4179,
+      "holes_count": 0,
+      "outer_perimeter_mm": 4264.3513,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 4264.3513,
+      "bbox": {
+        "minx": 1268.7277,
+        "miny": 934.0463,
+        "maxx": 2832.1513,
+        "maxy": 1508.2011
+      }
+    }
+  ]
+}

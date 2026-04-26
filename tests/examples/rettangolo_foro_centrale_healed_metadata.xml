@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>rettangolo_foro_centrale.DXF</source_file>
+  <is_valid>true</is_valid>
+  <part_count>1</part_count>
+  <parts>
+    <part>
+      <label>rettangolo_foro_centrale</label>
+      <source_file>rettangolo_foro_centrale.DXF</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>4673.3844</area_mm2>
+      <holes_count>1</holes_count>
+      <outer_perimeter_mm>280.0</outer_perimeter_mm>
+      <inner_perimeter_mm>53.3856</inner_perimeter_mm>
+      <total_perimeter_mm>333.3856</total_perimeter_mm>
+      <bbox>
+        <minx>-285.4041</minx>
+        <miny>-7.1106</miny>
+        <maxx>-215.4041</maxx>
+        <maxy>62.8894</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

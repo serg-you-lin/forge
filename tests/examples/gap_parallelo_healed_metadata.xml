@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>gap_parallelo.dxf</source_file>
+  <is_valid>true</is_valid>
+  <part_count>1</part_count>
+  <parts>
+    <part>
+      <label>gap_parallelo</label>
+      <source_file>gap_parallelo.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>660.921</area_mm2>
+      <holes_count>0</holes_count>
+      <outer_perimeter_mm>164.1201</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>164.1201</total_perimeter_mm>
+      <bbox>
+        <minx>-33.4338</minx>
+        <miny>-42.7099</miny>
+        <maxx>-19.3738</maxx>
+        <maxy>25.2901</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

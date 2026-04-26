@@ -1,0 +1,53 @@
+{
+  "source_file": "tests\\examples\\batch\\1412DP10419_P5_S235JR_SP4_Q1.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [
+    "1412DP10419_P5_S235JR_SP4_Q1: materiale non specificato.",
+    "1412DP10419_P5_S235JR_SP4_Q1: spessore non specificato."
+  ],
+  "errors": [],
+  "parts": [
+    {
+      "label": "1412DP10419_P5_S235JR_SP4_Q1",
+      "source_file": "tests\\examples\\batch\\1412DP10419_P5_S235JR_SP4_Q1.DXF",
+      "area": 89967.5065,
+      "holes_count": 0,
+      "bbox": {
+        "minx": -71.0,
+        "miny": -210.2359,
+        "maxx": 71.0,
+        "maxy": 423.3381
+      },
+      "outer": [
+        [
+          -71.0,
+          -210.2359033607
+        ],
+        [
+          71.0,
+          -210.2359033607
+        ],
+        [
+          71.0,
+          423.3380860044
+        ],
+        [
+          -71.0,
+          423.3380860044
+        ],
+        [
+          -71.0,
+          -210.2359033607
+        ]
+      ],
+      "holes": [],
+      "custom": {
+        "fold_lines": [],
+        "punch": [],
+        "mark": [],
+        "trash": []
+      }
+    }
+  ]
+}

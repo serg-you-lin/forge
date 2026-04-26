@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file/>
+  <is_valid>true</is_valid>
+  <part_count>1</part_count>
+  <parts>
+    <part>
+      <label/>
+      <source_file/>
+      <quantity>1</quantity>
+      <material/>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>87715.8892</area_mm2>
+      <holes_count>3</holes_count>
+      <outer_perimeter_mm>1250.3295</outer_perimeter_mm>
+      <inner_perimeter_mm>407.7949</inner_perimeter_mm>
+      <total_perimeter_mm>1658.1244</total_perimeter_mm>
+      <bbox>
+        <minx>339.3674</minx>
+        <miny>-70.0956</miny>
+        <maxx>798.7895</maxx>
+        <maxy>187.9394</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

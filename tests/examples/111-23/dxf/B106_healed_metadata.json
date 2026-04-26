@@ -1,0 +1,29 @@
+{
+  "source_file": "B106.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "B106",
+      "source_file": "B106.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 72880.3858,
+      "holes_count": 6,
+      "outer_perimeter_mm": 1408.0482,
+      "inner_perimeter_mm": 376.8397,
+      "total_perimeter_mm": 1784.8879,
+      "bbox": {
+        "minx": -74.0011,
+        "miny": 0.0,
+        "maxx": 525.9989,
+        "maxy": 125.5
+      }
+    }
+  ]
+}

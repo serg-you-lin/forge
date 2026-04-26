@@ -1,0 +1,29 @@
+{
+  "source_file": "rettangolo_foro_centrale.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "rettangolo_foro_centrale",
+      "source_file": "rettangolo_foro_centrale.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 4673.3844,
+      "holes_count": 1,
+      "outer_perimeter_mm": 280.0,
+      "inner_perimeter_mm": 53.3856,
+      "total_perimeter_mm": 333.3856,
+      "bbox": {
+        "minx": -285.4041,
+        "miny": -7.1106,
+        "maxx": -215.4041,
+        "maxy": 62.8894
+      }
+    }
+  ]
+}

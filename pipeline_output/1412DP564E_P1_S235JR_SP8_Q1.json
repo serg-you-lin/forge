@@ -1,0 +1,178 @@
+{
+  "source_file": "tests\\examples\\batch\\1412DP564E_P1_S235JR_SP8_Q1.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [
+    "1412DP564E_P1_S235JR_SP8_Q1: materiale non specificato.",
+    "1412DP564E_P1_S235JR_SP8_Q1: spessore non specificato.",
+    "1412DP564E_P1_S235JR_SP8_Q1: 20 entità non riconosciute in trash. Verificare layer e colori."
+  ],
+  "errors": [],
+  "parts": [
+    {
+      "label": "1412DP564E_P1_S235JR_SP8_Q1",
+      "source_file": "tests\\examples\\batch\\1412DP564E_P1_S235JR_SP8_Q1.DXF",
+      "area": 134400.0,
+      "holes_count": 1,
+      "bbox": {
+        "minx": -830.0,
+        "miny": -320.0,
+        "maxx": 830.0,
+        "maxy": 320.0
+      },
+      "outer": [
+        [
+          830.0,
+          -320.0
+        ],
+        [
+          830.0,
+          320.0
+        ],
+        [
+          -830.0,
+          320.0
+        ],
+        [
+          -830.0,
+          -320.0
+        ],
+        [
+          830.0,
+          -320.0
+        ]
+      ],
+      "holes": [
+        [
+          [
+            800.0,
+            -290.0
+          ],
+          [
+            800.0,
+            290.0
+          ],
+          [
+            -800.0,
+            290.0
+          ],
+          [
+            -800.0,
+            -290.0
+          ],
+          [
+            800.0,
+            -290.0
+          ]
+        ]
+      ],
+      "custom": {
+        "fold_lines": [],
+        "punch": [],
+        "mark": [],
+        "trash": [
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          },
+          {
+            "type": "CIRCLE",
+            "layer": "0",
+            "color": 7
+          }
+        ]
+      }
+    }
+  ]
+}

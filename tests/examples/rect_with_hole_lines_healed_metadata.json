@@ -1,0 +1,29 @@
+{
+  "source_file": "rect_with_hole_lines.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "rect_with_hole_lines",
+      "source_file": "rect_with_hole_lines.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 18868.6292,
+      "holes_count": 1,
+      "outer_perimeter_mm": 600.0,
+      "inner_perimeter_mm": 122.4587,
+      "total_perimeter_mm": 722.4587,
+      "bbox": {
+        "minx": 0.0,
+        "miny": 0.0,
+        "maxx": 200.0,
+        "maxy": 100.0
+      }
+    }
+  ]
+}

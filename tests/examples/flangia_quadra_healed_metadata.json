@@ -1,0 +1,29 @@
+{
+  "source_file": "flangia_quadra.DXF",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "flangia_quadra",
+      "source_file": "flangia_quadra.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 133129.6979,
+      "holes_count": 21,
+      "outer_perimeter_mm": 4600.0,
+      "inner_perimeter_mm": 4925.2596,
+      "total_perimeter_mm": 9525.2596,
+      "bbox": {
+        "minx": -830.0,
+        "miny": -320.0,
+        "maxx": 830.0,
+        "maxy": 320.0
+      }
+    }
+  ]
+}

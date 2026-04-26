@@ -1,0 +1,29 @@
+{
+  "source_file": "maniglia.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "maniglia",
+      "source_file": "maniglia.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 15873.6014,
+      "holes_count": 5,
+      "outer_perimeter_mm": 630.7194,
+      "inner_perimeter_mm": 362.0221,
+      "total_perimeter_mm": 992.7415,
+      "bbox": {
+        "minx": -295.2541,
+        "miny": -86.92,
+        "maxx": -122.301,
+        "maxy": 133.3063
+      }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "source_file": "1027.DXF",
+  "is_valid": true,
+  "part_count": 2,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "1027",
+      "source_file": "1027.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 83098.3434,
+      "holes_count": 5,
+      "outer_perimeter_mm": 2093.904,
+      "inner_perimeter_mm": 361.1381,
+      "total_perimeter_mm": 2455.0421,
+      "bbox": {
+        "minx": -0.0,
+        "miny": 0.04,
+        "maxx": 400.0,
+        "maxy": 370.5
+      }
+    },
+    {
+      "label": "1027",
+      "source_file": "1027.DXF",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 414.8085,
+      "holes_count": 0,
+      "outer_perimeter_mm": 72.2276,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 72.2276,
+      "bbox": {
+        "minx": 38.5,
+        "miny": 199.0,
+        "maxx": 61.5,
+        "maxy": 222.0
+      }
+    }
+  ]
+}

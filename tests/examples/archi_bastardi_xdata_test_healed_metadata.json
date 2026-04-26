@@ -1,0 +1,29 @@
+{
+  "source_file": "archi_bastardi_xdata_test.dxf",
+  "is_valid": true,
+  "part_count": 1,
+  "warnings": [],
+  "errors": [],
+  "parts": [
+    {
+      "label": "archi_bastardi_xdata_test",
+      "source_file": "archi_bastardi_xdata_test.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 69785.6787,
+      "holes_count": 13,
+      "outer_perimeter_mm": 1343.9544,
+      "inner_perimeter_mm": 279.4895,
+      "total_perimeter_mm": 1623.4439,
+      "bbox": {
+        "minx": -231.0997,
+        "miny": 1.0,
+        "maxx": 228.8968,
+        "maxy": 253.2369
+      }
+    }
+  ]
+}
