@@ -168,7 +168,6 @@ result = forge.split_to_files(
     source_file=input_dxf,
     include_annotations=True,
     data_injector=make_data_injector(doc),
-    preserve_original_layers=True,
     namer=lambda i, part: part.custom.get("_codice") or f"{label}_PART{i}",
 )
 
