@@ -487,16 +487,6 @@ def heal(
         if not placed:
             fathers.append((obj, poly, tipo, []))
 
-        # print(f"  [DEBUG] shapes totali: {len(shapes)}")
-        # for i, (obj, poly, tipo) in enumerate(shapes):
-        #     print(f"    shape {i}: tipo={tipo} area={poly.area:.1f}")
-        # print(f"  [DEBUG] fathers: {len(fathers)}")
-        # for f_obj, f_poly, f_tipo, f_children in fathers:
-        #     print(f"    father area={f_poly.area:.1f} tipo={f_tipo} children={len(f_children)}")
-
-    # Corregge layer delle VirtualShape finite come children:
-    # nel passo 1 erano outer (il grafo non vedeva le LWPOLYLINE),
-    # la gerarchia le ha riclassificate, ora aggiorniamo layer e color.
     for _, _, _, children in fathers:
         for child_obj, child_poly, child_tipo in children:
             if child_tipo == 'VIRTUAL':
@@ -526,10 +516,6 @@ def heal(
                 classified_virtual_ids.add(id(child_obj))
             else:
                 classified_entity_ids.add(id(child_obj))
-
-        # print(f"  fathers costruiti: {len(fathers)}")
-        # for f_obj, f_poly, f_tipo, f_children in fathers:
-        #     print(f"    father area={f_poly.area:.1f} tipo={f_tipo} children={len(f_children)}")
 
         custom = {}
         if special_layers:

@@ -66,6 +66,12 @@ ANNOTATION_TYPES = {'TEXT', 'MTEXT', 'DIMENSION', 'LEADER', 'MULTILEADER'}
 STRUCTURAL_LAYER_NAMES = {LAYER_OUTER, LAYER_INNER, LAYER_HOLE}
 STRUCTURAL_ENTITY_TYPES = {'LWPOLYLINE', 'POLYLINE', 'CIRCLE', 'SPLINE', 'ELLIPSE', 'LINE', 'ARC'}
 
+# Soglia minima per considerare un contorno outer come pezzo reale.
+# Contorni sotto questa area (mm²) sono quasi certamente artefatti di healing
+# (loop accidentali, linee quasi-chiuse, viste in sezione fuori contesto).
+# Esposto come costante per permettere override negli script di pipeline.
+DEFAULT_MIN_PART_AREA = 10.0  # mm²
+
 
 # ---------------------------------------------------------------------------
 # API pubblica
@@ -92,6 +98,7 @@ def split_to_files(
     special_layers: dict = None,
     heal_result: ForgeResult = None,
     data_injector: Optional[Callable] = None,
+    min_area: float = DEFAULT_MIN_PART_AREA,
 ) -> ForgeResult:
     """
     Pipeline completa: heala, usa ForgeResult in memoria, salva un DXF per ogni pezzo.
@@ -115,6 +122,9 @@ def split_to_files(
         heal_result:       ForgeResult già prodotto da heal() — se fornito
                            salta l'healing interno (evita doppio lavoro)
         data_injector:     funzione (ForgePart, testi) -> dict per dati custom
+        min_area:          area minima mm² per considerare un outer come pezzo reale.
+                           Contorni sotto soglia vengono scartati con un warning.
+                           Default: DEFAULT_MIN_PART_AREA (10 mm²). Passa 0 per disabilitare.
 
     Returns:
         ForgeResult con tutti i ForgePart trovati.
@@ -170,6 +180,11 @@ def split_to_files(
     for i, part in enumerate(result.parts, start=1):
         outer_poly = part.outer.polygon
         if outer_poly is None or outer_poly.is_empty:
+            continue
+        if min_area > 0 and outer_poly.area < min_area:
+            result.warnings.append(
+                f"Pezzo {i} scartato: area {outer_poly.area:.2f} mm² sotto soglia {min_area} mm²"
+            )
             continue
 
         new_doc = ezdxf.new('R2010')
