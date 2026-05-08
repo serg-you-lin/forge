@@ -70,7 +70,7 @@ STRUCTURAL_ENTITY_TYPES = {'LWPOLYLINE', 'POLYLINE', 'CIRCLE', 'SPLINE', 'ELLIPS
 # Contorni sotto questa area (mm²) sono quasi certamente artefatti di healing
 # (loop accidentali, linee quasi-chiuse, viste in sezione fuori contesto).
 # Esposto come costante per permettere override negli script di pipeline.
-DEFAULT_MIN_PART_AREA = 10.0  # mm²
+DEFAULT_MIN_PART_AREA = 50.0  # mm²
 
 
 # ---------------------------------------------------------------------------

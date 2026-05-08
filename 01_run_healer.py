@@ -16,7 +16,7 @@ from dxf_forge.dxf_inspect import DxfInspector
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\j0080281_nocornice.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\BAR2.00079-ZN 42D025Z00I.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -38,13 +38,13 @@ print("tolleranza:", tolerance)
 
 # Configura cosa vuoi vedere — commenta/decommenta
 inspector = DxfInspector(
-    summary   = True,
+    summary   = False,
     lines     = True,
     arcs      = True,
     polylines = True,
     circles   = True,
     splines   = True,
-    graph     = True,   # ← il più utile per debug ambiguità
+    graph     = False,   # ← il più utile per debug ambiguità
 )
 
 # ---------------------------------------------------------------------------
