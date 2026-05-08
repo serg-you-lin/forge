@@ -16,7 +16,7 @@ from dxf_forge.dxf_inspect import DxfInspector
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012912 PD.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\j0080281_nocornice.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
