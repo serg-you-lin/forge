@@ -22,8 +22,8 @@ Entità su special_layers → escluse dal grafo, misurate separatamente.
 Architettura interna:
   - Pre-processing: close_gaps solo su endpoint liberi (grado < 2)
   - Passo 1: costruisce geometria in memoria (VirtualShape)
-  - Passo 3: gerarchia da VirtualShape + entità esistenti
-  - Scrittura msp: effetto collaterale separato, solo se write_to_msp=True
+  - Passo 2: gerarchia da VirtualShape + entità esistenti
+  - Passo 3: Scrittura msp, effetto collaterale separato, solo se write_to_msp=True
 """
 
 import math
@@ -370,7 +370,7 @@ def heal(
  
     Returns:
         ForgeResult con i ForgePart trovati.
-        I ForgePart hanno custom={} — popolali con data_injector dopo.
+        I ForgePart hanno custom={} — popolali con forge.inject() dopo.
     """
     result = ForgeResult(source_file=source_file)
  
@@ -592,17 +592,10 @@ def heal(
             else:
                 classified_entity_ids.add(id(child_obj))
  
-        custom = {}
-        if special_layers:
-            custom = _collect_special_entities(
-                msp, special_layers,
-                classified_entity_ids | entities_in_loops
-            )
- 
         result.parts.append(ForgePart(
             outer=outer, inners=inners,
             label=label, source_file=source_file,
-            custom=custom,
+            custom={},
         ))
  
     # -------------------------------------------------------------------
@@ -623,6 +616,9 @@ def heal(
 
 # ---------------------------------------------------------------------------
 # Raccolta entità speciali
+# DEPRECATA — la logica è stata spostata in workflow/injector.py
+# Mantenuta per retrocompatibilità con test_special_layers.py.
+# Rimuovere dopo aver migrato i test a test_injector.py.
 # ---------------------------------------------------------------------------
 
 def _collect_special_entities(msp, special_layers: dict,

@@ -60,7 +60,6 @@ ALL_FORGE_LAYERS = {
     TRASH_LAYER:   COLOR_TRASH,
 }
 from .healer import heal
-from ..io.text_utils import extract_texts_from_msp
 
 ANNOTATION_TYPES = {'TEXT', 'MTEXT', 'DIMENSION', 'LEADER', 'MULTILEADER'}
 STRUCTURAL_LAYER_NAMES = {LAYER_OUTER, LAYER_INNER, LAYER_HOLE}
@@ -97,7 +96,6 @@ def split_to_files(
     include_annotations: bool = True,
     special_layers: dict = None,
     heal_result: ForgeResult = None,
-    data_injector: Optional[Callable] = None,
     min_area: float = DEFAULT_MIN_PART_AREA,
 ) -> ForgeResult:
     """
@@ -121,10 +119,9 @@ def split_to_files(
         special_layers:    dict {nome_layer: tipo} passato all'healer
         heal_result:       ForgeResult già prodotto da heal() — se fornito
                            salta l'healing interno (evita doppio lavoro)
-        data_injector:     funzione (ForgePart, testi) -> dict per dati custom
         min_area:          area minima mm² per considerare un outer come pezzo reale.
                            Contorni sotto soglia vengono scartati con un warning.
-                           Default: DEFAULT_MIN_PART_AREA (10 mm²). Passa 0 per disabilitare.
+                           Default: DEFAULT_MIN_PART_AREA (50 mm²). Passa 0 per disabilitare.
 
     Returns:
         ForgeResult con tutti i ForgePart trovati.
@@ -222,16 +219,6 @@ def split_to_files(
                 if pt is not None and outer_poly.covers(pt):
                     copy_entity(inner_e, new_msp)
 
-        # Estrai testi per il data_injector prima di copiare gli extras
-        text_to_be_injected = []
-        if data_injector is not None:
-            text_to_be_injected = extract_texts_from_msp([
-                e for e in msp
-                if e.dxftype() in ANNOTATION_TYPES
-                and (pt := get_representative_point(e)) is not None
-                and outer_poly.covers(pt)
-            ])
-
         # Extras (testi, quote, layer non strutturali)
         for entity in all_extras:
             if entity.dxftype() in skip_types:
@@ -240,18 +227,7 @@ def split_to_files(
             if pt is not None and outer_poly.contains(pt):
                 copy_entity(entity, new_msp)
 
-        # Data injection
-        if data_injector is not None:
-            try:
-                injected = data_injector(part, text_to_be_injected)
-                if injected:
-                    part.custom.update(injected)
-            except Exception as ex:
-                result.warnings.append(
-                    f"data_injector fallito su {part.label}: {ex}"
-                )
-
-        # Namer DOPO injection (il namer può usare part.custom)
+        # Namer — può usare part.custom se inject() è già stato chiamato
         file_label = namer(i, part)
         part.label = file_label
 
