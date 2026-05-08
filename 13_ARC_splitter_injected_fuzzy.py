@@ -10,23 +10,24 @@ Produce un file separato per ogni pezzo trovato con il nome che trova nel txt de
 import ezdxf
 import dxf_forge as forge
 import os
-from dxf_forge.text_utils import clean_mtext, handle_mleader
+from dxf_forge.io.text_utils import clean_mtext, handle_mleader
 from shapely.geometry import Point
 import re
 import json
-from dxf_forge.exporter import build_metadata
+from dxf_forge.io.exporter import build_metadata
 import snapmark as sm
 
 
 # ← CAMBIA QUI con il tuo file
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC - Copia\ARC.6200012810 Sviluppo\6200012810 Sviluppo.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012912 Sviluppo.dxf"
 #input_dir = os.path.abspath(input_dxf)
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
 ###########################################################
 # Funzioni per estrarre i dati dai testi e iniettarli nei custom dei pezzi
 ###########################################################
-
+customer = 'ARC02'
+drawing = os.path.basename(os.path.dirname(input_dxf))
 def estrai_materiale(doc) -> str:
     for block in doc.blocks:
         print(f"  [block] {block.name}")
@@ -107,8 +108,8 @@ def make_data_injector(doc):
 # Configura il marker UNA VOLTA sola, fuori dal loop
 marker = sm.AddMark(
     sequence=sm.SequenceBuilder().file_name(trim_start=5).build(),
-    max_char=9,
-    min_char=7,
+    max_height=9,
+    min_height=7,
     down_to=5,
     margin=4,
     scale_factor=50,
@@ -161,12 +162,13 @@ label = label.replace(" Sviluppo", "")
 result = forge.split_to_files(
     msp,
     output_folder=output_dir,
-    tolerance=2,
+    tolerance=.2,
     explode_inserts=True,
     label=label,
     source_file=input_dxf,
     include_annotations=True,
     data_injector=make_data_injector(doc),
+    preserve_original_layers=True,
     namer=lambda i, part: part.custom.get("_codice") or f"{label}_PART{i}",
 )
 
@@ -181,23 +183,24 @@ for part in result.parts:
     )
     marker.message(f"{part.label}.dxf")
 
-    # # Microtext con i dati del pezzo
-    # text_op = sm.AddText(
-    #     texts=[
-    #         f"Material:{part.custom.get('material', 'N/D')}",
-    #         f"Thickness:{part.custom.get('thickness', 0.0)}",
-    #         f"Quantity:{part.custom.get('quantity', 1)}",
-    #     ],
-    #     min_char=2,
-    #     max_char=5,
-    #     text_layer="TEXT",
-    #     text_color=3,
-    # )
-    # text_op.execute_on_doc(
-    #     child_doc,
-    #     file_name=f"{part.label}.dxf",
-    #     folder=output_dir,
-    # )
+    # Microtext con i dati del pezzo
+    text_op = sm.AddText(
+        text_sequence=sm.TextBuilder()
+            .static(f"Material:{part.custom.get('material', 'N/D')}")
+            .static(f"Thickness:{part.custom.get('thickness', 0.0)}")
+            .static(f"Quantity:{part.custom.get('quantity', 1)}")
+            .static(f"Customer:{customer}")
+            .static(f"Drawing:{drawing}")
+            .build(),
+        char_height=.2,
+        text_layer="TEXT",
+        text_color=3,
+    )
+    text_op.execute_on_doc(
+        child_doc,
+        file_name=f"{part.label}.dxf",
+        folder=output_dir,
+    )
 
     child_doc.saveas(filepath)
     

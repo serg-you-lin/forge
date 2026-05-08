@@ -11,8 +11,8 @@ Per aggiungere, rinominare o rimuovere un campo — modificare solo metadata_sch
 import json
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from .models import ForgeResult, ForgePart
-from .metadata_schema import METADATA_FIELDS
+from ..models import ForgeResult, ForgePart
+from ..rules.metadata_schema import METADATA_FIELDS
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +233,7 @@ def write_metadata_to_dxf(doc, part: ForgePart):
     Supporta LWPOLYLINE, POLYLINE e CIRCLE su layer OuterContour.
     """
     try:
-        from .layers import LAYER_OUTER
+        from ..rules.layers import LAYER_OUTER
         msp = doc.modelspace()
 
         outer_entity = None
@@ -276,7 +276,7 @@ def read_metadata_from_dxf(doc) -> dict:
         dict con i metadati secondo schema — o dict vuoto.
     """
     try:
-        from .layers import LAYER_OUTER
+        from ..rules.layers import LAYER_OUTER
         msp = doc.modelspace()
 
         outer_entity = None

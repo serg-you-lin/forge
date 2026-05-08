@@ -19,7 +19,7 @@ quindi dxf-forge funziona anche senza snapmark installato.
 
 from .healer import heal
 from .splitter import split_to_files
-from .validator import validate
+from ..rules.validator import validate
 
 
 try:

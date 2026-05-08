@@ -1,77 +1,57 @@
 {
-  "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\ARC - Copia\\ARC.6200012810 Sviluppo\\6200012810 Sviluppo.dxf",
+  "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_06_05_2026\\6200012912 Sviluppo.dxf",
   "is_valid": true,
-  "part_count": 6,
+  "part_count": 3,
   "warnings": [
-    "22 INSERT esplosi prima dell'healing."
+    "10 INSERT esplosi prima dell'healing."
   ],
   "errors": [],
   "parts": [
     {
-      "label": "6200012810_2",
-      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\ARC - Copia\\ARC.6200012810 Sviluppo\\6200012810 Sviluppo.dxf",
+      "label": "6200012912_2",
+      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_06_05_2026\\6200012912 Sviluppo.dxf",
       "quantity": 1,
-      "material": "S235JR EN 10025",
+      "material": "Inox AISI 304",
       "thickness_mm": 2.0,
       "bending_lines": 0,
       "total_engrave_length_mm": 0.0,
-      "area_mm2": 627986.6677,
-      "holes_count": 10,
-      "outer_perimeter_mm": 4983.3467,
-      "inner_perimeter_mm": 397.2205,
-      "total_perimeter_mm": 5380.5672,
+      "area_mm2": 708167.3739,
+      "holes_count": 0,
+      "outer_perimeter_mm": 3316.0243,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 3316.0243,
       "bbox": {
-        "minx": 45.2253,
-        "miny": 35.4701,
-        "maxx": 2184.2253,
-        "maxy": 331.4002
+        "minx": 1070.3259,
+        "miny": 138.9559,
+        "maxx": 1934.2667,
+        "maxy": 1038.1709
       }
     },
     {
-      "label": "6200012810_3",
-      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\ARC - Copia\\ARC.6200012810 Sviluppo\\6200012810 Sviluppo.dxf",
+      "label": "6200012912_1",
+      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_06_05_2026\\6200012912 Sviluppo.dxf",
       "quantity": 1,
-      "material": "S235JR EN 10025",
+      "material": "Inox AISI 304",
       "thickness_mm": 2.0,
       "bending_lines": 0,
       "total_engrave_length_mm": 0.0,
-      "area_mm2": 347773.2679,
-      "holes_count": 10,
-      "outer_perimeter_mm": 4603.6451,
-      "inner_perimeter_mm": 248.0862,
-      "total_perimeter_mm": 4851.7313,
+      "area_mm2": 45242.5814,
+      "holes_count": 6,
+      "outer_perimeter_mm": 4578.5199,
+      "inner_perimeter_mm": 122.4729,
+      "total_perimeter_mm": 4700.9928,
       "bbox": {
-        "minx": 48.3518,
-        "miny": 417.6286,
-        "maxx": 2187.3518,
-        "maxy": 580.4512
+        "minx": 118.7796,
+        "miny": 132.9674,
+        "maxx": 964.7796,
+        "maxy": 1038.9674
       }
     },
     {
-      "label": "6200012810_5",
-      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\ARC - Copia\\ARC.6200012810 Sviluppo\\6200012810 Sviluppo.dxf",
+      "label": "Articolo:",
+      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_06_05_2026\\6200012912 Sviluppo.dxf",
       "quantity": 1,
-      "material": "S235JR EN 10025",
-      "thickness_mm": 2.0,
-      "bending_lines": 0,
-      "total_engrave_length_mm": 0.0,
-      "area_mm2": 5717.9938,
-      "holes_count": 1,
-      "outer_perimeter_mm": 355.4119,
-      "inner_perimeter_mm": 75.3679,
-      "total_perimeter_mm": 430.7798,
-      "bbox": {
-        "minx": 490.5191,
-        "miny": 661.6209,
-        "maxx": 598.5191,
-        "maxy": 733.6209
-      }
-    },
-    {
-      "label": "6200012810_PART4",
-      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\ARC - Copia\\ARC.6200012810 Sviluppo\\6200012810 Sviluppo.dxf",
-      "quantity": 1,
-      "material": "S235JR EN 10025",
+      "material": "Inox AISI 304",
       "thickness_mm": 0.0,
       "bending_lines": 0,
       "total_engrave_length_mm": 0.0,
@@ -81,50 +61,10 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 270.0,
       "bbox": {
-        "minx": 691.8532,
-        "miny": 683.4934,
-        "maxx": 771.8532,
-        "maxy": 738.4934
-      }
-    },
-    {
-      "label": "6200012810_4",
-      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\ARC - Copia\\ARC.6200012810 Sviluppo\\6200012810 Sviluppo.dxf",
-      "quantity": 4,
-      "material": "S235JR EN 10025",
-      "thickness_mm": 10.0,
-      "bending_lines": 0,
-      "total_engrave_length_mm": 0.0,
-      "area_mm2": 1858.7404,
-      "holes_count": 2,
-      "outer_perimeter_mm": 180.0,
-      "inner_perimeter_mm": 40.8243,
-      "total_perimeter_mm": 220.8243,
-      "bbox": {
-        "minx": 291.12,
-        "miny": 681.2212,
-        "maxx": 346.12,
-        "maxy": 716.2212
-      }
-    },
-    {
-      "label": "6200012810_1",
-      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\ARC - Copia\\ARC.6200012810 Sviluppo\\6200012810 Sviluppo.dxf",
-      "quantity": 2,
-      "material": "S235JR EN 10025",
-      "thickness_mm": 10.0,
-      "bending_lines": 0,
-      "total_engrave_length_mm": 0.0,
-      "area_mm2": 1507.8316,
-      "holes_count": 1,
-      "outer_perimeter_mm": 153.1302,
-      "inner_perimeter_mm": 31.4033,
-      "total_perimeter_mm": 184.5335,
-      "bbox": {
-        "minx": 77.9626,
-        "miny": 681.3943,
-        "maxx": 117.9626,
-        "maxy": 721.3943
+        "minx": 1886.7732,
+        "miny": 14.1734,
+        "maxx": 1966.7732,
+        "maxy": 69.1734
       }
     }
   ]

@@ -26,11 +26,11 @@ from shapely.geometry import LinearRing, Polygon
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from dxf_forge.graph import (
+from dxf_forge.core.graph import (
     build_node_graph, find_closed_loops, classify_loops,
     round_point, entity_endpoints,
 )
-from dxf_forge.geometry import arc_to_bulge
+from dxf_forge.core.geometry import arc_to_bulge
 
 
 # ---------------------------------------------------------------------------

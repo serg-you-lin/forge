@@ -16,7 +16,7 @@ from dxf_forge.dxf_inspect import DxfInspector
 from collections import Counter
 import dxf_forge as forge
 
-DEFAULT_FILE = r"tests/examples/1026.dxf"
+DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012914 Sviluppo\6200012914_1.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(

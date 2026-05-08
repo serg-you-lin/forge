@@ -5,17 +5,17 @@ from shapely.geometry import Polygon
 from shapely.plotting import plot_polygon, plot_points
 import sys
 from pathlib import Path
-from dxf_forge.geometry import pline_to_polygon
-from dxf_forge.layers import LAYER_OUTER
+from dxf_forge.core.geometry import pline_to_polygon
+from dxf_forge.rules.layers import LAYER_OUTER
 from ezdxf.math import bulge_to_arc
 
 project_root = Path(".").resolve()
 sys.path.insert(0, str(project_root))
 
 import dxf_forge as forge
-from dxf_forge.virtual import _loop_to_virtual_shape
-from dxf_forge.graph import build_node_graph, find_closed_loops, classify_loops
-from dxf_forge.geometry import circle_to_polygon
+from dxf_forge.core.virtual import _loop_to_virtual_shape
+from dxf_forge.core.graph import build_node_graph, find_closed_loops, classify_loops
+from dxf_forge.core.geometry import circle_to_polygon
 
 input_dxf = r"tests/examples/archi_bastardi_xdata_test_healed.dxf"
 

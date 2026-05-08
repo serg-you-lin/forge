@@ -27,8 +27,8 @@ Config di default — sovrascrivibile per ogni officina:
 
 from shapely.geometry import Point, MultiPoint
 from typing import Optional
-from .models import ForgePart, ForgeResult
-from .geometry import get_representative_point
+from ..models import ForgePart, ForgeResult
+from ..core.geometry import get_representative_point
 
 # ---------------------------------------------------------------------------
 # Config di default

@@ -16,7 +16,7 @@ from dxf_forge.dxf_inspect import DxfInspector
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC - Copia\ARC.6200012809 Sviluppo\pezzo_linee_non_snappate.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\snapmark\examples\input\nested\GRID-PD.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -39,7 +39,7 @@ print("tolleranza:", tolerance)
 # Configura cosa vuoi vedere — commenta/decommenta
 inspector = DxfInspector(
     summary   = True,
-    lines     = False,
+    lines     = True,
     arcs      = True,
     polylines = True,
     circles   = True,
@@ -78,7 +78,8 @@ result = forge.heal(msp, tolerance=tolerance,
                     source_file=file_name,
                     special_layers={
                         "MARK": "engrave",                
-                        "MARCATURA": "bending",
+                        "Bend": "bending",
+                        "MBend": "bending",
                     })
 
 print(f"\n  Pezzi trovati : {result.part_count}")
