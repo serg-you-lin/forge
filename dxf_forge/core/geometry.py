@@ -402,6 +402,105 @@ def copy_entity(entity, target_msp) -> None:
     except Exception as ex:
         print(f"  [WARN] Copia {dxftype} fallita: {ex}")
 
+
+def _line_direction(line) -> tuple:
+    """
+    Restituisce il vettore direzione normalizzato di una LINE ezdxf.
+    Sempre orientato in modo canonico (dx >= 0, se dx==0 allora dy > 0)
+    così due segmenti paralleli opposti hanno lo stesso vettore.
+    """
+    dx = line.dxf.end.x - line.dxf.start.x
+    dy = line.dxf.end.y - line.dxf.start.y
+    length = (dx**2 + dy**2) ** 0.5
+    if length == 0:
+        return (0.0, 0.0)
+    dx, dy = dx / length, dy / length
+    # canonicalizza: dx sempre >= 0
+    if dx < 0 or (dx == 0 and dy < 0):
+        dx, dy = -dx, -dy
+    return (dx, dy)
+
+
+def _point_to_line_distance(px, py, line) -> float:
+    """
+    Distanza di un punto (px, py) dalla retta infinita definita da line.
+    Formula: |cross(AB, AP)| / |AB|
+    """
+    ax, ay = line.dxf.start.x, line.dxf.start.y
+    bx, by = line.dxf.end.x,   line.dxf.end.y
+    dx, dy = bx - ax, by - ay
+    length = (dx**2 + dy**2) ** 0.5
+    if length == 0:
+        return ((px - ax)**2 + (py - ay)**2) ** 0.5
+    cross = abs(dx * (ay - py) - dy * (ax - px))
+    return cross / length
+
+
+def are_collinear(line_a, line_b, tolerance: float = 0.1) -> bool:
+    """
+    Restituisce True se due LINE ezdxf giacciono sulla stessa retta infinita.
+
+    Due segmenti sono collineari se:
+    1. Hanno la stessa direzione (paralleli)
+    2. Un punto di line_b è sulla retta di line_a (entro tolleranza)
+
+    Args:
+        line_a:    entità LINE ezdxf
+        line_b:    entità LINE ezdxf
+        tolerance: distanza massima mm per considerarli sulla stessa retta
+
+    Returns:
+        True se collineari, False altrimenti.
+    """
+    dir_a = _line_direction(line_a)
+    dir_b = _line_direction(line_b)
+
+    # cross product tra versori — soglia angolare, NON in mm
+    cross = abs(dir_a[0] * dir_b[1] - dir_a[1] * dir_b[0])
+    if cross > 1e-6:
+        return False
+
+    # distanza punto-retta — questa sì è in mm
+    dist = _point_to_line_distance(
+        line_b.dxf.start.x, line_b.dxf.start.y, line_a
+    )
+    return dist <= tolerance
+
+
+def group_collinear_lines(lines: list, tolerance: float = 0.1) -> list:
+    """
+    Raggruppa una lista di LINE ezdxf in gruppi collineari.
+
+    Linee sulla stessa retta infinita finiscono nello stesso gruppo,
+    indipendentemente da gap o sovrapposizioni tra i segmenti.
+
+    Args:
+        lines:     lista di entità LINE ezdxf
+        tolerance: tolleranza mm per are_collinear()
+
+    Returns:
+        Lista di gruppi, ogni gruppo è una lista di LINE collineari.
+        Esempio: 6 segmenti su 3 rette → [[L1,L2], [L3,L4], [L5,L6]]
+    """
+    groups = []
+    assigned = set()
+
+    for i, line in enumerate(lines):
+        if i in assigned:
+            continue
+        group = [line]
+        assigned.add(i)
+        for j, other in enumerate(lines):
+            if j in assigned:
+                continue
+            if are_collinear(line, other, tolerance):
+                group.append(other)
+                assigned.add(j)
+        groups.append(group)
+
+    return groups
+
+
 # ---------------------------------------------------------------------------
 # Deprecated
 # ---------------------------------------------------------------------------

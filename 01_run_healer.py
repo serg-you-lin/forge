@@ -38,13 +38,13 @@ print("tolleranza:", tolerance)
 
 # Configura cosa vuoi vedere — commenta/decommenta
 inspector = DxfInspector(
-    summary   = True,
+    summary   = False,
     lines     = True,
     arcs      = True,
     polylines = True,
     circles   = True,
     splines   = True,
-    graph     = True,   # ← il più utile per debug ambiguità
+    graph     = False,   # ← il più utile per debug ambiguità
 )
 
 # ---------------------------------------------------------------------------
