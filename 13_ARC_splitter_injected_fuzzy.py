@@ -19,7 +19,7 @@ import snapmark as sm
 
 
 # ← CAMBIA QUI con il tuo file
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012912 Sviluppo.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\j0080281_nocornice.dxf"
 #input_dir = os.path.abspath(input_dxf)
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
@@ -168,7 +168,6 @@ result = forge.split_to_files(
     source_file=input_dxf,
     include_annotations=True,
     data_injector=make_data_injector(doc),
-    preserve_original_layers=True,
     namer=lambda i, part: part.custom.get("_codice") or f"{label}_PART{i}",
 )
 

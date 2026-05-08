@@ -1,70 +1,110 @@
 {
-  "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_06_05_2026\\6200012912 Sviluppo.dxf",
+  "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_23_04_2026\\j0080281_nocornice.dxf",
   "is_valid": true,
-  "part_count": 3,
+  "part_count": 5,
   "warnings": [
-    "10 INSERT esplosi prima dell'healing."
+    "1 INSERT esplosi prima dell'healing."
   ],
   "errors": [],
   "parts": [
     {
-      "label": "6200012912_2",
-      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_06_05_2026\\6200012912 Sviluppo.dxf",
+      "label": "j0080281_nocornice_PART1",
+      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_23_04_2026\\j0080281_nocornice.dxf",
       "quantity": 1,
-      "material": "Inox AISI 304",
-      "thickness_mm": 2.0,
-      "bending_lines": 0,
-      "total_engrave_length_mm": 0.0,
-      "area_mm2": 708167.3739,
-      "holes_count": 0,
-      "outer_perimeter_mm": 3316.0243,
-      "inner_perimeter_mm": 0,
-      "total_perimeter_mm": 3316.0243,
-      "bbox": {
-        "minx": 1070.3259,
-        "miny": 138.9559,
-        "maxx": 1934.2667,
-        "maxy": 1038.1709
-      }
-    },
-    {
-      "label": "6200012912_1",
-      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_06_05_2026\\6200012912 Sviluppo.dxf",
-      "quantity": 1,
-      "material": "Inox AISI 304",
-      "thickness_mm": 2.0,
-      "bending_lines": 0,
-      "total_engrave_length_mm": 0.0,
-      "area_mm2": 45242.5814,
-      "holes_count": 6,
-      "outer_perimeter_mm": 4578.5199,
-      "inner_perimeter_mm": 122.4729,
-      "total_perimeter_mm": 4700.9928,
-      "bbox": {
-        "minx": 118.7796,
-        "miny": 132.9674,
-        "maxx": 964.7796,
-        "maxy": 1038.9674
-      }
-    },
-    {
-      "label": "Articolo:",
-      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_06_05_2026\\6200012912 Sviluppo.dxf",
-      "quantity": 1,
-      "material": "Inox AISI 304",
+      "material": "S275JR",
       "thickness_mm": 0.0,
       "bending_lines": 0,
       "total_engrave_length_mm": 0.0,
-      "area_mm2": 4400.0,
-      "holes_count": 0,
-      "outer_perimeter_mm": 270.0,
-      "inner_perimeter_mm": 0,
-      "total_perimeter_mm": 270.0,
+      "area_mm2": 9904.6324,
+      "holes_count": 23,
+      "outer_perimeter_mm": 449.6953,
+      "inner_perimeter_mm": 749.7168,
+      "total_perimeter_mm": 1199.4121,
       "bbox": {
-        "minx": 1886.7732,
-        "miny": 14.1734,
-        "maxx": 1966.7732,
-        "maxy": 69.1734
+        "minx": 224.727,
+        "miny": 135.3048,
+        "maxx": 374.727,
+        "maxy": 215.3048
+      }
+    },
+    {
+      "label": "j0080281_nocornice_PART2",
+      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_23_04_2026\\j0080281_nocornice.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 420.0,
+      "holes_count": 3,
+      "outer_perimeter_mm": 184.0,
+      "inner_perimeter_mm": 162.0,
+      "total_perimeter_mm": 346.0,
+      "bbox": {
+        "minx": 119.8409,
+        "miny": 135.3048,
+        "maxx": 131.8409,
+        "maxy": 215.3048
+      }
+    },
+    {
+      "label": "j0080281_nocornice_PART3",
+      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_23_04_2026\\j0080281_nocornice.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 960.0,
+      "holes_count": 0,
+      "outer_perimeter_mm": 184.0,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 184.0,
+      "bbox": {
+        "minx": 40.6091,
+        "miny": 135.3048,
+        "maxx": 52.6091,
+        "maxy": 215.3048
+      }
+    },
+    {
+      "label": "j0080281_nocornice_PART4",
+      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_23_04_2026\\j0080281_nocornice.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 0.8894,
+      "holes_count": 0,
+      "outer_perimeter_mm": 3.3445,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 3.3445,
+      "bbox": {
+        "minx": 194.3871,
+        "miny": 174.573,
+        "maxx": 195.4521,
+        "maxy": 175.638
+      }
+    },
+    {
+      "label": "j0080281_nocornice_PART5",
+      "source_file": "c:\\Users\\FEDERICO\\Documents\\Python_Scripts\\Projects\\DXF\\TON_23_04_2026\\j0080281_nocornice.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": 0,
+      "total_engrave_length_mm": 0.0,
+      "area_mm2": 0.8875,
+      "holes_count": 0,
+      "outer_perimeter_mm": 3.3427,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 3.3427,
+      "bbox": {
+        "minx": 194.3877,
+        "miny": 174.5731,
+        "maxx": 195.4509,
+        "maxy": 175.638
       }
     }
   ]

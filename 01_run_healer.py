@@ -16,7 +16,7 @@ from dxf_forge.dxf_inspect import DxfInspector
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\snapmark\examples\input\nested\GRID-PD.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012912 PD.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)

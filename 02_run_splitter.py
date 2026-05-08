@@ -15,7 +15,7 @@ import dxf_forge as forge
 import os
 
 # ← CAMBIA QUI con il tuo file
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012914 Sviluppo.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\j0080281_nocornice.dxf"
 #input_dir = os.path.abspath(input_dxf)
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 

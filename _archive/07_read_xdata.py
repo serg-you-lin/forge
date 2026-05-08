@@ -13,7 +13,7 @@ import json
 import ezdxf
 
 # ← CAMBIA QUI oppure passa il path come argomento
-DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC\6200012808 Sviluppo\6200012808_PART5.dxf"
+DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012912 Sviluppo\6200012912_2.dxf"
 
 
 def read_xdata(filepath: str):

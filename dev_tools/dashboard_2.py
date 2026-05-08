@@ -388,7 +388,7 @@ def run(input_dxf, tolerance=0.05, output_png=None, special_layers=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dxf',       default=r'c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC\6200012808 Sviluppo\6200012808_2.dxf')
+    parser.add_argument('--dxf',       default=r'c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\j0080281_nocornice.dxf')
     parser.add_argument('--tolerance', type=float, default=5)
     parser.add_argument('--output',    default=None)
     args = parser.parse_args()

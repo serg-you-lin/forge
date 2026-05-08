@@ -7,6 +7,8 @@ Contratto:
     - split_to_files() heala il msp, usa il ForgeResult in memoria
       per la gerarchia, e usa il msp solo per l'export fisico delle entità.
       NON scrive metadata — quella è responsabilità del chiamante.
+    - Il file sorgente non viene MAI modificato: split_to_files() legge
+      dal msp originale e scrive sempre su un nuovo documento ezdxf.
 
     Il namer è una funzione (int, ForgePart) -> str decisa dal chiamante.
 
@@ -36,7 +38,6 @@ Tipi geometrici supportati come outer/inner:
 
 import os
 from typing import Callable, Optional, Set
-from shapely.geometry import Point
 import ezdxf
 
 from ..models import ForgeContour, ForgePart, ForgeResult
@@ -91,11 +92,13 @@ def split_to_files(
     special_layers: dict = None,
     heal_result: ForgeResult = None,
     data_injector: Optional[Callable] = None,
-    preserve_original_layers: bool = False,
 ) -> ForgeResult:
     """
     Pipeline completa: heala, usa ForgeResult in memoria, salva un DXF per ogni pezzo.
     Non scrive metadata — quella è responsabilità del chiamante.
+
+    Il file sorgente non viene MAI modificato: questa funzione legge dal msp
+    originale e scrive sempre su un nuovo documento ezdxf.
 
     Args:
         msp:               modelspace ezdxf (anche non healato)
@@ -172,65 +175,39 @@ def split_to_files(
         new_doc = ezdxf.new('R2010')
         new_msp = new_doc.modelspace()
 
-        if preserve_original_layers:
-            # --- Modalità RAW ---
-            # Copia i layer dall'originale così come sono (colori, linetype, ecc.)
-            source_doc = msp.doc
-            for layer in source_doc.layers:
-                if layer.dxf.name not in new_doc.layers:
-                    raw_color = layer.dxf.get("color", 7)
-                    is_off = raw_color < 0
-                    abs_color = abs(raw_color)
-                    new_layer = new_doc.layers.add(
-                        layer.dxf.name,
-                        color=abs_color,
-                        linetype=layer.dxf.get("linetype", "Continuous"),
-                    )
-                    if is_off:
-                        new_layer.off()
+        for layer_name, color in ALL_FORGE_LAYERS.items():
+            new_doc.layers.add(layer_name, color=color)
 
-            # Copia TUTTE le entità del msp originale contenute nel polygon
-            for entity in msp:
-                if entity.dxftype() in skip_types:
-                    continue
-                pt = get_representative_point(entity)
-                if pt is not None and outer_poly.covers(pt):
-                    copy_entity(entity, new_msp)
+        # Outer: cerca l'entità strutturale con area corrispondente
+        outer_written = False
+        for e in structural_entities:
+            if e.dxf.layer != LAYER_OUTER:
+                continue
+            e_poly = entity_to_polygon(e)
+            if e_poly is not None and abs(e_poly.area - outer_poly.area) < 1.0:
+                copy_entity(e, new_msp)
+                outer_written = True
+                break
 
-        else:
-            # --- Modalità FORGE (comportamento attuale) ---
-            for layer_name, color in ALL_FORGE_LAYERS.items():
-                new_doc.layers.add(layer_name, color=color)
-
-            outer_written = False
-            for e in structural_entities:
-                if e.dxf.layer != LAYER_OUTER:
-                    continue
-                e_poly = entity_to_polygon(e)
-                if e_poly is not None and abs(e_poly.area - outer_poly.area) < 1.0:
-                    copy_entity(e, new_msp)
-                    outer_written = True
-                    break
-
-            if not outer_written:
-                for e in msp:
-                    if e.dxf.layer == LAYER_OUTER and e.dxftype() in STRUCTURAL_ENTITY_TYPES:
-                        pt = get_representative_point(e)
-                        if pt is not None and outer_poly.covers(pt):
-                            copy_entity(e, new_msp)
-
-            for inner_e in inner_entities:
-                inner_poly = entity_to_polygon(inner_e)
-                if inner_poly is not None:
-                    if outer_poly.contains(inner_poly):
-                        copy_entity(inner_e, new_msp)
-                else:
-                    pt = get_representative_point(inner_e)
+        if not outer_written:
+            for e in msp:
+                if e.dxf.layer == LAYER_OUTER and e.dxftype() in STRUCTURAL_ENTITY_TYPES:
+                    pt = get_representative_point(e)
                     if pt is not None and outer_poly.covers(pt):
-                        copy_entity(inner_e, new_msp)
+                        copy_entity(e, new_msp)
 
-            # Estrai testi dal msp originale PRIMA di copiare
-            # (se copy avviene con skip_types, new_msp potrebbe non averli)
+        # Inner/Hole: copia quelli contenuti nell'outer
+        for inner_e in inner_entities:
+            inner_poly = entity_to_polygon(inner_e)
+            if inner_poly is not None:
+                if outer_poly.contains(inner_poly):
+                    copy_entity(inner_e, new_msp)
+            else:
+                pt = get_representative_point(inner_e)
+                if pt is not None and outer_poly.covers(pt):
+                    copy_entity(inner_e, new_msp)
+
+        # Estrai testi per il data_injector prima di copiare gli extras
         text_to_be_injected = []
         if data_injector is not None:
             text_to_be_injected = extract_texts_from_msp([
@@ -240,23 +217,15 @@ def split_to_files(
                 and outer_poly.covers(pt)
             ])
 
-        # Copia extras SOLO in modalità FORGE (non raw)
-        if not preserve_original_layers:
-            for entity in all_extras:
-                if entity.dxftype() in skip_types:
-                    continue
-                pt = get_representative_point(entity)
-                if pt is not None and outer_poly.contains(pt):
-                    copy_entity(entity, new_msp)
-                    
-        # for entity in all_extras:
-        #     if entity.dxftype() in skip_types:
-        #         continue
-        #     pt = get_representative_point(entity)
-        #     if pt is not None and outer_poly.contains(pt):
-        #         copy_entity(entity, new_msp)
+        # Extras (testi, quote, layer non strutturali)
+        for entity in all_extras:
+            if entity.dxftype() in skip_types:
+                continue
+            pt = get_representative_point(entity)
+            if pt is not None and outer_poly.contains(pt):
+                copy_entity(entity, new_msp)
 
-        # Data injection con testi già estratti
+        # Data injection
         if data_injector is not None:
             try:
                 injected = data_injector(part, text_to_be_injected)
@@ -267,7 +236,7 @@ def split_to_files(
                     f"data_injector fallito su {part.label}: {ex}"
                 )
 
-        # Namer DOPO injection
+        # Namer DOPO injection (il namer può usare part.custom)
         file_label = namer(i, part)
         part.label = file_label
 
@@ -275,4 +244,3 @@ def split_to_files(
         new_doc.saveas(filename)
 
     return result
-
