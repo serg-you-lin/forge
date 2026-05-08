@@ -25,7 +25,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import dxf_forge as forge
-from dxf_forge.layers import LAYER_OUTER, LAYER_INNER, TRASH_LAYER, LAYER_ENGRAVE, LAYER_BENDING
+from dxf_forge.rules.layers import LAYER_OUTER, LAYER_INNER, TRASH_LAYER, LAYER_ENGRAVE, LAYER_BENDING
 
 
 def _rect_with_mark(mark_layer='MARK', mark_type='engrave'):

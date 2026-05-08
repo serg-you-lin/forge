@@ -6,7 +6,7 @@ Valida la salute geometrica di un modelspace o di un ForgeResult.
 Non modifica nulla — solo legge e restituisce warning/errori.
 """
 
-from .models import ForgeResult, ForgePart
+from ..models import ForgeResult, ForgePart
 
 
 def validate(result: ForgeResult) -> ForgeResult:

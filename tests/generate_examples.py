@@ -129,7 +129,7 @@ save(doc, "rect_with_circle_inner.dxf")
 
 
 # ---------------------------------------------------------------------------
-# Esempio N: rettangolo con loop LINE interno (marcatura/inner)
+# Esempio 10: rettangolo con loop LINE interno (marcatura/inner)
 # LWPOLYLINE outer già presente + 4 LINE che formano un loop contenuto
 # Verifica che il loop venga classificato INNER e non OUTER
 # ---------------------------------------------------------------------------
@@ -141,6 +141,31 @@ msp.add_line((120, 40), (120, 60))
 msp.add_line((120, 60), (80, 60))
 msp.add_line((80, 60), (80, 40))
 save(doc, "rect_with_inner_mark.dxf")
+
+
+# ---------------------------------------------------------------------------
+# Esempio 11: rettangolo con LINE duplicate
+# Simula duplicati dopo explode INSERT
+# ---------------------------------------------------------------------------
+doc = ezdxf.new('R2010')
+msp = doc.modelspace()
+
+segments = [
+    ((0, 0, 0),   (100, 0, 0)),
+    ((100, 0, 0), (100, 50, 0)),
+    ((100, 50, 0), (0, 50, 0)),
+    ((0, 50, 0),  (0, 0, 0)),
+]
+
+for start, end in segments:
+    # Segmento originale
+    msp.add_line(start, end)
+
+    # Duplicato identico
+    msp.add_line(start, end)
+
+save(doc, "rect_lines_duplicated.dxf")
+
 
 print(f"\nTutti i file generati in {EXAMPLES_DIR}")
 

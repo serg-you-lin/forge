@@ -56,7 +56,7 @@ def spline_details(msp) -> list:
     rows = []
     for s in msp.query('SPLINE'):
         try:
-            from dxf_forge.graph import spline_endpoints
+            from dxf_forge.core.graph import spline_endpoints
             start, end = spline_endpoints(s)
         except Exception:
             start = end = None

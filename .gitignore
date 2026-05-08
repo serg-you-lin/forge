@@ -1,7 +1,38 @@
+# — ambienti virtuali
+.venv/
+venv/
+env/
+
+# — build e distribuzione
+dist/
+build/
+*.egg-info/
 __pycache__/
-*.pyc
-*.log
-*.bak
-.env
+*.py[cod]
+*.pyd
+
+# — test e coverage
+.pytest_cache/
+htmlcov/
+.coverage
+
+# — editor
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# — OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# — dati e output locali (non versionare DXF di test privati)
+*.dxf
+!tests/data/**/*.dxf
+
+# — notebook (se tornano)
+.ipynb_checkpoints/
+
+# — variabili d'ambiente
+.env

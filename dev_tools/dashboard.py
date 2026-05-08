@@ -26,7 +26,7 @@ sys.path.insert(0, str(project_root))
 
 import ezdxf
 import dxf_forge as forge
-from dxf_forge.layers import (LAYER_OUTER, LAYER_INNER, LAYER_HOLE, TRASH_LAYER)
+from dxf_forge.rules.layers import (LAYER_OUTER, LAYER_INNER, LAYER_HOLE, TRASH_LAYER)
 
 # ---------------------------------------------------------------------------
 # Palette

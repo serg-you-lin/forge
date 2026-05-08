@@ -34,17 +34,17 @@ Workflow multi-pezzo (split_to_files fa tutto internamente):
     forge.save_json(result, "batch.json")
 """
 
-from .healer     import heal, LAYER_OUTER, LAYER_HOLE
-from .splitter   import split_to_files, is_multi
-from .validator  import validate, validate_msp
-from .classifier import classify, DEFAULT_ENTITY_MAP
-from .exporter import (to_json, save_json, save_xml, to_nester_input,
+from .workflow.healer     import heal, LAYER_OUTER, LAYER_HOLE
+from .workflow.splitter   import split_to_files, is_multi
+from .rules.validator  import validate, validate_msp
+from .rules.classifier import classify, DEFAULT_ENTITY_MAP
+from .io.exporter import (to_json, save_json, save_xml, to_nester_input,
                        write_metadata_to_dxf, read_metadata_from_dxf, 
                        upgrade_to_r2010, set_schema)
 from .models     import ForgeResult, ForgePart, ForgeContour
-from .text_utils import extract_texts_from_msp
+from .io.text_utils import extract_texts_from_msp
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __all__ = [
     # Workflow file singolo
     "validate_msp",

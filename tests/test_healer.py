@@ -21,7 +21,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import dxf_forge as forge
-from dxf_forge.layers import (
+from dxf_forge.rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     COLOR_OUTER, COLOR_INNER, COLOR_HOLE,
     COLOR_TRASH, HOLE_DIAMETER_THRESHOLD,
@@ -334,5 +334,47 @@ class TestHealerInnerLoopInsideLwpolyline(unittest.TestCase):
                         if e.dxf.layer == LAYER_INNER}
         self.assertIn(LAYER_INNER, inner_layers)
         
+# ---------------------------------------------------------------------------
+# Deduplicazione entità duplicate (es. dopo explode INSERT)
+# ---------------------------------------------------------------------------
+
+class TestHealerDeduplication(unittest.TestCase):
+
+    def setUp(self):
+        doc = load("rect_lines_duplicated.dxf")
+        self.msp = doc.modelspace()
+        self.result = forge.heal(self.msp, write_to_msp=True, explode_inserts=False)
+
+    def test_001_finds_one_part(self):
+        """Anche con LINE duplicate, deve trovare un solo pezzo."""
+        self.assertEqual(self.result.part_count, 1)
+
+    def test_002_no_errors(self):
+        self.assertEqual(len(self.result.errors), 0)
+
+    def test_003_correct_area(self):
+        """L'area deve essere quella del rettangolo, non distorta dai duplicati."""
+        self.assertAlmostEqual(self.result.parts[0].area, 5000, delta=50)
+
+    def test_004_dedup_warning_emitted(self):
+        """Deve esserci un warning che segnala le entità rimosse."""
+        warnings_text = " ".join(self.result.warnings)
+        self.assertIn("duplicate", warnings_text.lower())
+
+    def test_005_no_duplicate_lines_in_msp(self):
+        """Dopo l'healing, non devono esistere LINE identiche nel msp."""
+        from dxf_forge.workflow.healer import _deduplicate_entities
+
+        # Chiamiamo la funzione su un msp già healato:
+        # se non ci sono duplicati, deve restituire 0
+        removed = _deduplicate_entities(self.msp)
+        self.assertEqual(removed, 0)
+
+    def test_006_single_outer_lwpolyline(self):
+        """Deve esserci esattamente una LWPOLYLINE sul layer OuterContour."""
+        outer = [e for e in self.msp.query('LWPOLYLINE')
+                 if e.dxf.layer == LAYER_OUTER]
+        self.assertEqual(len(outer), 1)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

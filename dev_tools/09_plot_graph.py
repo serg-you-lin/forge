@@ -27,8 +27,8 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 
-from dxf_forge.geometry import arc_endpoints
-from dxf_forge.graph import round_point, spline_endpoints
+from dxf_forge.core.geometry import arc_endpoints
+from dxf_forge.core.graph import round_point, spline_endpoints
 
 # ← CAMBIA QUI
 INPUT_DXF = r"tests/examples/flangia_scantonata.DXF"

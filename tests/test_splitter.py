@@ -133,6 +133,8 @@ class TestSplitToFilesFilter(unittest.TestCase):
         out_msp = out_doc.modelspace()
         texts   = list(out_msp.query('TEXT'))
         circles = list(out_msp.query('CIRCLE'))
+        for t in list(out_msp.query('TEXT')):
+            print(f"  testo: '{t.dxf.text}' layer={t.dxf.layer}")
         print(f"\n[filter default] texts={len(texts)}, circles={len(circles)}")
         self.assertEqual(len(texts), 1)
         self.assertEqual(len(circles), 1)
@@ -260,7 +262,7 @@ class TestSplitToFilesClosedContours(unittest.TestCase):
 
     def test_001_lwpolyline_outer_is_closed(self):
         """LWPOLYLINE su OuterContour deve essere closed=True."""
-        from dxf_forge.layers import LAYER_OUTER
+        from dxf_forge.rules.layers import LAYER_OUTER
         children = self._get_output_contours("two_parts.dxf", "two_parts")
         self.assertGreater(len(children), 0)
         for fname, msp in children.items():
@@ -271,7 +273,7 @@ class TestSplitToFilesClosedContours(unittest.TestCase):
 
     def test_002_lwpolyline_inner_is_closed(self):
         """LWPOLYLINE su InnerContour/Hole deve essere closed=True."""
-        from dxf_forge.layers import LAYER_INNER, LAYER_HOLE
+        from dxf_forge.rules.layers import LAYER_INNER, LAYER_HOLE
         children = self._get_output_contours("pline_with_hole.dxf", "pline_with_hole")
         for fname, msp in children.items():
             for e in msp.query('LWPOLYLINE'):
@@ -281,7 +283,7 @@ class TestSplitToFilesClosedContours(unittest.TestCase):
 
     def test_003_circle_outer_exported(self):
         """CIRCLE su OuterContour viene esportato nel file figlio."""
-        from dxf_forge.layers import LAYER_OUTER
+        from dxf_forge.rules.layers import LAYER_OUTER
         children = self._get_output_contours("cerchi_ciambella.dxf", "cerchi_ciambella")
         self.assertGreater(len(children), 0)
         for fname, msp in children.items():
@@ -296,7 +298,7 @@ class TestSplitToFilesClosedContours(unittest.TestCase):
         devono essere presenti nel file figlio su layer OuterContour.
         Non viene prodotta una LWPOLYLINE discretizzata.
         """
-        from dxf_forge.layers import LAYER_OUTER
+        from dxf_forge.rules.layers import LAYER_OUTER
         children = self._get_output_contours("intricato_doppio.dxf", "intricato_doppio")
         spline_files = [
             fname for fname, msp in children.items()
@@ -312,7 +314,7 @@ class TestSplitToFilesClosedContours(unittest.TestCase):
         nei file figli deve essere closed=True.
         Regressione generica — cattura il bug close=entity.closed.
         """
-        from dxf_forge.layers import LAYER_OUTER, LAYER_INNER, LAYER_HOLE
+        from dxf_forge.rules.layers import LAYER_OUTER, LAYER_INNER, LAYER_HOLE
         structural = {LAYER_OUTER, LAYER_INNER, LAYER_HOLE}
         examples = Path("examples").glob("*.dxf")
         for src in examples:
@@ -345,7 +347,7 @@ class TestSplitToFilesLayers(unittest.TestCase):
 
     def test_001_outer_layer_color(self):
         """LAYER_OUTER ha COLOR_OUTER nel file figlio."""
-        from dxf_forge.layers import LAYER_OUTER, COLOR_OUTER
+        from dxf_forge.rules.layers import LAYER_OUTER, COLOR_OUTER
         for f in Path(self.out_dir).glob("*.dxf"):
             child_doc = ezdxf.readfile(str(f))
             layer = child_doc.layers.get(LAYER_OUTER)
@@ -354,7 +356,7 @@ class TestSplitToFilesLayers(unittest.TestCase):
 
     def test_002_all_forge_layers_present(self):
         """Tutti i layer forge sono presenti nel file figlio."""
-        from dxf_forge.layers import (
+        from dxf_forge.rules.layers import (
             LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
             LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, TRASH_LAYER,
         )
@@ -369,7 +371,7 @@ class TestSplitToFilesLayers(unittest.TestCase):
 
     def test_003_layer_colors_match_canonical(self):
         """Tutti i layer forge hanno il colore canonico da layers.py."""
-        from dxf_forge.splitter import ALL_FORGE_LAYERS
+        from dxf_forge.workflow.splitter import ALL_FORGE_LAYERS
         for f in Path(self.out_dir).glob("*.dxf"):
             child_doc = ezdxf.readfile(str(f))
             for layer_name, expected_color in ALL_FORGE_LAYERS.items():

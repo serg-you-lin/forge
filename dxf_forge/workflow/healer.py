@@ -32,8 +32,8 @@ from typing import Callable, List, Optional, Set
 from shapely.geometry import LineString, Polygon
 from shapely.ops import polygonize, unary_union, snap
 
-from .models import ForgeContour, ForgePart, ForgeResult
-from .layers import (
+from ..models import ForgeContour, ForgePart, ForgeResult
+from ..rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE,
     COLOR_OUTER, COLOR_INNER, COLOR_HOLE,
@@ -41,15 +41,15 @@ from .layers import (
     HOLE_DIAMETER_THRESHOLD, STRUCTURAL_LAYERS, TRASH_LAYER,
     WORK_TYPE_TO_LAYER,
 )
-from .geometry import (arc_to_linestrings, pline_to_polygon,
+from ..core.geometry import (arc_to_linestrings, pline_to_polygon,
                        circle_to_polygon, entity_length, arc_endpoints)
-from .graph import (build_node_graph, find_closed_loops,
+from ..core.graph import (build_node_graph, find_closed_loops,
                     check_loop_ambiguity, classify_loops,
                     spline_to_points, spline_endpoints,
                     round_point)
-from .virtual import VirtualShape, _loop_to_virtual_shape, _write_virtual_shape
-from .gap import close_gaps
-from .text_utils import extract_texts_from_msp
+from ..core.virtual import VirtualShape, _loop_to_virtual_shape, _write_virtual_shape
+from ..core.gap import close_gaps
+from ..io.text_utils import extract_texts_from_msp
 
 
 # ---------------------------------------------------------------------------
@@ -145,8 +145,8 @@ def _spline_to_polygon(spline) -> Optional[Polygon]:
 def _deduplicate_loops(loops):
     """Per ogni coppia diretta/inversa, tieni solo quella con area maggiore."""
     from shapely.geometry import Polygon
-    from dxf_forge.graph import spline_to_points
-    from dxf_forge.geometry import arc_to_bulge
+    from dxf_forge.core.graph import spline_to_points
+    from dxf_forge.core.geometry import arc_to_bulge
 
     seen = {}  # frozenset(id) -> (loop, area)
     for loop in loops:
@@ -172,6 +172,52 @@ def _deduplicate_loops(loops):
             seen[key] = (loop, area)
     return [loop for loop, _ in seen.values()]
 
+def _deduplicate_entities(msp, tolerance: float = 0.01) -> int:
+    """
+    Rimuove entità geometricamente identiche dal msp.
+    Va chiamata subito dopo _explode_inserts, prima del grafo.
+    Restituisce il numero di entità rimosse.
+    """
+    def entity_key(e):
+        t = e.dxftype()
+        layer = e.dxf.get("layer", "0")
+        try:
+            if t == "LINE":
+                s = (round(e.dxf.start.x, 2), round(e.dxf.start.y, 2))
+                end = (round(e.dxf.end.x, 2), round(e.dxf.end.y, 2))
+                pts = tuple(sorted([s, end]))  # normalizza direzione A→B == B→A
+                return (t, layer, pts)
+            elif t in ("LWPOLYLINE", "POLYLINE"):
+                pts = tuple((round(p[0], 2), round(p[1], 2)) for p in e.get_points())
+                return (t, layer, pts)
+            elif t == "CIRCLE":
+                c = e.dxf.center
+                return (t, layer, round(c.x, 2), round(c.y, 2), round(e.dxf.radius, 2))
+            elif t == "ARC":
+                c = e.dxf.center
+                return (t, layer, round(c.x, 2), round(c.y, 2),
+                        round(e.dxf.radius, 2),
+                        round(e.dxf.start_angle, 1),
+                        round(e.dxf.end_angle, 1))
+        except Exception:
+            return None
+        return None
+
+    seen = set()
+    to_delete = []
+    for entity in msp:
+        key = entity_key(entity)
+        if key is None:
+            continue
+        if key in seen:
+            to_delete.append(entity)
+        else:
+            seen.add(key)
+
+    for entity in to_delete:
+        msp.delete_entity(entity)
+
+    return len(to_delete)
 
 def _explode_inserts(msp) -> int:
     """
@@ -220,7 +266,7 @@ def heal(
         source_file:    percorso del DXF originale
         special_layers: dict {nome_layer: tipo_lavorazione} per entità speciali
         keep_trash:     se True entità non classificate → layer Trash
-
+        explode_inserts: se True esplode gli INSERT prima dell'healing
     Returns:
         ForgeResult con i ForgePart trovati.
     """
@@ -239,6 +285,10 @@ def heal(
                 f"Trovati {len(inserts_found)} INSERT (blocchi) non esplosi — "
                 f"usa explode_inserts=True in heal() per includerli."
             )
+
+    removed = _deduplicate_entities(msp, tolerance=tolerance)
+    if removed > 0:
+        result.warnings.append(f"Rimosse {removed} entità duplicate dal msp.")
 
     special_names = _special_layer_names(special_layers)
 
@@ -389,7 +439,7 @@ def heal(
                 )
 
     # -------------------------------------------------------------------
-    # PASSO 3: gerarchia — VirtualShape + LWPOLYLINE + CIRCLE + SPLINE chiuse
+    # PASSO 2: gerarchia — VirtualShape + LWPOLYLINE + CIRCLE + SPLINE chiuse
     # -------------------------------------------------------------------
     shapes = []
 

@@ -10,11 +10,11 @@ Produce un file separato per ogni pezzo trovato con il nome che trova nel txt de
 import ezdxf
 import dxf_forge as forge
 import os
-from dxf_forge.text_utils import clean_mtext, handle_mleader
+from dxf_forge.io.text_utils import clean_mtext, handle_mleader
 from shapely.geometry import Point
 import re
 import json
-from dxf_forge.exporter import build_metadata
+from dxf_forge.io.exporter import build_metadata
 
 
 # ← CAMBIA QUI con il tuo file
