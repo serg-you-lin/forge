@@ -187,8 +187,9 @@ class TestEngraveLength(unittest.TestCase):
     def setUp(self):
         msp, special_layers = _rect_with_mark()
         self.result = forge.heal(msp, tolerance=0.05,
-                                 write_to_msp=False,
+                                 write_to_msp=True,
                                  special_layers=special_layers)
+        forge.inject(msp, self.result)
 
     def test_001_has_custom(self):
         self.assertIsNotNone(self.result.parts[0].custom)
@@ -215,14 +216,16 @@ class TestEngraveLength(unittest.TestCase):
 class TestBendingLines(unittest.TestCase):
     """
     3 LINE su MARCATURA (bending) devono produrre
-    bending_lines=3 e total_engrave_length=300mm nei custom.
+    bending_lines=3 nei custom.
+    Bending conta gruppi collineari, non lunghezze.
     """
 
     def setUp(self):
         msp, special_layers = _rect_with_bending()
         self.result = forge.heal(msp, tolerance=0.05,
-                                 write_to_msp=False,
+                                 write_to_msp=True,
                                  special_layers=special_layers)
+        forge.inject(msp, self.result)
 
     def test_001_has_custom(self):
         self.assertIsNotNone(self.result.parts[0].custom)
@@ -236,10 +239,6 @@ class TestBendingLines(unittest.TestCase):
         count = self.result.parts[0].custom['bending_lines']
         self.assertEqual(count, 3)
 
-    def test_004_engrave_length_correct(self):
-        """3 LINE da 100mm ciascuna = 300mm totali."""
-        length = self.result.parts[0].custom['total_engrave_length']
-        self.assertAlmostEqual(length, 300.0, delta=0.1)
 
 
 # ---------------------------------------------------------------------------
@@ -270,9 +269,10 @@ class TestMixedSpecialLayers(unittest.TestCase):
         msp.add_line((0, 35), (100, 35), dxfattribs={'layer': 'MARCATURA'})
 
         self.result = forge.heal(
-            msp, tolerance=0.05, write_to_msp=False,
+            msp, tolerance=0.05, write_to_msp=True,
             special_layers={'MARK': 'engrave', 'MARCATURA': 'bending'}
         )
+        forge.inject(msp, self.result)
 
     def test_001_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -281,9 +281,14 @@ class TestMixedSpecialLayers(unittest.TestCase):
         self.assertEqual(self.result.parts[0].custom.get('bending_lines'), 2)
 
     def test_003_total_engrave_length(self):
-        """20mm (MARK) + 200mm (MARCATURA) = 220mm."""
+        """Solo MARK (engrave) contribuisce: 20mm."""
         length = self.result.parts[0].custom.get('total_engrave_length', 0)
-        self.assertAlmostEqual(length, 220.0, delta=0.1)
+        self.assertAlmostEqual(length, 20.0, delta=0.1)
+
+    def test_004_bending_lines(self):
+        """MARCATURA (bending) → 2 gruppi collineari."""
+        count = self.result.parts[0].custom.get('bending_lines', 0)
+        self.assertEqual(count, 2)
 
 
 if __name__ == "__main__":

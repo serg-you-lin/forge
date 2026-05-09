@@ -213,6 +213,7 @@ class TestHealerSpecialLayers(unittest.TestCase):
                 "MARK": "engrave",
             }
         )
+        forge.inject(msp, self.result)
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -222,16 +223,17 @@ class TestHealerSpecialLayers(unittest.TestCase):
         self.assertEqual(custom.get("bending_lines", 0), 2)
 
     def test_003_total_engrave_length(self):
+        """1 LINE MARK diagonale da (50,0) a (150,100) = √(100²+100²) ≈ 141.42mm."""
         custom = self.result.parts[0].custom
         length = custom.get("total_engrave_length", 0.0)
-        # 2 linee BEND da 200mm + 1 linea MARK ~224mm
-        self.assertGreater(length, 500.0)
+        self.assertAlmostEqual(length, 141.42, delta=0.1)
 
     def test_004_special_entities_not_in_trash(self):
         # Le entità su BEND e MARK non devono finire su Trash
         doc = load("rect_with_special_layers.dxf")
         msp = doc.modelspace()
         forge.heal(msp, write_to_msp=True, special_layers={"BEND": "bending", "MARK": "engrave"})
+        forge.inject(msp, self.result)
         trash = [e for e in msp if e.dxf.hasattr("layer") and e.dxf.layer == "Trash"]
         bend_trash = [e for e in trash if "BEND" in e.dxf.layer.upper()]
         self.assertEqual(len(bend_trash), 0)
