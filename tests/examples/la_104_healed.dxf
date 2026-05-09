@@ -493,7 +493,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461123.7955324072
+2461170.3800347224
   9
 $TDUCREATE
  40
@@ -501,7 +501,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461123.7955324072
+2461170.3800347224
   9
 $TDUUPDATE
  40
@@ -553,7 +553,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-5C
+5B
   9
 $SURFTAB1
  70
@@ -937,7 +937,7 @@ $FINGERPRINTGUID
   9
 $VERSIONGUID
   2
-{026C0353-D576-430C-BB2E-F422073F39ED}
+{5D2BE85E-4B3E-4420-B088-E575DBBFE9BA}
   9
 $EXTNAMES
 290
@@ -1687,7 +1687,7 @@ APPID
 100
 AcDbSymbolTable
  70
-4
+3
   0
 APPID
   5
@@ -1728,20 +1728,6 @@ AcDbSymbolTableRecord
 AcDbRegAppTableRecord
   2
 EZDXF
- 70
-0
-  0
-APPID
-  5
-5B
-330
-3
-100
-AcDbSymbolTableRecord
-100
-AcDbRegAppTableRecord
-  2
-FORGE
  70
 0
   0
@@ -2093,7 +2079,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2117,7 +2105,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2141,7 +2131,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2165,7 +2157,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2189,7 +2183,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2213,7 +2209,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2237,7 +2235,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2261,7 +2261,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2285,7 +2287,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2309,7 +2313,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2333,7 +2339,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2357,7 +2365,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2368,30 +2378,6 @@ AcDbLine
 0.0
  11
 38.223
- 21
-15.68
- 31
-0.0
-  0
-LINE
-  5
-45
-330
-17
-100
-AcDbEntity
-  8
-MARK
-100
-AcDbLine
- 10
-38.223
- 20
-15.68
- 30
-0.0
- 11
-42.483
  21
 15.68
  31
@@ -2405,7 +2391,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2429,7 +2417,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2453,7 +2443,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2477,7 +2469,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2501,7 +2495,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2525,7 +2521,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2549,7 +2547,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2573,7 +2573,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2597,7 +2599,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2621,7 +2625,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2645,7 +2651,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2669,7 +2677,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2693,7 +2703,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2717,7 +2729,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2741,7 +2755,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2765,7 +2781,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2789,7 +2807,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2813,7 +2833,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2837,7 +2859,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2861,7 +2885,9 @@ LINE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2914,10 +2940,6 @@ AcDbPolyline
 0.0
  20
 0.0
-1001
-FORGE
-1000
-{"label": "la_104", "source_file": "la_104.DXF", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 0, "total_engrave_length_mm": 152.6934, "area_mm2": 19167.3791, "holes_count": 2, "outer_perimeter_mm": 550.6102, "inner_perimeter_mm": 113.0519, "total_perimeter_mm": 663.6621, "bbox": {"minx": 0.0, "miny": 0.0, "maxx": 150.0, "maxy": 142.0}}
   0
 ENDSEC
   0
@@ -3933,7 +3955,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-23T18:05:34.666894+00:00
+1.4.3 @ 2026-05-09T07:07:15.787062+00:00
   0
 ENDSEC
   0
