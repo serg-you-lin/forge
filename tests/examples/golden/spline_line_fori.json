@@ -17,7 +17,8 @@
       "inners_layers": [
         "Hole",
         "InnerContour"
-      ]
+      ],
+      "custom": {}
     }
   ]
 }

@@ -9,6 +9,13 @@ Controlla per ogni DXF:
 - perimetri invariati (tolleranza 0.5 mm)
 - geometria invariata via differenza simmetrica Shapely (tolleranza 1.0 mm²)
 - layer assegnati invariati
+- custom (bending_lines, total_engrave_length, ecc.) invariati
+
+Ogni DXF può avere un file config opzionale affiancato (stesso stem, .json):
+    tests/examples/la_104.json  →  {"special_layers": {"MARK": "engrave"}, "tolerance": 0.5}
+
+Se il config non esiste, si usano i default (tolerance=0.5, nessun special_layers).
+generate_golden.py usa lo stesso config — i due sono sempre allineati.
 
 Genera prima i golden file con:
     python generate_golden.py
@@ -39,6 +46,20 @@ TOL_AREA      = 0.1   # mm²
 TOL_PERIMETER = 0.5   # mm
 TOL_SHAPE     = 1.0   # mm² differenza simmetrica
 
+DEFAULT_TOLERANCE = 0.5
+
+
+def _load_config(dxf_path: Path) -> dict:
+    """
+    Carica il file di configurazione opzionale affiancato al DXF.
+    Es: la_104.DXF → la_104.json (nella stessa cartella del DXF).
+    Restituisce un dict vuoto se il config non esiste.
+    """
+    config_path = EXAMPLES_DIR / "config" / f"{dxf_path.stem}.json"
+    if config_path.exists():
+        return json.loads(config_path.read_text(encoding='utf-8'))
+    return {}
+
 
 def _load_golden_files() -> list:
     if not GOLDEN_DIR.exists():
@@ -52,19 +73,33 @@ class TestGolden(unittest.TestCase):
 
 def _make_golden_test(golden_path: Path):
     def test_method(self):
-        golden = json.loads(golden_path.read_text(encoding='utf-8'))
+        golden   = json.loads(golden_path.read_text(encoding='utf-8'))
         dxf_name = golden["source_file"]
         dxf_path = EXAMPLES_DIR / dxf_name
 
         if not dxf_path.exists():
             self.skipTest(f"DXF non trovato: {dxf_path}")
 
+        # --- Carica config (stesso che usa generate_golden) ---
+        config         = _load_config(dxf_path)
+        tolerance      = config.get("tolerance", DEFAULT_TOLERANCE)
+        special_layers = config.get("special_layers", None)
+
         # --- Heal ---
         doc = ezdxf.readfile(dxf_path)
         if doc.dxfversion < 'AC1015':
             doc = forge.upgrade_to_r2010(doc)
         msp = doc.modelspace()
-        result = forge.heal(msp, tolerance=0.5, write_to_msp=False)
+
+        result = forge.heal(
+            msp,
+            tolerance=tolerance,
+            write_to_msp=True,
+            special_layers=special_layers,
+        )
+
+        if special_layers:
+            forge.inject(msp, result)
 
         # --- part_count ---
         self.assertEqual(
@@ -128,6 +163,25 @@ def _make_golden_test(golden_path: Path):
                 actual_inner_layers, exp["inners_layers"],
                 f"{label}: inners layers {actual_inner_layers} != attesi {exp['inners_layers']}"
             )
+
+            # --- Custom (solo se il golden ha il campo) ---
+            if "custom" in exp:
+                for key, expected_val in exp["custom"].items():
+                    actual_val = part.custom.get(key)
+                    if isinstance(expected_val, float):
+                        self.assertIsNotNone(
+                            actual_val,
+                            f"{label}: custom['{key}'] assente"
+                        )
+                        self.assertAlmostEqual(
+                            actual_val, expected_val, delta=TOL_PERIMETER,
+                            msg=f"{label}: custom['{key}'] {actual_val} != atteso {expected_val}"
+                        )
+                    else:
+                        self.assertEqual(
+                            actual_val, expected_val,
+                            f"{label}: custom['{key}'] {actual_val} != atteso {expected_val}"
+                        )
 
     test_method.__name__ = f"test_{golden_path.stem}"
     test_method.__doc__  = f"Golden: {golden_path.name}"

@@ -15,7 +15,8 @@
       "outer_layer": "OuterContour",
       "inners_layers": [
         "InnerContour"
-      ]
+      ],
+      "custom": {}
     }
   ]
 }

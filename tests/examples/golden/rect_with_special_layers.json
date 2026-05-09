@@ -11,7 +11,8 @@
       "outer_wkt": "POLYGON ((0 0, 200 0, 200 100, 0 100, 0 0))",
       "inners_wkt": [],
       "outer_layer": "OuterContour",
-      "inners_layers": []
+      "inners_layers": [],
+      "custom": {}
     }
   ]
 }

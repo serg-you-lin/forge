@@ -21,7 +21,8 @@
         "InnerContour",
         "Hole",
         "Hole"
-      ]
+      ],
+      "custom": {}
     }
   ]
 }

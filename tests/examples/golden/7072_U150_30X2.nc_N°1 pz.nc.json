@@ -11,7 +11,8 @@
       "outer_wkt": "POLYGON ((624.9979999999996 200, 0 200, 0 50, 624.9979999999996 50, 624.9979999999996 200))",
       "inners_wkt": [],
       "outer_layer": "OuterContour",
-      "inners_layers": []
+      "inners_layers": [],
+      "custom": {}
     },
     {
       "area_mm2": 93749.7,
@@ -22,7 +23,8 @@
       "outer_wkt": "POLYGON ((0 420, 624.9979999999996 420, 624.9979999999996 270, 0 270, 0 420))",
       "inners_wkt": [],
       "outer_layer": "OuterContour",
-      "inners_layers": []
+      "inners_layers": [],
+      "custom": {}
     },
     {
       "area_mm2": 18584.44,
@@ -37,7 +39,8 @@
       "outer_layer": "OuterContour",
       "inners_layers": [
         "InnerContour"
-      ]
+      ],
+      "custom": {}
     },
     {
       "area_mm2": 18749.94,
@@ -48,7 +51,8 @@
       "outer_wkt": "POLYGON ((624.9979999999996 250, 0 249.9999999999999, 0 220.0000000000001, 624.9979999999996 220, 624.9979999999996 250))",
       "inners_wkt": [],
       "outer_layer": "OuterContour",
-      "inners_layers": []
+      "inners_layers": [],
+      "custom": {}
     }
   ]
 }
