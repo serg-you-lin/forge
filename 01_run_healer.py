@@ -132,7 +132,7 @@ from dxf_forge.dxf_inspect import DxfInspector
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\dxf-forge\tests\examples\la_104.DXF"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\j0080281_singolo.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -154,7 +154,7 @@ print("tolleranza:", tolerance)
 # Configura cosa vuoi vedere
 inspector = DxfInspector(
     summary=False,
-    lines=True,
+    lines=False,
     arcs=True,
     polylines=True,
     circles=True,

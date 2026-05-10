@@ -197,6 +197,39 @@ class TestHealerCircleInner(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Coppia concentrica → countersink
+# ---------------------------------------------------------------------------
+
+class TestHealerCountersink(unittest.TestCase):
+
+    def setUp(self):
+        doc = load("rect_with_countersink.dxf")
+        self.msp = doc.modelspace()
+        self.result = forge.heal(self.msp, write_to_msp=True)
+
+    def test_001_finds_one_part(self):
+        self.assertEqual(self.result.part_count, 1)
+
+    def test_002_only_one_inner(self):
+        # il cerchio grande viene escluso, resta solo il piccolo
+        self.assertEqual(len(self.result.parts[0].inners), 1)
+
+    def test_003_inner_is_hole(self):
+        self.assertTrue(self.result.parts[0].inners[0].is_hole)
+
+    def test_004_big_circle_in_trash(self):
+        from dxf_forge.rules.layers import TRASH_LAYER
+        trash = [e for e in self.msp.query('CIRCLE')
+                 if e.dxf.layer == TRASH_LAYER]
+        self.assertEqual(len(trash), 1)
+
+    def test_005_small_circle_on_hole_layer(self):
+        hole = [e for e in self.msp.query('CIRCLE')
+                if e.dxf.layer == LAYER_HOLE]
+        self.assertEqual(len(hole), 1)
+
+        
+# ---------------------------------------------------------------------------
 # Special layers (BEND + MARK)
 # ---------------------------------------------------------------------------
 

@@ -50,6 +50,7 @@ from ..core.graph import (build_node_graph, find_closed_loops,
 from ..core.virtual import VirtualShape, _loop_to_virtual_shape, _write_virtual_shape
 from ..core.gap import close_gaps
 from ..io.text_utils import extract_texts_from_msp
+from ..rules.classifier import is_countersink_outer
 
 
 # ---------------------------------------------------------------------------
@@ -295,6 +296,10 @@ def _apply_to_msp(
             if child_tipo == 'VIRTUAL':
                 continue
             if child_tipo == 'CIRCLE':
+                if is_countersink_outer(child_obj, children):  # ← aggiunta
+                    child_obj.dxf.layer = TRASH_LAYER
+                    child_obj.dxf.color = COLOR_TRASH
+                    continue
                 diameter = child_obj.dxf.radius * 2
                 layer = LAYER_HOLE if diameter < HOLE_DIAMETER_THRESHOLD else LAYER_INNER
                 color = COLOR_HOLE if diameter < HOLE_DIAMETER_THRESHOLD else COLOR_INNER
@@ -343,6 +348,7 @@ def heal(
     special_layers: dict = None,
     keep_trash: bool = True,
     explode_inserts: bool = False,
+    interpreter = None,
 ) -> ForgeResult:
     """
     Ripara la geometria del modelspace in 3 passi sequenziali.
@@ -571,6 +577,9 @@ def heal(
  
     # Costruisce ForgeResult
     for father_obj, father_poly, father_tipo, children in fathers:
+        circle_children = [(o.dxf.radius, o.dxf.center.x, o.dxf.center.y) 
+                       for o, _, t in children if t == 'CIRCLE']
+        print(f"FATHER tipo={father_tipo} children CIRCLE: {circle_children}")
         outer = ForgeContour(polygon=father_poly, is_inner=False, layer=LAYER_OUTER)
  
         if father_tipo == 'VIRTUAL':
@@ -581,11 +590,15 @@ def heal(
         inners = []
         for child_obj, child_poly, child_tipo in children:
             if child_tipo == 'CIRCLE':
+                is_cs = is_countersink_outer(child_obj, children)
+                print(f"  → is_countersink_outer = {is_cs}")
+                if is_cs:
+                    continue
                 diameter = child_obj.dxf.radius * 2
                 layer = LAYER_HOLE if diameter < HOLE_DIAMETER_THRESHOLD else LAYER_INNER
             else:
                 layer = LAYER_INNER
-            inners.append(ForgeContour(polygon=child_poly, is_inner=True, layer=layer))
+            inners.append(ForgeContour(polygon=child_poly, is_inner=True, layer=layer, is_hole=(layer == LAYER_HOLE)))
  
             if child_tipo == 'VIRTUAL':
                 classified_virtual_ids.add(id(child_obj))
@@ -611,6 +624,7 @@ def heal(
             special_layers=special_layers,
             keep_trash=keep_trash,
         )
+ 
  
     return result
 

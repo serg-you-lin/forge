@@ -12,7 +12,8 @@ nester li consuma, e i mattoni non sanno nulla di chi li usa.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
+from abc import ABC, abstractmethod
 from shapely.geometry import Polygon
 
 
@@ -27,6 +28,7 @@ class ForgeContour:
     polygon: Polygon
     is_inner: bool = False
     layer: str = ""                    # layer DXF di provenienza
+    is_hole: bool = False                # ← True solo per CIRCLE classificati come fori
     area: float = field(init=False)
     bbox: Tuple[float, float, float, float] = field(init=False)  # (minx, miny, maxx, maxy)
 
@@ -79,7 +81,8 @@ class ForgePart:
             "label":       self.label,
             "source_file": self.source_file,
             "area":        round(self.area, 4),
-            "holes_count": len(self.inners),
+            "holes_count"          : len([i for i in self.inners if i.is_hole]),
+            "inner_contours_count" : len([i for i in self.inners if not i.is_hole]),
             "bbox": {
                 "minx": round(self.bbox[0], 4),
                 "miny": round(self.bbox[1], 4),
@@ -90,6 +93,36 @@ class ForgePart:
             "inners": [list(h.polygon.exterior.coords) for h in self.inners],
             "custom": self.custom,
         }
+
+
+@dataclass
+class ClassifiedEntity:
+    """
+    Risultato della classificazione di una entità in Trash.
+    Prodotto dall'interpreter, consumato da inject() e da _apply_to_msp().
+    """
+    entity: Any
+    work_type: str      # "bending", "countersink", ... stringa libera
+    confidence: float   # 0.0 - 1.0
+    source: str         # "fuzzy", "geometric", "agent"
+
+
+class BaseInterpreter(ABC):
+    """
+    Interfaccia che ogni interpreter deve implementare.
+    
+    heal() non sa quale interpreter sta usando — chiama classify() e basta.
+    L'agente futuro implementa questa stessa interfaccia.
+    """
+    @abstractmethod
+    def classify(
+        self,
+        entities: list,        # entità in Trash
+        outer_poly: Polygon,   # contesto geometrico dell'outer
+        inner_polys: list,     # fori e contorni interni già classificati
+        msp,                   # accesso completo al modelspace se serve
+    ) -> list:                 # list[ClassifiedEntity]
+        ...
 
 
 @dataclass
@@ -105,6 +138,8 @@ class ForgeResult:
     is_valid: bool = True
     warnings: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
+    trash_entities: List[Any] = field(default_factory=list)
+    classified_entities: List[ClassifiedEntity] = field(default_factory=list)
 
     @property
     def part_count(self) -> int:
@@ -124,3 +159,4 @@ class ForgeResult:
             "errors": self.errors,
             "parts": [p.to_dict() for p in self.parts],
         }
+    
