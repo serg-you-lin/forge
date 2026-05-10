@@ -170,3 +170,18 @@ save(doc, "rect_lines_duplicated.dxf")
 print(f"\nTutti i file generati in {EXAMPLES_DIR}")
 
 
+# ---------------------------------------------------------------------------
+# Esempio 12: rettangolo con coppia di cerchi concentrici (svasatura)
+# ---------------------------------------------------------------------------
+doc = ezdxf.new('R2010')
+msp = doc.modelspace()
+# outer rettangolo
+msp.add_line((0, 0, 0),    (200, 0, 0))
+msp.add_line((200, 0, 0),  (200, 100, 0))
+msp.add_line((200, 100, 0),(0, 100, 0))
+msp.add_line((0, 100, 0),  (0, 0, 0))
+# coppia concentrica: cerchio grande (svasatura) + cerchio piccolo (foro)
+cx, cy = 100, 50
+msp.add_circle((cx, cy, 0), radius=15)   # grande → deve andare in Trash
+msp.add_circle((cx, cy, 0), radius=5)    # piccolo → resta come hole
+save(doc, "rect_with_countersink.dxf")

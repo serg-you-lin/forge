@@ -151,43 +151,6 @@ def pline_to_polygon(pline) -> Optional[Polygon]:
         return poly if not poly.is_empty else None
     except Exception:
         return None
-# def pline_to_polygon(pline) -> Polygon:
-#     """
-#     Converte una LWPOLYLINE o POLYLINE in Polygon Shapely.
-#     Gestisce i segmenti con bulge (archi) discretizzandoli.
-#     """
-#     if pline.dxftype() == 'POLYLINE':
-#         pts = [(v.dxf.location.x, v.dxf.location.y) for v in pline.vertices]
-#     else:
-#         pts = []
-#         points = list(pline.get_points('xyb'))
-#         n = len(points)
-#         for i in range(n):
-#             x1, y1, bulge = points[i]
-#             x2, y2, _     = points[(i + 1) % n]
-#             pts.append((x1, y1))
-#             if abs(bulge) > 1e-6:
-#                 angle = 4 * math.atan(bulge)
-#                 cx = ((x1 + x2) / 2) + ((y2 - y1) / 2) * ((1 - bulge**2) / (2 * bulge))
-#                 cy = ((y1 + y2) / 2) - ((x2 - x1) / 2) * ((1 - bulge**2) / (2 * bulge))
-#                 r  = math.sqrt((x1 - cx)**2 + (y1 - cy)**2)
-#                 a1 = math.atan2(y1 - cy, x1 - cx)
-#                 num_seg = max(8, int(abs(angle) / math.pi * 32))
-#                 for j in range(1, num_seg):
-#                     a = a1 + angle * j / num_seg
-#                     pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
-
-#     if len(pts) < 3:
-#         return None
-#     try:
-#         poly = Polygon(pts)
-#         if not poly.is_valid:
-#             poly = poly.buffer(0)
-#         if poly.geom_type == 'MultiPolygon':
-#             poly = max(poly.geoms, key=lambda p: p.area)
-#         return poly if not poly.is_empty else None
-#     except Exception:
-#         return None
     
 
 def circle_to_polygon(entity, num_segments=64) -> Polygon:

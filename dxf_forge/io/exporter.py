@@ -52,6 +52,7 @@ def build_metadata(part: ForgePart, schema: dict = None) -> dict:
     calculated = {
         "area"            : d.get("area"),
         "holes_count"     : d.get("holes_count"),
+        "inner_contours_count" : d.get("inner_contours_count"), 
         "bbox"            : d.get("bbox"),
         "outer_perimeter" : outer_perimeter,
         "inner_perimeter" : inner_perimeter,

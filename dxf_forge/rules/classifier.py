@@ -26,6 +26,7 @@ Config di default — sovrascrivibile per ogni officina:
 """
 
 from shapely.geometry import Point, MultiPoint
+import numpy as np
 from typing import Optional
 from ..models import ForgePart, ForgeResult
 from ..core.geometry import get_representative_point
@@ -191,3 +192,52 @@ def classify(
             print(f"  [WARN] {w}")
 
     return parts
+
+
+def is_countersink_outer(circle, children, tolerance=1.0):
+    cx = circle.dxf.center.x
+    cy = circle.dxf.center.y
+    cr = circle.dxf.radius
+
+    for other_obj, _, other_tipo in children:
+        if other_tipo != 'CIRCLE':
+            continue
+        ox = other_obj.dxf.center.x
+        oy = other_obj.dxf.center.y
+        or_ = other_obj.dxf.radius
+        if or_ >= cr:          # stesso raggio o maggiore → skip
+            continue
+        dist = np.hypot(cx - ox, cy - oy)
+        if dist < tolerance:
+            return True
+    return False
+# def is_countersink_outer(
+#     circle,
+#     children: list,
+#     tolerance: float = 1.0,  # mm, default interno, non esposto in heal()
+# ) -> bool:
+#     """
+#     Restituisce True se circle è il maggiore di una coppia concentrica.
+#     Cerca tra i children un altro CIRCLE con:
+#     - stesso centro (entro tolerance)
+#     - raggio minore
+#     """
+#     cx = circle.dxf.center.x
+#     cy = circle.dxf.center.y
+#     cr = circle.dxf.radius
+#     print(f"  CHECK: cerchio r={cr:.2f} centro=({cx:.2f},{cy:.2f})")
+#     print(f"  children CIRCLE: {[(o.dxf.radius, o.dxf.center.x, o.dxf.center.y) for o,_,t in children if t=='CIRCLE']}")
+
+#     for other_obj, _, other_tipo in children:
+#         if other_tipo != 'CIRCLE':
+#             continue
+#         if other_obj is circle:
+#             continue
+#         ox = other_obj.dxf.center.x
+#         oy = other_obj.dxf.center.y
+#         dist = np.hypot(cx - ox, cy - oy)
+#         if dist < tolerance and other_obj.dxf.radius < cr:
+#             return True
+#     return False
+
+
