@@ -8,8 +8,7 @@ Obiettivo: tool vendibile per normalizzazione DXF e estrazione metadati da tagli
 
 ## PRIORITÀ ALTA — blocca il prodotto
 
-bending lines nell'interpreter
-pulizia dei print di debug
+
 sessione dedicata ai test
 
 
@@ -19,7 +18,7 @@ sessione dedicata ai test
 ## PRIORITÀ MEDIA — migliora la qualità
 
 ### Hashing
-
+bending lines nell'interpreter
 creare una fingerprint geometrica per validare na forge part.
 
 
@@ -45,5 +44,29 @@ creare una fingerprint geometrica per validare na forge part.
 ## PRIORITÀ BASSA — futuro
 
 Agente
+
+Astrazione ad esempio....
+# core/geometry.py
+_HANDLERS = {}
+
+def register(dxftype):
+    def decorator(fn):
+        _HANDLERS[dxftype] = fn
+        return fn
+    return decorator
+
+@register("LINE")
+def _line_length(entity):
+    ...
+
+@register("ARC")
+def _arc_length(entity):
+    ...
+
+def entity_length(entity):
+    handler = _HANDLERS.get(entity.dxftype())
+    if handler is None:
+        return 0.0
+    return handler(entity)
 
 

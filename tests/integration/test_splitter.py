@@ -26,12 +26,14 @@ sys.path.insert(0, str(project_root))
 
 import dxf_forge as forge
 
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
+
 
 class TestSplitterTwoParts(unittest.TestCase):
     """Test su DXF con 2 LWPOLYLINE separate."""
 
     def setUp(self):
-        doc = ezdxf.readfile("examples/two_parts.dxf")
+        doc = ezdxf.readfile(str(EXAMPLES_DIR / "two_parts.dxf"))
         msp = doc.modelspace()
         self.result = forge.heal(msp, write_to_msp=False, label="two_parts")
 
@@ -58,7 +60,7 @@ class TestSplitterWithHole(unittest.TestCase):
     """Test su DXF con outer + hole già come LWPOLYLINE."""
 
     def setUp(self):
-        doc = ezdxf.readfile("examples/pline_with_hole.dxf")
+        doc = ezdxf.readfile(str(EXAMPLES_DIR / "pline_with_hole.dxf"))
         msp = doc.modelspace()
         self.result = forge.heal(msp, write_to_msp=False, label="pline_with_hole")
 
@@ -83,7 +85,7 @@ class TestExport(unittest.TestCase):
     """Test su to_dict, to_json, to_nester_input."""
 
     def setUp(self):
-        doc = ezdxf.readfile("examples/two_parts.dxf")
+        doc = ezdxf.readfile(str(EXAMPLES_DIR / "two_parts.dxf"))
         msp = doc.modelspace()
         self.result = forge.heal(msp, write_to_msp=False, label="two_parts")
 
@@ -96,7 +98,7 @@ class TestExport(unittest.TestCase):
 
     def test_003_to_nester_input(self):
         """to_nester_input ha outer_coords e holes_coords."""
-        doc = ezdxf.readfile("examples/pline_with_hole.dxf")
+        doc = ezdxf.readfile(str(EXAMPLES_DIR / "pline_with_hole.dxf"))
         msp = doc.modelspace()
         result = forge.heal(msp, write_to_msp=False, label="pline_with_hole")
         nester_input = forge.to_nester_input(result)
@@ -252,7 +254,7 @@ class TestSplitToFilesClosedContours(unittest.TestCase):
 
     def _get_output_contours(self, input_dxf_name, label):
         out_dir = tempfile.mkdtemp()
-        doc = ezdxf.readfile(f"examples/{input_dxf_name}")
+        doc = ezdxf.readfile(f"{EXAMPLES_DIR}/{input_dxf_name}")
         forge.split_to_files(doc.modelspace(), output_folder=out_dir, label=label)
         results = {}
         for f in Path(out_dir).glob("*.dxf"):
@@ -316,7 +318,7 @@ class TestSplitToFilesClosedContours(unittest.TestCase):
         """
         from dxf_forge.rules.layers import LAYER_OUTER, LAYER_INNER, LAYER_HOLE
         structural = {LAYER_OUTER, LAYER_INNER, LAYER_HOLE}
-        examples = Path("examples").glob("*.dxf")
+        examples = Path(EXAMPLES_DIR).glob("*.dxf")
         for src in examples:
             if src.stem.endswith("_healed"):
                 continue
@@ -341,7 +343,7 @@ class TestSplitToFilesLayers(unittest.TestCase):
 
     def setUp(self):
         self.out_dir = tempfile.mkdtemp()
-        doc = ezdxf.readfile("examples/two_parts.dxf")
+        doc = ezdxf.readfile(str(EXAMPLES_DIR / "two_parts.dxf"))
         forge.split_to_files(doc.modelspace(),
                              output_folder=self.out_dir, label="test")
 
