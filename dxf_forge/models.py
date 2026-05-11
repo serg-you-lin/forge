@@ -4,11 +4,9 @@ models.py
 Strutture dati condivise di dxf-forge.
 
 Questi oggetti sono il "linguaggio comune" tra healer, splitter,
-validator, exporter e i consumatori esterni (nester, snapmark).
+validator, exporter, injector.
 Nessuno di questi moduli dipende dagli altri — dipendono tutti da models.py.
 
-Analogia: sono come i mattoni LEGO standard — healer li produce,
-nester li consuma, e i mattoni non sanno nulla di chi li usa.
 """
 
 from dataclasses import dataclass, field
@@ -121,6 +119,7 @@ class BaseInterpreter(ABC):
         outer_poly: Polygon,   # contesto geometrico dell'outer
         inner_polys: list,     # fori e contorni interni già classificati
         msp,                   # accesso completo al modelspace se serve
+        hints: dict = None,    # suggerimenti da heal() per migliorare la classificazione
     ) -> list:                 # list[ClassifiedEntity]
         ...
 

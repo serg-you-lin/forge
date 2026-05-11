@@ -39,6 +39,8 @@ LAYER_HOLE    = "Hole"
 LAYER_BENDING = "Bending"
 LAYER_MARKING = "Mark"
 LAYER_ENGRAVE = "Engrave"
+LAYER_COUNTERSINK = "Countersink"
+LAYER_THREADED_HOLE = "ThreadHole"
 
 # ---------------------------------------------------------------------------
 # Layer residuo
@@ -55,6 +57,8 @@ COLOR_BENDING = 7   # bianco
 COLOR_MARKING = 8   # grigio scuro
 COLOR_ENGRAVE = 9   # grigio chiaro
 COLOR_TRASH   = 1   # rosso
+COLOR_COUNTERSINK = 5  # blu
+COLOR_THREADED_HOLE = 4  # ciano
 
 # ---------------------------------------------------------------------------
 # Soglia diametro fori
@@ -79,4 +83,6 @@ WORK_TYPE_TO_LAYER = {
     'bending' : (LAYER_BENDING, COLOR_BENDING),
     'marking' : (LAYER_MARKING, COLOR_MARKING),
     'engrave' : (LAYER_ENGRAVE, COLOR_ENGRAVE),
+    'countersink' : (LAYER_COUNTERSINK, COLOR_COUNTERSINK),
+    'threaded_hole' : (LAYER_THREADED_HOLE, COLOR_THREADED_HOLE),
 }

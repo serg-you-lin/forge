@@ -17,7 +17,6 @@ Casi gestiti:
                                          con layer/colore assegnati (no LWPOLYLINE)
   6. Gap SPLINE+LINE → chiude con LINE aggiuntiva (warning esplicito)
 
-Entità su special_layers → escluse dal grafo, misurate separatamente.
 
 Architettura interna:
   - Pre-processing: close_gaps solo su endpoint liberi (grado < 2)
@@ -35,9 +34,9 @@ from shapely.ops import polygonize, unary_union, snap
 from ..models import ForgeContour, ForgePart, ForgeResult
 from ..rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
-    LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE,
+    LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
     COLOR_OUTER, COLOR_INNER, COLOR_HOLE,
-    COLOR_BENDING, COLOR_MARKING, COLOR_ENGRAVE, COLOR_TRASH,
+    COLOR_BENDING, COLOR_MARKING, COLOR_ENGRAVE, COLOR_COUNTERSINK, COLOR_TRASH, COLOR_THREADED_HOLE,
     HOLE_DIAMETER_THRESHOLD, STRUCTURAL_LAYERS, TRASH_LAYER,
     WORK_TYPE_TO_LAYER,
 )
@@ -50,7 +49,7 @@ from ..core.graph import (build_node_graph, find_closed_loops,
 from ..core.virtual import VirtualShape, _loop_to_virtual_shape, _write_virtual_shape
 from ..core.gap import close_gaps
 from ..io.text_utils import extract_texts_from_msp
-from ..rules.classifier import is_countersink_outer
+from ..rules.classifier import is_countersink_outer, is_threaded_arc, is_threaded_hole
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +248,9 @@ def _apply_to_msp(
     classified_entity_ids: set,
     special_layers: dict,
     keep_trash: bool,
+    countersink_ids: set = None,           # ← aggiunta
+    threaded_hole_ids: set = None,       # ← aggiunta
+    classified_entities: list = None, 
 ) -> None:
     """
     Materializza il risultato dell'healing nel modelspace.
@@ -261,6 +263,7 @@ def _apply_to_msp(
  
     Non tocca il ForgeResult — è puro effetto collaterale sul msp.
     """
+    print(f"_apply_to_msp: countersink_ids={countersink_ids}, threaded_hole_ids={threaded_hole_ids}")
     # Entità nei loop con spline — NON vengono cancellate
     spline_loop_entity_ids: set = set()
     for vs in virtual_shapes:
@@ -286,6 +289,8 @@ def _apply_to_msp(
            and id(entity) not in spline_loop_entity_ids:
             msp.delete_entity(entity)
  
+    if countersink_ids:
+        classified_entity_ids.update(countersink_ids) 
     # Assegna layer/colori alle entità reali
     for father_obj, father_poly, father_tipo, children in fathers:
         if father_tipo != 'VIRTUAL':
@@ -296,13 +301,28 @@ def _apply_to_msp(
             if child_tipo == 'VIRTUAL':
                 continue
             if child_tipo == 'CIRCLE':
-                if is_countersink_outer(child_obj, children):  # ← aggiunta
-                    child_obj.dxf.layer = TRASH_LAYER
-                    child_obj.dxf.color = COLOR_TRASH
+                print(f"  CIRCLE id={id(child_obj)} in countersink_ids={id(child_obj) in countersink_ids}")
+                if is_countersink_outer(child_obj, children):
+                    if countersink_ids and id(child_obj) in countersink_ids:
+                        child_obj.dxf.layer = LAYER_COUNTERSINK
+                        child_obj.dxf.color = COLOR_COUNTERSINK
+                        print(f"  → assegnato LAYER_COUNTERSINK a {id(child_obj)}")
+                    else:
+                        child_obj.dxf.layer = TRASH_LAYER
+                        child_obj.dxf.color = COLOR_TRASH
                     continue
                 diameter = child_obj.dxf.radius * 2
-                layer = LAYER_HOLE if diameter < HOLE_DIAMETER_THRESHOLD else LAYER_INNER
-                color = COLOR_HOLE if diameter < HOLE_DIAMETER_THRESHOLD else COLOR_INNER
+                if diameter < HOLE_DIAMETER_THRESHOLD:
+                    if threaded_hole_ids and id(child_obj) in threaded_hole_ids:
+                        layer = LAYER_THREADED_HOLE
+                        color = COLOR_THREADED_HOLE
+                    else:
+                        layer = LAYER_HOLE
+                        color = COLOR_HOLE
+                else:
+                    layer = LAYER_INNER
+                    color = COLOR_INNER
+    
             else:
                 layer = LAYER_INNER
                 color = COLOR_INNER
@@ -576,10 +596,10 @@ def heal(
                 child_obj.color = COLOR_INNER
  
     # Costruisce ForgeResult
+    countersink_ids: set = set() 
+    threaded_hole_ids: set = set() 
+
     for father_obj, father_poly, father_tipo, children in fathers:
-        circle_children = [(o.dxf.radius, o.dxf.center.x, o.dxf.center.y) 
-                       for o, _, t in children if t == 'CIRCLE']
-        print(f"FATHER tipo={father_tipo} children CIRCLE: {circle_children}")
         outer = ForgeContour(polygon=father_poly, is_inner=False, layer=LAYER_OUTER)
  
         if father_tipo == 'VIRTUAL':
@@ -590,12 +610,15 @@ def heal(
         inners = []
         for child_obj, child_poly, child_tipo in children:
             if child_tipo == 'CIRCLE':
-                is_cs = is_countersink_outer(child_obj, children)
-                print(f"  → is_countersink_outer = {is_cs}")
-                if is_cs:
+                if is_countersink_outer(child_obj, children):
+                    if interpreter is not None:
+                        countersink_ids.add(id(child_obj))  
                     continue
                 diameter = child_obj.dxf.radius * 2
                 layer = LAYER_HOLE if diameter < HOLE_DIAMETER_THRESHOLD else LAYER_INNER
+                if layer == LAYER_HOLE and interpreter is not None:  # ← aggiunta
+                    if is_threaded_hole(child_obj, all_arcs):
+                        threaded_hole_ids.add(id(child_obj))
             else:
                 layer = LAYER_INNER
             inners.append(ForgeContour(polygon=child_poly, is_inner=True, layer=layer, is_hole=(layer == LAYER_HOLE)))
@@ -611,6 +634,33 @@ def heal(
             custom={},
         ))
  
+    special_names_set = {k.lower() for k in special_layers} if special_layers else set()
+    result.trash_entities = [
+        e for e in msp
+        if id(e) not in classified_entity_ids
+        and id(e) not in classified_virtual_ids
+        and id(e) not in entities_in_loops
+        and e.dxf.hasattr("layer")
+        and e.dxf.layer.upper() not in STRUCTURAL_LAYERS
+        and e.dxf.layer.lower() not in special_names_set
+    ]
+
+    print(f"trash_entities: {len(result.trash_entities)}")
+    # Interpreter
+    if interpreter is not None:
+        for part in result.parts:
+            classified = interpreter.classify(
+                entities=result.trash_entities,
+                outer_poly=part.outer.polygon,
+                inner_polys=[i.polygon for i in part.inners],
+                msp=msp,
+                hints={
+                    "countersink_ids": countersink_ids,
+                    "threaded_hole_ids": threaded_hole_ids,  # ← aggiunta
+                },
+            )
+            result.classified_entities.extend(classified)
+
     # -------------------------------------------------------------------
     # PASSO 3: scrittura MSP — delegata a _apply_to_msp
     # -------------------------------------------------------------------
@@ -623,6 +673,9 @@ def heal(
             classified_entity_ids=classified_entity_ids,
             special_layers=special_layers,
             keep_trash=keep_trash,
+            countersink_ids=countersink_ids,       
+            threaded_hole_ids=threaded_hole_ids,
+            classified_entities=result.classified_entities,
         )
  
  

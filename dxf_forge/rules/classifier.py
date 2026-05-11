@@ -27,8 +27,9 @@ Config di default — sovrascrivibile per ogni officina:
 
 from shapely.geometry import Point, MultiPoint
 import numpy as np
+import math
 from typing import Optional
-from ..models import ForgePart, ForgeResult
+from ..models import ForgePart, ForgeResult, BaseInterpreter, ClassifiedEntity
 from ..core.geometry import get_representative_point
 
 # ---------------------------------------------------------------------------
@@ -194,6 +195,33 @@ def classify(
     return parts
 
 
+def is_threaded_arc(arc, angle_tolerance: float = 20.0) -> bool:
+    if arc.dxftype() != 'ARC':
+        return False
+    cx, cy = arc.dxf.center.x, arc.dxf.center.y
+    r = arc.dxf.radius
+    start_rad = math.radians(arc.dxf.start_angle)
+    end_rad = math.radians(arc.dxf.end_angle)
+    p_start = (cx + r * math.cos(start_rad), cy + r * math.sin(start_rad))
+    p_end   = (cx + r * math.cos(end_rad),   cy + r * math.sin(end_rad))
+    a1 = math.atan2(p_start[1] - cy, p_start[0] - cx)
+    a2 = math.atan2(p_end[1] - cy,   p_end[0] - cx)
+    gap = math.degrees(abs(a1 - a2)) % 360
+    swept = 360 - gap
+    return abs(swept - 270) < angle_tolerance
+
+def is_threaded_hole(circle, all_arcs, tolerance_center: float = 1.0) -> bool:
+    cx = circle.dxf.center.x
+    cy = circle.dxf.center.y
+    for arc in all_arcs:
+        dist = np.hypot(cx - arc.dxf.center.x, cy - arc.dxf.center.y)
+        if dist < tolerance_center \
+           and arc.dxf.radius > circle.dxf.radius \
+           and is_threaded_arc(arc):
+            return True
+    return False
+
+
 def is_countersink_outer(circle, children, tolerance=1.0):
     cx = circle.dxf.center.x
     cy = circle.dxf.center.y
@@ -205,39 +233,33 @@ def is_countersink_outer(circle, children, tolerance=1.0):
         ox = other_obj.dxf.center.x
         oy = other_obj.dxf.center.y
         or_ = other_obj.dxf.radius
-        if or_ >= cr:          # stesso raggio o maggiore → skip
+        if or_ >= cr:         
             continue
         dist = np.hypot(cx - ox, cy - oy)
         if dist < tolerance:
             return True
     return False
-# def is_countersink_outer(
-#     circle,
-#     children: list,
-#     tolerance: float = 1.0,  # mm, default interno, non esposto in heal()
-# ) -> bool:
-#     """
-#     Restituisce True se circle è il maggiore di una coppia concentrica.
-#     Cerca tra i children un altro CIRCLE con:
-#     - stesso centro (entro tolerance)
-#     - raggio minore
-#     """
-#     cx = circle.dxf.center.x
-#     cy = circle.dxf.center.y
-#     cr = circle.dxf.radius
-#     print(f"  CHECK: cerchio r={cr:.2f} centro=({cx:.2f},{cy:.2f})")
-#     print(f"  children CIRCLE: {[(o.dxf.radius, o.dxf.center.x, o.dxf.center.y) for o,_,t in children if t=='CIRCLE']}")
-
-#     for other_obj, _, other_tipo in children:
-#         if other_tipo != 'CIRCLE':
-#             continue
-#         if other_obj is circle:
-#             continue
-#         ox = other_obj.dxf.center.x
-#         oy = other_obj.dxf.center.y
-#         dist = np.hypot(cx - ox, cy - oy)
-#         if dist < tolerance and other_obj.dxf.radius < cr:
-#             return True
-#     return False
 
 
+class GeometricInterpreter(BaseInterpreter):
+    """
+    Interpreter geometrico — non usa nomi layer, solo geometria.
+    Classifica le entità in Trash basandosi su forma e posizione.
+    heal() passa gli hints con le classificazioni già calcolate.
+    """
+
+    def classify(self, entities, outer_poly, inner_polys, msp, hints=None):
+        classified = []
+        hints = hints or {}
+        countersink_ids = hints.get("countersink_ids", set())
+
+        for entity in entities:
+            if id(entity) in countersink_ids:
+                classified.append(ClassifiedEntity(
+                    entity=entity,
+                    work_type="countersink",
+                    confidence=1.0,
+                    source="geometric",
+                ))
+
+        return classified
