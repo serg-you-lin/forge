@@ -8,15 +8,9 @@ Obiettivo: tool vendibile per normalizzazione DXF e estrazione metadati da tagli
 
 ## PRIORITÀ ALTA — blocca il prodotto
 
-### Healing
-
-- Implementare il parametro erase_texts se vogliamo ripulire dal testo sporcizia il file, al limite rimettendolo bene con snapmark  
--Gestire i 'nipoti' come marcatura. Se un figlio ha un figlio annidato, entrambi sono riconosciuti come parte dell'heal, ma da marcare.
-
-### Metadati
-
-- [ ] **Peso nel ForgeResult**
-  - `weight_kg` = `area * thickness * density / 1e6`
+bending lines nell'interpreter
+pulizia dei print di debug
+sessione dedicata ai test
 
 
 
@@ -28,15 +22,6 @@ Obiettivo: tool vendibile per normalizzazione DXF e estrazione metadati da tagli
 
 creare una fingerprint geometrica per validare na forge part.
 
-### Microtesti
-
--Implementare in snapmark una modalità che funzian no nstandalone, ma importabile in modo che posso scrivere direttamente la marcatura ed i testi mentre faccio l'healing.
-
-### Healing
-
-- [ ] **Fallback polygonize — migliorare**
-  - Attualmente produce warning generico
-  - Aggiungere info su quali segmenti non si chiudono e dove sono i gap
 
 ### API
 
@@ -59,15 +44,6 @@ creare una fingerprint geometrica per validare na forge part.
 
 ## PRIORITÀ BASSA — futuro
 
-### Splitter
+Agente
 
-### Test
 
-## NOTE ARCHITETTURALI
-
-- `layers.py` — unica fonte di verità per i nomi layer, non toccare
-- `heal()` — 3 passi sequenziali, non aggiungere casi esclusivi
-- `_heal_existing_plines`, `_heal_circles`, `_loop_to_polygon` — dead code, rimuovere
-- XDATA scritte su LWPOLYLINE layer=OuterContour — fragile se il file ha più parti
-- Quando si implementa `forge.process()`, rivedere come XDATA vengono associate a più parti nello stesso file
-- Separare costruzione geometria da scrittura msp.

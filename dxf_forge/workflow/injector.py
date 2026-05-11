@@ -33,11 +33,12 @@ Flusso tipico:
     forge.split_to_files(msp, output_dir, heal_result=result, ...)
 """
 
+from shapely.geometry import Point
 from typing import Callable, Optional
 from ..core.geometry import get_representative_point, group_collinear_lines, entity_length
 from ..io.text_utils import extract_texts_from_msp
 from ..rules.layers import (
-    LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING,
+    LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING, LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
 )
 
 ANNOTATION_TYPES = {'TEXT', 'MTEXT', 'DIMENSION', 'LEADER', 'MULTILEADER'}
@@ -47,6 +48,7 @@ WORK_TYPE_TO_FORGE_LAYER = {
     "bending": LAYER_BENDING,
     "engrave": LAYER_ENGRAVE,
     "marking": LAYER_MARKING,
+    "threaded_hole": LAYER_THREADED_HOLE,
 }
 
 # Mappa work_type → chiave in part.custom
@@ -54,6 +56,7 @@ WORK_TYPE_TO_KEY = {
     "bending": "bending_lines",
     "engrave": "total_engrave_length",
     "marking": "total_marking_length",
+    "threaded_hole": "threaded_holes_count",
 }
 
 
@@ -89,6 +92,11 @@ def inject(
 
         # Metriche layer forge (bending, engrave, marking)
         _inject_forge_layers(msp, part, outer_poly, tolerance, result)
+
+        # Metriche da classified_entities (interpreter geometrico)
+        print(f"classified_entities: {len(result.classified_entities)}")
+        if result.classified_entities:
+            _inject_classified(part, result.classified_entities, outer_poly)
 
         # Data injector esterno (codice, spessore, materiale, ecc.)
         if data_injector is not None:
@@ -130,9 +138,33 @@ def _inject_forge_layers(
             lines_only = [e for e in entities if e.dxftype() == 'LINE']
             groups = group_collinear_lines(lines_only, tolerance=tolerance)
             part.custom[key] = len(groups)
+        elif work_type == "threaded_hole":
+            part.custom[key] = len(entities) 
         else:
             total = sum(entity_length(e) for e in entities)
             part.custom[key] = round(total, 4)
+
+
+def _inject_classified(part, classified_entities, outer_poly) -> None:
+    """
+    Aggiorna part.custom con i dati provenienti dall'interpreter.
+    Filtra per outer_poly — ogni entità viene assegnata al part corretto.
+    """
+
+    countersink_count = 0
+
+    for ce in classified_entities:
+        entity = ce.entity
+        pt = get_representative_point(entity)
+        print(f"  CE: {ce.work_type} entity={entity.dxftype()} pt={pt} covers={outer_poly.covers(pt) if pt else 'NO PT'}")
+        if pt is None or not outer_poly.covers(pt):
+            continue
+
+        if ce.work_type == "countersink":
+            countersink_count += 1
+
+    if countersink_count:
+        part.custom["countersink_count"] = countersink_count
 
 
 def _extract_texts_for_part(msp, outer_poly) -> list:
