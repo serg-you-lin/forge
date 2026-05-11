@@ -18,7 +18,7 @@ sys.path.insert(0, str(project_root))
 
 import dxf_forge as forge
 
-EXAMPLES_DIR = Path(__file__).resolve().parent / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
 W, H  = 100.0, 50.0
 AREA  = W * H       # 5000.0

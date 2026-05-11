@@ -10,6 +10,7 @@ di convertire entità DXF in geometria Shapely.
 
 import math
 import numpy as np
+from ezdxf.math import bulge_to_arc
 from typing import Callable, Optional, Set
 from shapely.geometry import Point, MultiPoint, Polygon
 
@@ -68,7 +69,6 @@ def arc_to_linestrings(entity, num_segments=8):
 
 
 
-
 # ---------------------------------------------------------------------------
 # Conversione entità → Polygon Shapely
 # ---------------------------------------------------------------------------
@@ -103,7 +103,6 @@ def entity_to_polygon(entity) -> Optional[Polygon]:
         pass
     return None
 
-from ezdxf.math import bulge_to_arc
 
 def pline_to_polygon(pline) -> Optional[Polygon]:
     if pline.dxftype() == 'POLYLINE':
@@ -344,14 +343,6 @@ def copy_entity(entity, target_msp) -> None:
             # closed si imposta tramite il flag, non come dxf attribute
             if entity.closed:
                 new_spline.closed = True
-        # elif dxftype == 'SPLINE':
-        #     spline = target_msp.add_spline(entity.control_points, dxfattribs=attribs)
-        #     spline.degree = entity.degree
-        #     spline.closed = entity.closed
-        #     if entity.knots:
-        #         spline.knots = entity.knots
-        #     if entity.weights:
-        #         spline.weights = entity.weights
 
         elif dxftype == 'ELLIPSE':
             target_msp.add_ellipse(
@@ -462,6 +453,53 @@ def group_collinear_lines(lines: list, tolerance: float = 0.1) -> list:
         groups.append(group)
 
     return groups
+
+
+def is_threaded_arc(arc, angle_tolerance: float = 20.0) -> bool:
+    if arc.dxftype() != 'ARC':
+        return False
+    cx, cy = arc.dxf.center.x, arc.dxf.center.y
+    r = arc.dxf.radius
+    start_rad = math.radians(arc.dxf.start_angle)
+    end_rad = math.radians(arc.dxf.end_angle)
+    p_start = (cx + r * math.cos(start_rad), cy + r * math.sin(start_rad))
+    p_end   = (cx + r * math.cos(end_rad),   cy + r * math.sin(end_rad))
+    a1 = math.atan2(p_start[1] - cy, p_start[0] - cx)
+    a2 = math.atan2(p_end[1] - cy,   p_end[0] - cx)
+    gap = math.degrees(abs(a1 - a2)) % 360
+    swept = 360 - gap
+    return abs(swept - 270) < angle_tolerance
+
+def is_threaded_hole(circle, all_arcs, tolerance_center: float = 1.0) -> bool:
+    cx = circle.dxf.center.x
+    cy = circle.dxf.center.y
+    for arc in all_arcs:
+        dist = np.hypot(cx - arc.dxf.center.x, cy - arc.dxf.center.y)
+        if dist < tolerance_center \
+           and arc.dxf.radius > circle.dxf.radius \
+           and is_threaded_arc(arc):
+            return True
+    return False
+
+
+def is_countersink_outer(circle, children, tolerance=1.0):
+    cx = circle.dxf.center.x
+    cy = circle.dxf.center.y
+    cr = circle.dxf.radius
+
+    for other_obj, _, other_tipo in children:
+        if other_tipo != 'CIRCLE':
+            continue
+        ox = other_obj.dxf.center.x
+        oy = other_obj.dxf.center.y
+        or_ = other_obj.dxf.radius
+        if or_ >= cr:         
+            continue
+        dist = np.hypot(cx - ox, cy - oy)
+        if dist < tolerance:
+            return True
+    return False
+
 
 
 # ---------------------------------------------------------------------------

@@ -41,7 +41,8 @@ from ..rules.layers import (
     WORK_TYPE_TO_LAYER,
 )
 from ..core.geometry import (arc_to_linestrings, pline_to_polygon,
-                       circle_to_polygon, entity_length, arc_endpoints)
+                       circle_to_polygon, entity_length, arc_endpoints,
+                       is_countersink_outer, is_threaded_arc, is_threaded_hole)
 from ..core.graph import (build_node_graph, find_closed_loops,
                     check_loop_ambiguity, classify_loops,
                     spline_to_points, spline_endpoints,
@@ -49,7 +50,6 @@ from ..core.graph import (build_node_graph, find_closed_loops,
 from ..core.virtual import VirtualShape, _loop_to_virtual_shape, _write_virtual_shape
 from ..core.gap import close_gaps
 from ..io.text_utils import extract_texts_from_msp
-from ..rules.classifier import is_countersink_outer, is_threaded_arc, is_threaded_hole
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +263,6 @@ def _apply_to_msp(
  
     Non tocca il ForgeResult — è puro effetto collaterale sul msp.
     """
-    print(f"_apply_to_msp: countersink_ids={countersink_ids}, threaded_hole_ids={threaded_hole_ids}")
     # Entità nei loop con spline — NON vengono cancellate
     spline_loop_entity_ids: set = set()
     for vs in virtual_shapes:
@@ -275,7 +274,6 @@ def _apply_to_msp(
     for vs in virtual_shapes:
         entity = _write_virtual_shape(msp, vs)
         if entity is not None:
-            print(f"  [WRITE] {entity.dxftype()} layer={entity.dxf.layer} area={vs.polygon.area:.1f}")
             vs.entity = entity
             classified_entity_ids.add(id(entity))
         else:
@@ -301,12 +299,10 @@ def _apply_to_msp(
             if child_tipo == 'VIRTUAL':
                 continue
             if child_tipo == 'CIRCLE':
-                print(f"  CIRCLE id={id(child_obj)} in countersink_ids={id(child_obj) in countersink_ids}")
                 if is_countersink_outer(child_obj, children):
                     if countersink_ids and id(child_obj) in countersink_ids:
                         child_obj.dxf.layer = LAYER_COUNTERSINK
                         child_obj.dxf.color = COLOR_COUNTERSINK
-                        print(f"  → assegnato LAYER_COUNTERSINK a {id(child_obj)}")
                     else:
                         child_obj.dxf.layer = TRASH_LAYER
                         child_obj.dxf.color = COLOR_TRASH
@@ -645,7 +641,6 @@ def heal(
         and e.dxf.layer.lower() not in special_names_set
     ]
 
-    print(f"trash_entities: {len(result.trash_entities)}")
     # Interpreter
     if interpreter is not None:
         for part in result.parts:

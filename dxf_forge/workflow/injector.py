@@ -156,7 +156,6 @@ def _inject_classified(part, classified_entities, outer_poly) -> None:
     for ce in classified_entities:
         entity = ce.entity
         pt = get_representative_point(entity)
-        print(f"  CE: {ce.work_type} entity={entity.dxftype()} pt={pt} covers={outer_poly.covers(pt) if pt else 'NO PT'}")
         if pt is None or not outer_poly.covers(pt):
             continue
 

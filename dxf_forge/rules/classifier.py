@@ -26,8 +26,6 @@ Config di default — sovrascrivibile per ogni officina:
 """
 
 from shapely.geometry import Point, MultiPoint
-import numpy as np
-import math
 from typing import Optional
 from ..models import ForgePart, ForgeResult, BaseInterpreter, ClassifiedEntity
 from ..core.geometry import get_representative_point
@@ -193,52 +191,6 @@ def classify(
             print(f"  [WARN] {w}")
 
     return parts
-
-
-def is_threaded_arc(arc, angle_tolerance: float = 20.0) -> bool:
-    if arc.dxftype() != 'ARC':
-        return False
-    cx, cy = arc.dxf.center.x, arc.dxf.center.y
-    r = arc.dxf.radius
-    start_rad = math.radians(arc.dxf.start_angle)
-    end_rad = math.radians(arc.dxf.end_angle)
-    p_start = (cx + r * math.cos(start_rad), cy + r * math.sin(start_rad))
-    p_end   = (cx + r * math.cos(end_rad),   cy + r * math.sin(end_rad))
-    a1 = math.atan2(p_start[1] - cy, p_start[0] - cx)
-    a2 = math.atan2(p_end[1] - cy,   p_end[0] - cx)
-    gap = math.degrees(abs(a1 - a2)) % 360
-    swept = 360 - gap
-    return abs(swept - 270) < angle_tolerance
-
-def is_threaded_hole(circle, all_arcs, tolerance_center: float = 1.0) -> bool:
-    cx = circle.dxf.center.x
-    cy = circle.dxf.center.y
-    for arc in all_arcs:
-        dist = np.hypot(cx - arc.dxf.center.x, cy - arc.dxf.center.y)
-        if dist < tolerance_center \
-           and arc.dxf.radius > circle.dxf.radius \
-           and is_threaded_arc(arc):
-            return True
-    return False
-
-
-def is_countersink_outer(circle, children, tolerance=1.0):
-    cx = circle.dxf.center.x
-    cy = circle.dxf.center.y
-    cr = circle.dxf.radius
-
-    for other_obj, _, other_tipo in children:
-        if other_tipo != 'CIRCLE':
-            continue
-        ox = other_obj.dxf.center.x
-        oy = other_obj.dxf.center.y
-        or_ = other_obj.dxf.radius
-        if or_ >= cr:         
-            continue
-        dist = np.hypot(cx - ox, cy - oy)
-        if dist < tolerance:
-            return True
-    return False
 
 
 class GeometricInterpreter(BaseInterpreter):

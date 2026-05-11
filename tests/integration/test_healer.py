@@ -27,7 +27,7 @@ from dxf_forge.rules.layers import (
     COLOR_TRASH, HOLE_DIAMETER_THRESHOLD,
 )
 
-EXAMPLES_DIR = Path(__file__).resolve().parent / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
 
 def load(name):

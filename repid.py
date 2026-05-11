@@ -5,7 +5,7 @@
 # print(sm.TextBuilder.__doc__)
 
 
-from tests.test_collinear import make_line
+from tests.unit.test_collinear import make_line
 
 
 a = make_line(0.0, -39.628, 45.0, -39.628)
