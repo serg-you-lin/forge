@@ -185,3 +185,27 @@ cx, cy = 100, 50
 msp.add_circle((cx, cy, 0), radius=15)   # grande → deve andare in Trash
 msp.add_circle((cx, cy, 0), radius=5)    # piccolo → resta come hole
 save(doc, "rect_with_countersink.dxf")
+
+
+def generate_rect_with_threaded_holes():
+    doc = ezdxf.new()
+    msp = doc.modelspace()
+    msp.add_lwpolyline([(0,0),(200,0),(200,100),(0,100),(0,0)], close=True)
+    for cx in [40, 100, 160]:
+        msp.add_circle((cx, 50), radius=2.5, dxfattribs={"layer": "THREADED"})
+    doc.saveas(EXAMPLES_DIR / "rect_with_threaded_holes.dxf")
+
+
+
+def generate_two_rects_with_bend():
+    doc = ezdxf.new()
+    msp = doc.modelspace()
+    msp.add_lwpolyline([(0,0),(200,0),(200,100),(0,100),(0,0)], close=True)
+    msp.add_lwpolyline([(300,0),(500,0),(500,100),(300,100),(300,0)], close=True)
+    msp.add_line((10,50),(190,50), dxfattribs={"layer": "BEND"})
+    doc.saveas(EXAMPLES_DIR / "two_rects_with_bend.dxf")
+
+
+
+generate_rect_with_threaded_holes()
+generate_two_rects_with_bend()
