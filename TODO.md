@@ -11,8 +11,14 @@ Obiettivo: tool vendibile per normalizzazione DXF e estrazione metadati da tagli
 
 sessione dedicata ai test
 
+healer/
+  __init__.py      ← espone solo heal() — API pubblica
+  _geometry.py     ← build_node_graph, find_loops, close_gaps, ecc.
+  _hierarchy.py    ← gerarchia padre-figlio, costruzione ForgeResult
+  _writer.py       ← _apply_to_msp
+  _utils.py        ← _deduplicate, _special_layer_names, ecc.
 
-
+  
 ---
 
 ## PRIORITÀ MEDIA — migliora la qualità

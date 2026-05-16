@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\j0080281_singolo.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\GAU.01199.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -32,15 +32,15 @@ output_dxf = os.path.join(base_dir, f"{base_name}_healed.dxf")
 tolerance = 2
 print("tolleranza:", tolerance)
 
-inspector = DxfInspector(
-    summary=False,
-    lines=True,
-    arcs=False,
-    polylines=True,
-    circles=False,
-    splines=True,
-    graph=False,
-)
+# inspector = DxfInspector(
+#     summary=False,
+#     lines=False,
+#     arcs=False,
+#     polylines=True,
+#     circles=False,
+#     splines=True,
+#     graph=False,
+# )
 
 # ---------------------------------------------------------------------------
 
@@ -68,8 +68,7 @@ for e in check.errors:
 if not check.errors:
     print("  OK: nessun errore bloccante")
 
-
-# Dopo
+# HEAL — genera i part e scrive i layer speciali su msp
 result = forge.heal(
     msp,
     tolerance=tolerance,
@@ -77,18 +76,21 @@ result = forge.heal(
     write_to_msp=True,
     label=base_name,
     source_file=file_name,
-    special_layers={
-        "MARK": "engrave",
-        },
+    interpreter = GeometricInterpreter(),  # ← classe che intepreta la geometria per classificare fori, contorni, ecc. (opzionale, ma se presente arricchisce le metriche)
 )
 
-# forge.classify(
-#     result,
-#     msp,
-#     interpreter=GeometricInterpreter(),
-# )
-
-forge.inject(msp, result)
+from dxf_forge.models import bending_line_from_entity
+for ce in result.classified_entities:
+    if ce.work_type == "bending":
+        bl = bending_line_from_entity(ce.entity)
+        print(f"BL {bl.angle_deg:.1f}° — {bl.length:.1f}mm su layer {bl.layer}")
+        segs = bl.trim(5)
+        print(f"  → {len(segs)} segmenti dopo trim(5)")
+# INJECT — inserisce dati custom e metriche da classified_entities 
+forge.inject(
+    msp,
+    result,
+)
 
 # ---------------------------------------------------------------------------
 # REPORT

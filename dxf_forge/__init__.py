@@ -38,7 +38,7 @@ from .workflow.healer     import heal, LAYER_OUTER, LAYER_HOLE
 from .workflow.splitter   import split_to_files, is_multi
 from .workflow.injector    import inject
 from .rules.validator  import validate, validate_msp
-from .rules.classifier import classify, DEFAULT_ENTITY_MAP
+from .workflow.classifier import classify, DEFAULT_ENTITY_MAP
 from .io.exporter import (to_json, save_json, save_xml, to_nester_input,
                        write_metadata_to_dxf, read_metadata_from_dxf, 
                        upgrade_to_r2010, set_schema)

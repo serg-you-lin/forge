@@ -48,6 +48,7 @@ def load(name):
 # Helpers condivisi
 # ---------------------------------------------------------------------------
 
+
 def _heal_and_inject(dxf_name, special_layers=None, data_injector=None, interpreter=None):
     """Carica il DXF, esegue heal + inject, restituisce (msp, result)."""
     doc = load(dxf_name)
@@ -56,11 +57,11 @@ def _heal_and_inject(dxf_name, special_layers=None, data_injector=None, interpre
         msp,
         write_to_msp=True,
         special_layers=special_layers or {},
-        interpreter=interpreter,
     )
+    if interpreter is not None or special_layers:
+        forge.classify(result, msp, interpreter=interpreter)
     forge.inject(msp, result, data_injector=data_injector)
     return msp, result
-
 
 # ---------------------------------------------------------------------------
 # Caso base: result senza parts — inject non deve crashare
@@ -143,7 +144,7 @@ class TestInjectEngraveLength(unittest.TestCase):
 class TestInjectCountersink(unittest.TestCase):
 
     def setUp(self):
-        from dxf_forge.rules.classifier import GeometricInterpreter
+        from dxf_forge.rules.interpreter import GeometricInterpreter
         _, self.result = _heal_and_inject(
             "rect_with_countersink.dxf",
             interpreter=GeometricInterpreter(),
