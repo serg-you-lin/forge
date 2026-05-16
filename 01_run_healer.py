@@ -155,10 +155,10 @@ print("tolleranza:", tolerance)
 inspector = DxfInspector(
     summary=False,
     lines=False,
-    arcs=True,
-    polylines=True,
-    circles=True,
-    splines=True,
+    arcs=False,
+    polylines=False,
+    circles=False,
+    splines=False,
     graph=False,
 )
 
@@ -247,20 +247,20 @@ doc.saveas(output_dxf)
 
 print(f"\nSalvato: {output_dxf}")
 
-# ---------------------------------------------------------------------------
-# DEBUG OUTPUT
-# ---------------------------------------------------------------------------
+# # ---------------------------------------------------------------------------
+# # DEBUG OUTPUT
+# # ---------------------------------------------------------------------------
 
-print("\n--- LWPOLYLINE RISULTANTI ---")
+# print("\n--- LWPOLYLINE RISULTANTI ---")
 
-inspector_out = DxfInspector(
-    polylines=True,
-    summary=False
-)
+# inspector_out = DxfInspector(
+#     polylines=True,
+#     summary=False
+# )
 
-saved_doc = ezdxf.readfile(output_dxf)
+# saved_doc = ezdxf.readfile(output_dxf)
 
-inspector_out.analyze(
-    saved_doc.modelspace(),
-    title=output_dxf
-)
+# inspector_out.analyze(
+#     saved_doc.modelspace(),
+#     title=output_dxf
+# )

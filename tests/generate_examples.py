@@ -182,7 +182,7 @@ msp.add_line((200, 100, 0),(0, 100, 0))
 msp.add_line((0, 100, 0),  (0, 0, 0))
 # coppia concentrica: cerchio grande (svasatura) + cerchio piccolo (foro)
 cx, cy = 100, 50
-msp.add_circle((cx, cy, 0), radius=15)   # grande → deve andare in Trash
+msp.add_circle((cx, cy, 0), radius=15)   # grande → Layer Countersink
 msp.add_circle((cx, cy, 0), radius=5)    # piccolo → resta come hole
 save(doc, "rect_with_countersink.dxf")
 

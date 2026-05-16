@@ -217,11 +217,11 @@ class TestHealerCountersink(unittest.TestCase):
     def test_003_inner_is_hole(self):
         self.assertTrue(self.result.parts[0].inners[0].is_hole)
 
-    def test_004_big_circle_in_trash(self):
-        from dxf_forge.rules.layers import TRASH_LAYER
-        trash = [e for e in self.msp.query('CIRCLE')
-                 if e.dxf.layer == TRASH_LAYER]
-        self.assertEqual(len(trash), 1)
+    def test_004_countersink_on_correct_layer(self):
+        from dxf_forge.rules.layers import LAYER_COUNTERSINK
+        circles = [e for e in self.msp.query('CIRCLE')
+                if e.dxf.layer == LAYER_COUNTERSINK]
+        self.assertEqual(len(circles), 1)
 
     def test_005_small_circle_on_hole_layer(self):
         hole = [e for e in self.msp.query('CIRCLE')
