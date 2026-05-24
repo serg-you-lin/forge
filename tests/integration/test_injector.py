@@ -50,16 +50,16 @@ def load(name):
 
 
 def _heal_and_inject(dxf_name, special_layers=None, data_injector=None, interpreter=None):
-    """Carica il DXF, esegue heal + inject, restituisce (msp, result)."""
     doc = load(dxf_name)
     msp = doc.modelspace()
-    result = forge.heal(
+    result = forge.heal(msp)
+    forge.detect(
+        result,
         msp,
-        write_to_msp=True,
         special_layers=special_layers or {},
+        interpreter=interpreter,
     )
-    if interpreter is not None or special_layers:
-        forge.classify(result, msp, interpreter=interpreter)
+    forge.write(msp, result)
     forge.inject(msp, result, data_injector=data_injector)
     return msp, result
 
@@ -73,7 +73,7 @@ class TestInjectEmptyResult(unittest.TestCase):
         """inject() su un result vuoto non deve sollevare eccezioni."""
         doc = ezdxf.new()
         msp = doc.modelspace()
-        result = forge.heal(msp, write_to_msp=False)
+        result = forge.heal(msp)
         # non deve esplodere
         forge.inject(msp, result)
         self.assertEqual(result.parts, [])
@@ -202,11 +202,14 @@ class TestInjectDataInjector(unittest.TestCase):
     def setUp(self):
         self.doc = load("rect_with_special_layers.dxf")
         self.msp = self.doc.modelspace()
-        self.result = forge.heal(
-            self.msp,
-            write_to_msp=True,
-            special_layers={"BEND": "bending", "MARK": "engrave"},
-        )
+        # self.result = forge.heal(
+        #     self.msp,
+        #     write_to_msp=True,
+        #     special_layers={"BEND": "bending", "MARK": "engrave"},
+        # )
+        self.result = forge.heal(self.msp)
+        forge.detect(self.result, self.msp, special_layers={"BEND": "bending", "MARK": "engrave"})
+        forge.write(self.msp, self.result)
 
     def test_001_data_injector_viene_chiamato(self):
         """Il data_injector deve essere chiamato e il risultato finire in custom."""

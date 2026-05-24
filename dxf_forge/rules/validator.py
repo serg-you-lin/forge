@@ -1,5 +1,5 @@
 """
-validator.py
+rules/validator.py
 ------------
 Valida la salute geometrica di un modelspace o di un ForgeResult.
 

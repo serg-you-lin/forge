@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"LOCAL_DRAWING.dxf"
+input_dxf = r"tests/examples/intricato_doppio.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -74,19 +74,20 @@ result = forge.heal(
     msp,
     tolerance=tolerance,
     explode_inserts=True,
-    write_to_msp=True,
     label=base_name,
     source_file=file_name,
-    special_layers={
-        "MARK": "engrave",
-        },
 )
 
-# forge.classify(
-#     result,
-#     msp,
-#     interpreter=GeometricInterpreter(),
-# )
+forge.detect(
+    result,
+    msp,
+    special_layers={
+        "Svasati": "countersink",
+    },
+    interpreter=GeometricInterpreter(),
+)
+
+forge.write(msp, result)
 
 forge.inject(msp, result)
 

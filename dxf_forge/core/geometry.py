@@ -166,7 +166,8 @@ def pline_to_polygon(pline) -> Optional[Polygon]:
                     if a2 >= a1:
                         a2 -= 2 * math.pi
                 angle = a2 - a1
-                num_seg = max(8, int(abs(angle) / math.pi * 32))
+                num_seg = num_segments_for_bulge(bulge)
+                print(f"  [PLINE] bulge={bulge:.6f} num_seg={num_seg} angle={angle:.6f}")
                 for j in range(1, num_seg):
                     a = a1 + angle * j / num_seg
                     pts.append((cx + radius * math.cos(a),
@@ -180,6 +181,8 @@ def pline_to_polygon(pline) -> Optional[Polygon]:
             poly = poly.buffer(0)
         if poly.geom_type == 'MultiPolygon':
             poly = max(poly.geoms, key=lambda p: p.area)
+        if poly and not poly.is_empty:
+            print(f"  [PLINE_TO_POLY] poly.area={poly.area:.4f}")
         return poly if not poly.is_empty else None
     except Exception:
         return None
@@ -441,27 +444,19 @@ def _copy_lwpolyline(entity, msp, attribs) -> None:
     pts = list(entity.get_points(format='xyseb'))
     msp.add_lwpolyline(pts, format='xyseb', dxfattribs=attribs, close=entity.closed)
  
- 
+
+
 @register_copy('SPLINE')
 def _copy_spline(entity, msp, attribs) -> None:
-    attribs.pop('degree', None)
-    attribs.pop('closed', None)
-    attribs.pop('n_knots', None)
-    attribs.pop('n_control_points', None)
-    attribs.pop('n_fit_points', None)
-    degree = entity.dxf.get('degree', 3)
-    new_spline = msp.add_spline(degree=degree, dxfattribs=attribs)
-    new_spline.control_points = entity.control_points
-    if entity.knots:
-        new_spline.knots = entity.knots
-    if entity.weights:
-        new_spline.weights = entity.weights
-    if entity.fit_points:
-        new_spline.fit_points = entity.fit_points
-    if entity.closed:
-        new_spline.closed = True
- 
- 
+    print(f"[SPLINE BEFORE] cp={list(entity.control_points)[:3]}")
+    print(f"[SPLINE BEFORE] knots={list(entity.knots)[:5] if entity.knots else None}")
+    new_entity = entity.copy()
+    new_entity.dxf.layer = attribs.get('layer', entity.dxf.layer)
+    new_entity.dxf.color = attribs.get('color', entity.dxf.color)
+    msp.add_entity(new_entity)
+    print(f"[SPLINE AFTER]  cp={list(new_entity.control_points)[:3]}")
+    print(f"[SPLINE AFTER]  knots={list(new_entity.knots)[:5] if new_entity.knots else None}")
+
 @register_copy('ELLIPSE')
 def _copy_ellipse(entity, msp, attribs) -> None:
     msp.add_ellipse(
@@ -479,6 +474,11 @@ def _copy_ellipse(entity, msp, attribs) -> None:
 
 def round_point(pt, decimals=1):
     return (round(float(pt[0]), decimals), round(float(pt[1]), decimals))
+
+def num_segments_for_bulge(bulge: float) -> int:
+    """Numero di segmenti per discretizzare un arco dato il suo bulge."""
+    angle = 4 * math.atan(abs(bulge))
+    return max(8, int(angle / math.pi * 32))
 
 
 def _line_direction(line) -> tuple:
@@ -590,22 +590,48 @@ def is_threaded_hole(circle, all_arcs, tolerance_center: float = 1.0) -> bool:
     return False
 
 
-def is_countersink_outer(circle, children, tolerance=1.0) -> bool:
+def is_countersink_outer(circle, siblings: list, tolerance: float = 1.0) -> bool:
+    """
+    Restituisce True se `circle` è il cerchio esterno di una svasatura.
+ 
+    Una svasatura è composta da due cerchi concentrici (stesso centro,
+    raggi diversi). Il cerchio esterno contiene il cerchio interno.
+ 
+    Args:
+        circle:    entità CIRCLE ezdxf da testare
+        siblings:  lista di ForgeContour — gli altri inner dello stesso ForgePart.
+                   Ogni ForgeContour deve avere .entity popolato (non None).
+        tolerance: distanza massima tra centri per considerarli concentrici (mm)
+ 
+    Returns:
+        True se esiste almeno un altro CIRCLE concentrico con raggio minore.
+    """
     cx = circle.dxf.center.x
     cy = circle.dxf.center.y
     cr = circle.dxf.radius
-    for other_obj, _, other_tipo in children:
-        if other_tipo != 'CIRCLE':
+ 
+    for sibling in siblings:
+        other = sibling.entity
+        if other is None:
             continue
-        ox = other_obj.dxf.center.x
-        oy = other_obj.dxf.center.y
-        or_ = other_obj.dxf.radius
+        if other.dxftype() != "CIRCLE":
+            continue
+        if other is circle:
+            continue
+ 
+        ox  = other.dxf.center.x
+        oy  = other.dxf.center.y
+        or_ = other.dxf.radius
+ 
         if or_ >= cr:
-            continue
+            continue  # cerca solo cerchi interni (raggio minore)
+ 
         dist = np.hypot(cx - ox, cy - oy)
         if dist < tolerance:
             return True
+ 
     return False
+
 
 
 # ---------------------------------------------------------------------------
