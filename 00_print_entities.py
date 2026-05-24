@@ -24,9 +24,9 @@ inspector = DxfInspector(
     lines     = True,
     arcs      = True,
     polylines = True,
-    circles   = True,
+    circles   = False,
     splines   = True,
-    graph     = True,  # ← il più utile per debug ambiguità
+    graph     = False,  # ← il più utile per debug ambiguità
     dimensions = True,
     text      = True,
 )

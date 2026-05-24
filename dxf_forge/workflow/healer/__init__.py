@@ -109,7 +109,6 @@ def heal(
     all_plines  = list(msp.query("LWPOLYLINE POLYLINE"))
     all_circles = list(msp.query("CIRCLE"))
     all_splines = list(msp.query("SPLINE"))
-    print(f"  [HEAL] plines={len(all_plines)} lines={len(all_lines)} arcs={len(all_arcs)} splines={len(all_splines)}")
 
     if not any([all_lines, all_arcs, all_plines, all_circles, all_splines]):
         result.errors.append("Modelspace vuoto: nessuna geometria trovata.")

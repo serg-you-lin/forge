@@ -390,10 +390,6 @@ def upgrade_to_r2010(doc) -> object:
             elif dxftype == 'MTEXT':
                 new_msp.add_mtext(entity.text, dxfattribs=attribs)
 
-            # elif dxftype == 'INSERT':
-            #     new_msp.add_blockref(entity.dxf.name, entity.dxf.insert,
-            #                          dxfattribs=attribs)
-
             else:
                 skipped += 1
                 continue

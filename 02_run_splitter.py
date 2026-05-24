@@ -65,7 +65,7 @@ result = forge.split_to_files(
     label=label,
     source_file=input_dxf,
     include_annotations=True,
-    namer=lambda i, part: f"{label}_PART{i}",
+    # namer=lambda i, part: f"{label}_PART{i}",
 )
 # DEBUG — cosa c'è nel msp dopo split_to_files?
 print("\n--- DEBUG MSP DOPO SPLIT ---")

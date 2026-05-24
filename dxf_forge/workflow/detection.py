@@ -110,6 +110,8 @@ def detect(
     if special_layers:
         _detect_special_layers(result, msp, special_layers)
 
+    _detect_bending_lines(result)
+
     _detect_holes(result, all_arcs)
 
     if interpreter is not None:
@@ -172,10 +174,6 @@ def _detect_special_layers(
             hole.hole_type  = hole_type
             hole.confidence = 1.0
             hole.source     = "special_layers"
-            print("[SPECIAL SET]", id(hole), hole.source, hole.hole_type)
-            # outer_diameter già settato da heal() se è una svasatura geometrica
-            # se non lo è ma il layer dice countersink, la struttura grafica mancava
-            # → lasciamo outer_diameter a None, inject() lo gestirà
 
         # --- contorni inner non-foro su layer speciale (come prima) ---
         remaining = []
@@ -206,14 +204,14 @@ def _detect_special_layers(
 # ---------------------------------------------------------------------------
 
 def _detect_holes(result: ForgeResult, all_arcs: list) -> None:
-    print("\n--- ENTER DETECT HOLES ---")
+    #print("\n--- ENTER DETECT HOLES ---")
     for part in result.parts:
         for hole in part.holes:
-            print("[HOLE BEFORE]", id(hole), hole.source, hole.hole_type)
+            #print("[HOLE BEFORE]", id(hole), hole.source, hole.hole_type)
 
             # ✔️ HARD LOCK: già deciso da special_layers
             if hole.source == "special_layers":
-                print("[SPECIAL SET]", id(hole), hole.source, hole.hole_type)
+                #print("[SPECIAL SET]", id(hole), hole.source, hole.hole_type)
                 continue
 
             # ✔️ già classificato in modo definitivo altrove
@@ -314,6 +312,7 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
 
         if work_type == "bending":
             part.geometry_hints.bend_line_ids.add(id(ce.entity))
+            part.entity_ids.add(id(ce.entity))
 
         _write_custom(ce, part)
         return
@@ -433,3 +432,39 @@ def _entity_length(entity) -> Optional[float]:
     except Exception:
         pass
     return None
+
+
+
+def _detect_bending_lines(result: ForgeResult) -> None:
+    """
+    Step geometrico: individua LINE interne all'outer di ogni part
+    e popola geometry_hints.bend_line_ids.
+
+    Criteri:
+        1. entità di tipo LINE
+        2. midpoint contenuto nell'outer del part (o sulla boundary, tolleranza 1.0)
+        3. non già classificata da special_layers
+
+    Nota: non rimuove le entità da trash — restano disponibili
+    per l'interpreter che le classificherà come "bending".
+    """
+    classified_ids = {id(ce.entity) for ce in result.classified_entities}
+
+    for entity in result.trash_entities:
+        if entity.dxftype() != "LINE":
+            continue
+        if id(entity) in classified_ids:
+            continue
+
+        midpoint = Point(
+            (entity.dxf.start.x + entity.dxf.end.x) / 2,
+            (entity.dxf.start.y + entity.dxf.end.y) / 2,
+        )
+
+        for part in result.parts:
+            outer = part.outer.polygon
+            if outer.contains(midpoint) or outer.boundary.distance(midpoint) < 1.0:
+                part.geometry_hints.bend_line_ids.add(id(entity))
+                break
+
+
