@@ -121,3 +121,8 @@ def bending_line_from_entity(entity, part_label: str = "") -> "BendingLine":
         angle_deg=angle,
         part_label=part_label,
     )
+
+
+
+
+# 

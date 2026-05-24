@@ -52,95 +52,6 @@ class VirtualShape:
     # Costruttori
     # -----------------------------------------------------------------------
 
-    # @classmethod
-    # def from_loop(cls, loop, layer: str, color: int) -> Optional['VirtualShape']:
-    #     """
-    #     Costruisce un VirtualShape da un loop di LINE e/o ARC.
-    #     Popola pts_with_bulge con bulge reali per gli ARC.
-    #     Ritorna None se il loop non forma un polygon valido.
-    #     """
-    #     pts_with_bulge = []
-    #     poly_pts = []
-    #     _last_exit = None
-
-    #     for entity, rev in loop:
-    #         if entity.dxftype() == 'LINE':
-    #             if rev:
-    #                 sx, sy = entity.dxf.end.x,   entity.dxf.end.y
-    #                 ex, ey = entity.dxf.start.x, entity.dxf.start.y
-    #             else:
-    #                 sx, sy = entity.dxf.start.x, entity.dxf.start.y
-    #                 ex, ey = entity.dxf.end.x,   entity.dxf.end.y
-    #             pts_with_bulge.append((sx, sy, 0.0, 0.0, 0.0))
-    #             poly_pts.append((sx, sy))
-    #             _last_exit = (ex, ey)
-
-    #         elif entity.dxftype() == 'ARC':
-    #             if _last_exit is not None:
-    #                 poly_pts.append(_last_exit)
-    #                 _last_exit = None
-    #             entry_pt, _, bulge = arc_to_bulge(entity, reversed=rev)
-    #             pts_with_bulge.append((entry_pt[0], entry_pt[1], 0.0, 0.0, bulge))
-                
-    #             # stessa logica di pline_to_polygon() — fonte di verità
-    #             x1, y1 = entry_pt[0], entry_pt[1]
-    #             exit_pt = arc_endpoints(entity)[1] if not rev else arc_endpoints(entity)[0]
-    #             x2, y2 = exit_pt[0], exit_pt[1]
-    #             center, _, _, radius = bulge_to_arc((x1, y1), (x2, y2), bulge)
-    #             cx, cy = center.x, center.y
-    #             a1 = math.atan2(y1 - cy, x1 - cx)
-    #             a2 = math.atan2(y2 - cy, x2 - cx)
-    #             if bulge > 0:
-    #                 if a2 <= a1:
-    #                     a2 += 2 * math.pi
-    #             else:
-    #                 if a2 >= a1:
-    #                     a2 -= 2 * math.pi
-    #             angle = a2 - a1
-    #             num_seg = num_segments_for_bulge(bulge)
-    #             print(f"  [LOOP] bulge={bulge:.6f} num_seg={num_seg} angle={angle:.6f}")
-    #             arc_pts = []
-    #             for j in range(1, num_seg):
-    #                 a = a1 + angle * j / num_seg
-    #                 arc_pts.append((cx + radius * math.cos(a),
-    #                                 cy + radius * math.sin(a)))
-    #             if rev:
-    #                 arc_pts = list(reversed(arc_pts))
-    #             poly_pts.extend(arc_pts)
-
-    #         # elif entity.dxftype() == 'ARC':
-    #         #     if _last_exit is not None:
-    #         #         poly_pts.append(_last_exit)
-    #         #         _last_exit = None
-    #         #     entry_pt, _, bulge = arc_to_bulge(entity, reversed=rev)
-    #         #     pts_with_bulge.append((entry_pt[0], entry_pt[1], 0.0, 0.0, bulge))
-    #         #     num_seg = num_segments_for_bulge(bulge)
-    #         #     arc_pts = []
-    #         #     for seg in arc_to_linestrings(entity, num_segments=num_seg):
-    #         #         for coord in seg.coords:
-    #         #             arc_pts.append(coord)
-    #         #     if rev:
-    #         #         arc_pts = list(reversed(arc_pts))
-    #         #     poly_pts.extend(arc_pts)
-
-    #     poly = _build_polygon(poly_pts)
-    #     if poly is None:
-    #         return None
-
-    #     layers = {e.dxf.layer for e, _ in loop if e.dxf.hasattr("layer") and e.dxf.layer != "0"}
-    #     source_layer = layers.pop() if len(layers) == 1 else ""
-
-    #     return cls(
-    #         pts_with_bulge=pts_with_bulge,
-    #         polygon=poly,
-    #         layer=layer,
-    #         color=color,
-    #         has_spline=False,
-    #         loop=loop,
-    #         source_layer=source_layer,
-    #     )
-
-
     @classmethod
     def from_loop(cls, loop, layer: str, color: int) -> Optional['VirtualShape']:
         pts_with_bulge = []
@@ -250,7 +161,7 @@ class VirtualShape:
 
         poly = _build_polygon(poly_pts)
         if poly:
-            print(f"  [FROM_LOOP] poly.area={poly.area:.4f}")
+            pass
         if poly is None:
             return None
 
@@ -305,39 +216,6 @@ def _loop_to_virtual_shape(loop, layer, color) -> Optional['VirtualShape']:
 # ---------------------------------------------------------------------------
 # Passo 3 — scrittura msp
 # ---------------------------------------------------------------------------
-
-# def _write_virtual_shape(msp, vs: 'VirtualShape'):
-#     """
-#     Materializza una VirtualShape nel msp.
-
-#     Se has_spline=False: scrive una LWPOLYLINE e la restituisce.
-#     Se has_spline=True:  assegna layer/colore alle entità originali del loop
-#                          e restituisce None (nessuna nuova entità creata).
-#     """
-#     if vs.has_spline:
-#         for entity, _ in vs.loop:
-#             entity.dxf.layer = vs.layer
-#             entity.dxf.color = vs.color
-#         return None
-
-#     is_r12 = msp.doc is not None and msp.doc.dxfversion < "AC1015"
-#     if is_r12:
-#         pline = msp.add_polyline2d(
-#             [(p[0], p[1]) for p in vs.pts_with_bulge],
-#             dxfattribs={'layer': vs.layer, 'color': vs.color},
-#         )
-#         for vertex, pt in zip(pline.vertices, vs.pts_with_bulge):
-#             if pt[4] != 0.0:
-#                 vertex.dxf.bulge = pt[4]
-#         pline.close(True)
-#         return pline
-#     else:
-#         return msp.add_lwpolyline(
-#             vs.pts_with_bulge,
-#             format='xyseb',
-#             dxfattribs={'layer': vs.layer, 'color': vs.color},
-#             close=True,
-#         )
 
 def _write_virtual_shape(msp, vs: 'VirtualShape'):
     """

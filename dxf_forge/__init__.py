@@ -46,7 +46,7 @@ from .io.exporter import (to_json, save_json, save_xml, to_nester_input,
 from .models     import ForgeResult, ForgePart, ForgeContour
 from .io.text_utils import extract_texts_from_msp
 
-__version__ = "0.10.0"
+__version__ = "0.10.1"
 __all__ = [
     # Workflow file singolo
     "validate_msp",

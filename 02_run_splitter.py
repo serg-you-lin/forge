@@ -15,7 +15,7 @@ import dxf_forge as forge
 import os
 
 # ← CAMBIA QUI con il tuo file
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012905 Sviluppo\6200002991Sviluppo.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200002991Sviluppo.dxf"
 #input_dir = os.path.abspath(input_dxf)
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
@@ -65,7 +65,7 @@ result = forge.split_to_files(
     label=label,
     source_file=input_dxf,
     include_annotations=True,
-    namer=lambda i, part: f"{label}_PART{i}",
+    # namer=lambda i, part: f"{label}_PART{i}",
 )
 # DEBUG — cosa c'è nel msp dopo split_to_files?
 print("\n--- DEBUG MSP DOPO SPLIT ---")

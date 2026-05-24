@@ -167,7 +167,7 @@ def pline_to_polygon(pline) -> Optional[Polygon]:
                         a2 -= 2 * math.pi
                 angle = a2 - a1
                 num_seg = num_segments_for_bulge(bulge)
-                print(f"  [PLINE] bulge={bulge:.6f} num_seg={num_seg} angle={angle:.6f}")
+    
                 for j in range(1, num_seg):
                     a = a1 + angle * j / num_seg
                     pts.append((cx + radius * math.cos(a),
@@ -182,7 +182,7 @@ def pline_to_polygon(pline) -> Optional[Polygon]:
         if poly.geom_type == 'MultiPolygon':
             poly = max(poly.geoms, key=lambda p: p.area)
         if poly and not poly.is_empty:
-            print(f"  [PLINE_TO_POLY] poly.area={poly.area:.4f}")
+            pass
         return poly if not poly.is_empty else None
     except Exception:
         return None
@@ -448,14 +448,11 @@ def _copy_lwpolyline(entity, msp, attribs) -> None:
 
 @register_copy('SPLINE')
 def _copy_spline(entity, msp, attribs) -> None:
-    print(f"[SPLINE BEFORE] cp={list(entity.control_points)[:3]}")
-    print(f"[SPLINE BEFORE] knots={list(entity.knots)[:5] if entity.knots else None}")
     new_entity = entity.copy()
     new_entity.dxf.layer = attribs.get('layer', entity.dxf.layer)
     new_entity.dxf.color = attribs.get('color', entity.dxf.color)
     msp.add_entity(new_entity)
-    print(f"[SPLINE AFTER]  cp={list(new_entity.control_points)[:3]}")
-    print(f"[SPLINE AFTER]  knots={list(new_entity.knots)[:5] if new_entity.knots else None}")
+
 
 @register_copy('ELLIPSE')
 def _copy_ellipse(entity, msp, attribs) -> None:

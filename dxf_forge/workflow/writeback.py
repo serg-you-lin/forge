@@ -78,15 +78,6 @@ def write(
         - assegna layer lavorazioni (bending, countersink, engrave...)
           leggendo geometry_hints e Hole.hole_type da result
     """
-    # for vs in result._virtual_shapes:
-    #     lwpoly = _write_virtual_shape(msp, vs)
-    #     if lwpoly is not None:
-    #         # VS non-spline: è nata una LWPOLYLINE nuova con un id() nuovo.
-    #         # Aggiorna entity_ids di tutti i part che avevano id(vs) come placeholder.
-    #         part = result._vs_to_part.get(id(vs))
-    #         if part is not None:
-    #             part.entity_ids.discard(id(vs))
-    #             part.entity_ids.add(id(lwpoly))
 
     for vs in result._virtual_shapes:
         lwpoly = _write_virtual_shape(msp, vs)
@@ -146,6 +137,7 @@ def split(
     include_annotations: bool               = True,
     min_area:            float              = DEFAULT_MIN_PART_AREA,
     exclude_types:       set                = None,
+    on_part:             Optional[Callable] = None,  # ← callable(part, doc_out, path)
 ) -> list:
     """
     Produce un documento ezdxf separato per ogni ForgePart.
@@ -186,8 +178,8 @@ def split(
                 f"sotto soglia {min_area} mm²"
             )
             continue
-
-        name     = namer(i, part) if namer else f"{i:03d}_{part.label}"
+ 
+        name = namer(i, part) if namer else f"{part.label}_P{i + 1}"
         out_path = os.path.join(output_folder, f"{name}.dxf")
 
         doc_out = ezdxf.new(dxfversion="R2010")
@@ -196,15 +188,6 @@ def split(
         _setup_layers(doc_out)
         msp_out = doc_out.modelspace()
 
-        # for entity in msp:
-        #     if not entity.dxf.hasattr("layer"):
-        #         continue
-        #     if not include_annotations and entity.dxftype() in ANNOTATION_TYPES:
-        #         continue
-        #     if exclude_types and entity.dxftype() in exclude_types:
-        #         continue
-        #     if id(entity) not in part.entity_ids:
-        #         continue
 
         for entity in msp:
             if not entity.dxf.hasattr("layer"):
@@ -244,6 +227,8 @@ def split(
                 new_entity.dxf.layer = TRASH_LAYER
                 new_entity.dxf.color = COLOR_TRASH
 
+        if on_part is not None:
+            on_part(part, doc_out, out_path)
         doc_out.saveas(out_path)
         generated.append(out_path)
         part.label = name

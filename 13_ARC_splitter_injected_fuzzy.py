@@ -1,44 +1,32 @@
 """
 ARC_splitter_injecter.py
----------------
-Testa lo splitter su un file DXF del cliente che utilizza i dati su ogni figlio per riempire i dati.
-Produce un file separato per ogni pezzo trovato con il nome che trova nel txt del file, e crea una subfolder con il nome dell'originale.
+------------------------
+Pipeline forge completa su file DXF cliente.
+Produce un file separato per ogni pezzo con nome dal codice nel testo,
+in una subfolder con il nome dell'originale.
 """
 
 import ezdxf
 import dxf_forge as forge
 import os
-from dxf_forge.io.text_utils import clean_mtext
 import re
 import json
+from dxf_forge.io.text_utils import clean_mtext
 from dxf_forge.io.exporter import build_metadata
+from dxf_forge.rules.interpreter import GeometricInterpreter
 import snapmark as sm
 
 
-# ← CAMBIA QUI con il tuo file
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012912 Sviluppo.dxf"
+# ← CAMBIA QUI
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC\6200012808 Sviluppo.dxf"
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
-###########################################################
-# Funzioni per estrarre i dati dai testi e iniettarli nei custom dei pezzi
-###########################################################
 customer = 'ARC02'
 drawing  = os.path.basename(os.path.dirname(input_dxf))
 
-
-def estrai_materiale(doc) -> str:
-    for block in doc.blocks:
-        print(f"  [block] {block.name}")
-        if 'cartiglio' in block.name.lower():
-            for e in block:
-                print(f"    [entity] {e.dxftype()}")
-                if e.dxftype() == 'MTEXT':
-                    txt = clean_mtext(e.text)
-                    print(f"    [mtext] '{txt}' → materiale in txt: {'materiale' in txt.lower()}")
-                    if 'materiale' in txt.lower():
-                        return txt.split(':', 1)[-1].strip()
-    return "N/D"
-
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 PATTERNS = {
     "codice":   r'cod(?:ice)?\s*[:\-]?\s*(\S+)',
@@ -48,12 +36,27 @@ PATTERNS = {
 }
 
 
+def sanitize_filename(name: str) -> str:
+    name = name.strip()
+    name = re.sub(r'[\\/:"*?<>|\n\r\t]', '_', name)
+    name = re.sub(r'_+', '_', name)
+    return name.strip('_.') or "UNNAMED"
+
+
+def estrai_materiale(doc) -> str:
+    for block in doc.blocks:
+        if 'cartiglio' in block.name.lower():
+            for e in block:
+                if e.dxftype() == 'MTEXT':
+                    txt = clean_mtext(e.text)
+                    if 'materiale' in txt.lower():
+                        return txt.split(':', 1)[-1].strip()
+    return "N/D"
+
+
 def parse_testi(testi: list[str]) -> dict:
     info = {"codice": "", "thickness": 0.0, "quantity": 1, "material": "N/D"}
-    righe = []
-    for t in testi:
-        righe.extend(t.splitlines())
-    righe = [r.strip() for r in righe if r.strip()]
+    righe = [r.strip() for t in testi for r in t.splitlines() if r.strip()]
     blob = '\n'.join(righe)
     for key, pattern in PATTERNS.items():
         m = re.search(pattern, blob, re.IGNORECASE)
@@ -68,15 +71,6 @@ def parse_testi(testi: list[str]) -> dict:
             elif key == "quantity":
                 info["quantity"] = int(val)
     return info
-
-
-def sanitize_filename(name: str) -> str:
-    """Rimuove/sostituisce caratteri illegali nei nomi file Windows."""
-    name = name.strip()
-    name = re.sub(r'[\\/:"*?<>|\n\r\t]', '_', name)
-    name = re.sub(r'_+', '_', name)
-    name = name.strip('_.')
-    return name or "UNNAMED"
 
 
 def make_data_injector(doc):
@@ -95,38 +89,19 @@ def make_data_injector(doc):
     return data_injector
 
 
-# Configura il marker UNA VOLTA sola, fuori dal loop
-marker = sm.AddMark(
-    sequence=sm.SequenceBuilder().file_name(trim_start=5).build(),
-    max_height=9,
-    min_height=7,
-    down_to=5,
-    margin=4,
-    scale_factor=50,
-    avoid_layers=["Trash"],
-    start_y=5,
-)
+# ---------------------------------------------------------------------------
+# Apertura
+# ---------------------------------------------------------------------------
 
-#############################################################
 print(f"Apertura: {input_dxf}")
 doc = ezdxf.readfile(input_dxf)
 if doc.dxfversion < 'AC1015':
     doc = forge.upgrade_to_r2010(doc)
 msp = doc.modelspace()
 
-from collections import Counter
-print("--- MSP GREZZO ---")
-types = Counter(e.dxftype() for e in msp)
-for t, count in sorted(types.items()):
-    print(f"  {t}: {count}")
-for e in msp:
-    if e.dxftype() == 'INSERT':
-        try:
-            block = doc.blocks.get(e.dxf.name)
-            inner = Counter(sub.dxftype() for sub in block)
-            print(f"  INSERT '{e.dxf.name}' contiene: {dict(inner)}")
-        except Exception as ex:
-            print(f"  INSERT error: {ex}")
+# ---------------------------------------------------------------------------
+# Validazione
+# ---------------------------------------------------------------------------
 
 print("\n--- VALIDAZIONE ---")
 check = forge.validate_msp(msp)
@@ -139,58 +114,71 @@ if check.errors:
     exit(1)
 print("  OK")
 
-print(f"\n--- SPLIT → {output_dir} ---")
-label = os.path.splitext(os.path.basename(input_dxf))[0]
-label = label.replace(" Sviluppo", "")
+# ---------------------------------------------------------------------------
+# Pipeline forge
+# ---------------------------------------------------------------------------
 
-# --- NUOVA PIPELINE ---
-# 1. Heal
+label = os.path.splitext(os.path.basename(input_dxf))[0].replace(" Sviluppo", "")
+
+print(f"\n--- HEAL ---")
 result = forge.heal(
     msp,
     tolerance=.2,
-    write_to_msp=True,
     explode_inserts=True,
     label=label,
     source_file=input_dxf,
 )
 for w in result.warnings:
     print(f"  [heal] {w}")
+for e in result.errors:
+    print(f"  [heal ERROR] {e}")
 
-# 2. Inject — dati custom + special layers
-forge.inject(
-    msp,
-    result,
-    data_injector=make_data_injector(doc),
+if not result.is_valid or not result.parts:
+    print("Healing fallito, interrompo.")
+    exit(1)
+
+print(f"trash count: {len(result.trash_entities)}")
+for e in result.trash_entities:
+    print(f"  {e.dxftype()} layer={e.dxf.layer}")
+
+print(f"\n--- DETECT ---")
+forge.detect(result, msp, interpreter=GeometricInterpreter(),)
+
+print(f"\n--- INJECT ---")
+forge.inject(msp, result, data_injector=make_data_injector(doc))
+
+print(f"\n--- WRITE ---")
+forge.write(msp, result)
+
+# ---------------------------------------------------------------------------
+# Snapmark — configurato una volta sola
+# ---------------------------------------------------------------------------
+
+marker = sm.AddMark(
+    sequence=sm.SequenceBuilder().file_name(trim_start=5).build(),
+    max_height=9,
+    min_height=7,
+    down_to=5,
+    margin=4,
+    scale_factor=50,
+    avoid_layers=["Trash"],
+    start_y=5,
 )
 
-# 3. Split — namer usa part.custom già popolato da inject
-forge.split_to_files(
-    msp,
-    output_folder=output_dir,
-    label=label,
-    source_file=input_dxf,
-    include_annotations=True,
-    heal_result=result,
-    namer=lambda i, part: sanitize_filename(
-        part.custom.get("_codice") or f"{label}_PART{i}"
-    ),
-)
+# ---------------------------------------------------------------------------
+# Split + post-processing in un unico passaggio
+# ---------------------------------------------------------------------------
 
-# 4. Post-processing per ogni pezzo
-for part in result.parts:
-    filepath = os.path.join(output_dir, f"{part.label}.dxf")
-    if not os.path.exists(filepath):
-        continue
-    child_doc = ezdxf.readfile(filepath)
+print(f"\n--- SPLIT → {output_dir} ---")
 
-    marker.execute_on_doc(
-        child_doc,
-        file_name=f"{part.label}.dxf",
-        folder=output_dir,
-    )
-    marker.message(f"{part.label}.dxf")
 
-    text_op = sm.AddText(
+def post_process(part, doc_out, path):
+    file_name = os.path.basename(path)
+
+    marker.execute_on_doc(doc_out, file_name=file_name, folder=output_dir)
+    marker.message(file_name)
+
+    sm.AddText(
         text_sequence=sm.TextBuilder()
             .static(f"Material:{part.custom.get('material', 'N/D')}")
             .static(f"Thickness:{part.custom.get('thickness', 0.0)}")
@@ -201,20 +189,25 @@ for part in result.parts:
         char_height=.2,
         text_layer="TEXT",
         text_color=3,
-    )
-    text_op.execute_on_doc(
-        child_doc,
-        file_name=f"{part.label}.dxf",
-        folder=output_dir,
-    )
-
-    child_doc.saveas(filepath)
+    ).execute_on_doc(doc_out, file_name=file_name, folder=output_dir)
 
     meta = build_metadata(part)
-    json_path = os.path.join(output_dir, f"{part.label}.json")
+    json_path = os.path.splitext(path)[0] + ".json"
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
+
     print(f"  salvato: {part.label}")
+
+
+forge.split(
+    msp,
+    result,
+    output_folder=output_dir,
+    namer=lambda i, part: sanitize_filename(
+        part.custom.get("_codice") or f"{label}_P{i + 1}"
+    ),
+    on_part=post_process,
+)
 
 forge.save_json(result, "split_metadata.json")
 print(f"\nMetadati salvati: split_metadata.json")

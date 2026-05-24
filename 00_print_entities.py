@@ -16,7 +16,7 @@ from dxf_forge.dxf_inspect import DxfInspector
 from collections import Counter
 import dxf_forge as forge
 
-DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012914 Sviluppo\6200012914_1.dxf"
+DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC\6200012808 Sviluppo_da_espl\6200012808_1.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(
@@ -24,9 +24,9 @@ inspector = DxfInspector(
     lines     = True,
     arcs      = True,
     polylines = True,
-    circles   = True,
+    circles   = False,
     splines   = True,
-    graph     = True,  # ← il più utile per debug ambiguità
+    graph     = False,  # ← il più utile per debug ambiguità
     dimensions = True,
     text      = True,
 )

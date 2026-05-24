@@ -22,7 +22,6 @@ IMPORTANTE: close_gaps lavora SOLO sugli endpoint liberi
 (grado < 2 nel grafo topologico — già filtrati dal chiamante).
 Gli endpoint già connessi non vengono mai toccati.
 
-TODO: gestire gap tra SPLINE e altre entità.
 """
 
 import math
