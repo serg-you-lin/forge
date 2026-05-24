@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/piega_cazzuta.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\BAR2.00079-ZN 42D025Z00I.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)

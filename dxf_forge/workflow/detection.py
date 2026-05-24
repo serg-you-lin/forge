@@ -322,6 +322,7 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
         f"(source={ce.source}). Registrata in classified_entities."
     )
 
+    
 
 def _write_custom(ce: ClassifiedEntity, part: ForgePart) -> None:
     """
@@ -448,6 +449,7 @@ def _detect_bending_lines(result: ForgeResult) -> None:
     Nota: non rimuove le entità da trash — restano disponibili
     per l'interpreter che le classificherà come "bending".
     """
+        
     classified_ids = {id(ce.entity) for ce in result.classified_entities}
 
     for entity in result.trash_entities:
@@ -456,15 +458,20 @@ def _detect_bending_lines(result: ForgeResult) -> None:
         if id(entity) in classified_ids:
             continue
 
-        midpoint = Point(
-            (entity.dxf.start.x + entity.dxf.end.x) / 2,
-            (entity.dxf.start.y + entity.dxf.end.y) / 2,
-        )
+        s = Point(entity.dxf.start.x, entity.dxf.start.y)
+        e = Point(entity.dxf.end.x,   entity.dxf.end.y)
 
         for part in result.parts:
-            outer = part.outer.polygon
-            if outer.contains(midpoint) or outer.boundary.distance(midpoint) < 1.0:
-                part.geometry_hints.bend_line_ids.add(id(entity))
-                break
+            outer    = part.outer.polygon
+            boundary = outer.boundary
+
+            if boundary.distance(s) < 1.0 and boundary.distance(e) < 1.0:
+                midpoint = Point(
+                    (entity.dxf.start.x + entity.dxf.end.x) / 2,
+                    (entity.dxf.start.y + entity.dxf.end.y) / 2,
+                )
+                if outer.contains(midpoint):
+                    part.geometry_hints.bend_line_ids.add(id(entity))
+                    break
 
 
