@@ -16,7 +16,9 @@
       "inners_layers": [
         "InnerContour"
       ],
-      "custom": {}
+      "custom": {
+        "plain_holes_count": 1
+      }
     },
     {
       "area_mm2": 4940.0639,
@@ -40,7 +42,9 @@
         "Hole",
         "Hole"
       ],
-      "custom": {}
+      "custom": {
+        "plain_holes_count": 5
+      }
     }
   ]
 }

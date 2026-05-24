@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461123.7955439813
+2461179.782615741
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461123.7955439813
+2461179.782615741
   9
 $TDUUPDATE
  40
@@ -549,7 +549,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-35
+34
   9
 $SURFTAB1
  70
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{7B866387-5144-49FD-9B83-3D1C1EA1C287}
+{DF11AF84-93DB-40D5-AF43-985DD4B79E09}
   9
 $VERSIONGUID
   2
-{B15E7C73-ED67-4C27-8BC9-2D8FCF6077E3}
+{75B492F9-643C-4A6D-8804-6F69D07E5BC1}
   9
 $EXTNAMES
 290
@@ -1323,9 +1323,9 @@ ISM
   0
 CLASS
   1
-ACDBPLACEHOLDER
+LAYOUT
   2
-AcDbPlaceHolder
+AcDbLayout
   3
 ObjectDBX Classes
  90
@@ -1339,9 +1339,9 @@ ObjectDBX Classes
   0
 CLASS
   1
-LAYOUT
+ACDBPLACEHOLDER
   2
-AcDbLayout
+AcDbPlaceHolder
   3
 ObjectDBX Classes
  90
@@ -1683,7 +1683,7 @@ APPID
 100
 AcDbSymbolTable
  70
-4
+3
   0
 APPID
   5
@@ -1724,20 +1724,6 @@ AcDbSymbolTableRecord
 AcDbRegAppTableRecord
   2
 EZDXF
- 70
-0
-  0
-APPID
-  5
-34
-330
-3
-100
-AcDbSymbolTableRecord
-100
-AcDbRegAppTableRecord
-  2
-FORGE
  70
 0
   0
@@ -2070,10 +2056,6 @@ AcDbPolyline
 0.0
  20
 100.0
-1001
-FORGE
-1000
-{"label": "rect_with_circle_hole", "source_file": "rect_with_circle_hole.dxf", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 0, "total_engrave_length_mm": 0.0, "area_mm2": 14799.2609, "holes_count": 1, "outer_perimeter_mm": 500.0, "inner_perimeter_mm": 50.2453, "total_perimeter_mm": 550.2453, "bbox": {"minx": 0.0, "miny": 0.0, "maxx": 150.0, "maxy": 100.0}}
   0
 CIRCLE
   5
@@ -3099,7 +3081,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-12T18:26:04.671527+00:00
+1.4.3 @ 2026-05-17T16:31:07.854734+00:00
   0
 DICTIONARYVAR
   5
@@ -3111,7 +3093,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-23T18:05:35.253399+00:00
+1.4.3 @ 2026-05-18T16:46:58.060713+00:00
   0
 ENDSEC
   0

@@ -493,7 +493,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461170.3800347224
+2461178.5852083336
   9
 $TDUCREATE
  40
@@ -501,7 +501,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461170.3800347224
+2461178.5852083336
   9
 $TDUUPDATE
  40
@@ -553,7 +553,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-5B
+5A
   9
 $SURFTAB1
  70
@@ -937,7 +937,7 @@ $FINGERPRINTGUID
   9
 $VERSIONGUID
   2
-{5D2BE85E-4B3E-4420-B088-E575DBBFE9BA}
+{0D408ECE-5CEF-4C1C-ABB5-5B28FA4C923A}
   9
 $EXTNAMES
 290
@@ -2027,6 +2027,136 @@ SECTION
   2
 ENTITIES
   0
+LINE
+  5
+2F
+330
+17
+100
+AcDbEntity
+  8
+0
+ 62
+1
+100
+AcDbLine
+ 10
+93.0
+ 20
+0.0
+ 30
+0.0
+ 11
+0.0
+ 21
+0.0
+ 31
+0.0
+  0
+LINE
+  5
+30
+330
+17
+100
+AcDbEntity
+  8
+0
+ 62
+1
+100
+AcDbLine
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 11
+0.0
+ 21
+142.0
+ 31
+0.0
+  0
+LINE
+  5
+31
+330
+17
+100
+AcDbEntity
+  8
+0
+ 62
+1
+100
+AcDbLine
+ 10
+0.0
+ 20
+142.0
+ 30
+0.0
+ 11
+150.0
+ 21
+142.0
+ 31
+0.0
+  0
+LINE
+  5
+32
+330
+17
+100
+AcDbEntity
+  8
+0
+ 62
+1
+100
+AcDbLine
+ 10
+150.0
+ 20
+142.0
+ 30
+0.0
+ 11
+150.0
+ 21
+57.0
+ 31
+0.0
+  0
+LINE
+  5
+33
+330
+17
+100
+AcDbEntity
+  8
+0
+ 62
+1
+100
+AcDbLine
+ 10
+150.0
+ 20
+57.0
+ 30
+0.0
+ 11
+93.0
+ 21
+0.0
+ 31
+0.0
+  0
 CIRCLE
   5
 34
@@ -2035,9 +2165,9 @@ CIRCLE
 100
 AcDbEntity
   8
-Hole
+0
  62
-6
+1
 100
 AcDbCircle
  10
@@ -2057,9 +2187,9 @@ CIRCLE
 100
 AcDbEntity
   8
-Hole
+0
  62
-6
+1
 100
 AcDbCircle
  10
@@ -2079,9 +2209,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2105,9 +2233,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2131,9 +2257,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2157,9 +2281,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2183,9 +2305,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2209,9 +2329,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2235,9 +2353,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2261,9 +2377,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2287,9 +2401,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2313,9 +2425,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2339,9 +2449,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2365,9 +2473,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2391,9 +2497,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2417,9 +2521,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2443,9 +2545,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2469,9 +2569,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2495,9 +2593,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2521,9 +2617,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2547,9 +2641,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2573,9 +2665,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2599,9 +2689,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2625,9 +2713,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2651,9 +2737,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2677,9 +2761,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2703,9 +2785,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2729,9 +2809,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2755,9 +2833,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2781,9 +2857,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2807,9 +2881,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2833,9 +2905,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2859,9 +2929,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2885,9 +2953,7 @@ LINE
 100
 AcDbEntity
   8
-Engrave
- 62
-9
+MARK
 100
 AcDbLine
  10
@@ -2901,44 +2967,6 @@ AcDbLine
  21
 10.0
  31
-0.0
-  0
-LWPOLYLINE
-  5
-5A
-330
-17
-100
-AcDbEntity
-  8
-OuterContour
- 62
-3
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-93.0
- 20
-0.0
- 10
-150.0
- 20
-57.0
- 10
-150.0
- 20
-142.0
- 10
-0.0
- 20
-142.0
- 10
-0.0
- 20
 0.0
   0
 ENDSEC
@@ -3955,7 +3983,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-05-09T07:07:15.787062+00:00
+1.4.3 @ 2026-05-17T12:02:42.756700+00:00
   0
 ENDSEC
   0

@@ -12,7 +12,17 @@
       "inners_wkt": [],
       "outer_layer": "OuterContour",
       "inners_layers": [],
-      "custom": {}
+      "custom": {
+        "engrave_entities": [
+          {
+            "length": 141.4214,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          }
+        ],
+        "total_engrave_length": 141.4214
+      }
     }
   ]
 }

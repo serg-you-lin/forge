@@ -19,6 +19,153 @@
         "Hole"
       ],
       "custom": {
+        "engrave_entities": [
+          {
+            "length": 11.36,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 4.26,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.0082,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.84,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.0082,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 4.26,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 11.36,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 4.26,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.0082,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.84,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.0082,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 4.26,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.0082,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.84,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.0082,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 4.26,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 3.408,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 11.36,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 10.7957,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 4.828,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 1.2049,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 4.828,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 5.68,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 11.36,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          }
+        ],
+        "plain_holes_count": 2,
         "total_engrave_length": 148.4334
       }
     }

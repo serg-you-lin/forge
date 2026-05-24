@@ -49,6 +49,14 @@ creare una fingerprint geometrica per validare na forge part.
 
 ## PRIORITÀ BASSA — futuro
 
+parse_geometry()
+build_topology()
+heal()
+detect_features()
+writeback()
+split()
+inject()
+
 Agente
 
 1) COSA SIGNIFICA “AGENT READY” DAVVERO

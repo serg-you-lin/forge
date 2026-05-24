@@ -16,7 +16,9 @@
       "inners_layers": [
         "InnerContour"
       ],
-      "custom": {}
+      "custom": {
+        "plain_holes_count": 1
+      }
     }
   ]
 }

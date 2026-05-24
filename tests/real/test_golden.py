@@ -1,35 +1,16 @@
+
+
 """
 test_golden.py
 --------------
 Test di regressione geometrica contro i golden file.
-
-Controlla per ogni DXF:
-- part_count invariato
-- area invariata (tolleranza 0.1 mm²)
-- perimetri invariati (tolleranza 0.5 mm)
-- geometria invariata via differenza simmetrica Shapely (tolleranza 1.0 mm²)
-- layer assegnati invariati
-- custom (bending_lines, total_engrave_length, ecc.) invariati
-
-Ogni DXF può avere un file config opzionale affiancato (stesso stem, .json):
-    tests/examples/la_104.json  →  {"special_layers": {"MARK": "engrave"}, "tolerance": 0.5}
-
-Se il config non esiste, si usano i default (tolerance=0.5, nessun special_layers).
-generate_golden.py usa lo stesso config — i due sono sempre allineati.
-
-Genera prima i golden file con:
-    python generate_golden.py
-
-Lancia i test con:
-    python -m pytest tests/test_golden.py -v
-    oppure
-    python tests/test_golden.py
 """
 
 import unittest
 import json
 import sys
 from pathlib import Path
+
 import ezdxf
 from shapely import wkt as shapely_wkt
 
@@ -39,29 +20,22 @@ sys.path.insert(0, str(project_root))
 import dxf_forge as forge
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
-GOLDEN_DIR   = project_root / "tests" / "examples" / "golden"
+GOLDEN_DIR   = EXAMPLES_DIR / "golden"
 
-# Tolleranze
-TOL_AREA      = 0.1   # mm²
-TOL_PERIMETER = 0.5   # mm
-TOL_SHAPE     = 1.0   # mm² differenza simmetrica
-
+TOL_AREA      = 0.1
+TOL_PERIMETER = 0.5
+TOL_SHAPE     = 1.0
 DEFAULT_TOLERANCE = 0.5
 
 
 def _load_config(dxf_path: Path) -> dict:
-    """
-    Carica il file di configurazione opzionale affiancato al DXF.
-    Es: la_104.DXF → la_104.json (nella stessa cartella del DXF).
-    Restituisce un dict vuoto se il config non esiste.
-    """
     config_path = EXAMPLES_DIR / "config" / f"{dxf_path.stem}.json"
     if config_path.exists():
-        return json.loads(config_path.read_text(encoding='utf-8'))
+        return json.loads(config_path.read_text(encoding="utf-8"))
     return {}
 
 
-def _load_golden_files() -> list:
+def _load_golden_files():
     if not GOLDEN_DIR.exists():
         return []
     return sorted(GOLDEN_DIR.glob("*.json"))
@@ -73,114 +47,142 @@ class TestGolden(unittest.TestCase):
 
 def _make_golden_test(golden_path: Path):
     def test_method(self):
-        golden   = json.loads(golden_path.read_text(encoding='utf-8'))
+        golden = json.loads(golden_path.read_text(encoding="utf-8"))
+
         dxf_name = golden["source_file"]
         dxf_path = EXAMPLES_DIR / dxf_name
 
         if not dxf_path.exists():
             self.skipTest(f"DXF non trovato: {dxf_path}")
 
-        # --- Carica config (stesso che usa generate_golden) ---
-        config         = _load_config(dxf_path)
-        tolerance      = config.get("tolerance", DEFAULT_TOLERANCE)
-        special_layers = config.get("special_layers", None)
+        config = _load_config(dxf_path)
+        tolerance = config.get("tolerance", DEFAULT_TOLERANCE)
 
-        # --- Heal ---
+        special_layers = config.get("special_layers") or {}
+        special_layers["MARK"] = "engrave"
+        special_layers["Signature"] = "engrave"
+
         doc = ezdxf.readfile(dxf_path)
-        if doc.dxfversion < 'AC1015':
+        if doc.dxfversion < "AC1015":
             doc = forge.upgrade_to_r2010(doc)
+
         msp = doc.modelspace()
 
         result = forge.heal(
             msp,
             tolerance=tolerance,
-            write_to_msp=True,
+        )
+
+        forge.detect(
+            result,
+            msp,
             special_layers=special_layers,
         )
 
         if special_layers:
             forge.inject(msp, result)
 
-        # --- part_count ---
         self.assertEqual(
-            result.part_count, golden["part_count"],
-            f"{dxf_name}: part_count {result.part_count} != atteso {golden['part_count']}"
+            result.part_count,
+            golden["part_count"],
         )
 
         for i, (part, exp) in enumerate(zip(result.parts, golden["parts"])):
             label = f"{dxf_name} parte {i+1}"
 
-            # --- Area ---
-            actual_area = round(part.outer.area - sum(h.area for h in part.inners), 4)
+            # all_inners unifica fori e contorni interni — rispecchia la struttura
+            # del golden che li conteneva tutti in part.inners prima di Hole.
+            # L'ordine è: holes prima (erano CIRCLE, classificati per area desc),
+            # poi inners (ForgeContour non-foro).
+            all_inners = sorted(
+                part.holes + part.inners,
+                key=lambda x: x.area,
+                reverse=True,
+            )
+
+            actual_area = round(part.area, 4)
+
+            print(f"\n[DEBUG] {label}")
+            print(f"  holes count     = {len(part.holes)}")
+            print(f"  inners count    = {len(part.inners)}")
+            print(f"  all_inners      = {len(all_inners)}")
+            print(f"  expected holes  = {exp['holes_count']}")
+            print(f"  special_layers  = {special_layers}")
+            print(f"  outer  = {part.outer.area}")
+            for k, h in enumerate(all_inners):
+                print(f"  inner[{k}].layer = {h.layer!r}  area = {h.area:.4f}")
+            print(f"  actual_area     = {actual_area}")
+            print(f"  expected        = {exp['area_mm2']}")
+
             self.assertAlmostEqual(
-                actual_area, exp["area_mm2"], delta=TOL_AREA,
-                msg=f"{label}: area {actual_area} != attesa {exp['area_mm2']} (tol={TOL_AREA})"
+                actual_area,
+                exp["area_mm2"],
+                delta=TOL_AREA,
+                msg=label,
             )
 
-            # --- Holes count ---
             self.assertEqual(
-                len(part.inners), exp["holes_count"],
-                f"{label}: holes_count {len(part.inners)} != atteso {exp['holes_count']}"
+                len(all_inners),
+                exp["holes_count"],
+                msg=label,
             )
 
-            # --- Perimetri ---
             actual_outer_p = round(part.outer.polygon.exterior.length, 4)
             self.assertAlmostEqual(
-                actual_outer_p, exp["outer_perimeter_mm"], delta=TOL_PERIMETER,
-                msg=f"{label}: outer_perimeter {actual_outer_p} != atteso {exp['outer_perimeter_mm']}"
+                actual_outer_p,
+                exp["outer_perimeter_mm"],
+                delta=TOL_PERIMETER,
+                msg=label,
             )
 
-            actual_inner_p = round(sum(h.polygon.exterior.length for h in part.inners), 4)
+            actual_inner_p = round(
+                sum(h.polygon.exterior.length for h in all_inners),
+                4,
+            )
             self.assertAlmostEqual(
-                actual_inner_p, exp["inner_perimeter_mm"], delta=TOL_PERIMETER,
-                msg=f"{label}: inner_perimeter {actual_inner_p} != atteso {exp['inner_perimeter_mm']}"
+                actual_inner_p,
+                exp["inner_perimeter_mm"],
+                delta=TOL_PERIMETER,
+                msg=label,
             )
 
-            # --- Geometria outer (WKT) ---
             expected_outer = shapely_wkt.loads(exp["outer_wkt"])
             diff = part.outer.polygon.symmetric_difference(expected_outer).area
-            self.assertLess(
-                diff, TOL_SHAPE,
-                f"{label}: geometria outer cambiata (diff={diff:.4f} mm², tol={TOL_SHAPE})"
-            )
+            self.assertLess(diff, TOL_SHAPE, msg=f"{label} — outer shape")
 
-            # --- Geometria inners (WKT) ---
-            for j, (inner, exp_wkt) in enumerate(zip(part.inners, exp["inners_wkt"])):
+            for j, (inner, exp_wkt) in enumerate(zip(all_inners, exp["inners_wkt"])):
                 expected_inner = shapely_wkt.loads(exp_wkt)
                 diff = inner.polygon.symmetric_difference(expected_inner).area
-                self.assertLess(
-                    diff, TOL_SHAPE,
-                    f"{label} inner {j+1}: geometria cambiata (diff={diff:.4f} mm², tol={TOL_SHAPE})"
-                )
+                print(f"  inner[{j}] diff={diff:.4f}  actual_area={inner.area:.4f}  expected_area={expected_inner.area:.4f}  layer={inner.layer!r}")
+                self.assertLess(diff, TOL_SHAPE, msg=f"{label} — inner[{j}] shape")
 
-            # --- Layer ---
             self.assertEqual(
-                part.outer.layer, exp["outer_layer"],
-                f"{label}: outer layer '{part.outer.layer}' != atteso '{exp['outer_layer']}'"
-            )
-            actual_inner_layers = [h.layer for h in part.inners]
-            self.assertEqual(
-                actual_inner_layers, exp["inners_layers"],
-                f"{label}: inners layers {actual_inner_layers} != attesi {exp['inners_layers']}"
+                part.outer.layer,
+                exp["outer_layer"],
+                msg=label,
             )
 
-            # --- Custom (solo se il golden ha il campo) ---
+            self.assertEqual(
+                [h.layer for h in all_inners],
+                exp["inners_layers"],
+                msg=label,
+            )
+
             if "custom" in exp:
                 for key, expected_val in exp["custom"].items():
                     actual_val = part.custom.get(key)
                     if isinstance(expected_val, float):
-                        self.assertIsNotNone(
-                            actual_val,
-                            f"{label}: custom['{key}'] assente"
-                        )
                         self.assertAlmostEqual(
-                            actual_val, expected_val, delta=TOL_PERIMETER,
-                            msg=f"{label}: custom['{key}'] {actual_val} != atteso {expected_val}"
+                            actual_val,
+                            expected_val,
+                            delta=TOL_PERIMETER,
+                            msg=f"{label} — custom[{key!r}]",
                         )
                     else:
                         self.assertEqual(
-                            actual_val, expected_val,
-                            f"{label}: custom['{key}'] {actual_val} != atteso {expected_val}"
+                            actual_val,
+                            expected_val,
+                            msg=f"{label} — custom[{key!r}]",
                         )
 
     test_method.__name__ = f"test_{golden_path.stem}"
@@ -188,7 +190,6 @@ def _make_golden_test(golden_path: Path):
     return test_method
 
 
-# Genera dinamicamente un test per ogni golden file
 for _golden_path in _load_golden_files():
     setattr(TestGolden, f"test_{_golden_path.stem}", _make_golden_test(_golden_path))
 
@@ -196,22 +197,11 @@ for _golden_path in _load_golden_files():
 class TestGoldenSetup(unittest.TestCase):
 
     def test_001_golden_dir_exists(self):
-        """La cartella tests/golden/ esiste."""
-        self.assertTrue(
-            GOLDEN_DIR.exists(),
-            f"Cartella golden non trovata: {GOLDEN_DIR}\n"
-            f"Genera i golden file con: python generate_golden.py"
-        )
+        self.assertTrue(GOLDEN_DIR.exists())
 
     def test_002_golden_not_empty(self):
-        """La cartella tests/golden/ contiene almeno 1 golden file."""
         files = list(GOLDEN_DIR.glob("*.json")) if GOLDEN_DIR.exists() else []
-        self.assertGreater(
-            len(files), 0,
-            f"Nessun golden file trovato in {GOLDEN_DIR}\n"
-            f"Genera i golden file con: python generate_golden.py"
-        )
-        print(f"\n  Golden file trovati: {len(files)}")
+        self.assertGreater(len(files), 0)
 
 
 if __name__ == "__main__":

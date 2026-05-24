@@ -1,0 +1,14 @@
+{
+  "parent_file": "6200002991Sviluppo.dxf",
+  "part_index": 16,
+  "area_mm2": 1076.8812,
+  "holes_count": 0,
+  "outer_perimeter_mm": 132.9456,
+  "inner_perimeter_mm": 0,
+  "total_perimeter_mm": 132.9456,
+  "outer_wkt": "POLYGON ((1246.2298275408 162.6242230279, 1246.2298275408 134.658183034, 1284.7365746469 134.658183034, 1284.7365746469 162.6242230279, 1246.2298275408 162.6242230279))",
+  "inners_wkt": [],
+  "outer_layer": "OuterContour",
+  "inners_layers": [],
+  "custom": {}
+}

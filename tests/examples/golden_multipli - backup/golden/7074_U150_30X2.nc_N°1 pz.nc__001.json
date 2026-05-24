@@ -1,0 +1,14 @@
+{
+  "parent_file": "7074_U150_30X2.nc_N°1 pz.nc.dxf",
+  "part_index": 1,
+  "area_mm2": 12414.2297,
+  "holes_count": 0,
+  "outer_perimeter_mm": 470.4772,
+  "inner_perimeter_mm": 0,
+  "total_perimeter_mm": 470.4772,
+  "outer_wkt": "POLYGON ((0 420, 102.1959835839038 420, 102.1959835839038 270, 38.86890422961414 270, 0 420))",
+  "inners_wkt": [],
+  "outer_layer": "OuterContour",
+  "inners_layers": [],
+  "custom": {}
+}

@@ -12,7 +12,65 @@
       "inners_wkt": [],
       "outer_layer": "OuterContour",
       "inners_layers": [],
-      "custom": {}
+      "custom": {
+        "engrave_entities": [
+          {
+            "length": 8.4,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 8.4,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 8.4,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 8.4,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 14.7,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.9698,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 4.2,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 2.9698,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          },
+          {
+            "length": 14.7,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
+          }
+        ],
+        "total_engrave_length": 73.1396
+      }
     }
   ]
 }

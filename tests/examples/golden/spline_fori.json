@@ -20,7 +20,9 @@
         "Hole",
         "Hole"
       ],
-      "custom": {}
+      "custom": {
+        "plain_holes_count": 2
+      }
     }
   ]
 }

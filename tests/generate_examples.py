@@ -206,6 +206,18 @@ def generate_two_rects_with_bend():
     doc.saveas(EXAMPLES_DIR / "two_rects_with_bend.dxf")
 
 
+# add this in generate_examples.py
+
+doc = ezdxf.new('R2010')
+msp = doc.modelspace()
+
+msp.add_lwpolyline([(0,0),(200,0),(200,100),(0,100)], close=True)
+msp.add_line((0,33),(200,33), dxfattribs={"layer":"BEND"})
+msp.add_line((0,66),(200,66), dxfattribs={"layer":"BEND"})
+msp.add_line((50,0),(150,100), dxfattribs={"layer":"MARK"})
+
+save(doc, "rect_with_special_layers.dxf")
+
 
 generate_rect_with_threaded_holes()
 generate_two_rects_with_bend()

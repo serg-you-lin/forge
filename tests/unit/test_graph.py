@@ -323,7 +323,7 @@ class TestHealHierarchy(unittest.TestCase):
         import dxf_forge as forge
         msp = _make_rect_with_inner_msp(outer_w=100, outer_h=80,
                                          inner_w=40,  inner_h=30)
-        self.result = forge.heal(msp, tolerance=0.05, write_to_msp=False)
+        self.result = forge.heal(msp, tolerance=0.05)
 
     def test_001_one_part(self):
         self.assertEqual(self.result.part_count, 1)

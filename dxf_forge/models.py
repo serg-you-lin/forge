@@ -1,9 +1,10 @@
+
 # """
 # models.py
 # ---------
 # Strutture dati condivise di dxf-forge.
 
-# Questi oggetti sono il "linguaggio comune" tra healer, splitter,
+# Questi oggetti sono il "linguaggio comune" tra healer, detector,
 # validator, exporter, injector.
 # Nessuno di questi moduli dipende dagli altri — dipendono tutti da models.py.
 
@@ -16,20 +17,48 @@
 # import math
 
 
+# # ---------------------------------------------------------------------------
+# # Tipi di foro — valori validi per Hole.hole_type
+# # ---------------------------------------------------------------------------
+
+# HOLE_TYPE_UNKNOWN      = "unknown"       # heal() non ha info sufficienti
+# HOLE_TYPE_PLAIN        = "plain"         # foro liscio standard
+# HOLE_TYPE_COUNTERSINK  = "countersink"   # svasatura (cerchio esterno + interno)
+# HOLE_TYPE_THREADED     = "threaded"      # foro filettato (arco ~270° concentrico)
+
+# VALID_HOLE_TYPES = {
+#     HOLE_TYPE_UNKNOWN,
+#     HOLE_TYPE_PLAIN,
+#     HOLE_TYPE_COUNTERSINK,
+#     HOLE_TYPE_THREADED,
+# }
+
+# # Hint geometrici che heal() può produrre — sottoinsieme di VALID_HOLE_TYPES
+# # senza "unknown" e "plain" (quelli non sono hint, sono stati definitivi)
+# VALID_GEOMETRIC_HINTS = {"countersink", "threaded"}
+
+
 # @dataclass
 # class ForgeContour:
 #     """
-#     Un singolo contorno geometrico: esterno o foro.
+#     Un singolo contorno geometrico: esterno o contorno interno NON foro.
 
-#     Contiene il poligono Shapely (che è il dato canonico)
-#     e i metadati derivati utili per nester, MES, ERP.
+#     I fori usano la classe Hole — ForgeContour è per contorni strutturali
+#     (profili interni complessi, tasche, ecc.) che non sono fori circolari.
+
+#     Campi:
+#         entity : entità ezdxf originale — riferimento in memoria, può essere None.
+#                  Usato da detect() per accedere alla geometria ezdxf senza
+#                  rileggere il msp. Non serializzato: id() non ha senso su disco.
 #     """
 #     polygon:  Polygon
-#     is_inner: bool  = False
-#     layer:    str   = ""       # layer DXF di provenienza
-#     is_hole:  bool  = False    # True solo per CIRCLE classificati come fori
-#     area:     float = field(init=False)
-#     bbox:     Tuple[float, float, float, float] = field(init=False)  # (minx, miny, maxx, maxy)
+#     is_inner: bool    = False
+#     layer:    str     = ""
+#     is_hole:  bool    = False   # sempre False su ForgeContour — i fori usano Hole
+#     entity:   Any     = None
+#     area:     float   = field(init=False)
+#     bbox:     Tuple[float, float, float, float] = field(init=False)
+#     source_layer: str = ""
 
 #     def __post_init__(self):
 #         self.area = self.polygon.area
@@ -37,48 +66,112 @@
 
 
 # @dataclass
-# class GeometryHints:
+# class Hole:
 #     """
-#     Indizi geometrici prodotti da heal() e conservati per tutta la vita del msp.
+#     Un foro nel pezzo: entità di primo livello nel dominio forge.
 
-#     heal() li popola perché è l'unico che ha fatto il containment check e sa
-#     dove si trovano queste entità rispetto alla geometria strutturale.
-#     classify() li consuma per scrivere i metadati su part.custom.
-#     snapmark.execute() li usa per posizionare le marcature senza rileggere il msp.
+#     Analogia: il tecnico di radiologia (heal) vede la geometria e scrive
+#     un hint. Il medico (detect) firma la diagnosi ufficiale — hole_type.
+#     Se non chiami detect(), hole_type resta "unknown": nessuna diagnosi.
 
-#     Analogia: è il verbale del sopralluogo — l'operaio che ha visitato il
-#     cantiere lo scrive una volta sola, poi tutti gli altri lo leggono.
+#     Ciclo di vita:
+#         heal()   → crea Hole con hole_type=UNKNOWN, geometric_hint opzionale
+#         detect() → promuove hole_type al tipo definitivo leggendo l'hint
+#                    o i layer speciali, senza ricalcolare la geometria
 
 #     Campi:
-#         countersink_ids   : id() delle entità CIRCLE classificate come svasature
-#         threaded_hole_ids : id() delle entità CIRCLE con filettatura rilevata
-#         bend_line_ids     : id() delle entità LINE su layer bending
-#                             (da special_layers — geometria pura, niente semantica)
+#         polygon         : poligono Shapely del foro (dal cerchio o dal contorno)
+#         diameter        : diametro del cerchio principale in mm
+#         center          : centro (x, y) in coordinate DXF
+#         hole_type       : tipo definitivo — assegnato da detect()
+#         geometric_hint  : hint prodotto da heal() — "" | "countersink" | "threaded"
+#                           Separato da hole_type: hint != diagnosi
+#         confidence      : 0.0 da heal(), > 0.0 da detect()
+#         source          : "" | "geometric" | "special_layers" | "agent"
+#         outer_diameter  : solo countersink — diametro del cerchio esterno (svasatura)
+#         entity          : CIRCLE ezdxf originale — non serializzato
+#         is_hole         : sempre True — per compatibilità con codice che itera inners
 #     """
-#     countersink_ids:   Set[int] = field(default_factory=set)
-#     threaded_hole_ids: Set[int] = field(default_factory=set)
-#     bend_line_ids:     Set[int] = field(default_factory=set)
+#     polygon:        Polygon
+#     diameter:       float
+#     center:         Tuple[float, float]
+
+#     hole_type:      str   = HOLE_TYPE_UNKNOWN
+#     geometric_hint: str   = ""
+#     confidence:     float = 0.0
+#     source:         str   = ""
+
+#     layer:          str   = ""
+#     source_layer:   str   = ""
+#     entity:         Any   = None   # CIRCLE ezdxf — non serializzato
+
+#     outer_diameter: Optional[float] = None   # solo countersink
+#     outer_entity:   Any = None   # CIRCLE ezdxf del cerchio esterno — solo countersink, non serializzato
+#     is_hole:        bool = True              # sempre True — compatibilità
+
+#     @property
+#     def area(self) -> float:
+#         return self.polygon.area
+
+#     @property
+#     def bbox(self) -> Tuple[float, float, float, float]:
+#         return self.polygon.bounds
+
+#     def to_dict(self) -> dict:
+#         """
+#         Serializzazione canonica — inject() e to_dict() di ForgePart la usano.
+
+#         Non serializza: entity (id() senza senso su disco), polygon (ridondante
+#         con center + diameter per i cerchi).
+#         """
+#         d = {
+#             "hole_type":  self.hole_type,
+#             "diameter":   round(self.diameter, 4),
+#             "center":     (round(self.center[0], 4), round(self.center[1], 4)),
+#             "layer":      self.layer,
+#             "confidence": round(self.confidence, 4),
+#             "source":     self.source,
+#         }
+#         if self.outer_diameter is not None:
+#             d["outer_diameter"] = round(self.outer_diameter, 4)
+#         return d
+
+
+# @dataclass
+# class GeometryHints:
+#     """
+#     Indizi geometrici prodotti da detect() per ogni ForgePart.
+
+#     Con l'introduzione di Hole, countersink_ids e threaded_hole_ids sono stati
+#     rimossi — quelle informazioni vivono direttamente su Hole.hole_type e
+#     Hole.geometric_hint. GeometryHints conserva solo bend_line_ids perché
+#     le linee di piega non hanno ancora una classe dedicata.
+
+#     Campi:
+#         bend_line_ids : id() delle entità LINE classificate come linee di piega
+#     """
+#     bend_line_ids: Set[int] = field(default_factory=set)
 
 
 # @dataclass
 # class ForgePart:
 #     """
-#     Un pezzo completo: contorno esterno + fori + metadati.
+#     Un pezzo completo: contorno esterno + fori + contorni interni + metadati.
 
 #     È l'unità di lavoro di dxf-forge.
-#     Il nester consuma ForgePart.
-#     Snapmark riceve ForgePart per sapere dove mettere la marcatura.
 
 #     Campi:
 #         outer          : contorno esterno
-#         inners         : fori e contorni interni
+#         holes          : fori — istanze di Hole, gestite da heal() e detect()
+#         inners         : contorni interni NON foro (tasche complesse, ecc.)
 #         label          : nome del file o del layer
 #         source_file    : percorso del DXF originale
-#         custom         : metadati liberi — scritti da classify() e inject()
-#         geometry_hints : indizi geometrici scritti da heal(), letti da classify()
-#                          e snapmark. Conservati per tutta la vita del msp in memoria.
+#         custom         : metadati lavorazione — scritti da detect() e inject()
+#         geometry_hints : indizi semantici scritti da detect(), letti da inject()
+#                          e snapmark.
 #     """
 #     outer:          ForgeContour
+#     holes:          List[Hole]         = field(default_factory=list)
 #     inners:         List[ForgeContour] = field(default_factory=list)
 #     label:          str               = ""
 #     source_file:    str               = ""
@@ -88,11 +181,15 @@
 #     @property
 #     def polygon_with_holes(self) -> Polygon:
 #         """Restituisce il Polygon Shapely completo con i fori."""
-#         if not self.inners:
+#         all_inners = (
+#             [h.polygon for h in self.holes]
+#             + [i.polygon for i in self.inners]
+#         )
+#         if not all_inners:
 #             return self.outer.polygon
 #         return Polygon(
 #             self.outer.polygon.exterior.coords,
-#             [h.polygon.exterior.coords for h in self.inners],
+#             [p.exterior.coords for p in all_inners],
 #         )
 
 #     @property
@@ -100,23 +197,26 @@
 #         return self.outer.bbox
 
 #     @property
-#     def area(self):
-#         """Area netta: outer meno i fori."""
-#         return self.outer.area - sum(h.area for h in self.inners)
+#     def area(self) -> float:
+#         """Area netta: outer meno fori meno contorni interni."""
+#         return (
+#             self.outer.area
+#             - sum(h.area for h in self.holes)
+#             - sum(i.area for i in self.inners)
+#         )
 
 #     def to_dict(self) -> dict:
 #         """
 #         Esporta il pezzo come dizionario — fonte di verità per JSON, XDATA, MES, ERP.
 
-#         Struttura canonica — tutti i moduli usano questa, non riscrivono la logica.
-#         GeometryHints non è serializzato: sono id() in memoria, non hanno senso su disco.
+#         GeometryHints non è serializzato: sono id() in memoria.
 #         """
 #         return {
 #             "label":                self.label,
 #             "source_file":          self.source_file,
 #             "area":                 round(self.area, 4),
-#             "holes_count":          len([i for i in self.inners if i.is_hole]),
-#             "inner_contours_count": len([i for i in self.inners if not i.is_hole]),
+#             "holes_count":          len(self.holes),
+#             "inner_contours_count": len(self.inners),
 #             "bbox": {
 #                 "minx": round(self.bbox[0], 4),
 #                 "miny": round(self.bbox[1], 4),
@@ -124,7 +224,8 @@
 #                 "maxy": round(self.bbox[3], 4),
 #             },
 #             "outer":  list(self.outer.polygon.exterior.coords),
-#             "inners": [list(h.polygon.exterior.coords) for h in self.inners],
+#             "holes":  [h.to_dict() for h in self.holes],
+#             "inners": [list(i.polygon.exterior.coords) for i in self.inners],
 #             "custom": self.custom,
 #         }
 
@@ -158,9 +259,6 @@
 #         Restituisce le due estremità della BL, ciascuna lunga `margin` mm.
 #         Il segmento centrale viene scartato.
 
-#         Analogia: prendi la striscia adesiva da 100mm, tieni solo
-#         i 25mm iniziali e i 25mm finali, butti il centro da 50mm.
-
 #         Args:
 #             margin: lunghezza da tenere per ogni estremità (mm)
 
@@ -188,7 +286,7 @@
 #         return [start_seg, end_seg]
 
 #     def to_dict(self) -> dict:
-#         """Serializzazione per part.custom['bending_lines_data']."""
+#         """Serializzazione per part.custom['bending_lines']."""
 #         coords = list(self.geometry.coords)
 #         return {
 #             "start":      coords[0],
@@ -200,58 +298,42 @@
 #         }
 
 
-# def bending_line_from_entity(entity, part_label: str = "") -> "BendingLine":
-#     """
-#     Factory: LINE ezdxf → BendingLine.
-#     Calcola geometria, lunghezza e angolo automaticamente.
-#     """
-#     s      = entity.dxf.start
-#     e      = entity.dxf.end
-#     geom   = LineString([(s.x, s.y), (e.x, e.y)])
-#     length = geom.length
-#     dx     = e.x - s.x
-#     dy     = e.y - s.y
-#     angle  = math.degrees(math.atan2(dy, dx)) % 180.0  # 0–180°, direzione non conta
-
-#     return BendingLine(
-#         entity=entity,
-#         geometry=geom,
-#         length=length,
-#         layer=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
-#         angle_deg=angle,
-#         part_label=part_label,
-#     )
-
-
 # @dataclass
 # class ClassifiedEntity:
 #     """
-#     Risultato della classificazione di una entità in Trash.
-#     Prodotto dall'interpreter, consumato da inject() e da _apply_to_msp().
+#     Risultato della classificazione di una entità da detect().
+
+#     Prodotto da detect(), consumato da inject() e write().
+
+#     Campi:
+#         entity     : entità ezdxf originale
+#         work_type  : tipo lavorazione — chiave di WORK_TYPE_TO_LAYER
+#         confidence : 1.0 da special_layers, < 1.0 da geometria o agente
+#         source     : "special_layers" | "geometric" | "agent"
+#         data       : dati estratti pronti per CAM — inject() li usa direttamente
 #     """
-#     entity:    Any
-#     work_type: str    # "bending", "countersink", ... stringa libera
-#     confidence: float  # 0.0 - 1.0
-#     source:    str    # "fuzzy", "geometric", "agent"
+#     entity:     Any
+#     work_type:  str
+#     confidence: float
+#     source:     str
+#     data:       dict = field(default_factory=dict)
 
 
 # class BaseInterpreter(ABC):
 #     """
 #     Interfaccia che ogni interpreter deve implementare.
 
-#     classify() in workflow/classifier.py non sa quale interpreter sta usando
-#     — chiama questo metodo e basta.
-#     L'agente futuro implementa questa stessa interfaccia.
+#     detect() non sa quale interpreter sta usando — chiama questo metodo e basta.
 #     """
 #     @abstractmethod
 #     def classify(
 #         self,
-#         entities:    list,          # entità in Trash
-#         outer_poly:  Polygon,       # contesto geometrico dell'outer
-#         inner_polys: list,          # fori e contorni interni già classificati
-#         msp,                        # accesso completo al modelspace se serve
-#         hints:       dict = None,   # GeometryHints.* come dict per l'interpreter
-#     ) -> list:                      # list[ClassifiedEntity]
+#         entities:    list,
+#         outer_poly:  Polygon,
+#         inner_polys: list,
+#         msp,
+#         hints:       dict = None,
+#     ) -> list:  # list[ClassifiedEntity]
 #         ...
 
 
@@ -262,14 +344,30 @@
 
 #     Contiene tutti i pezzi trovati + info di validazione.
 #     È quello che forge.heal() restituisce al chiamante.
+
+#     Campi:
+#         special_layers  : dict {nome_layer: tipo_lavorazione} passato a detect().
+#                           Salvato qui da detect() — inject() e write()
+#                           lo leggono senza che il chiamante lo ripassi.
+#                           Non serializzato in to_dict(): è configurazione di sessione.
+#         _virtual_shapes : lista di VirtualShape prodotti da heal() per i loop LINE/ARC.
+#                           Stato di sessione — write() li materializza come LWPOLYLINE
+#                           nel msp. Non serializzato.
+#         _entities_in_loops_ids : id() di LINE/ARC assorbite in loop — eliminate da write().
+
+#     Nota: probable_countersink_ids è stato rimosso — quella informazione
+#     vive ora in Hole.geometric_hint = "countersink" su ogni ForgePart.
 #     """
-#     parts:                List[ForgePart]        = field(default_factory=list)
-#     source_file:          str                    = ""
-#     is_valid:             bool                   = True
-#     warnings:             List[str]              = field(default_factory=list)
-#     errors:               List[str]              = field(default_factory=list)
-#     trash_entities:       List[Any]              = field(default_factory=list)
-#     classified_entities:  List[ClassifiedEntity] = field(default_factory=list)
+#     parts:               List[ForgePart]        = field(default_factory=list)
+#     source_file:         str                    = ""
+#     is_valid:            bool                   = True
+#     warnings:            List[str]              = field(default_factory=list)
+#     errors:              List[str]              = field(default_factory=list)
+#     trash_entities:      List[Any]              = field(default_factory=list)
+#     classified_entities: List[ClassifiedEntity] = field(default_factory=list)
+#     special_layers:      dict                   = field(default_factory=dict)
+#     _virtual_shapes:        List[Any] = field(default_factory=list)
+#     _entities_in_loops_ids: Set[int]  = field(default_factory=set)
 
 #     @property
 #     def part_count(self) -> int:
@@ -297,7 +395,7 @@ models.py
 ---------
 Strutture dati condivise di dxf-forge.
 
-Questi oggetti sono il "linguaggio comune" tra healer, splitter,
+Questi oggetti sono il "linguaggio comune" tra healer, detector,
 validator, exporter, injector.
 Nessuno di questi moduli dipende dagli altri — dipendono tutti da models.py.
 
@@ -310,20 +408,48 @@ from shapely.geometry import Polygon, LineString
 import math
 
 
+# ---------------------------------------------------------------------------
+# Tipi di foro — valori validi per Hole.hole_type
+# ---------------------------------------------------------------------------
+
+HOLE_TYPE_UNKNOWN      = "unknown"       # heal() non ha info sufficienti
+HOLE_TYPE_PLAIN        = "plain"         # foro liscio standard
+HOLE_TYPE_COUNTERSINK  = "countersink"   # svasatura (cerchio esterno + interno)
+HOLE_TYPE_THREADED     = "threaded"      # foro filettato (arco ~270° concentrico)
+
+VALID_HOLE_TYPES = {
+    HOLE_TYPE_UNKNOWN,
+    HOLE_TYPE_PLAIN,
+    HOLE_TYPE_COUNTERSINK,
+    HOLE_TYPE_THREADED,
+}
+
+# Hint geometrici che heal() può produrre — sottoinsieme di VALID_HOLE_TYPES
+# senza "unknown" e "plain" (quelli non sono hint, sono stati definitivi)
+VALID_GEOMETRIC_HINTS = {"countersink", "threaded"}
+
+
 @dataclass
 class ForgeContour:
     """
-    Un singolo contorno geometrico: esterno o foro.
+    Un singolo contorno geometrico: esterno o contorno interno NON foro.
 
-    Contiene il poligono Shapely (che è il dato canonico)
-    e i metadati derivati utili per nester, MES, ERP.
+    I fori usano la classe Hole — ForgeContour è per contorni strutturali
+    (profili interni complessi, tasche, ecc.) che non sono fori circolari.
+
+    Campi:
+        entity : entità ezdxf originale — riferimento in memoria, può essere None.
+                 Usato da detect() per accedere alla geometria ezdxf senza
+                 rileggere il msp. Non serializzato: id() non ha senso su disco.
     """
-    polygon:  Polygon
-    is_inner: bool  = False
-    layer:    str   = ""       # layer DXF di provenienza
-    is_hole:  bool  = False    # True solo per CIRCLE classificati come fori
-    area:     float = field(init=False)
-    bbox:     Tuple[float, float, float, float] = field(init=False)  # (minx, miny, maxx, maxy)
+    polygon:      Polygon
+    is_inner:     bool    = False
+    layer:        str     = ""
+    is_hole:      bool    = False   # sempre False su ForgeContour — i fori usano Hole
+    entity:       Any     = None
+    area:         float   = field(init=False)
+    bbox:         Tuple[float, float, float, float] = field(init=False)
+    source_layer: str     = ""
 
     def __post_init__(self):
         self.area = self.polygon.area
@@ -331,62 +457,138 @@ class ForgeContour:
 
 
 @dataclass
-class GeometryHints:
+class Hole:
     """
-    Indizi geometrici prodotti da heal() e conservati per tutta la vita del msp.
+    Un foro nel pezzo: entità di primo livello nel dominio forge.
 
-    heal() li popola perché è l'unico che ha fatto il containment check e sa
-    dove si trovano queste entità rispetto alla geometria strutturale.
-    classify() li consuma per scrivere i metadati su part.custom.
-    snapmark.execute() li usa per posizionare le marcature senza rileggere il msp.
+    Analogia: il tecnico di radiologia (heal) vede la geometria e scrive
+    un hint. Il medico (detect) firma la diagnosi ufficiale — hole_type.
+    Se non chiami detect(), hole_type resta "unknown": nessuna diagnosi.
 
-    Analogia: è il verbale del sopralluogo — l'operaio che ha visitato il
-    cantiere lo scrive una volta sola, poi tutti gli altri lo leggono.
+    Ciclo di vita:
+        heal()   → crea Hole con hole_type=UNKNOWN, geometric_hint opzionale
+        detect() → promuove hole_type al tipo definitivo leggendo l'hint
+                   o i layer speciali, senza ricalcolare la geometria
 
     Campi:
-        countersink_ids   : id() delle entità CIRCLE classificate come svasature
-        threaded_hole_ids : id() delle entità CIRCLE con filettatura rilevata
-        bend_line_ids     : id() delle entità LINE su layer bending
-                            (da special_layers — geometria pura, niente semantica)
+        polygon         : poligono Shapely del foro (dal cerchio o dal contorno)
+        diameter        : diametro del cerchio principale in mm
+        center          : centro (x, y) in coordinate DXF
+        hole_type       : tipo definitivo — assegnato da detect()
+        geometric_hint  : hint prodotto da heal() — "" | "countersink" | "threaded"
+                          Separato da hole_type: hint != diagnosi
+        confidence      : 0.0 da heal(), > 0.0 da detect()
+        source          : "" | "geometric" | "special_layers" | "agent"
+        outer_diameter  : solo countersink — diametro del cerchio esterno (svasatura)
+        entity          : CIRCLE ezdxf originale — non serializzato
+        is_hole         : sempre True — per compatibilità con codice che itera inners
     """
-    countersink_ids:   Set[int] = field(default_factory=set)
-    threaded_hole_ids: Set[int] = field(default_factory=set)
-    bend_line_ids:     Set[int] = field(default_factory=set)
+    polygon:        Polygon
+    diameter:       float
+    center:         Tuple[float, float]
+
+    hole_type:      str   = HOLE_TYPE_UNKNOWN
+    geometric_hint: str   = ""
+    confidence:     float = 0.0
+    source:         str   = ""
+
+    layer:          str   = ""
+    source_layer:   str   = ""
+    entity:         Any   = None   # CIRCLE ezdxf — non serializzato
+
+    outer_diameter: Optional[float] = None   # solo countersink
+    outer_entity:   Any             = None   # CIRCLE ezdxf del cerchio esterno — solo countersink, non serializzato
+    is_hole:        bool            = True   # sempre True — compatibilità
+
+    @property
+    def area(self) -> float:
+        return self.polygon.area
+
+    @property
+    def bbox(self) -> Tuple[float, float, float, float]:
+        return self.polygon.bounds
+
+    def to_dict(self) -> dict:
+        """
+        Serializzazione canonica — inject() e to_dict() di ForgePart la usano.
+
+        Non serializza: entity (id() senza senso su disco), polygon (ridondante
+        con center + diameter per i cerchi).
+        """
+        d = {
+            "hole_type":  self.hole_type,
+            "diameter":   round(self.diameter, 4),
+            "center":     (round(self.center[0], 4), round(self.center[1], 4)),
+            "layer":      self.layer,
+            "confidence": round(self.confidence, 4),
+            "source":     self.source,
+        }
+        if self.outer_diameter is not None:
+            d["outer_diameter"] = round(self.outer_diameter, 4)
+        return d
+
+
+@dataclass
+class GeometryHints:
+    """
+    Indizi geometrici prodotti da detect() per ogni ForgePart.
+
+    Con l'introduzione di Hole, countersink_ids e threaded_hole_ids sono stati
+    rimossi — quelle informazioni vivono direttamente su Hole.hole_type e
+    Hole.geometric_hint. GeometryHints conserva solo bend_line_ids perché
+    le linee di piega non hanno ancora una classe dedicata.
+
+    Campi:
+        bend_line_ids : id() delle entità LINE classificate come linee di piega
+    """
+    bend_line_ids: Set[int] = field(default_factory=set)
 
 
 @dataclass
 class ForgePart:
     """
-    Un pezzo completo: contorno esterno + fori + metadati.
+    Un pezzo completo: contorno esterno + fori + contorni interni + metadati.
 
     È l'unità di lavoro di dxf-forge.
-    Il nester consuma ForgePart.
-    Snapmark riceve ForgePart per sapere dove mettere la marcatura.
 
     Campi:
         outer          : contorno esterno
-        inners         : fori e contorni interni
+        holes          : fori — istanze di Hole, gestite da heal() e detect()
+        inners         : contorni interni NON foro (tasche complesse, ecc.)
         label          : nome del file o del layer
         source_file    : percorso del DXF originale
-        custom         : metadati liberi — scritti da classify() e inject()
-        geometry_hints : indizi geometrici scritti da heal(), letti da classify()
-                         e snapmark. Conservati per tutta la vita del msp in memoria.
+        custom         : metadati lavorazione — scritti da detect() e inject()
+        geometry_hints : indizi semantici scritti da detect(), letti da inject()
+                         e snapmark.
+        entity_ids     : id() di tutte le entità ezdxf appartenenti a questo part,
+                         popolato da heal() durante la costruzione della gerarchia.
+                         Dopo write(), viene aggiornato con gli id() delle LWPOLYLINE
+                         materializzate dai VirtualShape (swap VS → LWPOLYLINE).
+                         Usato da split() per copiare le entità corrette senza
+                         ricalcolare l'appartenenza geometrica.
+                         Non serializzato: id() non ha senso su disco.
     """
     outer:          ForgeContour
+    holes:          List[Hole]         = field(default_factory=list)
     inners:         List[ForgeContour] = field(default_factory=list)
-    label:          str               = ""
-    source_file:    str               = ""
-    custom:         dict              = field(default_factory=dict)
-    geometry_hints: GeometryHints     = field(default_factory=GeometryHints)
+    label:          str                = ""
+    source_file:    str                = ""
+    custom:         dict               = field(default_factory=dict)
+    geometry_hints: GeometryHints      = field(default_factory=GeometryHints)
+    entity_ids:     Set[int]           = field(default_factory=set)
 
     @property
     def polygon_with_holes(self) -> Polygon:
         """Restituisce il Polygon Shapely completo con i fori."""
-        if not self.inners:
+        all_inners = (
+            [h.polygon for h in self.holes]
+            + [i.polygon for i in self.inners]
+        )
+        if not all_inners:
             return self.outer.polygon
         return Polygon(
             self.outer.polygon.exterior.coords,
-            [h.polygon.exterior.coords for h in self.inners],
+            [p.exterior.coords for p in all_inners],
         )
 
     @property
@@ -394,23 +596,26 @@ class ForgePart:
         return self.outer.bbox
 
     @property
-    def area(self):
-        """Area netta: outer meno i fori."""
-        return self.outer.area - sum(h.area for h in self.inners)
+    def area(self) -> float:
+        """Area netta: outer meno fori meno contorni interni."""
+        return (
+            self.outer.area
+            - sum(h.area for h in self.holes)
+            - sum(i.area for i in self.inners)
+        )
 
     def to_dict(self) -> dict:
         """
         Esporta il pezzo come dizionario — fonte di verità per JSON, XDATA, MES, ERP.
 
-        Struttura canonica — tutti i moduli usano questa, non riscrivono la logica.
-        GeometryHints non è serializzato: sono id() in memoria, non hanno senso su disco.
+        GeometryHints e entity_ids non sono serializzati: sono id() in memoria.
         """
         return {
             "label":                self.label,
             "source_file":          self.source_file,
             "area":                 round(self.area, 4),
-            "holes_count":          len([i for i in self.inners if i.is_hole]),
-            "inner_contours_count": len([i for i in self.inners if not i.is_hole]),
+            "holes_count":          len(self.holes),
+            "inner_contours_count": len(self.inners),
             "bbox": {
                 "minx": round(self.bbox[0], 4),
                 "miny": round(self.bbox[1], 4),
@@ -418,7 +623,8 @@ class ForgePart:
                 "maxy": round(self.bbox[3], 4),
             },
             "outer":  list(self.outer.polygon.exterior.coords),
-            "inners": [list(h.polygon.exterior.coords) for h in self.inners],
+            "holes":  [h.to_dict() for h in self.holes],
+            "inners": [list(i.polygon.exterior.coords) for i in self.inners],
             "custom": self.custom,
         }
 
@@ -427,10 +633,6 @@ class ForgePart:
 class BendingLine:
     """
     Rappresenta una linea di piega estratta dal DXF.
-
-    Analogia: è come un righello posizionato sul pezzo —
-    ha una posizione, una lunghezza, un angolo, e puoi
-    decidere di usarne solo le estremità (trim).
 
     Attributi:
         entity      : entità ezdxf originale (LINE)
@@ -447,42 +649,8 @@ class BendingLine:
     angle_deg:  float
     part_label: str = ""
 
-    def trim(self, margin: float) -> List[LineString]:
-        """
-        Restituisce le due estremità della BL, ciascuna lunga `margin` mm.
-        Il segmento centrale viene scartato.
-
-        Analogia: prendi la striscia adesiva da 100mm, tieni solo
-        i 25mm iniziali e i 25mm finali, butti il centro da 50mm.
-
-        Args:
-            margin: lunghezza da tenere per ogni estremità (mm)
-
-        Returns:
-            [self.geometry]          se margin * 2 >= length
-            [start_seg, end_seg]     nel caso normale
-
-        Raises:
-            ValueError: se margin <= 0
-        """
-        if margin <= 0:
-            raise ValueError(f"margin deve essere > 0, ricevuto {margin}")
-        if margin * 2 >= self.length:
-            return [self.geometry]
-
-        total     = self.length
-        start_seg = LineString([
-            self.geometry.interpolate(0.0),
-            self.geometry.interpolate(margin),
-        ])
-        end_seg = LineString([
-            self.geometry.interpolate(total - margin),
-            self.geometry.interpolate(total),
-        ])
-        return [start_seg, end_seg]
-
     def to_dict(self) -> dict:
-        """Serializzazione per part.custom['bending_lines_data']."""
+        """Serializzazione per part.custom['bending_lines']."""
         coords = list(self.geometry.coords)
         return {
             "start":      coords[0],
@@ -494,38 +662,42 @@ class BendingLine:
         }
 
 
-
-
-
 @dataclass
 class ClassifiedEntity:
     """
-    Risultato della classificazione di una entità in Trash.
-    Prodotto dall'interpreter, consumato da inject() e da _apply_to_msp().
+    Risultato della classificazione di una entità da detect().
+
+    Prodotto da detect(), consumato da inject() e write().
+
+    Campi:
+        entity     : entità ezdxf originale
+        work_type  : tipo lavorazione — chiave di WORK_TYPE_TO_LAYER
+        confidence : 1.0 da special_layers, < 1.0 da geometria o agente
+        source     : "special_layers" | "geometric" | "agent"
+        data       : dati estratti pronti per CAM — inject() li usa direttamente
     """
-    entity:    Any
-    work_type: str    # "bending", "countersink", ... stringa libera
-    confidence: float  # 0.0 - 1.0
-    source:    str    # "fuzzy", "geometric", "agent"
+    entity:     Any
+    work_type:  str
+    confidence: float
+    source:     str
+    data:       dict = field(default_factory=dict)
 
 
 class BaseInterpreter(ABC):
     """
     Interfaccia che ogni interpreter deve implementare.
 
-    classify() in workflow/classifier.py non sa quale interpreter sta usando
-    — chiama questo metodo e basta.
-    L'agente futuro implementa questa stessa interfaccia.
+    detect() non sa quale interpreter sta usando — chiama questo metodo e basta.
     """
     @abstractmethod
     def classify(
         self,
-        entities:    list,          # entità in Trash
-        outer_poly:  Polygon,       # contesto geometrico dell'outer
-        inner_polys: list,          # fori e contorni interni già classificati
-        msp,                        # accesso completo al modelspace se serve
-        hints:       dict = None,   # GeometryHints.* come dict per l'interpreter
-    ) -> list:                      # list[ClassifiedEntity]
+        entities:    list,
+        outer_poly:  Polygon,
+        inner_polys: list,
+        msp,
+        hints:       dict = None,
+    ) -> list:  # list[ClassifiedEntity]
         ...
 
 
@@ -538,20 +710,29 @@ class ForgeResult:
     È quello che forge.heal() restituisce al chiamante.
 
     Campi:
-        special_layers : dict {nome_layer: tipo_lavorazione} passato a heal().
-                         Salvato qui perché classify() ne ha bisogno — così
-                         il chiamante non deve ripassarlo a mano.
-                         Non viene serializzato in to_dict(): è configurazione
-                         di sessione, non dato del pezzo.
+        special_layers         : dict {nome_layer: tipo_lavorazione} passato a detect().
+                                 Salvato qui da detect() — inject() e write()
+                                 lo leggono senza che il chiamante lo ripassi.
+                                 Non serializzato in to_dict(): è configurazione di sessione.
+        _virtual_shapes        : lista di VirtualShape prodotti da heal() per i loop LINE/ARC.
+                                 Stato di sessione — write() li materializza come LWPOLYLINE
+                                 nel msp. Non serializzato.
+        _entities_in_loops_ids : id() di LINE/ARC assorbite in loop — eliminate da write().
+        _vs_to_part            : mappa id(VirtualShape) → ForgePart — usata da write()
+                                 per fare lo swap id(VS) → id(LWPOLYLINE) in part.entity_ids.
+                                 Non serializzato.
     """
-    parts:                List[ForgePart]        = field(default_factory=list)
-    source_file:          str                    = ""
-    is_valid:             bool                   = True
-    warnings:             List[str]              = field(default_factory=list)
-    errors:               List[str]              = field(default_factory=list)
-    trash_entities:       List[Any]              = field(default_factory=list)
-    classified_entities:  List[ClassifiedEntity] = field(default_factory=list)
-    special_layers:       dict                   = field(default_factory=dict)
+    parts:               List[ForgePart]        = field(default_factory=list)
+    source_file:         str                    = ""
+    is_valid:            bool                   = True
+    warnings:            List[str]              = field(default_factory=list)
+    errors:              List[str]              = field(default_factory=list)
+    trash_entities:      List[Any]              = field(default_factory=list)
+    classified_entities: List[ClassifiedEntity] = field(default_factory=list)
+    special_layers:      dict                   = field(default_factory=dict)
+    _virtual_shapes:        List[Any]        = field(default_factory=list)
+    _entities_in_loops_ids: Set[int]         = field(default_factory=set)
+    _vs_to_part:            dict             = field(default_factory=dict)   # id(VS) → ForgePart
 
     @property
     def part_count(self) -> int:

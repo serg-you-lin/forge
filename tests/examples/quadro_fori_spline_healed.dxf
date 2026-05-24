@@ -445,7 +445,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461123.7955439813
+2461179.4791666665
   9
 $TDUCREATE
  40
@@ -453,7 +453,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461123.7955439813
+2461179.4791666665
   9
 $TDUUPDATE
  40
@@ -505,7 +505,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-80
+7F
   9
 $SURFTAB1
  70
@@ -889,7 +889,7 @@ $FINGERPRINTGUID
   9
 $VERSIONGUID
   2
-{D496DC70-A201-4408-B639-6E5F8F09CDD9}
+{68B509AD-76DF-4ED5-B710-CFE92DBD63BB}
   9
 $EXTNAMES
 290
@@ -1647,7 +1647,7 @@ APPID
 100
 AcDbSymbolTable
  70
-4
+3
   0
 APPID
   5
@@ -1673,27 +1673,13 @@ AcDbSymbolTableRecord
 100
 AcDbRegAppTableRecord
   2
-FORGE
- 70
-0
-  0
-APPID
-  5
-7C
-330
-9
-100
-AcDbSymbolTableRecord
-100
-AcDbRegAppTableRecord
-  2
 HATCHBACKGROUNDCOLOR
  70
 0
   0
 APPID
   5
-7D
+7C
 330
 9
 100
@@ -3156,10 +3142,6 @@ AcDbPolyline
 -61.4420906347
  20
 140.0
-1001
-FORGE
-1000
-{"label": "quadro_fori_spline", "source_file": "quadro_fori_spline.DXF", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 0, "total_engrave_length_mm": 0.0, "area_mm2": 53055.9595, "holes_count": 8, "outer_perimeter_mm": 1120.0, "inner_perimeter_mm": 982.2329, "total_perimeter_mm": 2102.2329, "bbox": {"minx": -61.4421, "miny": -140.0, "maxx": 218.5579, "maxy": 140.0}}
   0
 ENDSEC
   0
@@ -3227,7 +3209,7 @@ ACAD_VISUALSTYLE
   3
 EZDXF_META
 350
-7E
+7D
   0
 DICTIONARY
   5
@@ -4873,7 +4855,7 @@ Standard
   0
 DICTIONARY
   5
-7E
+7D
 330
 C
 100
@@ -4885,19 +4867,19 @@ AcDbDictionary
   3
 WRITTEN_BY_EZDXF
 350
-7F
+7E
   0
 DICTIONARYVAR
   5
-7F
-330
 7E
+330
+7D
 100
 DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-23T18:05:35.110275+00:00
+1.4.3 @ 2026-05-18T09:30:00.831641+00:00
   0
 ENDSEC
   0

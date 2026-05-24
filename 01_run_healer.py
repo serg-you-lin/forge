@@ -132,7 +132,7 @@ from dxf_forge.dxf_inspect import DxfInspector
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\OMS.08919-J0059155-SV.dxf"
+input_dxf = r"tests/examples/quadro_fori_spline.DXF"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)

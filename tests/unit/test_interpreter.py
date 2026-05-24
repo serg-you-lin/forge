@@ -17,7 +17,8 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from shapely.geometry import LineString
-from dxf_forge.models import BendingLine, bending_line_from_entity
+from dxf_forge.models import BendingLine
+from dxf_forge.rules.interpreter import bending_line_from_entity
 
 
 # ---------------------------------------------------------------------------

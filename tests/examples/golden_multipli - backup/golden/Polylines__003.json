@@ -1,0 +1,14 @@
+{
+  "parent_file": "Polylines.dxf",
+  "part_index": 3,
+  "area_mm2": 6945.8621,
+  "holes_count": 0,
+  "outer_perimeter_mm": 335.5033,
+  "inner_perimeter_mm": 0,
+  "total_perimeter_mm": 335.5033,
+  "outer_wkt": "POLYGON ((-72.66033995418582 337.3696176551075, 20.66486022969514 337.3696176551075, 20.66486022969514 262.9431807425899, -72.66033995418582 262.9431807425899, -72.66033995418582 337.3696176551075))",
+  "inners_wkt": [],
+  "outer_layer": "OuterContour",
+  "inners_layers": [],
+  "custom": {}
+}

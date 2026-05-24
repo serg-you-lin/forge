@@ -16,7 +16,9 @@
       "inners_layers": [
         "Hole"
       ],
-      "custom": {}
+      "custom": {
+        "plain_holes_count": 1
+      }
     }
   ]
 }
