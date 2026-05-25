@@ -1,5 +1,5 @@
 """
-tests/integration/helpers.py
+tests/integration/test_helpers.py
 ----------------------------
 
 Helper condivisi per test pipeline e semantic integrity.

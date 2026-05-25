@@ -21,8 +21,8 @@
       "holes_count": 2,
       "inner_contours_count": 0,
       "outer_perimeter_mm": 550.6102,
-      "inner_perimeter_mm": 113.0519,
-      "total_perimeter_mm": 663.6621,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 550.6102,
       "bbox": {
         "minx": 0.0,
         "miny": 0.0,

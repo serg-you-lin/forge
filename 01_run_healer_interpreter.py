@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\BAR2.00079-ZN 42D025Z00I.dxf"
+input_dxf = r"tests/examples/BB.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -29,7 +29,7 @@ base_name = os.path.splitext(file_name)[0]
 # output nella stessa cartella
 output_dxf = os.path.join(base_dir, f"{base_name}_healed.dxf")
 
-tolerance = 2
+tolerance = .2
 print("tolleranza:", tolerance)
 
 inspector = DxfInspector(
@@ -91,9 +91,9 @@ result = forge.heal(
 forge.detect(
     result,
     msp,
-    special_layers={
-        "MARK": "marking",
-    },
+    # special_layers={
+    #     "MARK": "marking",
+    # },
     # interpreter=GeometricInterpreter(),
 )
 
