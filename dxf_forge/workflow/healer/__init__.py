@@ -395,6 +395,7 @@ def heal(
                             else child_obj.dxf.layer if child_obj.dxf.hasattr("layer")
                             else ""
                         ),
+                        vs_id=id(child_obj) if child_tipo == "VIRTUAL" else None,
                     ))
 
                 if child_tipo == "VIRTUAL":
@@ -475,6 +476,19 @@ def heal(
     # ------------------------------------------------------------------
     # Trash — tutto ciò che non è strutturale
     # ------------------------------------------------------------------
+    for e in msp:
+        if not e.dxf.hasattr("layer"):
+            continue
+        if e.dxf.layer.lower() != "mark":
+            continue
+        print(
+            f"  [trash_check] {e.dxftype()} "
+            f"classified_entity={id(e) in classified_entity_ids} "
+            f"classified_virtual={id(e) in classified_virtual_ids} "
+            f"in_loops={id(e) in entities_in_loops} "
+            f"structural={e.dxf.layer.upper() in STRUCTURAL_LAYERS}"
+        )
+
     result.trash_entities += [
         e for e in msp
         if id(e) not in classified_entity_ids
@@ -484,4 +498,6 @@ def heal(
         and e.dxf.layer.upper() not in STRUCTURAL_LAYERS
     ]
 
+    result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
+    
     return result

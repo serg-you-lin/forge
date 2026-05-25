@@ -89,7 +89,7 @@ def generate(force: bool = False, only: str = None):
             forge.write(msp, result)
 
             with tempfile.TemporaryDirectory() as tmp_dir:
-                forge.split(msp, result, output_folder=tmp_dir)
+                forge.split(msp, result, output_folder=tmp_dir, namer=lambda i, part: f"{part.label}_P{i + 1:03d}",)
 
             print(f"  {parent_path.name} → {len(result.parts)} parti")
 

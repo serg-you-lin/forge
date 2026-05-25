@@ -27,7 +27,7 @@ inspector = DxfInspector(
     circles   = False,
     splines   = True,
     graph     = False,  # ← il più utile per debug ambiguità
-    dimensions = True,
+    dimensions = False,
     text      = True,
 )
 

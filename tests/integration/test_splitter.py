@@ -136,13 +136,15 @@ class TestUnitSplitOutput(unittest.TestCase):
                 self.fail(f"File non leggibile: {path} — {e}")
 
     def test_003_namer_default_formato(self):
-        """Il namer default produce un nome del tipo '000_label'."""
-        self._assert_heal_found_parts()
-        generated = split(self.msp, self.result, output_folder=self.out_dir)
-        self.assertTrue(len(generated) > 0)
-        nome = Path(generated[0]).stem
-        self.assertRegex(nome, r"^\d{3}_",
-                         f"Nome '{nome}' non segue il formato '000_label'")
+            """Il namer default produce un nome del tipo 'label_P1'."""
+            self._assert_heal_found_parts()
+            generated = split(self.msp, self.result, output_folder=self.out_dir)
+            
+            self.assertTrue(len(generated) > 0)
+            nome = Path(generated[0]).stem
+            
+            self.assertRegex(nome, r".+_P\d+$",
+                            f"Nome '{nome}' non segue il formato 'label_P1'")
 
     def test_004_namer_custom(self):
         """Un namer custom viene rispettato."""

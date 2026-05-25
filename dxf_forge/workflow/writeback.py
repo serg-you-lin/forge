@@ -80,6 +80,9 @@ def write(
     """
 
     for vs in result._virtual_shapes:
+        print(f"  [write] vs id={id(vs)} suppressed={id(vs) in result._suppressed_vs_ids}")
+        if id(vs) in result._suppressed_vs_ids:
+            continue
         lwpoly = _write_virtual_shape(msp, vs)
         if lwpoly is not None:
             part = result._vs_to_part.get(id(vs))
@@ -115,7 +118,7 @@ def write(
             )
             entity.dxf.layer = target_layer
             entity.dxf.color = target_color
-        elif layer.upper() in STRUCTURAL_LAYERS or layer.upper() in WORK_LAYERS:
+        elif layer.upper() in STRUCTURAL_LAYERS:
             continue
         elif keep_trash:
             entity.dxf.layer = TRASH_LAYER
@@ -179,6 +182,7 @@ def split(
             )
             continue
  
+        # name = namer(i, part) if namer else f"{i:03d}_{part.label}"    
         name = namer(i, part) if namer else f"{part.label}_P{i + 1}"
         out_path = os.path.join(output_folder, f"{name}.dxf")
 
@@ -278,11 +282,18 @@ def _remove_superseded_line_arc(msp, result: ForgeResult) -> None:
     Usa result._entities_in_loops_ids — fonte di verità immutabile prodotta
     da heal(). Non dipende da trash_entities o classified_entities.
     """
+    special_layer_names = {k.lower() for k in result.special_layers} if result.special_layers else set()
     to_delete = [
         e for e in list(msp)
         if e.dxftype() in ("LINE", "ARC")
         and id(e) in result._entities_in_loops_ids
+        and (not e.dxf.hasattr("layer") or e.dxf.layer.lower() not in special_layer_names)
     ]
+    # to_delete = [
+    #     e for e in list(msp)
+    #     if e.dxftype() in ("LINE", "ARC")
+    #     and id(e) in result._entities_in_loops_ids
+    # ]
     for e in to_delete:
         msp.delete_entity(e)
 
@@ -346,3 +357,11 @@ def _setup_layers(doc) -> None:
         if name not in doc.layers:
             layer = doc.layers.new(name)
             layer.color = color
+
+
+def _all_classified_ids(result: ForgeResult) -> set:
+    """
+    Restituisce gli id() di tutte le entità già classificate da detect().
+    Se detect() non è stato chiamato, restituisce un insieme vuoto.
+    """
+    return {id(ce.entity) for ce in result.classified_entities if ce.entity is not None}

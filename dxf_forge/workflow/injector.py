@@ -158,27 +158,26 @@ def _inject_bending(part, msp, tolerance: float) -> None:
 
 
 def _inject_classified(part, classified_entities, outer_poly) -> None:
-    """
-    Conta engrave e marking da classified_entities.
-
-    Bending: gestito da _inject_bending via geometry_hints.
-    Fori: gestiti da _inject_holes via part.holes.
-    """
     total_engrave = 0.0
     total_marking = 0.0
 
     for ce in classified_entities:
+        # print(f"  [inject_ce] work_type={ce.work_type} entity={ce.entity} polygon={getattr(ce, 'polygon', 'NO_ATTR') is not None}")
         if ce.entity is not None:
             pt = get_representative_point(ce.entity)
-            if pt is None or not outer_poly.covers(pt):
-                continue
+        elif ce.polygon is not None and not ce.polygon.is_empty:
+            # print(f"  [branch] polygon={ce.polygon} is_empty={ce.polygon.is_empty}")
+            pt = ce.polygon.centroid
+            # print(f"  [covers] pt={pt} covers={outer_poly.covers(pt)}")
+        else:
+            continue
+
+        if pt is None or not outer_poly.covers(pt):
+            continue
 
         wt = ce.work_type.lower()
         if wt == "engrave":
-            pt = get_representative_point(ce.entity) if ce.entity is not None else None
-            print(f"  [inject_classified] engrave pt={pt} covers={outer_poly.covers(pt) if pt else 'NO_PT'}")
-
-        if wt == "engrave":
+            # print(f"  [engrave] data={ce.data} length={ce.data.get('length')}")
             total_engrave += ce.data.get("length") or 0.0
         elif wt == "marking":
             total_marking += ce.data.get("length") or 0.0

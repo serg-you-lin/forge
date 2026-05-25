@@ -450,6 +450,7 @@ class ForgeContour:
     area:         float   = field(init=False)
     bbox:         Tuple[float, float, float, float] = field(init=False)
     source_layer: str     = ""
+    vs_id: Optional[int] = None
 
     def __post_init__(self):
         self.area = self.polygon.area
@@ -681,6 +682,7 @@ class ClassifiedEntity:
     confidence: float
     source:     str
     data:       dict = field(default_factory=dict)
+    polygon:    Any  = None  # Polygon shapely — solo per VirtualShape (entity=None)
 
 
 class BaseInterpreter(ABC):
@@ -733,6 +735,7 @@ class ForgeResult:
     _virtual_shapes:        List[Any]        = field(default_factory=list)
     _entities_in_loops_ids: Set[int]         = field(default_factory=set)
     _vs_to_part:            dict             = field(default_factory=dict)   # id(VS) → ForgePart
+    _suppressed_vs_ids: set = field(default_factory=set)
 
     @property
     def part_count(self) -> int:
