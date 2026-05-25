@@ -12,10 +12,7 @@ import sys
 from pathlib import Path
 import unittest
 
-# root test dir (NON integration dir)
 TEST_DIR = Path(__file__).resolve().parent
-EXAMPLES_DIR = TEST_DIR.parent / "examples"
-
 sys.path.insert(0, str(TEST_DIR))
 
 from test_helpers import (
@@ -23,6 +20,9 @@ from test_helpers import (
     get_custom,
     count_entities_on_layer,
 )
+
+EXAMPLES_DIR = TEST_DIR.parent / "examples"
+
 
 
 def ex(name: str) -> str:
@@ -55,10 +55,10 @@ class TestPipelineBendingRoundtrip(unittest.TestCase):
     def test_001_original_has_bending(self):
         result = self.pipeline["result"]
 
-        bending = result.parts[0].custom.get("bending_lines", [])
+        bending = result.parts[0].custom.get("bending_lines", 0)
 
-        print(f"\n[bending original] count={len(bending)}")
-        self.assertGreater(len(bending), 0)
+        print(f"\n[bending original] count={(bending)}")
+        self.assertGreater(bending, 0)
 
     def test_002_reload_finds_one_part(self):
         reloaded = self.pipeline["reloaded_result"]
@@ -69,9 +69,9 @@ class TestPipelineBendingRoundtrip(unittest.TestCase):
     def test_003_bending_layer_survives_write(self):
         msp = self.pipeline["reloaded_msp"]
 
-        bend_count = count_entities_on_layer(msp, "BEND")
+        bend_count = count_entities_on_layer(msp, "Bending")
 
-        print(f"[reload] BEND entities={bend_count}")
+        print(f"[reload] Bending entities={bend_count}")
         self.assertGreater(bend_count, 0)
 
 
@@ -192,6 +192,64 @@ class TestPipelineWriteIntegrity(unittest.TestCase):
         print(f"[write integrity] inners={len(part.inners)}")
         self.assertGreaterEqual(len(part.inners), 0)
 
+
+class TestSpecialLayersEngrave(unittest.TestCase):
+    """
+    Verifica che entità su special layer (MARK) vengano classificate
+    come engrave — sia LINE isolate (in trash) sia loop chiusi (inner VS).
+    """
+
+    def setUp(self):
+        self.pipeline = run_pipeline(
+            ex("la_104.dxf"),
+            do_detect=True,
+            do_inject=True,
+            do_write=True,
+            special_layers={"MARK": "engrave"},
+        )
+
+    def test_001_engrave_length_nonzero(self):
+        result = self.pipeline["result"]
+        value = get_custom(result, "total_engrave_length", 0)
+        self.assertGreater(value, 0)
+
+    def test_002_no_mark_entities_on_inner_after_write(self):
+        msp = self.pipeline["msp"]
+        mark_on_inner = [
+            e for e in msp
+            if e.dxf.layer == "InnerContour"
+            and e.dxftype() == "LWPOLYLINE"
+        ]
+        # D e O non devono essere su InnerContour
+        self.assertEqual(len(mark_on_inner), 0)  # solo i fori reali
+
+    def test_003_no_mark_layer_survives_write(self):
+        msp = self.pipeline["msp"]
+        mark_count = count_entities_on_layer(msp, "MARK")
+        self.assertEqual(mark_count, 0)
+
+
+class TestSpecialLayersWithoutDetect(unittest.TestCase):
+    """
+    Senza detect(), le entità su layer non-strutturale vanno in Trash.
+    """
+
+    def setUp(self):
+        self.pipeline = run_pipeline(
+            ex("la_104.dxf"),
+            do_detect=False,
+            do_write=True,
+        )
+
+    def test_001_mark_goes_to_trash_without_detect(self):
+        msp = self.pipeline["msp"]
+        mark_count = count_entities_on_layer(msp, "MARK")
+        self.assertEqual(mark_count, 0)
+
+    def test_002_trash_has_entities(self):
+        msp = self.pipeline["msp"]
+        trash_count = count_entities_on_layer(msp, "Trash")
+        self.assertGreater(trash_count, 0)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
