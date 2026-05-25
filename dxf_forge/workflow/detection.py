@@ -175,11 +175,12 @@ def _detect_special_layers(
             hole.confidence = 1.0
             hole.source     = "special_layers"
 
-        # --- contorni inner non-foro su layer speciale (come prima) ---
+        # --- contorni inner non-foro su layer speciale ---
         remaining = []
         for inner in part.inners:
             check_layer = (inner.source_layer or inner.layer).lower()
             work_type   = layer_to_work.get(check_layer)
+            # print(f"  INNER check_layer={check_layer!r} work_type={work_type!r} entity={inner.entity} polygon={inner.polygon is not None}")
             if work_type is None:
                 remaining.append(inner)
                 continue
@@ -193,11 +194,13 @@ def _detect_special_layers(
                 confidence=1.0,
                 source="special_layers",
                 data=data,
+                polygon=inner.polygon,  # ← UNICA AGGIUNTA
             )
             result.classified_entities.append(ce)
+            if inner.vs_id is not None:
+                result._suppressed_vs_ids.add(inner.vs_id)
             _assign_to_part(ce, result)
         part.inners = remaining
-
 
 # ---------------------------------------------------------------------------
 # Step 2 — promozione fori da geometric_hint (certezza < 1.0)
@@ -300,7 +303,7 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
     GeometryHints — quelle informazioni vivono ora su Hole.hole_type.
     _assign_to_part gestisce solo entità non-Hole (bending, engrave, ecc.).
     """
-    probe = _entity_probe_point(ce.entity)
+    probe = _entity_probe_point(ce)
     if probe is None:
         return
 
@@ -394,8 +397,36 @@ def _extract_data(entity, work_type: str) -> dict:
     }
 
 
-def _entity_probe_point(entity) -> Optional[Point]:
+# def _entity_probe_point(entity) -> Optional[Point]:
+#     """Punto rappresentativo dell'entità per il containment check."""
+#     try:
+#         dtype = entity.dxftype()
+#         if dtype == "LINE":
+#             return Point(
+#                 (entity.dxf.start.x + entity.dxf.end.x) / 2,
+#                 (entity.dxf.start.y + entity.dxf.end.y) / 2,
+#             )
+#         if dtype in ("CIRCLE", "ARC"):
+#             return Point(entity.dxf.center.x, entity.dxf.center.y)
+#         if dtype == "LWPOLYLINE":
+#             pts = list(entity.get_points())
+#             if pts:
+#                 return Point(
+#                     sum(p[0] for p in pts) / len(pts),
+#                     sum(p[1] for p in pts) / len(pts),
+#                 )
+#     except Exception:
+#         pass
+#     return None
+
+def _entity_probe_point(ce: ClassifiedEntity) -> Optional[Point]:
     """Punto rappresentativo dell'entità per il containment check."""
+    # print(f"  [probe] entity={ce.entity} polygon={ce.polygon is not None if hasattr(ce, 'polygon') else 'NO_ATTR'}")
+    if ce.entity is None:
+        if ce.polygon is not None:
+            return ce.polygon.centroid
+        return None
+    entity = ce.entity
     try:
         dtype = entity.dxftype()
         if dtype == "LINE":
@@ -415,7 +446,6 @@ def _entity_probe_point(entity) -> Optional[Point]:
     except Exception:
         pass
     return None
-
 
 def _entity_length(entity) -> Optional[float]:
     """Lunghezza di un'entità aperta (LINE, ARC) per engrave e marking."""

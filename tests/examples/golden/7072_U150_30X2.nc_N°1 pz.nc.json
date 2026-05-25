@@ -12,9 +12,7 @@
       "inners_wkt": [],
       "outer_layer": "OuterContour",
       "inners_layers": [],
-      "custom": {
-        "total_engrave_length": 53.4853
-      }
+      "custom": {}
     },
     {
       "area_mm2": 93749.7,
@@ -26,9 +24,7 @@
       "inners_wkt": [],
       "outer_layer": "OuterContour",
       "inners_layers": [],
-      "custom": {
-        "total_engrave_length": 53.4853
-      }
+      "custom": {}
     },
     {
       "area_mm2": 18749.94,
@@ -125,6 +121,12 @@
             "layer": "MARK",
             "confidence": 1.0,
             "source": "special_layers"
+          },
+          {
+            "length": 53.4853,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
           }
         ],
         "total_engrave_length": 181.6971
@@ -140,9 +142,7 @@
       "inners_wkt": [],
       "outer_layer": "OuterContour",
       "inners_layers": [],
-      "custom": {
-        "total_engrave_length": 53.4853
-      }
+      "custom": {}
     }
   ]
 }

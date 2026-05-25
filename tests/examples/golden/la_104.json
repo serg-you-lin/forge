@@ -163,6 +163,12 @@
             "layer": "MARK",
             "confidence": 1.0,
             "source": "special_layers"
+          },
+          {
+            "length": 30.3796,
+            "layer": "MARK",
+            "confidence": 1.0,
+            "source": "special_layers"
           }
         ],
         "plain_holes_count": 2,

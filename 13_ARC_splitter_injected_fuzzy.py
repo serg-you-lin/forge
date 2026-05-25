@@ -18,7 +18,7 @@ import snapmark as sm
 
 
 # ← CAMBIA QUI
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC\6200012808 Sviluppo.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\j0080281_singolo.dxf"
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
 customer = 'ARC02'

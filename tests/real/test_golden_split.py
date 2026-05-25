@@ -100,7 +100,7 @@ class _SplitContext:
         if result.is_valid and result.parts:
             forge.detect(result, msp)
             forge.write(msp, result)
-            forge.split(msp, result, output_folder=str(output_folder))
+            forge.split(msp, result, output_folder=str(output_folder), namer=lambda i, part: f"{part.label}_P{i + 1:03d}",)
 
         for child in sorted(output_folder.glob("*.dxf")):
             child_doc = ezdxf.readfile(child)

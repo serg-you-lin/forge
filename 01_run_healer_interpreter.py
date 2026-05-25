@@ -78,13 +78,23 @@ result = forge.heal(
     source_file=file_name,
 )
 
+# print("=== INNERS PRIMA DI DETECT ===")
+# for i, part in enumerate(result.parts):
+#     for inner in part.inners:
+#         print(
+#             f"  part[{i}] inner "
+#             f"source_layer={inner.source_layer!r} "
+#             f"layer={inner.layer!r} "
+#             f"entity={inner.entity}"
+#         )
+
 forge.detect(
     result,
     msp,
-    # special_layers={
-    #     "Svasati": "countersink",
-    # },
-    interpreter=GeometricInterpreter(),
+    special_layers={
+        "MARK": "marking",
+    },
+    # interpreter=GeometricInterpreter(),
 )
 
 forge.write(msp, result)
@@ -97,15 +107,15 @@ forge.inject(msp, result)
 
 print(f"\n  Pezzi trovati : {result.part_count}")
 
-for i, part in enumerate(result.parts):
-    print(f"\n  Pezzo {i+1}:")
-    print(f"    Area outer : {part.outer.area:.1f}")
-    print(f"    Fori       : {len(part.inners)}")
-    print(f"    Bbox       : {part.bbox}")
+# for i, part in enumerate(result.parts):
+#     print(f"\n  Pezzo {i+1}:")
+#     print(f"    Area outer : {part.outer.area:.1f}")
+#     print(f"    Fori       : {len(part.inners)}")
+#     print(f"    Bbox       : {part.bbox}")
 
-    # DEBUG SPECIAL LAYERS
-    if part.custom:
-        print(f"    Custom      : {part.custom}")
+#     # DEBUG SPECIAL LAYERS
+#     if part.custom:
+#         print(f"    Custom      : {part.custom}")
 
 # ---------------------------------------------------------------------------
 # SAVE JSON
