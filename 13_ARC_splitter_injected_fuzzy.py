@@ -14,11 +14,17 @@ import json
 from dxf_forge.io.text_utils import clean_mtext
 from dxf_forge.io.exporter import build_metadata
 from dxf_forge.rules.interpreter import GeometricInterpreter
+import sys
+
+sys.path.insert(
+    0,
+    r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\snapmark"
+)
 import snapmark as sm
 
 
 # ← CAMBIA QUI
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\j0080281_singolo.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC\6200012773 Sviluppo.dxf"
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
 customer = 'ARC02'
@@ -190,6 +196,17 @@ def post_process(part, doc_out, path):
         text_layer="TEXT",
         text_color=3,
     ).execute_on_doc(doc_out, file_name=file_name, folder=output_dir)
+
+    sm.TrimBendingLines(
+        layer="Bending",
+        start_length=25,
+        end_length=25,
+    ).execute_on_doc(
+        doc_out,
+        file_name=file_name,
+        folder=output_dir,
+    )
+
 
     meta = build_metadata(part)
     json_path = os.path.splitext(path)[0] + ".json"

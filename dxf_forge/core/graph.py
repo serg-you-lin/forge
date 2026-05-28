@@ -81,19 +81,13 @@ def _normalized_endpoints(entity, decimals):
 # Costruzione grafo
 # ---------------------------------------------------------------------------
 
-def build_node_graph(msp, decimals=1, exclude_layers=None):
-    """
-    Costruisce il grafo topologico degli endpoint di LINE/ARC/SPLINE.
-    Nodi = endpoint arrotondati, archi = entità.
-
-    Args:
-        msp:            modelspace ezdxf
-        decimals:       cifre decimali per arrotondamento nodi
-        exclude_layers: set di nomi layer (lowercase) da escludere dal grafo
-    """
+def build_node_graph(msp, decimals=1, exclude_layers=None, exclude_ids=None):
     exclude_layers = set(exclude_layers or [])
+    exclude_ids    = set(exclude_ids    or [])
 
     def _is_excluded(entity):
+        if id(entity) in exclude_ids:
+            return True
         if not exclude_layers:
             return False
         layer = entity.dxf.layer.lower() if entity.dxf.hasattr('layer') else ''
@@ -111,7 +105,6 @@ def build_node_graph(msp, decimals=1, exclude_layers=None):
         graph[e].append((entity, s))
 
     return graph
-
 
 # ---------------------------------------------------------------------------
 # Ricerca loop

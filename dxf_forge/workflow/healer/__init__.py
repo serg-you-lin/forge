@@ -118,11 +118,15 @@ def heal(
     closed_splines = [s for s in all_splines if     _spline_is_closed(s, tolerance)]
     open_splines   = [s for s in all_splines if not _spline_is_closed(s, tolerance)]
 
-    # ------------------------------------------------------------------
-    # Pre-processing: close_gaps solo su endpoint liberi
+# ------------------------------------------------------------------
+    # Pre-processing
     # ------------------------------------------------------------------
     node_decimals = max(round(-np.log10(tolerance * 2)), 1)
-    graph_pre     = None
+
+    # ------------------------------------------------------------------
+    # Passo 0a: grafo iniziale per close_gaps e spline check
+    # ------------------------------------------------------------------
+    graph_pre = None
 
     if all_lines or all_arcs:
         graph_pre = build_node_graph(msp, decimals=node_decimals)
@@ -132,7 +136,7 @@ def heal(
             if fixed:
                 all_lines = list(msp.query("LINE"))
                 all_arcs  = list(msp.query("ARC"))
-                graph_pre = None
+                graph_pre = None          # verrà ricostruito sotto
 
     if open_splines:
         if graph_pre is None:
@@ -152,20 +156,58 @@ def heal(
                 break
 
     # ------------------------------------------------------------------
-    # Passo 1: LINE/ARC/SPLINE → grafo → loop → VirtualShape
+    # Passo 0b: pre-pass bending — rimuove dal grafo le LINE che causano
+    # branching (entrambi gli endpoint su nodi con degree > 2).
+    # Analogia: prima di cercare le stanze in una piantina, rimuovi i
+    # muri divisori interni — così le pareti esterne formano un loop pulito.
+    # Le LINE rimosse vengono reintegrate dopo in all_lines, così finiscono
+    # in trash e _detect_bending_lines() le classifica normalmente.
+    # ------------------------------------------------------------------
+    candidate_bending_ids = set()
+
+    if all_lines or all_arcs:
+        graph_full    = build_node_graph(msp, decimals=node_decimals)
+        branching_nodes = {
+            node for node, neighbors in graph_full.items() if len(neighbors) > 2
+        }
+
+        if branching_nodes:
+            for line in all_lines:
+                s = round_point((line.dxf.start.x, line.dxf.start.y), node_decimals)
+                e = round_point((line.dxf.end.x,   line.dxf.end.y),   node_decimals)
+                if s in branching_nodes and e in branching_nodes:
+                    candidate_bending_ids.add(id(line))
+
+            if candidate_bending_ids:
+                result.warnings.append(
+                    f"{len(candidate_bending_ids)} LINE candidate come bending "
+                    f"escluse dal grafo (entrambi gli endpoint su nodi di branching)."
+                )
+                all_lines = [l for l in all_lines if id(l) not in candidate_bending_ids]
+
+    # ------------------------------------------------------------------
+    # Passo 1: LINE/ARC/SPLINE → grafo (senza candidate bending) → loop → VirtualShape
     # ------------------------------------------------------------------
     entities_in_loops: set = set()
 
     if all_lines or all_arcs or open_splines:
-        graph = build_node_graph(msp, decimals=node_decimals)
+        graph = build_node_graph(msp, decimals=node_decimals,
+                                 exclude_ids=candidate_bending_ids)
         loops = find_closed_loops(graph)
         loops = _deduplicate_loops(loops)
 
+        # Reintegra le candidate bending in all_lines —
+        # non partecipano ai loop ma devono finire in trash per detect()
+        all_lines_full = list(msp.query("LINE"))
+        all_lines = all_lines + [
+            l for l in all_lines_full if id(l) in candidate_bending_ids
+        ]
+
         if loops:
-            branching_nodes = check_loop_ambiguity(loops, graph)
-            if branching_nodes:
+            branching_nodes_check = check_loop_ambiguity(loops, graph)
+            if branching_nodes_check:
                 result.warnings.append(
-                    f"Geometria ambigua: {len(branching_nodes)} nodi con più di 2 "
+                    f"Geometria ambigua: {len(branching_nodes_check)} nodi con più di 2 "
                     f"connessioni all'interno dei loop chiusi. Verificare il risultato."
                 )
 

@@ -397,28 +397,6 @@ def _extract_data(entity, work_type: str) -> dict:
     }
 
 
-# def _entity_probe_point(entity) -> Optional[Point]:
-#     """Punto rappresentativo dell'entità per il containment check."""
-#     try:
-#         dtype = entity.dxftype()
-#         if dtype == "LINE":
-#             return Point(
-#                 (entity.dxf.start.x + entity.dxf.end.x) / 2,
-#                 (entity.dxf.start.y + entity.dxf.end.y) / 2,
-#             )
-#         if dtype in ("CIRCLE", "ARC"):
-#             return Point(entity.dxf.center.x, entity.dxf.center.y)
-#         if dtype == "LWPOLYLINE":
-#             pts = list(entity.get_points())
-#             if pts:
-#                 return Point(
-#                     sum(p[0] for p in pts) / len(pts),
-#                     sum(p[1] for p in pts) / len(pts),
-#                 )
-#     except Exception:
-#         pass
-#     return None
-
 def _entity_probe_point(ce: ClassifiedEntity) -> Optional[Point]:
     """Punto rappresentativo dell'entità per il containment check."""
     # print(f"  [probe] entity={ce.entity} polygon={ce.polygon is not None if hasattr(ce, 'polygon') else 'NO_ATTR'}")

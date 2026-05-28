@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/BB.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\6200012964 non lo fa_MOD.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -107,15 +107,15 @@ forge.inject(msp, result)
 
 print(f"\n  Pezzi trovati : {result.part_count}")
 
-# for i, part in enumerate(result.parts):
-#     print(f"\n  Pezzo {i+1}:")
-#     print(f"    Area outer : {part.outer.area:.1f}")
-#     print(f"    Fori       : {len(part.inners)}")
-#     print(f"    Bbox       : {part.bbox}")
+for i, part in enumerate(result.parts):
+    print(f"\n  Pezzo {i+1}:")
+    print(f"    Area outer : {part.outer.area:.1f}")
+    print(f"    Fori       : {len(part.inners)}")
+    print(f"    Bbox       : {part.bbox}")
 
-#     # DEBUG SPECIAL LAYERS
-#     if part.custom:
-#         print(f"    Custom      : {part.custom}")
+    # DEBUG SPECIAL LAYERS
+    if part.custom:
+        print(f"    Custom      : {part.custom}")
 
 # ---------------------------------------------------------------------------
 # SAVE JSON

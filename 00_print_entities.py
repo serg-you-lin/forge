@@ -16,7 +16,7 @@ from dxf_forge.dxf_inspect import DxfInspector
 from collections import Counter
 import dxf_forge as forge
 
-DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_23_04_2026\BAR2.00079-ZN 42D025Z00I_healed.dxf"
+DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\6200012976_INDAGARE_LINEA_PIEGATURA.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(
@@ -48,8 +48,8 @@ def analyze_dxf(input_file: str):
         doc = forge.upgrade_to_r2010(doc)
     msp = doc.modelspace()
     inspector.analyze(msp, title=input_file, doc=doc)
-    # for e in msp:
-    #   print(e.dxftype())
+    for e in msp:
+      print(e.dxftype())
     for e in msp:
         if e.dxftype() == 'INSERT':
             try:
