@@ -48,8 +48,8 @@ def analyze_dxf(input_file: str):
         doc = forge.upgrade_to_r2010(doc)
     msp = doc.modelspace()
     inspector.analyze(msp, title=input_file, doc=doc)
-    # for e in msp:
-    #   print(e.dxftype())
+    for e in msp:
+      print(e.dxftype())
     for e in msp:
         if e.dxftype() == 'INSERT':
             try:
