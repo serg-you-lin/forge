@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"LOCAL_DRAWING.dxf"
+input_dxf = r"tests/examples/ORDERCODE_AMBIGUO.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)

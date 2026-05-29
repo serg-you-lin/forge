@@ -72,6 +72,7 @@ from ...rules.layers import (
     COLOR_OUTER, COLOR_INNER,
     HOLE_DIAMETER_THRESHOLD, STRUCTURAL_LAYERS,
 )
+from dxf_forge.core import graph
 
 
 def heal(
@@ -155,18 +156,101 @@ def heal(
                 )
                 break
 
-    # ------------------------------------------------------------------
-    # Passo 0b: pre-pass bending — rimuove dal grafo le LINE che causano
-    # branching (entrambi gli endpoint su nodi con degree > 2).
-    # Analogia: prima di cercare le stanze in una piantina, rimuovi i
-    # muri divisori interni — così le pareti esterne formano un loop pulito.
-    # Le LINE rimosse vengono reintegrate dopo in all_lines, così finiscono
-    # in trash e _detect_bending_lines() le classifica normalmente.
+# ------------------------------------------------------------------
+    # Passo 0b: pre-pass — rimuove dal grafo le LINE che non fanno parte
+    # di nessun loop, in due fasi:
+    #
+    # Fase 1 — endpoint liberi (degree <= 1): LINE con almeno un endpoint
+    #   non connesso a nessun altro segmento. Non possono fare parte di un
+    #   loop chiuso → vanno in trash direttamente.
+    #
+    # Fase 2 — candidate bending (degree > 2 su entrambi gli endpoint):
+    #   LINE che attraversano il contorno toccando due nodi di branching.
+    #   Vengono escluse dal grafo e reintegrate in all_lines dopo i loop,
+    #   così finiscono in trash e _detect_bending_lines() le classifica.
+
+    # Fase 3 — candidate bending: LINE con entrambi gli endpoint su nodi
+    #           di branching → escluse dal grafo, reintegrate dopo i loop
+    #           così detect() le classifica come bending
     # ------------------------------------------------------------------
     candidate_bending_ids = set()
+    free_endpoint_ids     = set()
+    redundant_line_ids    = set()
 
     if all_lines or all_arcs:
-        graph_full    = build_node_graph(msp, decimals=node_decimals)
+        graph_full = build_node_graph(msp, decimals=node_decimals)
+
+        # Fase 1
+        for line in all_lines:
+            s = round_point((line.dxf.start.x, line.dxf.start.y), node_decimals)
+            e = round_point((line.dxf.end.x,   line.dxf.end.y),   node_decimals)
+            if len(graph_full.get(s, [])) <= 1 or len(graph_full.get(e, [])) <= 1:
+                free_endpoint_ids.add(id(line))
+
+        if free_endpoint_ids:
+            all_lines  = [l for l in all_lines if id(l) not in free_endpoint_ids]
+            graph_full = build_node_graph(msp, decimals=node_decimals,
+                                          exclude_ids=free_endpoint_ids)
+            result.warnings.append(
+                f"{len(free_endpoint_ids)} LINE con endpoint libero "
+                f"escluse dal grafo (geometria aperta o trash)."
+            )
+
+        # Fase 2
+        branching_nodes_full = {
+            node for node, neighbors in graph_full.items() if len(neighbors) > 2
+        }
+        print(f"\n--- DEBUG GRAPH prima fase 2 ---")
+        for node, neighbors in graph_full.items():
+            if len(neighbors) > 2:
+                print(f"  BRANCHING NODE {node}: degree={len(neighbors)}")
+                for ent, nbr in neighbors:
+                    print(f"    → {ent.dxftype()} layer={ent.dxf.layer}")
+        print(f"  Nodi totali: {len(graph_full)}")
+        for node, neighbors in graph_full.items():
+            if len(neighbors) != 3:
+                continue
+            seen = set()
+            unique = []
+            for e, n in neighbors:
+                if id(e) not in seen:
+                    seen.add(id(e))
+                    unique.append((e, n))
+            arcs  = [e for e, _ in unique if e.dxftype() == 'ARC']
+            lines = [e for e, _ in unique if e.dxftype() == 'LINE']
+            if len(arcs) == 1 and len(lines) == 2:
+                arc = arcs[0]
+                from ...core.geometry import arc_endpoints
+                arc_s, arc_e = arc_endpoints(arc)
+                arc_s = round_point(arc_s, node_decimals)
+                arc_e = round_point(arc_e, node_decimals)
+                def _near(a, b, tol=1.5):
+                    return abs(a[0]-b[0]) < tol and abs(a[1]-b[1]) < tol
+
+                for line in lines:
+                    s = round_point((line.dxf.start.x, line.dxf.start.y), node_decimals)
+                    e = round_point((line.dxf.end.x,   line.dxf.end.y),   node_decimals)
+                    other = e if s == node else s
+                    if _near(other, arc_s) or _near(other, arc_e):
+                        redundant_line_ids.add(id(line))
+
+        if redundant_line_ids:
+            all_lines  = [l for l in all_lines if id(l) not in redundant_line_ids]
+            graph_full = build_node_graph(msp, decimals=node_decimals,
+                                          exclude_ids=free_endpoint_ids | redundant_line_ids)
+            result.warnings.append(
+                f"{len(redundant_line_ids)} LINE ridondanti escluse dal grafo "
+                f"(angoli già raccordati da ARC)."
+            )
+            print(f"\n--- DEBUG GRAPH dopo fase 2 ---")
+            for node, neighbors in graph_full.items():
+                if len(neighbors) > 2:
+                    print(f"  BRANCHING NODE {node}: degree={len(neighbors)}")
+                    for ent, nbr in neighbors:
+                        print(f"    → {ent.dxftype()} layer={ent.dxf.layer}")
+            print(f"  Nodi totali: {len(graph_full)}")
+
+        # Fase 3
         branching_nodes = {
             node for node, neighbors in graph_full.items() if len(neighbors) > 2
         }
@@ -185,6 +269,8 @@ def heal(
                 )
                 all_lines = [l for l in all_lines if id(l) not in candidate_bending_ids]
 
+
+
     # ------------------------------------------------------------------
     # Passo 1: LINE/ARC/SPLINE → grafo (senza candidate bending) → loop → VirtualShape
     # ------------------------------------------------------------------
@@ -192,9 +278,20 @@ def heal(
 
     if all_lines or all_arcs or open_splines:
         graph = build_node_graph(msp, decimals=node_decimals,
-                                 exclude_ids=candidate_bending_ids)
-        loops = find_closed_loops(graph)
-        loops = _deduplicate_loops(loops)
+                                 exclude_ids=candidate_bending_ids | free_endpoint_ids | redundant_line_ids)
+    
+        branching_residui = {
+            node for node, neighbors in graph.items() if len(neighbors) > 2
+        }
+        if branching_residui:
+            result.warnings.append(
+                f"Geometria ambigua: {len(branching_residui)} nodi con più di 2 "
+                f"connessioni nel grafo. Tentativo con fallback polygonize."
+            )
+            loops = []
+        else:
+            loops = find_closed_loops(graph)
+            loops = _deduplicate_loops(loops)
 
         # Reintegra le candidate bending in all_lines —
         # non partecipano ai loop ma devono finire in trash per detect()
