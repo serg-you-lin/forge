@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\6200012964 non lo fa_MOD.dxf"
+input_dxf = r"tests/examples/6200012967_AMBIGUO.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)

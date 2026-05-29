@@ -79,6 +79,7 @@ def detect(
     msp,
     special_layers: dict                     = None,
     interpreter:    Optional[BaseInterpreter] = None,
+    bending_tolerance: float                    = 1.0,
 ) -> None:
     """
     Rileva la semantica geometrica e popola geometry_hints e part.custom.
@@ -110,7 +111,7 @@ def detect(
     if special_layers:
         _detect_special_layers(result, msp, special_layers)
 
-    _detect_bending_lines(result)
+    _detect_bending_lines(result, bending_tolerance=bending_tolerance)
 
     _detect_holes(result, all_arcs)
 
@@ -444,7 +445,7 @@ def _entity_length(entity) -> Optional[float]:
 
 
 
-def _detect_bending_lines(result: ForgeResult) -> None:
+def _detect_bending_lines(result: ForgeResult, bending_tolerance: float = 1.0) -> None:
     """
     Step geometrico: individua LINE interne all'outer di ogni part
     e popola geometry_hints.bend_line_ids.
@@ -473,6 +474,8 @@ def _detect_bending_lines(result: ForgeResult) -> None:
             outer    = part.outer.polygon
             boundary = outer.boundary
 
+            if s.distance(e) < bending_tolerance:
+                continue
             if boundary.distance(s) < 1.0 and boundary.distance(e) < 1.0:
                 midpoint = Point(
                     (entity.dxf.start.x + entity.dxf.end.x) / 2,

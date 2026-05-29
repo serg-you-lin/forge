@@ -187,6 +187,25 @@ msp.add_circle((cx, cy, 0), radius=5)    # piccolo → resta come hole
 save(doc, "rect_with_countersink.dxf")
 
 
+# ---------------------------------------------------------------------------
+# Esempio 14: rettangolo + linea di mezzeria verticale dal lato orizzontale
+# ---------------------------------------------------------------------------
+doc = ezdxf.new('R2010')
+msp = doc.modelspace()
+
+# Rettangolo 100 x 50 (LINE separate)
+msp.add_line((0, 0, 0),    (100, 0, 0))
+msp.add_line((100, 0, 0),  (100, 50, 0))
+msp.add_line((100, 50, 0), (0, 50, 0))
+msp.add_line((0, 50, 0),   (0, 0, 0))
+
+# Linea di mezzeria: parte dal punto medio del lato orizzontale inferiore
+# e sale fino a metà altezza, parallela ai lati verticali
+msp.add_line((50, 0, 0), (50, 25, 0))
+
+save(doc, "rect_centerline.dxf")
+
+
 def generate_rect_with_threaded_holes():
     doc = ezdxf.new()
     msp = doc.modelspace()

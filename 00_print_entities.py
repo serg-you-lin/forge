@@ -15,8 +15,9 @@ import ezdxf
 from dxf_forge.dxf_inspect import DxfInspector
 from collections import Counter
 import dxf_forge as forge
+import math
 
-DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\6200012976_INDAGARE_LINEA_PIEGATURA.dxf"
+DEFAULT_FILE = r"tests/examples/6200012967_AMBIGUO.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(
@@ -25,11 +26,46 @@ inspector = DxfInspector(
     arcs      = True,
     polylines = True,
     circles   = False,
-    splines   = True,
-    graph     = False,  # ← il più utile per debug ambiguità
+    splines   = False,
+    graph     = True,
     dimensions = False,
-    text      = True,
+    text      = False,
 )
+
+def debug_point_on_arc(msp, tolerance=2.0):
+    all_lines = list(msp.query("LINE"))
+    all_arcs  = list(msp.query("ARC"))
+
+    # linee con entrambi gli endpoint scollegati (degree=1 nel grafo)
+    # le identifichiamo come quelle che NON condividono coordinate con altre entità
+    # approssimazione: le stampiamo tutte e per ognuna testiamo tutti gli archi
+    print(f"\n--- DEBUG POINT ON ARC ---")
+    print(f"  tolerance={tolerance}")
+    print(f"  LINE totali: {len(all_lines)}")
+    print(f"  ARC totali:  {len(all_arcs)}\n")
+
+    for line in all_lines:
+        s_raw = (line.dxf.start.x, line.dxf.start.y)
+        e_raw = (line.dxf.end.x,   line.dxf.end.y)
+
+        for arc in all_arcs:
+            cx = arc.dxf.center.x
+            cy = arc.dxf.center.y
+            r  = arc.dxf.radius
+
+            for label, (px, py) in [("S", s_raw), ("E", e_raw)]:
+                dist  = math.sqrt((px - cx)**2 + (py - cy)**2)
+                diff  = abs(dist - r)
+                angle = math.degrees(math.atan2(py - cy, px - cx)) % 360
+
+                if diff < tolerance * 10:   # stampa solo i casi vicini
+                    print(
+                        f"  LINE {s_raw} → {e_raw}  pt={label}\n"
+                        f"    ARC center=({cx:.2f},{cy:.2f}) r={r:.3f} "
+                        f"angles={arc.dxf.start_angle:.1f}→{arc.dxf.end_angle:.1f}\n"
+                        f"    dist={dist:.4f}  diff={diff:.4f}  angle={angle:.2f}  "
+                        f"tolerance={tolerance}\n"
+                    )
 
 
 def analyze_dxf(input_file: str):
@@ -47,17 +83,53 @@ def analyze_dxf(input_file: str):
     if doc.dxfversion < 'AC1015':
         doc = forge.upgrade_to_r2010(doc)
     msp = doc.modelspace()
-    inspector.analyze(msp, title=input_file, doc=doc)
+
+
+
+    from collections import defaultdict
+    import math
+
+    def round_pt(p, d=1):
+        return (round(p[0], d), round(p[1], d))
+    
+    graph = defaultdict(list)
     for e in msp:
-      print(e.dxftype())
-    for e in msp:
-        if e.dxftype() == 'INSERT':
-            try:
-                block = doc.blocks.get(e.dxf.name)
-                inner = Counter(sub.dxftype() for sub in block)
-                print(f"  INSERT '{e.dxf.name}' contiene: {dict(inner)}")
-            except Exception as ex:
-                print(f"  INSERT error: {ex}")
+        if e.dxftype() == 'LINE':
+            s = round_pt((e.dxf.start.x, e.dxf.start.y))
+            en = round_pt((e.dxf.end.x, e.dxf.end.y))
+        elif e.dxftype() == 'ARC':
+            import ezdxf.math as emath
+            sa = math.radians(e.dxf.start_angle)
+            ea = math.radians(e.dxf.end_angle)
+            s  = round_pt((e.dxf.center.x + e.dxf.radius * math.cos(sa),
+                           e.dxf.center.y + e.dxf.radius * math.sin(sa)))
+            en = round_pt((e.dxf.center.x + e.dxf.radius * math.cos(ea),
+                           e.dxf.center.y + e.dxf.radius * math.sin(ea)))
+        else:
+            continue
+        graph[s].append((e, en))
+        graph[en].append((e, s))
+
+    print(f"\n--- DEBUG GRAPH ---")
+    print(f"  Nodi totali: {len(graph)}")
+    for node, neighbors in graph.items():
+        if len(neighbors) > 2:
+            print(f"  BRANCHING NODE {node}: degree={len(neighbors)}")
+            for ent, nbr in neighbors:
+                print(f"    → {ent.dxftype()} layer={ent.dxf.layer}")
+
+    # inspector.analyze(msp, title=input_file, doc=doc)
+    # debug_point_on_arc(msp, tolerance=2.0)
+    # for e in msp:
+    #   print(e.dxftype())
+    # for e in msp:
+    #     if e.dxftype() == 'INSERT':
+    #         try:
+    #             block = doc.blocks.get(e.dxf.name)
+    #             inner = Counter(sub.dxftype() for sub in block)
+    #             print(f"  INSERT '{e.dxf.name}' contiene: {dict(inner)}")
+    #         except Exception as ex:
+    #             print(f"  INSERT error: {ex}")
 
 
 if __name__ == "__main__":
