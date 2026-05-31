@@ -106,6 +106,7 @@ def build_node_graph(msp, decimals=1, exclude_layers=None, exclude_ids=None):
 
     return graph
 
+
 # ---------------------------------------------------------------------------
 # Ricerca loop
 # ---------------------------------------------------------------------------
