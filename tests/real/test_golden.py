@@ -71,16 +71,54 @@ def _make_golden_test(golden_path: Path):
         result = forge.heal(
             msp,
             tolerance=tolerance,
+            explode_inserts=True,
+            ignore_layers={"MARK", "engrave"},
         )
 
+        from dxf_forge.core.graph import build_node_graph
+        from dxf_forge.core.geometry import round_point
+
+        graph = build_node_graph(msp, decimals=2)
+        branching = {n for n, nb in graph.items() if len(nb) > 2}
+        print(f"nodi branching: {len(branching)}")
+        for line in msp.query("LINE"):
+            s = round_point((line.dxf.start.x, line.dxf.start.y), 2)
+            e = round_point((line.dxf.end.x, line.dxf.end.y), 2)
+            s_branch = s in branching
+            e_branch = e in branching
+            if s_branch or e_branch:
+                print(f"  LINE s_branch={s_branch} e_branch={e_branch} layer={line.dxf.layer}")
+
+        # print("trash nel test:", len(result.trash_entities))
+        # for e in result.trash_entities:
+        #     if e.dxf.hasattr("layer"):
+        #         print(f"  {e.dxftype()} layer={e.dxf.layer}")
+    
         forge.detect(
             result,
             msp,
             special_layers=special_layers,
         )
 
+        # print("part_count:", result.part_count)
+        # for i, part in enumerate(result.parts):
+        #     print(f"Part {i+1}: inners={len(part.inners)} holes={len(part.holes)}")
+        #     for j, inner in enumerate(part.inners):
+        #         print(f"  inner[{j}] layer={inner.layer!r} source_layer={inner.source_layer!r} vs_id={inner.vs_id}")
+                
         if special_layers:
             forge.inject(msp, result)
+
+        all_inners = sorted(
+            result.parts[0].holes + result.parts[0].inners,
+            key=lambda x: x.area,
+            reverse=True,
+        )
+        print("inners_layers actual:  ", [h.layer for h in all_inners])
+        print("inners_layers expected:", golden["parts"][0]["inners_layers"])
+        print("part_count actual:  ", result.part_count)
+        print("part_count expected:", golden["part_count"])
+
 
         self.assertEqual(
             result.part_count,
@@ -102,17 +140,17 @@ def _make_golden_test(golden_path: Path):
 
             actual_area = round(part.area, 4)
 
-            print(f"\n[DEBUG] {label}")
-            print(f"  holes count     = {len(part.holes)}")
-            print(f"  inners count    = {len(part.inners)}")
-            print(f"  all_inners      = {len(all_inners)}")
-            print(f"  expected holes  = {exp['holes_count']}")
-            print(f"  special_layers  = {special_layers}")
-            print(f"  outer  = {part.outer.area}")
-            for k, h in enumerate(all_inners):
-                print(f"  inner[{k}].layer = {h.layer!r}  area = {h.area:.4f}")
-            print(f"  actual_area     = {actual_area}")
-            print(f"  expected        = {exp['area_mm2']}")
+            # print(f"\n[DEBUG] {label}")
+            # print(f"  holes count     = {len(part.holes)}")
+            # print(f"  inners count    = {len(part.inners)}")
+            # print(f"  all_inners      = {len(all_inners)}")
+            # print(f"  expected holes  = {exp['holes_count']}")
+            # print(f"  special_layers  = {special_layers}")
+            # print(f"  outer  = {part.outer.area}")
+            # for k, h in enumerate(all_inners):
+            #     print(f"  inner[{k}].layer = {h.layer!r}  area = {h.area:.4f}")
+            # print(f"  actual_area     = {actual_area}")
+            # print(f"  expected        = {exp['area_mm2']}")
 
             self.assertAlmostEqual(
                 actual_area,
