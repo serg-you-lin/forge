@@ -11,12 +11,15 @@
       <material>S275JR</material>
       <thickness_mm>0.0</thickness_mm>
       <bending_lines>0</bending_lines>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
       <total_engrave_length_mm>0.0</total_engrave_length_mm>
       <area_mm2>14820.1916</area_mm2>
       <holes_count>1</holes_count>
+      <inner_contours_count>0</inner_contours_count>
       <outer_perimeter_mm>471.0497</outer_perimeter_mm>
-      <inner_perimeter_mm>188.4199</inner_perimeter_mm>
-      <total_perimeter_mm>659.4696</total_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>471.0497</total_perimeter_mm>
       <bbox>
         <minx>125.0</minx>
         <miny>-75.0</miny>
@@ -31,12 +34,15 @@
       <material>S275JR</material>
       <thickness_mm>0.0</thickness_mm>
       <bending_lines>0</bending_lines>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
       <total_engrave_length_mm>0.0</total_engrave_length_mm>
       <area_mm2>4940.0639</area_mm2>
       <holes_count>5</holes_count>
+      <inner_contours_count>0</inner_contours_count>
       <outer_perimeter_mm>314.0331</outer_perimeter_mm>
-      <inner_perimeter_mm>251.2265</inner_perimeter_mm>
-      <total_perimeter_mm>565.2596</total_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>314.0331</total_perimeter_mm>
       <bbox>
         <minx>-250.0</minx>
         <miny>-50.0</miny>

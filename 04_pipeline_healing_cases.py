@@ -6,12 +6,13 @@ Batch healer per tutti i DXF in una cartella.
 
 Regole:
 - ignora i file *_healed.dxf
-- sovrascrive i *_healed.dxf esistenti
-- processa solo file modificati dopo l'ultimo heal
+- processa solo file base
+- sovrascrive output healed
+- aggiunge detect + write + inject
 
 Output:
     nomefile_healed.dxf
-    nomefile_healed_metadata.json
+    nomefile_healed_metadata.json / xml
 """
 
 import ezdxf
@@ -24,7 +25,7 @@ from pathlib import Path
 # CARTELLA DA PROCESSARE
 # ------------------------------------------------
 
-input_dir = Path(r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\33-24\prove\prove").resolve()
+input_dir = Path(r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\dxf-forge\tests\examples").resolve()
 
 tolerance = 5
 
@@ -51,8 +52,8 @@ print(f"\nCartella analizzata: {input_dir}\n")
 # ------------------------------------------------
 
 dxf_files = [
-    f for f in input_dir.glob("*")
-    if f.is_file() and f.suffix.lower() == ".dxf"
+    f for f in input_dir.glob("*.dxf")
+    if f.is_file()
 ]
 
 if not dxf_files:
@@ -68,7 +69,7 @@ print(f"Trovati {len(dxf_files)} file\n")
 
 for input_dxf in dxf_files:
 
-    # ignora file già healati
+    # anti-loop: skip già processati
     if input_dxf.stem.endswith("_healed"):
         continue
 
@@ -78,15 +79,13 @@ for input_dxf in dxf_files:
     output_json = input_dxf.parent / f"{base_name}_healed_metadata.json"
     output_xml = input_dxf.parent / f"{base_name}_healed_metadata.xml"
 
-
     print("\n===================================")
     print(f"Apertura: {input_dxf.name}")
 
     try:
-
         doc = ezdxf.readfile(input_dxf)
 
-        if doc.dxfversion < 'AC1015':
+        if doc.dxfversion < "AC1015":
             doc = forge.upgrade_to_r2010(doc)
 
         msp = doc.modelspace()
@@ -108,37 +107,60 @@ for input_dxf in dxf_files:
         if not check.errors:
             print("  OK: nessun errore bloccante")
 
-        # ---------------- HEALING ----------------
+        # ---------------- HEAL ----------------
 
-        for entity in msp:
-            layer = entity.dxf.layer if entity.dxf.hasattr("layer") else ""
-            if layer.upper() in ("MARK", "MARCATURA"):
-                print(f"  Entità speciale: {entity.dxftype()} layer={layer}")
-        
         print("\n--- HEALING ---")
 
         result = forge.heal(
             msp,
             tolerance=tolerance,
-            write_to_msp=True,
+            explode_inserts=True,
             label=base_name,
             source_file=Path(input_dxf).name,
+)
+        
+        # result = forge.heal(
+        #     msp,
+        #     tolerance=tolerance,
+        #     write_to_msp=True,
+        #     label=base_name,
+        #     source_file=Path(input_dxf).name,
+        #     special_layers={
+        #         "MARK": "engrave",
+        #         "MARCATURA": "bending",
+        #     }
+        # )
+
+        # ---------------- DETECT ----------------
+
+        forge.detect(
+            result,
+            msp,
             special_layers={
-                "MARK": "engrave",                
+                "MARK": "engrave",
                 "MARCATURA": "bending",
             }
         )
 
-        # Scrive XDATA sul documento
+        # ---------------- WRITE + INJECT ----------------
+
+        forge.write(msp, result)
+        forge.inject(msp, result)
+
+        # ---------------- METADATA ----------------
+
         for part in result.parts:
             forge.write_metadata_to_dxf(doc, part)
+
+        forge.save_json(result, str(output_json))
+        forge.save_xml(result, str(output_xml))
 
         # debug XDATA
         for entity in msp:
             try:
-                xdata = entity.get_xdata('FORGE')
+                xdata = entity.get_xdata("FORGE")
                 if xdata:
-                    print(f"  XDATA scritta su: {entity.dxftype()} layer={entity.dxf.layer}")
+                    print(f"  XDATA su: {entity.dxftype()} layer={entity.dxf.layer}")
             except Exception:
                 pass
 
@@ -152,31 +174,26 @@ for input_dxf in dxf_files:
             print(f"  ERROR: {e}")
 
         for i, part in enumerate(result.parts):
-
             print(f"\n  Pezzo {i+1}:")
             print(f"    Area outer : {part.outer.area:.1f}")
             print(f"    Fori       : {len(part.inners)}")
             print(f"    Bbox       : {part.bbox}")
 
-        # salva metadata
-        forge.save_json(result, str(output_json))
-        forge.save_xml(result, str(output_xml)) 
+        # ---------------- SAVE DXF ----------------
 
         if not result.is_valid:
             print("File non valido — non salvato.")
             continue
 
-        # salva DXF
         doc.saveas(output_dxf)
 
-        #print(f"\nSalvato: {output_dxf.name}")
+        print(f"\nSalvato: {output_dxf.name}")
 
         # ---------------- DEBUG OUTPUT ----------------
 
-        print("\n--- LWPOLYLINE RISULTANTI ---")
+        print("\n--- OUTPUT INSPECT ---")
 
         inspector_out = DxfInspector(polylines=True, summary=False)
-
         saved_doc = ezdxf.readfile(output_dxf)
 
         inspector_out.analyze(
@@ -185,7 +202,6 @@ for input_dxf in dxf_files:
         )
 
     except Exception as e:
-
         print(f"\nERRORE su {input_dxf.name}")
         print(e)
 

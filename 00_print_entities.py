@@ -17,7 +17,8 @@ from collections import Counter
 import dxf_forge as forge
 import math
 
-DEFAULT_FILE = r"tests/examples/6200012967_AMBIGUO.dxf"
+
+DEFAULT_FILE = r"tests/examples/la_104.DXF"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(
@@ -68,6 +69,8 @@ def debug_point_on_arc(msp, tolerance=2.0):
                     )
 
 
+
+
 def analyze_dxf(input_file: str):
     input_file = os.path.abspath(input_file)
 
@@ -84,39 +87,46 @@ def analyze_dxf(input_file: str):
         doc = forge.upgrade_to_r2010(doc)
     msp = doc.modelspace()
 
+    mark_lines = [
+        e for e in msp
+        if e.dxftype() == "LINE" and e.dxf.layer == "MARK"
+    ]
+
+    print(f"\n--- MARK LINES ---")
+    print(f"Totale LINE su layer MARK: {len(mark_lines)}")
 
 
-    from collections import defaultdict
-    import math
+    # from collections import defaultdict
+    # import math
 
-    def round_pt(p, d=1):
-        return (round(p[0], d), round(p[1], d))
+    # def round_pt(p, d=1):
+    #     return (round(p[0], d), round(p[1], d))
     
-    graph = defaultdict(list)
-    for e in msp:
-        if e.dxftype() == 'LINE':
-            s = round_pt((e.dxf.start.x, e.dxf.start.y))
-            en = round_pt((e.dxf.end.x, e.dxf.end.y))
-        elif e.dxftype() == 'ARC':
-            import ezdxf.math as emath
-            sa = math.radians(e.dxf.start_angle)
-            ea = math.radians(e.dxf.end_angle)
-            s  = round_pt((e.dxf.center.x + e.dxf.radius * math.cos(sa),
-                           e.dxf.center.y + e.dxf.radius * math.sin(sa)))
-            en = round_pt((e.dxf.center.x + e.dxf.radius * math.cos(ea),
-                           e.dxf.center.y + e.dxf.radius * math.sin(ea)))
-        else:
-            continue
-        graph[s].append((e, en))
-        graph[en].append((e, s))
+    # graph = defaultdict(list)
+    # for e in msp:
+    #     if e.dxftype() == 'LINE':
+    #         s = round_pt((e.dxf.start.x, e.dxf.start.y))
+    #         en = round_pt((e.dxf.end.x, e.dxf.end.y))
+    #     elif e.dxftype() == 'ARC':
+    #         import ezdxf.math as emath
+    #         sa = math.radians(e.dxf.start_angle)
+    #         ea = math.radians(e.dxf.end_angle)
+    #         s  = round_pt((e.dxf.center.x + e.dxf.radius * math.cos(sa),
+    #                        e.dxf.center.y + e.dxf.radius * math.sin(sa)))
+    #         en = round_pt((e.dxf.center.x + e.dxf.radius * math.cos(ea),
+    #                        e.dxf.center.y + e.dxf.radius * math.sin(ea)))
+    #     else:
+    #         continue
+    #     graph[s].append((e, en))
+    #     graph[en].append((e, s))
 
-    print(f"\n--- DEBUG GRAPH ---")
-    print(f"  Nodi totali: {len(graph)}")
-    for node, neighbors in graph.items():
-        if len(neighbors) > 2:
-            print(f"  BRANCHING NODE {node}: degree={len(neighbors)}")
-            for ent, nbr in neighbors:
-                print(f"    → {ent.dxftype()} layer={ent.dxf.layer}")
+    # print(f"\n--- DEBUG GRAPH ---")
+    # print(f"  Nodi totali: {len(graph)}")
+    # for node, neighbors in graph.items():
+    #     if len(neighbors) > 2:
+    #         print(f"  BRANCHING NODE {node}: degree={len(neighbors)}")
+    #         for ent, nbr in neighbors:
+    #             print(f"    → {ent.dxftype()} layer={ent.dxf.layer}")
 
     # inspector.analyze(msp, title=input_file, doc=doc)
     # debug_point_on_arc(msp, tolerance=2.0)

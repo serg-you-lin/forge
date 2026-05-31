@@ -445,7 +445,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461123.795520833
+2461192.6067939815
   9
 $TDUCREATE
  40
@@ -453,7 +453,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461123.795520833
+2461192.6067939815
   9
 $TDUUPDATE
  40
@@ -889,7 +889,7 @@ $FINGERPRINTGUID
   9
 $VERSIONGUID
   2
-{EE16963C-18C8-4751-AF7D-06A0D4FF62CA}
+{A6BEF7FD-31D2-4500-A64B-6433E271EA99}
   9
 $EXTNAMES
 290
@@ -2161,7 +2161,7 @@ AcDbPolyline
 1001
 FORGE
 1000
-{"label": "7072_U150_30X2.nc_N°1 pz.nc", "source_file": "7072_U150_30X2.nc_N°1 pz.nc.dxf", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 0, "total_engrave_length_mm": 181.6972, "area_mm2": 18749.94, "holes_count": 0, "outer_perimeter_mm": 1309.996, "inner_perimeter_mm": 0, "total_perimeter_mm": 1309.996, "bbox": {"minx": 0.0, "miny": 220.0, "maxx": 624.998, "maxy": 250.0}}
+{"label": "7072_U150_30X2.nc_N°1 pz.nc", "source_file": "7072_U150_30X2.nc_N°1 pz.nc.dxf", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 0, "countersink_count": 0, "threaded_holes_count": 0, "total_engrave_length_mm": 0.0, "area_mm2": 18749.94, "holes_count": 0, "inner_contours_count": 0, "outer_perimeter_mm": 1309.996, "inner_perimeter_mm": 0, "total_perimeter_mm": 1309.996, "bbox": {"minx": 0.0, "miny": 220.0, "maxx": 624.998, "maxy": 250.0}}
   0
 TEXT
   5
@@ -2307,7 +2307,9 @@ D3
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2331,7 +2333,9 @@ D4
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2355,7 +2359,9 @@ D5
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2379,7 +2385,9 @@ D6
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2403,7 +2411,9 @@ D7
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2427,7 +2437,9 @@ D8
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2451,7 +2463,9 @@ D9
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2475,7 +2489,9 @@ DA
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2499,7 +2515,9 @@ DB
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2523,7 +2541,9 @@ DC
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2547,7 +2567,9 @@ DD
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2571,7 +2593,9 @@ DE
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2595,7 +2619,9 @@ DF
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2619,7 +2645,9 @@ E0
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2643,7 +2671,9 @@ E1
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2667,7 +2697,9 @@ E2
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2691,7 +2723,9 @@ E3
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2715,7 +2749,9 @@ E4
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2739,7 +2775,9 @@ E5
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2763,7 +2801,9 @@ E6
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2787,7 +2827,9 @@ E7
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -2811,7 +2853,9 @@ E8
 100
 AcDbEntity
   8
-MARK
+Engrave
+ 62
+9
 100
 AcDbLine
  10
@@ -22249,7 +22293,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-23T18:05:33.979803+00:00
+1.4.3 @ 2026-05-31T12:33:47.247220+00:00
   0
 ENDSEC
   0

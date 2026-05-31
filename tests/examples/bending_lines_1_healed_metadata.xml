@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>bending_lines_1.DXF</source_file>
+  <is_valid>true</is_valid>
+  <part_count>1</part_count>
+  <parts>
+    <part>
+      <label>bending_lines_1</label>
+      <source_file>bending_lines_1.DXF</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>2</bending_lines>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>25577.868</area_mm2>
+      <holes_count>2</holes_count>
+      <inner_contours_count>0</inner_contours_count>
+      <outer_perimeter_mm>720.0457</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>720.0457</total_perimeter_mm>
+      <bbox>
+        <minx>-40.84</minx>
+        <miny>0.0</miny>
+        <maxx>221.1828</maxx>
+        <maxy>98.0</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

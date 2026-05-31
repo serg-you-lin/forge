@@ -493,7 +493,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461125.3463425925
+2461192.6068055555
   9
 $TDUCREATE
  40
@@ -501,7 +501,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461125.3463425925
+2461192.6068055555
   9
 $TDUUPDATE
  40
@@ -553,7 +553,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-273
+274
   9
 $SURFTAB1
  70
@@ -937,7 +937,7 @@ $FINGERPRINTGUID
   9
 $VERSIONGUID
   2
-{96D7BE00-D6A0-4E20-AB32-351BC33D7F0D}
+{18914DF5-D81A-488C-A186-714980350437}
   9
 $EXTNAMES
 290
@@ -2007,7 +2007,7 @@ APPID
 100
 AcDbSymbolTable
  70
-10
+11
   0
 APPID
   5
@@ -2131,13 +2131,27 @@ AcDbSymbolTableRecord
 100
 AcDbRegAppTableRecord
   2
-HATCHBACKGROUNDCOLOR
+FORGE
  70
 0
   0
 APPID
   5
 270
+330
+9
+100
+AcDbSymbolTableRecord
+100
+AcDbRegAppTableRecord
+  2
+HATCHBACKGROUNDCOLOR
+ 70
+0
+  0
+APPID
+  5
+271
 330
 9
 100
@@ -2817,9 +2831,9 @@ LINE
 100
 AcDbEntity
   8
-Trash
+Bending
  62
-1
+11
 100
 AcDbLine
  10
@@ -2843,9 +2857,9 @@ LINE
 100
 AcDbEntity
   8
-Trash
+Bending
  62
-1
+11
 100
 AcDbLine
  10
@@ -2869,9 +2883,9 @@ LINE
 100
 AcDbEntity
   8
-Trash
+Bending
  62
-1
+11
 100
 AcDbLine
  10
@@ -2920,6 +2934,10 @@ AcDbPolyline
 2832.151272362881
  20
 1508.201094284523
+1001
+FORGE
+1000
+{"label": "linee_di_piegatura_interne", "source_file": "linee_di_piegatura_interne.dxf", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 3, "countersink_count": 0, "threaded_holes_count": 0, "total_engrave_length_mm": 0.0, "area_mm2": 894515.4179, "holes_count": 0, "inner_contours_count": 0, "outer_perimeter_mm": 4264.3513, "inner_perimeter_mm": 0, "total_perimeter_mm": 4264.3513, "bbox": {"minx": 1268.7277, "miny": 934.0463, "maxx": 2832.1513, "maxy": 1508.2011}}
   0
 ENDSEC
   0
@@ -3003,7 +3021,7 @@ AcDbVariableDictionary
   3
 EZDXF_META
 350
-271
+272
   0
 SUN
   5
@@ -13243,7 +13261,7 @@ CELLSTYLE_END
   0
 DICTIONARY
   5
-271
+272
 330
 C
 100
@@ -13255,19 +13273,19 @@ AcDbDictionary
   3
 WRITTEN_BY_EZDXF
 350
-272
+273
   0
 DICTIONARYVAR
   5
-272
+273
 330
-271
+272
 100
 DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-25T07:18:44.370224+00:00
+1.4.3 @ 2026-05-31T12:33:48.157001+00:00
   0
 ENDSEC
   0

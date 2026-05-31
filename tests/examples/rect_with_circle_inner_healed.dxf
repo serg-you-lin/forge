@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461123.7955439813
+2461192.6068055555
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461123.7955439813
+2461192.6068055555
   9
 $TDUUPDATE
  40
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{B8F7BDAC-51AE-4FE9-BE97-1BEC17EE0C31}
+{AF990ECD-E396-4DF6-B225-D05AD768756B}
   9
 $VERSIONGUID
   2
-{2C671DE8-BE0F-4B62-B24D-79E674ABB144}
+{5082DC6E-79C7-44F7-93A0-B6F62E3E9F9B}
   9
 $EXTNAMES
 290
@@ -1323,9 +1323,9 @@ ISM
   0
 CLASS
   1
-ACDBPLACEHOLDER
+LAYOUT
   2
-AcDbPlaceHolder
+AcDbLayout
   3
 ObjectDBX Classes
  90
@@ -1339,9 +1339,9 @@ ObjectDBX Classes
   0
 CLASS
   1
-LAYOUT
+ACDBPLACEHOLDER
   2
-AcDbLayout
+AcDbPlaceHolder
   3
 ObjectDBX Classes
  90
@@ -2073,7 +2073,7 @@ AcDbPolyline
 1001
 FORGE
 1000
-{"label": "rect_with_circle_inner", "source_file": "rect_with_circle_inner.dxf", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 0, "total_engrave_length_mm": 0.0, "area_mm2": 54981.5224, "holes_count": 1, "outer_perimeter_mm": 1000.0, "inner_perimeter_mm": 251.2265, "total_perimeter_mm": 1251.2265, "bbox": {"minx": 0.0, "miny": 0.0, "maxx": 300.0, "maxy": 200.0}}
+{"label": "rect_with_circle_inner", "source_file": "rect_with_circle_inner.dxf", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 0, "countersink_count": 0, "threaded_holes_count": 0, "total_engrave_length_mm": 0.0, "area_mm2": 54981.5224, "holes_count": 1, "inner_contours_count": 0, "outer_perimeter_mm": 1000.0, "inner_perimeter_mm": 0, "total_perimeter_mm": 1000.0, "bbox": {"minx": 0.0, "miny": 0.0, "maxx": 300.0, "maxy": 200.0}}
   0
 CIRCLE
   5
@@ -3099,7 +3099,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-12T18:26:04.676031+00:00
+1.4.3 @ 2026-05-29T08:07:19.744482+00:00
   0
 DICTIONARYVAR
   5
@@ -3111,7 +3111,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-23T18:05:35.281923+00:00
+1.4.3 @ 2026-05-31T12:33:48.797550+00:00
   0
 ENDSEC
   0

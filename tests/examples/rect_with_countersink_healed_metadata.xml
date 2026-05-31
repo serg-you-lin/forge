@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>rect_with_countersink.dxf</source_file>
+  <is_valid>true</is_valid>
+  <part_count>1</part_count>
+  <parts>
+    <part>
+      <label>rect_with_countersink</label>
+      <source_file>rect_with_countersink.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <countersink_count>1</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>19921.5863</area_mm2>
+      <holes_count>1</holes_count>
+      <inner_contours_count>0</inner_contours_count>
+      <outer_perimeter_mm>600.0</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>600.0</total_perimeter_mm>
+      <bbox>
+        <minx>0.0</minx>
+        <miny>0.0</miny>
+        <maxx>200.0</maxx>
+        <maxy>100.0</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

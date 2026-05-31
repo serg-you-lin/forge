@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>two_rects_with_bend.dxf</source_file>
+  <is_valid>true</is_valid>
+  <part_count>2</part_count>
+  <warnings>
+    <warning>Nessun loop trovato via grafo, uso polygonize come fallback.</warning>
+    <warning>LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta.</warning>
+  </warnings>
+  <parts>
+    <part>
+      <label>two_rects_with_bend</label>
+      <source_file>two_rects_with_bend.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>20000.0</area_mm2>
+      <holes_count>0</holes_count>
+      <inner_contours_count>0</inner_contours_count>
+      <outer_perimeter_mm>600.0</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>600.0</total_perimeter_mm>
+      <bbox>
+        <minx>0.0</minx>
+        <miny>0.0</miny>
+        <maxx>200.0</maxx>
+        <maxy>100.0</maxy>
+      </bbox>
+    </part>
+    <part>
+      <label>two_rects_with_bend</label>
+      <source_file>two_rects_with_bend.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>20000.0</area_mm2>
+      <holes_count>0</holes_count>
+      <inner_contours_count>0</inner_contours_count>
+      <outer_perimeter_mm>600.0</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>600.0</total_perimeter_mm>
+      <bbox>
+        <minx>300.0</minx>
+        <miny>0.0</miny>
+        <maxx>500.0</maxx>
+        <maxy>100.0</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

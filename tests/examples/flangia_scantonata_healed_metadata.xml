@@ -11,17 +11,20 @@
       <material>S275JR</material>
       <thickness_mm>0.0</thickness_mm>
       <bending_lines>0</bending_lines>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
       <total_engrave_length_mm>0.0</total_engrave_length_mm>
-      <area_mm2>75792.4515</area_mm2>
+      <area_mm2>76010.8891</area_mm2>
       <holes_count>5</holes_count>
-      <outer_perimeter_mm>1118.146</outer_perimeter_mm>
-      <inner_perimeter_mm>778.8021</inner_perimeter_mm>
-      <total_perimeter_mm>1896.9481</total_perimeter_mm>
+      <inner_contours_count>0</inner_contours_count>
+      <outer_perimeter_mm>1118.7536</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>1118.7536</total_perimeter_mm>
       <bbox>
         <minx>-150.0</minx>
-        <miny>-179.9361</miny>
+        <miny>-179.9996</miny>
         <maxx>180.0</maxx>
-        <maxy>179.9361</maxy>
+        <maxy>179.9996</maxy>
       </bbox>
     </part>
   </parts>

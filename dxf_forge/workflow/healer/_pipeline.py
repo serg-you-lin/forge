@@ -1,0 +1,466 @@
+import numpy as np
+from shapely.geometry import Polygon, LineString
+from shapely.ops import unary_union, snap, polygonize
+
+from ...models import (
+    ForgeResult,
+    ForgePart,
+    ForgeContour,
+    GeometryHints,
+    Hole,
+    HOLE_TYPE_UNKNOWN,
+)
+from ...core.geometry import (
+    pline_to_polygon,
+    circle_to_polygon,
+    arc_to_linestrings,
+)
+from ...core.graph import (
+    build_node_graph,
+    find_closed_loops,
+    classify_loops,
+    check_loop_ambiguity,
+)
+from ...core.virtual import (
+    VirtualShape,
+    _loop_to_virtual_shape,
+)
+from ._helpers import (
+    _free_endpoints,
+    _spline_is_closed,
+    _spline_to_polygon,
+)
+from ._utils import (
+    _deduplicate_entities,
+    _deduplicate_loops,
+    _explode_inserts,
+)
+from ...core.gap import close_gaps
+from ...core.graph import spline_endpoints
+from ...core.geometry import round_point
+
+from ...rules.layers import (
+    LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
+    COLOR_OUTER, COLOR_INNER,
+    HOLE_DIAMETER_THRESHOLD, STRUCTURAL_LAYERS,
+)
+
+
+class HealerPipeline:
+    def __init__(self, msp, tolerance, label="", source_file="", explode_inserts=False, ignore_layers=None):
+        self.msp             = msp
+        self.tolerance       = tolerance
+        self.label           = label
+        self.source_file     = source_file
+        self.explode_inserts = explode_inserts
+        self.ignore_layers   = {l.lower() for l in (ignore_layers or [])}
+
+        self.node_decimals = max(round(-np.log10(tolerance * 2)), 1)
+        self.result        = ForgeResult(source_file=source_file)
+
+        self.candidate_bending_ids  = set()
+        self.classified_entity_ids  = set()
+        self.classified_virtual_ids = set()
+        self.entities_in_loops      = set()
+
+        self.all_lines      = []
+        self.all_arcs       = []
+        self.all_plines     = []
+        self.all_circles    = []
+        self.all_splines    = []
+        self.closed_splines = []
+        self.open_splines   = []
+
+    def run(self):
+        self._handle_inserts()
+        self._load()
+        if not self.result.is_valid:
+            return self.result
+        self._preprocess()
+        self._find_bending_candidates()
+        self._find_loops()
+        self._build_hierarchy()
+        self._build_trash()
+        return self.result
+
+    def _build_graph(self, exclude_ids=None):
+        return build_node_graph(
+            self.msp,
+            decimals=self.node_decimals,
+            exclude_ids=exclude_ids or set(),
+            exclude_layers=self.ignore_layers,
+        )
+
+    def _handle_inserts(self):
+        inserts_found = list(self.msp.query("INSERT"))
+        if inserts_found:
+            if self.explode_inserts:
+                n = _explode_inserts(self.msp)
+                self.result.warnings.append(f"{n} INSERT esplosi prima dell'healing.")
+            else:
+                self.result.warnings.append(
+                    f"Trovati {len(inserts_found)} INSERT (blocchi) non esplosi — "
+                    f"usa explode_inserts=True in heal() per includerli."
+                )
+
+    def _load(self):
+        removed = _deduplicate_entities(self.msp, tolerance=self.tolerance)
+        if removed > 0:
+            self.result.warnings.append(f"Rimosse {removed} entità duplicate dal msp.")
+
+        self.all_lines   = list(self.msp.query("LINE"))
+        self.all_arcs    = list(self.msp.query("ARC"))
+        self.all_plines  = list(self.msp.query("LWPOLYLINE POLYLINE"))
+        self.all_circles = list(self.msp.query("CIRCLE"))
+        self.all_splines = list(self.msp.query("SPLINE"))
+
+        if not any([self.all_lines, self.all_arcs, self.all_plines,
+                    self.all_circles, self.all_splines]):
+            self.result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
+            self.result.is_valid = False
+            return
+
+        self.closed_splines = [s for s in self.all_splines if     _spline_is_closed(s, self.tolerance)]
+        self.open_splines   = [s for s in self.all_splines if not _spline_is_closed(s, self.tolerance)]
+
+    def _preprocess(self):
+        if not (self.all_lines or self.all_arcs):
+            return
+
+        graph_pre = self._build_graph()
+        free = _free_endpoints(graph_pre, self.msp, self.node_decimals)
+
+        if free:
+            fixed = close_gaps(self.msp, free, self.tolerance)
+            if fixed:
+                self.all_lines = list(self.msp.query("LINE"))
+                self.all_arcs  = list(self.msp.query("ARC"))
+                graph_pre      = None
+
+        if self.open_splines:
+            if graph_pre is None:
+                graph_pre = self._build_graph()
+            for spline in self.open_splines:
+                s, e = spline_endpoints(spline)
+                if s is None or e is None:
+                    continue
+                s_r = round_point(s)
+                e_r = round_point(e)
+                if len(graph_pre.get(s_r, [])) < 2 or len(graph_pre.get(e_r, [])) < 2:
+                    self.result.warnings.append(
+                        "SPLINE con endpoint non connesso trovata — "
+                        "gap tra SPLINE e altre entità gestito con una linea di congiunzione. "
+                        "Verificare manualmente la correttezza del file."
+                    )
+                    break
+
+    def _find_bending_candidates(self):
+        if not (self.all_lines or self.all_arcs):
+            return
+
+        graph_full      = self._build_graph()
+        branching_nodes = {
+            node for node, neighbors in graph_full.items() if len(neighbors) > 2
+        }
+
+        if not branching_nodes:
+            return
+
+        for line in self.all_lines:
+            s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
+            e = round_point((line.dxf.end.x,   line.dxf.end.y),   self.node_decimals)
+            if s in branching_nodes and e in branching_nodes:
+                self.candidate_bending_ids.add(id(line))
+
+        if self.candidate_bending_ids:
+            self.result.warnings.append(
+                f"{len(self.candidate_bending_ids)} LINE candidate come bending "
+                f"escluse dal grafo (entrambi gli endpoint su nodi di branching)."
+            )
+            self.all_lines = [l for l in self.all_lines if id(l) not in self.candidate_bending_ids]
+
+    def _find_loops(self):
+        if not (self.all_lines or self.all_arcs or self.open_splines):
+            return
+
+        graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
+        loops = find_closed_loops(graph)
+        loops = _deduplicate_loops(loops)
+
+        # reintegra le candidate: devono finire in trash per detect()
+        all_lines_full = list(self.msp.query("LINE"))
+        self.all_lines = self.all_lines + [
+            l for l in all_lines_full if id(l) in self.candidate_bending_ids
+        ]
+
+        if not loops:
+            self.result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
+            segments = []
+            for l in self.all_lines:
+                segments.append(LineString([
+                    (l.dxf.start.x, l.dxf.start.y),
+                    (l.dxf.end.x,   l.dxf.end.y),
+                ]))
+            for a in self.all_arcs:
+                segments.extend(arc_to_linestrings(a))
+            merged   = unary_union(segments)
+            snapped  = snap(merged, merged, self.tolerance)
+            polygons = list(polygonize(snapped))
+            if polygons:
+                self.result.warnings.append(
+                    f"Geometria ricostruita via fallback polygonize "
+                    f"({len(polygons)} poligoni). Verificare il risultato."
+                )
+                self.entities_in_loops = {id(e) for e in self.all_lines + self.all_arcs}
+                self.result._entities_in_loops_ids = self.entities_in_loops
+                for poly in polygons:
+                    if not poly.is_valid:
+                        poly = poly.buffer(0)
+                    pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
+                    self.result._virtual_shapes.append(VirtualShape(
+                        pts_with_bulge=pts, polygon=poly,
+                        layer=LAYER_OUTER, color=COLOR_OUTER,
+                    ))
+                    for interior in poly.interiors:
+                        pts_i = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
+                        self.result._virtual_shapes.append(VirtualShape(
+                            pts_with_bulge=pts_i, polygon=Polygon(interior),
+                            layer=LAYER_INNER, color=COLOR_INNER,
+                        ))
+            else:
+                self.result.warnings.append(
+                    "LINE/ARC non formano loop chiusi — "
+                    "potrebbero essere marcature o geometria aperta."
+                )
+            return
+
+        branching_check = check_loop_ambiguity(loops, graph)
+        if branching_check:
+            self.result.warnings.append(
+                f"Geometria ambigua: {len(branching_check)} nodi con più di 2 "
+                f"connessioni all'interno dei loop chiusi. Verificare il risultato."
+            )
+
+        outer_loops, inner_loops = classify_loops(loops)
+        self.entities_in_loops = {
+            id(e) for loop in (outer_loops + inner_loops) for e, _ in loop
+        }
+        self.result._entities_in_loops_ids = self.entities_in_loops
+
+        for loop in outer_loops:
+            vs = _loop_to_virtual_shape(loop, LAYER_OUTER, COLOR_OUTER)
+            if vs is not None:
+                self.result._virtual_shapes.append(vs)
+        for loop in inner_loops:
+            vs = _loop_to_virtual_shape(loop, LAYER_INNER, COLOR_INNER)
+            if vs is not None:
+                self.result._virtual_shapes.append(vs)
+
+    def _build_hierarchy(self):
+        shapes = []
+        for vs in self.result._virtual_shapes:
+            shapes.append((vs, vs.polygon, "VIRTUAL"))
+        for pline in self.all_plines:
+            poly = pline_to_polygon(pline)
+            if poly:
+                shapes.append((pline, poly, "LWPOLYLINE"))
+        for circle in self.all_circles:
+            poly = circle_to_polygon(circle)
+            if poly:
+                shapes.append((circle, poly, "CIRCLE"))
+        for spline in self.closed_splines:
+            poly = _spline_to_polygon(spline)
+            if poly:
+                shapes.append((spline, poly, "SPLINE"))
+
+        if not shapes:
+            self.result.errors.append("Nessuna geometria chiusa trovata dopo healing.")
+            self.result.is_valid = False
+            return
+
+        shapes.sort(key=lambda x: x[1].area, reverse=True)
+
+        def _place(obj, poly, tipo, nodes):
+            for node in nodes:
+                if node[1].contains(poly):
+                    if not _place(obj, poly, tipo, node[3]):
+                        node[3].append([obj, poly, tipo, []])
+                    return True
+            return False
+
+        fathers = []
+        for obj, poly, tipo in shapes:
+            if not _place(obj, poly, tipo, fathers):
+                fathers.append([obj, poly, tipo, []])
+
+        for node in fathers:
+            for child in node[3]:
+                if child[2] == "VIRTUAL":
+                    child[0].layer = LAYER_INNER
+                    child[0].color = COLOR_INNER
+
+        for father in fathers:
+            father_obj, father_poly, father_tipo, children = father
+
+            outer = ForgeContour(
+                polygon=father_poly,
+                is_inner=False,
+                layer=LAYER_OUTER,
+                entity=father_obj if father_tipo != "VIRTUAL" else None,
+            )
+
+            if father_tipo == "VIRTUAL":
+                self.classified_virtual_ids.add(id(father_obj))
+            else:
+                self.classified_entity_ids.add(id(father_obj))
+
+            holes  = []
+            inners = []
+
+            for child in children:
+                child_obj, child_poly, child_tipo, grandchildren = child
+
+                if grandchildren:
+                    if child_tipo == "VIRTUAL":
+                        self.classified_virtual_ids.add(id(child_obj))
+                    else:
+                        self.classified_entity_ids.add(id(child_obj))
+                        self.result.trash_entities.append(child_obj)
+
+                    outer_diameter = child_obj.dxf.radius * 2 if child_tipo == "CIRCLE" else None
+
+                    for gc in grandchildren:
+                        gc_obj, gc_poly, gc_tipo, _ = gc
+
+                        if gc_tipo == "CIRCLE":
+                            diameter = gc_obj.dxf.radius * 2
+                            center   = (gc_obj.dxf.center.x, gc_obj.dxf.center.y)
+                            layer    = LAYER_HOLE if diameter < HOLE_DIAMETER_THRESHOLD else LAYER_INNER
+                            holes.append(Hole(
+                                polygon=gc_poly,
+                                diameter=diameter,
+                                center=center,
+                                hole_type=HOLE_TYPE_UNKNOWN,
+                                geometric_hint="countersink",
+                                layer=layer,
+                                source_layer=(
+                                    gc_obj.source_layer if gc_tipo == "VIRTUAL"
+                                    else gc_obj.dxf.layer if gc_obj.dxf.hasattr("layer")
+                                    else ""
+                                ),
+                                entity=gc_obj,
+                                outer_diameter=outer_diameter,
+                                outer_entity=child_obj if child_tipo != "VIRTUAL" else None,
+                            ))
+                        else:
+                            inners.append(ForgeContour(
+                                polygon=gc_poly,
+                                is_inner=True,
+                                layer=LAYER_INNER,
+                                is_hole=False,
+                                entity=gc_obj if gc_tipo != "VIRTUAL" else None,
+                                source_layer=(
+                                    gc_obj.source_layer if gc_tipo == "VIRTUAL"
+                                    else gc_obj.dxf.layer if gc_obj.dxf.hasattr("layer")
+                                    else ""
+                                ),
+                            ))
+
+                        if gc_tipo == "VIRTUAL":
+                            self.classified_virtual_ids.add(id(gc_obj))
+                        else:
+                            self.classified_entity_ids.add(id(gc_obj))
+
+                else:
+                    if child_tipo == "CIRCLE":
+                        diameter = child_obj.dxf.radius * 2
+                        center   = (child_obj.dxf.center.x, child_obj.dxf.center.y)
+                        layer    = LAYER_HOLE if diameter < HOLE_DIAMETER_THRESHOLD else LAYER_INNER
+                        holes.append(Hole(
+                            polygon=child_poly,
+                            diameter=diameter,
+                            center=center,
+                            hole_type=HOLE_TYPE_UNKNOWN,
+                            geometric_hint="",
+                            layer=layer,
+                            source_layer=(
+                                child_obj.dxf.layer if child_obj.dxf.hasattr("layer") else ""
+                            ),
+                            entity=child_obj,
+                        ))
+                    else:
+                        inners.append(ForgeContour(
+                            polygon=child_poly,
+                            is_inner=True,
+                            layer=LAYER_INNER,
+                            is_hole=False,
+                            entity=child_obj if child_tipo != "VIRTUAL" else None,
+                            source_layer=(
+                                child_obj.source_layer if child_tipo == "VIRTUAL"
+                                else child_obj.dxf.layer if child_obj.dxf.hasattr("layer")
+                                else ""
+                            ),
+                            vs_id=id(child_obj) if child_tipo == "VIRTUAL" else None,
+                        ))
+
+                    if child_tipo == "VIRTUAL":
+                        self.classified_virtual_ids.add(id(child_obj))
+                    else:
+                        self.classified_entity_ids.add(id(child_obj))
+
+            entity_ids = set()
+            entity_ids.add(id(father_obj))
+
+            for child in children:
+                child_obj, _, child_tipo, grandchildren = child
+                entity_ids.add(id(child_obj))
+                for gc in grandchildren:
+                    gc_obj, _, gc_tipo, _ = gc
+                    entity_ids.add(id(gc_obj))
+
+            for hole in holes:
+                if hole.entity is not None:
+                    entity_ids.add(id(hole.entity))
+                if hole.outer_entity is not None:
+                    entity_ids.add(id(hole.outer_entity))
+
+            for inner in inners:
+                if inner.entity is not None:
+                    entity_ids.add(id(inner.entity))
+
+            part = ForgePart(
+                outer=outer,
+                holes=holes,
+                inners=inners,
+                label=self.label,
+                source_file=self.source_file,
+                custom={},
+                geometry_hints=GeometryHints(),
+                entity_ids=entity_ids,
+            )
+
+            if father_tipo == "VIRTUAL":
+                self.result._vs_to_part[id(father_obj)] = part
+
+            for child in children:
+                child_obj, _, child_tipo, grandchildren = child
+                if child_tipo == "VIRTUAL":
+                    self.result._vs_to_part[id(child_obj)] = part
+                for gc in grandchildren:
+                    gc_obj, _, gc_tipo, _ = gc
+                    if gc_tipo == "VIRTUAL":
+                        self.result._vs_to_part[id(gc_obj)] = part
+
+            self.result.parts.append(part)
+
+    def _build_trash(self):
+        self.result.trash_entities += [
+            e for e in self.msp
+            if id(e) not in self.classified_entity_ids
+            and id(e) not in self.classified_virtual_ids
+            and id(e) not in self.entities_in_loops
+            and e.dxf.hasattr("layer")
+            and e.dxf.layer.upper() not in STRUCTURAL_LAYERS
+        ]
+
+        self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)

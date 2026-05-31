@@ -3,6 +3,9 @@
   <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
   <is_valid>true</is_valid>
   <part_count>4</part_count>
+  <warnings>
+    <warning>1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).</warning>
+  </warnings>
   <parts>
     <part>
       <label>7072_U150_30X2.nc_N°1 pz.nc</label>
@@ -11,9 +14,12 @@
       <material>S275JR</material>
       <thickness_mm>0.0</thickness_mm>
       <bending_lines>0</bending_lines>
-      <total_engrave_length_mm>181.6972</total_engrave_length_mm>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
       <area_mm2>93749.7</area_mm2>
       <holes_count>0</holes_count>
+      <inner_contours_count>0</inner_contours_count>
       <outer_perimeter_mm>1549.996</outer_perimeter_mm>
       <inner_perimeter_mm>0</inner_perimeter_mm>
       <total_perimeter_mm>1549.996</total_perimeter_mm>
@@ -31,9 +37,12 @@
       <material>S275JR</material>
       <thickness_mm>0.0</thickness_mm>
       <bending_lines>0</bending_lines>
-      <total_engrave_length_mm>181.6972</total_engrave_length_mm>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
       <area_mm2>93749.7</area_mm2>
       <holes_count>0</holes_count>
+      <inner_contours_count>0</inner_contours_count>
       <outer_perimeter_mm>1549.996</outer_perimeter_mm>
       <inner_perimeter_mm>0</inner_perimeter_mm>
       <total_perimeter_mm>1549.996</total_perimeter_mm>
@@ -51,9 +60,12 @@
       <material>S275JR</material>
       <thickness_mm>0.0</thickness_mm>
       <bending_lines>0</bending_lines>
-      <total_engrave_length_mm>181.6972</total_engrave_length_mm>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>181.6971</total_engrave_length_mm>
       <area_mm2>18749.94</area_mm2>
       <holes_count>0</holes_count>
+      <inner_contours_count>0</inner_contours_count>
       <outer_perimeter_mm>1309.996</outer_perimeter_mm>
       <inner_perimeter_mm>0</inner_perimeter_mm>
       <total_perimeter_mm>1309.996</total_perimeter_mm>
@@ -71,9 +83,12 @@
       <material>S275JR</material>
       <thickness_mm>0.0</thickness_mm>
       <bending_lines>0</bending_lines>
-      <total_engrave_length_mm>181.6972</total_engrave_length_mm>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
       <area_mm2>18749.94</area_mm2>
       <holes_count>0</holes_count>
+      <inner_contours_count>0</inner_contours_count>
       <outer_perimeter_mm>1309.996</outer_perimeter_mm>
       <inner_perimeter_mm>0</inner_perimeter_mm>
       <total_perimeter_mm>1309.996</total_perimeter_mm>

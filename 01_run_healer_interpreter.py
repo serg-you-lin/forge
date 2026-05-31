@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/6200012967_AMBIGUO.dxf"
+input_dxf = r"tests/examples/piega_cazzuta.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -55,18 +55,18 @@ msp = doc.modelspace()
 # VALIDAZIONE
 # ---------------------------------------------------------------------------
 
-print("\n--- VALIDAZIONE ---")
+# print("\n--- VALIDAZIONE ---")
 
-check = forge.validate_msp(msp)
+# check = forge.validate_msp(msp)
 
-for w in check.warnings:
-    print(f"  WARN: {w}")
+# for w in check.warnings:
+#     print(f"  WARN: {w}")
 
-for e in check.errors:
-    print(f"  ERROR: {e}")
+# for e in check.errors:
+#     print(f"  ERROR: {e}")
 
-if not check.errors:
-    print("  OK: nessun errore bloccante")
+# if not check.errors:
+#     print("  OK: nessun errore bloccante")
 
 
 # Dopo
@@ -77,23 +77,19 @@ result = forge.heal(
     label=base_name,
     source_file=file_name,
 )
+# print("trash SUBITO dopo heal:", len(result.trash_entities))
 
-# print("=== INNERS PRIMA DI DETECT ===")
-# for i, part in enumerate(result.parts):
-#     for inner in part.inners:
-#         print(
-#             f"  part[{i}] inner "
-#             f"source_layer={inner.source_layer!r} "
-#             f"layer={inner.layer!r} "
-#             f"entity={inner.entity}"
-#         )
+# print("trash nello script:", len(result.trash_entities))
+# for e in result.trash_entities:
+#     if e.dxf.hasattr("layer"):
+#         print(f"  {e.dxftype()} layer={e.dxf.layer}")
 
 forge.detect(
     result,
     msp,
-    # special_layers={
-    #     "MARK": "marking",
-    # },
+    special_layers={
+        "MARK": "engrave",
+    },
     # interpreter=GeometricInterpreter(),
 )
 

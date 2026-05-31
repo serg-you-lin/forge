@@ -1,0 +1,14 @@
+{
+  "source_file": "6200012964_lineette_bastarde.dxf",
+  "is_valid": false,
+  "part_count": 0,
+  "warnings": [
+    "4 INSERT esplosi prima dell'healing.",
+    "Nessun loop trovato via grafo, uso polygonize come fallback.",
+    "LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta."
+  ],
+  "errors": [
+    "Nessuna geometria chiusa trovata dopo healing."
+  ],
+  "parts": []
+}

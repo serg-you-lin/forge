@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>piega_cazzuta.dxf</source_file>
+  <is_valid>true</is_valid>
+  <part_count>2</part_count>
+  <warnings>
+    <warning>Rimosse 2 entità duplicate dal msp.</warning>
+    <warning>2 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).</warning>
+    <warning>Geometria ambigua: 2 nodi con più di 2 connessioni all'interno dei loop chiusi. Verificare il risultato.</warning>
+  </warnings>
+  <parts>
+    <part>
+      <label>piega_cazzuta</label>
+      <source_file>piega_cazzuta.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>2</bending_lines>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>273219.7549</area_mm2>
+      <holes_count>5</holes_count>
+      <inner_contours_count>1</inner_contours_count>
+      <outer_perimeter_mm>4359.3607</outer_perimeter_mm>
+      <inner_perimeter_mm>3725.6081</inner_perimeter_mm>
+      <total_perimeter_mm>8084.9688</total_perimeter_mm>
+      <bbox>
+        <minx>-190.557</minx>
+        <miny>-834.7334</miny>
+        <maxx>271.1765</maxx>
+        <maxy>878.7334</maxy>
+      </bbox>
+    </part>
+    <part>
+      <label>piega_cazzuta</label>
+      <source_file>piega_cazzuta.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>0</bending_lines>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>700919.827</area_mm2>
+      <holes_count>0</holes_count>
+      <inner_contours_count>0</inner_contours_count>
+      <outer_perimeter_mm>4143.4668</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>4143.4668</total_perimeter_mm>
+      <bbox>
+        <minx>-172.6236</minx>
+        <miny>-800.9334</miny>
+        <maxx>253.2431</maxx>
+        <maxy>844.9334</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>

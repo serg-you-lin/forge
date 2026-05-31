@@ -1,0 +1,15 @@
+{
+  "source_file": "archi_si_no.dxf",
+  "is_valid": false,
+  "part_count": 0,
+  "warnings": [
+    "1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).",
+    "Geometria ambigua: 2 nodi con più di 2 connessioni nel grafo. Tentativo con fallback polygonize.",
+    "Nessun loop trovato via grafo, uso polygonize come fallback.",
+    "LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta."
+  ],
+  "errors": [
+    "Nessuna geometria chiusa trovata dopo healing."
+  ],
+  "parts": []
+}
