@@ -1,37 +1,20 @@
-# import snapmark as sm
-# #print(dir(sm))
+import ezdxf
+import math
 
-# print(sm.FixSeq.__doc__)
-# print(sm.TextBuilder.__doc__)
+doc = ezdxf.readfile(r"tests/examples/rect_with_threaded_holes_geometric.dxf")
+msp = doc.modelspace()
 
+circles = list(msp.query("CIRCLE"))
+arcs    = list(msp.query("ARC"))
 
-from tests.unit.test_collinear import make_line
+for c in circles:
+    print(f"CIRCLE  center=({c.dxf.center.x:.2f}, {c.dxf.center.y:.2f})  r={c.dxf.radius:.2f}")
 
-
-a = make_line(0.0, -39.628, 45.0, -39.628)
-b = make_line(0.0,  21.114,  5.2,  21.114)
-
-from dxf_forge.core.geometry import _line_direction, _point_to_line_distance
-
-print("dir_a:", _line_direction(a))
-print("dir_b:", _line_direction(b))
-print("cross:", abs(_line_direction(a)[0] * _line_direction(b)[1] - _line_direction(a)[1] * _line_direction(b)[0]))
-print("dist:", _point_to_line_distance(b.dxf.start.x, b.dxf.start.y, a))
-
-
-
-from dxf_forge.core.geometry import are_collinear
-
-lines = [
-    make_line(125.0, -39.628, 170.0, -39.628),
-    make_line(0.0,   -39.628,  45.0, -39.628),
-    make_line(125.0,  21.114, 130.2,  21.114),
-    make_line(164.8,  21.114, 170.0,  21.114),
-    make_line(0.0,    21.114,   5.2,  21.114),
-    make_line(39.8,   21.114,  45.0,  21.114),
-]
-
-for i, a in enumerate(lines):
-    for j, b in enumerate(lines):
-        if i != j:
-            print(f"  {i} vs {j}: {are_collinear(a, b)}")
+for a in arcs:
+    cx, cy = a.dxf.center.x, a.dxf.center.y
+    r      = a.dxf.radius
+    start  = a.dxf.start_angle
+    end    = a.dxf.end_angle
+    # swept convenzionale ezdxf (CCW)
+    swept  = (end - start) % 360
+    print(f"ARC     center=({cx:.2f}, {cy:.2f})  r={r:.2f}  start={start:.1f}°  end={end:.1f}°  swept={swept:.1f}°")

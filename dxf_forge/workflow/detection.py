@@ -211,7 +211,7 @@ def _detect_holes(result: ForgeResult, all_arcs: list) -> None:
     #print("\n--- ENTER DETECT HOLES ---")
     for part in result.parts:
         for hole in part.holes:
-            #print("[HOLE BEFORE]", id(hole), hole.source, hole.hole_type)
+            # print(f"[detect_holes] hole entity={hole.entity} source={hole.source} hole_type={hole.hole_type} geometric_hint={hole.geometric_hint}")
 
             # ✔️ HARD LOCK: già deciso da special_layers
             if hole.source == "special_layers":
@@ -242,6 +242,8 @@ def _detect_holes(result: ForgeResult, all_arcs: list) -> None:
                 hole.hole_type  = HOLE_TYPE_PLAIN
                 hole.confidence = 1.0
                 hole.source     = "geometric"
+
+            # print(f"  → dopo detect: hole_type={hole.hole_type}")
 
 
 # ---------------------------------------------------------------------------

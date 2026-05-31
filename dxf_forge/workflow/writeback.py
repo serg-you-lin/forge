@@ -116,6 +116,9 @@ def write(
             target_layer, target_color = WORK_TYPE_TO_LAYER.get(
                 work_type, (TRASH_LAYER, COLOR_TRASH)
             )
+            if entity.dxftype() == "CIRCLE":
+                print(f"  → assegno layer={target_layer} color={target_color}")
+
             entity.dxf.layer = target_layer
             entity.dxf.color = target_color
         elif layer.upper() in STRUCTURAL_LAYERS:
@@ -310,14 +313,17 @@ def _build_work_index(result: ForgeResult) -> dict:
     index = {}
     for part in result.parts:
         for hole in part.holes:
+            # print(f"[work_index] hole_type={hole.hole_type} entity={hole.entity} outer_entity={hole.outer_entity}")
             if hole.hole_type == HOLE_TYPE_COUNTERSINK and hole.outer_entity is not None:
                 index[id(hole.outer_entity)] = "countersink"
             elif hole.hole_type == HOLE_TYPE_THREADED and hole.entity is not None:
                 index[id(hole.entity)] = "threaded_hole"
+                # print(f"  → indicizzato id={id(hole.entity)} come threaded_hole")
 
         for eid in part.geometry_hints.bend_line_ids:
             index[eid] = "bending"
 
+    # print(f"[work_index] totale: {len(index)} entità")
     return index
 
 

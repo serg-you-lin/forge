@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/piega_cazzuta.dxf"
+input_dxf = r"tests/examples/Multifeature.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -77,18 +77,15 @@ result = forge.heal(
     label=base_name,
     source_file=file_name,
 )
-# print("trash SUBITO dopo heal:", len(result.trash_entities))
-
-# print("trash nello script:", len(result.trash_entities))
-# for e in result.trash_entities:
-#     if e.dxf.hasattr("layer"):
-#         print(f"  {e.dxftype()} layer={e.dxf.layer}")
 
 forge.detect(
     result,
     msp,
     special_layers={
         "MARK": "engrave",
+        "Filettati": "threaded_hole",
+        "Svasati": "countersink",   
+        "Piega": "bending", 
     },
     # interpreter=GeometricInterpreter(),
 )
