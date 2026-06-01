@@ -110,7 +110,6 @@ def build_node_graph(msp, decimals=1, exclude_layers=None, exclude_ids=None):
 # ---------------------------------------------------------------------------
 # Ricerca loop
 # ---------------------------------------------------------------------------
-
 def find_closed_loops(graph):
     """
     Trova tutti i loop chiusi nel grafo.
@@ -125,11 +124,12 @@ def find_closed_loops(graph):
       orientamento consistente, indipendentemente dalla direzione
       scelta dall'algoritmo greedy.
     """
+    pruned = _prune_dead_ends(graph)
     visited_edges = set()
     loops = []
 
-    for start_node in graph:
-        for (entity, next_node) in graph[start_node]:
+    for start_node in pruned:
+        for (entity, next_node) in pruned[start_node]:
             if id(entity) in visited_edges:
                 continue
 
@@ -144,7 +144,7 @@ def find_closed_loops(graph):
 
             while current_node != start_node:
                 candidates = [
-                    (e, n) for (e, n) in graph[current_node]
+                    (e, n) for (e, n) in pruned[current_node]
                     if id(e) not in visited_edges
                 ]
                 if not candidates:
@@ -187,6 +187,83 @@ def find_closed_loops(graph):
             loops.append(chain)
 
     return loops
+# def find_closed_loops(graph):
+#     """
+#     Trova tutti i loop chiusi nel grafo.
+#     Restituisce lista di loop, ognuno come lista di (entity, is_reversed).
+
+#     Strategia:
+#     - visited_edges è condiviso tra tutte le iterazioni: ogni entità
+#       entra in al massimo un loop (come nella versione originale).
+#     - Dopo aver trovato un loop, corregge l'orientamento: se il poligono
+#       è CW (orario), inverte la chain per renderlo CCW (antiorario).
+#       Questo garantisce che classify_loops riceva sempre loop con
+#       orientamento consistente, indipendentemente dalla direzione
+#       scelta dall'algoritmo greedy.
+#     """
+    
+#     visited_edges = set()
+#     loops = []
+
+#     for start_node in graph:
+#         for (entity, next_node) in graph[start_node]:
+#             if id(entity) in visited_edges:
+#                 continue
+
+#             e_start, e_end = entity_endpoints(entity)
+#             if e_start is None:
+#                 continue
+#             is_reversed = (round_point(e_start) != start_node)
+
+#             chain = [(entity, is_reversed)]
+#             visited_edges.add(id(entity))
+#             current_node = next_node
+
+#             while current_node != start_node:
+#                 candidates = [
+#                     (e, n) for (e, n) in graph[current_node]
+#                     if id(e) not in visited_edges
+#                 ]
+#                 if not candidates:
+#                     break
+#                 next_entity, current_node = candidates[0]
+#                 visited_edges.add(id(next_entity))
+
+#                 ne_start, _ = entity_endpoints(next_entity)
+#                 if ne_start is None:
+#                     break
+#                 prev_entity, prev_rev = chain[-1]
+#                 prev_s, prev_e = entity_endpoints(prev_entity)
+#                 if prev_s is None:
+#                     break
+#                 arrive_from = round_point(prev_s if prev_rev else prev_e)
+#                 ne_reversed = (round_point(ne_start) != arrive_from)
+#                 chain.append((next_entity, ne_reversed))
+
+#             if current_node != start_node:
+#                 continue
+
+#             # Corregge orientamento: se CW, inverti → sempre CCW
+#             pts = []
+#             for e, rev in chain:
+#                 if e.dxftype() == 'LINE':
+#                     pts.append(
+#                         (e.dxf.end.x, e.dxf.end.y) if rev
+#                         else (e.dxf.start.x, e.dxf.start.y)
+#                     )
+#                 elif e.dxftype() == 'ARC':
+#                     entry_pt, _, _ = arc_to_bulge(e, reversed=rev)
+#                     pts.append(entry_pt)
+#             if len(pts) >= 3:
+#                 try:
+#                     if not LinearRing(pts).is_ccw:
+#                         chain = [(e, not rev) for e, rev in reversed(chain)]
+#                 except Exception:
+#                     pass
+
+#             loops.append(chain)
+
+#     return loops
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +316,25 @@ def classify_loops(loops):
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
+def _prune_dead_ends(graph: dict) -> dict:
+    g = {node: list(neighbors) for node, neighbors in graph.items()}
+
+    changed = True
+    while changed:
+        changed = False
+        leaves = [node for node, neighbors in g.items() if len(neighbors) <= 1]
+        for leaf in leaves:
+            if leaf not in g:
+                continue
+            if g[leaf]:  # degree 1
+                entity, neighbor = g[leaf][0]
+                if neighbor in g:
+                    g[neighbor] = [(e, n) for e, n in g[neighbor] if n != leaf]
+            del g[leaf]
+            changed = True
+
+    return g
 
 def check_loop_ambiguity(loops, graph):
     """
