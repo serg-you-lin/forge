@@ -204,13 +204,13 @@
             "source": "special_layers"
           },
           {
-            "length": 5.68,
+            "length": 11.36,
             "layer": "MARK",
             "confidence": 1.0,
             "source": "special_layers"
           },
           {
-            "length": 11.36,
+            "length": 33.5927,
             "layer": "MARK",
             "confidence": 1.0,
             "source": "special_layers"
@@ -223,7 +223,7 @@
           }
         ],
         "plain_holes_count": 2,
-        "total_engrave_length": 178.813
+        "total_engrave_length": 206.7257
       }
     }
   ]

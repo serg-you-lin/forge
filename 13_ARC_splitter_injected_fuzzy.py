@@ -24,7 +24,7 @@ import snapmark as sm
 
 
 # ← CAMBIA QUI
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\6200012976_INDAGARE_LINEA_PIEGATURA.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\6200012967_P1_NON_HEALATA.dxf"
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
 customer = 'ARC02'

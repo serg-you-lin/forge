@@ -493,7 +493,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461193.5196064813
+2461193.624791667
   9
 $TDUCREATE
  40
@@ -501,7 +501,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461193.5196064813
+2461193.624791667
   9
 $TDUUPDATE
  40
@@ -553,7 +553,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-274
+273
   9
 $SURFTAB1
  70
@@ -937,7 +937,7 @@ $FINGERPRINTGUID
   9
 $VERSIONGUID
   2
-{287E56B5-4A0A-49B3-BA58-7D7CFC0CA9A5}
+{1F6D2F62-6C84-49EC-BF3B-CE51E685BD5D}
   9
 $EXTNAMES
 290
@@ -2007,7 +2007,7 @@ APPID
 100
 AcDbSymbolTable
  70
-11
+10
   0
 APPID
   5
@@ -2131,27 +2131,13 @@ AcDbSymbolTableRecord
 100
 AcDbRegAppTableRecord
   2
-FORGE
- 70
-0
-  0
-APPID
-  5
-270
-330
-9
-100
-AcDbSymbolTableRecord
-100
-AcDbRegAppTableRecord
-  2
 HATCHBACKGROUNDCOLOR
  70
 0
   0
 APPID
   5
-271
+270
 330
 9
 100
@@ -2934,10 +2920,6 @@ AcDbPolyline
 2832.151272362881
  20
 1508.201094284523
-1001
-FORGE
-1000
-{"label": "linee_di_piegatura_interne", "source_file": "linee_di_piegatura_interne.dxf", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 3, "countersink_count": 0, "threaded_holes_count": 0, "total_engrave_length_mm": 0.0, "area_mm2": 894515.4179, "holes_count": 0, "inner_contours_count": 0, "outer_perimeter_mm": 4264.3513, "inner_perimeter_mm": 0, "total_perimeter_mm": 4264.3513, "bbox": {"minx": 1268.7277, "miny": 934.0463, "maxx": 2832.1513, "maxy": 1508.2011}}
   0
 ENDSEC
   0
@@ -3021,7 +3003,7 @@ AcDbVariableDictionary
   3
 EZDXF_META
 350
-272
+271
   0
 SUN
   5
@@ -13261,7 +13243,7 @@ CELLSTYLE_END
   0
 DICTIONARY
   5
-272
+271
 330
 C
 100
@@ -13273,19 +13255,19 @@ AcDbDictionary
   3
 WRITTEN_BY_EZDXF
 350
-273
+272
   0
 DICTIONARYVAR
   5
-273
-330
 272
+330
+271
 100
 DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-06-01T10:28:14.226731+00:00
+1.4.3 @ 2026-06-01T12:59:42.192584+00:00
   0
 ENDSEC
   0
