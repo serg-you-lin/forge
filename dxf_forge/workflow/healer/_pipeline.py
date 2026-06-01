@@ -47,16 +47,31 @@ from ...rules.layers import (
 
 
 class HealerPipeline:
-    def __init__(self, msp, tolerance, label="", source_file="", explode_inserts=False, ignore_layers=None):
+    def __init__(
+        self,
+        msp,
+        tolerance,
+        label="",
+        source_file="",
+        explode_inserts=False,
+        ignore_layers=None,
+        special_layers=None,
+    ):
         self.msp             = msp
         self.tolerance       = tolerance
         self.label           = label
         self.source_file     = source_file
         self.explode_inserts = explode_inserts
         self.ignore_layers   = {l.lower() for l in (ignore_layers or [])}
+        # nomi layer (lowercase) da non inghiottire nei loop
+        self.special_layer_names = {k.lower() for k in (special_layers or {})}
 
         self.node_decimals = max(round(-np.log10(tolerance * 2)), 1)
         self.result        = ForgeResult(source_file=source_file)
+
+        # salva special_layers nel result — detect() lo legge da qui
+        if special_layers:
+            self.result.special_layers = special_layers
 
         self.candidate_bending_ids  = set()
         self.classified_entity_ids  = set()
@@ -458,9 +473,12 @@ class HealerPipeline:
             e for e in self.msp
             if id(e) not in self.classified_entity_ids
             and id(e) not in self.classified_virtual_ids
-            and id(e) not in self.entities_in_loops
             and e.dxf.hasattr("layer")
             and e.dxf.layer.upper() not in STRUCTURAL_LAYERS
+            and (
+                id(e) not in self.entities_in_loops
+                or e.dxf.layer.lower() in self.special_layer_names
+            )
         ]
 
         self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)

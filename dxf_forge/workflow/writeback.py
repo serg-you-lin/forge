@@ -80,7 +80,6 @@ def write(
     """
 
     for vs in result._virtual_shapes:
-        print(f"  [write] vs id={id(vs)} suppressed={id(vs) in result._suppressed_vs_ids}")
         if id(vs) in result._suppressed_vs_ids:
             continue
         lwpoly = _write_virtual_shape(msp, vs)
@@ -199,6 +198,8 @@ def split(
         for entity in msp:
             if not entity.dxf.hasattr("layer"):
                 continue
+            if not entity.dxf.hasattr("layer"):
+                continue
             if exclude_types and entity.dxftype() in exclude_types:
                 continue
             is_annotation = entity.dxftype() in ANNOTATION_TYPES
@@ -219,6 +220,7 @@ def split(
             work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
 
             new_entity = copy_entity(entity, msp_out)
+            
             if new_entity is None:
                 continue
 
@@ -322,6 +324,7 @@ def _build_work_index(result: ForgeResult) -> dict:
 
         for eid in part.geometry_hints.bend_line_ids:
             index[eid] = "bending"
+            part.entity_ids.add(eid)
 
     # print(f"[work_index] totale: {len(index)} entità")
     return index
