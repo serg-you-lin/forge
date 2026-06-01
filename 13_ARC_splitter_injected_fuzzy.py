@@ -148,7 +148,7 @@ for e in result.trash_entities:
     print(f"  {e.dxftype()} layer={e.dxf.layer}")
 
 print(f"\n--- DETECT ---")
-forge.detect(result, msp, interpreter=GeometricInterpreter(),)
+forge.detect(result, msp)
 
 print(f"\n--- INJECT ---")
 forge.inject(msp, result, data_injector=make_data_injector(doc))

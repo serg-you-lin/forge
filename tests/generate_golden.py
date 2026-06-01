@@ -4,7 +4,10 @@ generate_golden.py
 Genera i golden file per il test di regressione.
 
 Runna UNA VOLTA quando sei soddisfatto dell'output corrente.
-I golden file vengono salvati in tests/examples/golden/.
+I golden file vengono salvati in tests/examples/golden/json/.
+
+DXF sorgente: tests/examples/golden/
+Golden JSON:  tests/examples/golden/json/
 
 Per ogni DXF è possibile affiancare un file di configurazione opzionale:
     tests/examples/config/la_104.json
@@ -34,7 +37,8 @@ sys.path.insert(0, str(project_root))
 import dxf_forge as forge
 
 EXAMPLES_DIR      = project_root / "tests" / "examples"
-GOLDEN_DIR        = project_root / "tests" / "examples" / "golden"
+GOLDEN_DXF_DIR    = EXAMPLES_DIR / "golden"
+GOLDEN_JSON_DIR   = EXAMPLES_DIR / "golden" / "json"
 DEFAULT_TOLERANCE = 0.5
 
 GLOBAL_SPECIAL_LAYERS = {
@@ -51,10 +55,10 @@ def _load_config(dxf_path: Path) -> dict:
 
 
 def generate(force: bool = False, only: str = None):
-    GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
+    GOLDEN_JSON_DIR.mkdir(parents=True, exist_ok=True)
 
     dxf_files = [
-        f for f in EXAMPLES_DIR.glob("*")
+        f for f in GOLDEN_DXF_DIR.glob("*")
         if f.is_file()
         and f.suffix.lower() == ".dxf"
         and not f.stem.endswith("_healed")
@@ -66,14 +70,14 @@ def generate(force: bool = False, only: str = None):
             print(f"Nessun DXF trovato con stem '{only}'")
             return
 
-    print(f"Trovati {len(dxf_files)} DXF in {EXAMPLES_DIR}\n")
+    print(f"Trovati {len(dxf_files)} DXF in {GOLDEN_DXF_DIR}\n")
 
     generated = 0
     skipped   = 0
     failed    = 0
 
     for dxf_path in sorted(dxf_files):
-        golden_path = GOLDEN_DIR / f"{dxf_path.stem}.json"
+        golden_path = GOLDEN_JSON_DIR / f"{dxf_path.stem}.json"
 
         if golden_path.exists() and not force:
             print(f"  SKIP (golden esiste): {dxf_path.name}")
@@ -93,12 +97,12 @@ def generate(force: bool = False, only: str = None):
             result = forge.heal(
                 msp,
                 tolerance=tolerance,
+                special_layers=special_layers,
             )
 
             forge.detect(
                 result,
                 msp,
-                special_layers=special_layers,
             )
 
             forge.inject(msp, result)
@@ -115,21 +119,35 @@ def generate(force: bool = False, only: str = None):
             }
 
             for part in result.parts:
-                all_inners = sorted(part.holes + part.inners, key=lambda x: x.area, reverse=True)
+                holes  = sorted(part.holes,  key=lambda x: x.area, reverse=True)
+                inners = sorted(part.inners, key=lambda x: x.area, reverse=True)
+
                 part_golden = {
                     "area_mm2":           round(part.area, 4),
-                    "holes_count":        len(all_inners),
                     "outer_perimeter_mm": round(part.outer.polygon.exterior.length, 4),
-                    "inner_perimeter_mm": round(sum(i.polygon.exterior.length for i in all_inners), 4),
+                    "inner_perimeter_mm": round(
+                        sum(h.polygon.exterior.length for h in holes) +
+                        sum(i.polygon.exterior.length for i in inners),
+                        4,
+                    ),
                     "total_perimeter_mm": round(
                         part.outer.polygon.exterior.length +
-                        sum(i.polygon.exterior.length for i in all_inners), 4
+                        sum(h.polygon.exterior.length for h in holes) +
+                        sum(i.polygon.exterior.length for i in inners),
+                        4,
                     ),
-                    "outer_wkt":     part.outer.polygon.wkt,
-                    "inners_wkt":    [i.polygon.wkt for i in all_inners],
-                    "outer_layer":   part.outer.layer,
-                    "inners_layers": [i.layer for i in all_inners],
-                    "custom":        dict(part.custom),
+                    "outer_wkt":    part.outer.polygon.wkt,
+                    "outer_layer":  part.outer.layer,
+                    # holes
+                    "holes_count":  len(holes),
+                    "holes_wkt":    [h.polygon.wkt for h in holes],
+                    "holes_layers": [h.layer for h in holes],
+                    # inners
+                    "inners_count":  len(inners),
+                    "inners_wkt":    [i.polygon.wkt for i in inners],
+                    "inners_layers": [i.layer for i in inners],
+                    # custom — include tutto quello che inject() ha prodotto
+                    "custom": dict(part.custom),
                 }
                 golden["parts"].append(part_golden)
 
@@ -142,11 +160,13 @@ def generate(force: bool = False, only: str = None):
             generated += 1
 
         except Exception as ex:
+            import traceback
             print(f"  ERRORE: {dxf_path.name} — {ex}")
+            traceback.print_exc()
             failed += 1
 
     print(f"\nGenerati: {generated}  Skippati: {skipped}  Errori: {failed}")
-    print(f"Golden salvati in: {GOLDEN_DIR}")
+    print(f"Golden salvati in: {GOLDEN_JSON_DIR}")
 
 
 if __name__ == "__main__":
