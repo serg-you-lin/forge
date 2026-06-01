@@ -560,38 +560,22 @@ def spline_to_points(spline, tolerance=0.01):
 # Rilevamento fori speciali
 # ---------------------------------------------------------------------------
 
-# def is_threaded_arc(arc, angle_tolerance: float = 20.0) -> bool:
-#     if arc.dxftype() != 'ARC':
-#         return False
-#     cx, cy = arc.dxf.center.x, arc.dxf.center.y
-#     r = arc.dxf.radius
-#     start_rad = math.radians(arc.dxf.start_angle)
-#     end_rad   = math.radians(arc.dxf.end_angle)
-#     p_start = (cx + r * math.cos(start_rad), cy + r * math.sin(start_rad))
-#     p_end   = (cx + r * math.cos(end_rad),   cy + r * math.sin(end_rad))
-#     a1 = math.atan2(p_start[1] - cy, p_start[0] - cx)
-#     a2 = math.atan2(p_end[1] - cy,   p_end[0] - cx)
-#     gap   = math.degrees(abs(a1 - a2)) % 360
-#     swept = 360 - gap
-#     return abs(swept - 270) < angle_tolerance
-
 def is_threaded_arc(arc, angle_tolerance: float = 35.0) -> bool:
     if arc.dxftype() != 'ARC':
         return False
     start = arc.dxf.start_angle
     end   = arc.dxf.end_angle
     swept = (end - start) % 360
-    print(f"    [is_threaded_arc] start={start} end={end} swept={swept} check={abs(swept - 270):.2f} < {angle_tolerance}")
     return abs(swept - 270) < angle_tolerance
 
 def is_threaded_hole(circle, all_arcs, tolerance_center: float = 1.0) -> bool:
     cx = circle.dxf.center.x
     cy = circle.dxf.center.y
-    print(f"  [threaded?] circle center=({cx:.2f},{cy:.2f}) r={circle.dxf.radius:.2f}")
+    
     for arc in all_arcs:
         dist = np.hypot(cx - arc.dxf.center.x, cy - arc.dxf.center.y)
         is_arc = is_threaded_arc(arc)
-        print(f"    arc center=({arc.dxf.center.x:.2f},{arc.dxf.center.y:.2f}) r={arc.dxf.radius:.2f} dist={dist:.3f} is_threaded_arc={is_arc}")
+        
         if dist < tolerance_center \
            and arc.dxf.radius > circle.dxf.radius \
            and is_arc:

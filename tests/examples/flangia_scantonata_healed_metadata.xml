@@ -12,7 +12,7 @@
       <thickness_mm>0.0</thickness_mm>
       <bending_lines>0</bending_lines>
       <countersink_count>0</countersink_count>
-      <threaded_holes_count>0</threaded_holes_count>
+      <threaded_holes_count>1</threaded_holes_count>
       <total_engrave_length_mm>0.0</total_engrave_length_mm>
       <area_mm2>76010.8891</area_mm2>
       <holes_count>5</holes_count>

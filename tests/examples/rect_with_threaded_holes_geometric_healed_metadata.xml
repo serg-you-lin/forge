@@ -3,6 +3,10 @@
   <source_file>rect_with_threaded_holes_geometric.dxf</source_file>
   <is_valid>true</is_valid>
   <part_count>1</part_count>
+  <warnings>
+    <warning>Nessun loop trovato via grafo, uso polygonize come fallback.</warning>
+    <warning>LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta.</warning>
+  </warnings>
   <parts>
     <part>
       <label>rect_with_threaded_holes_geometric</label>
@@ -12,7 +16,7 @@
       <thickness_mm>0.0</thickness_mm>
       <bending_lines>0</bending_lines>
       <countersink_count>0</countersink_count>
-      <threaded_holes_count>0</threaded_holes_count>
+      <threaded_holes_count>3</threaded_holes_count>
       <total_engrave_length_mm>0.0</total_engrave_length_mm>
       <area_mm2>19941.1897</area_mm2>
       <holes_count>3</holes_count>

@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/Multifeature.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012912 Sviluppo.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -55,39 +55,40 @@ msp = doc.modelspace()
 # VALIDAZIONE
 # ---------------------------------------------------------------------------
 
-# print("\n--- VALIDAZIONE ---")
+print("\n--- VALIDAZIONE ---")
 
-# check = forge.validate_msp(msp)
+check = forge.validate_msp(msp)
 
-# for w in check.warnings:
-#     print(f"  WARN: {w}")
+for w in check.warnings:
+    print(f"  WARN: {w}")
 
-# for e in check.errors:
-#     print(f"  ERROR: {e}")
+for e in check.errors:
+    print(f"  ERROR: {e}")
 
-# if not check.errors:
-#     print("  OK: nessun errore bloccante")
+if not check.errors:
+    print("  OK: nessun errore bloccante")
 
 
 # Dopo
+
 result = forge.heal(
     msp,
     tolerance=tolerance,
     explode_inserts=True,
+    # special_layers={
+    #     "MARK": "engrave",
+    #     "Filettati": "threaded_hole",
+    #     "Svasati": "countersink",   
+    #     "Piega": "bending", 
+    # },
     label=base_name,
     source_file=file_name,
 )
 
+
 forge.detect(
     result,
     msp,
-    special_layers={
-        "MARK": "engrave",
-        "Filettati": "threaded_hole",
-        "Svasati": "countersink",   
-        "Piega": "bending", 
-    },
-    # interpreter=GeometricInterpreter(),
 )
 
 forge.write(msp, result)
@@ -106,9 +107,9 @@ for i, part in enumerate(result.parts):
     print(f"    Fori       : {len(part.inners)}")
     print(f"    Bbox       : {part.bbox}")
 
-    # DEBUG SPECIAL LAYERS
-    if part.custom:
-        print(f"    Custom      : {part.custom}")
+    # # DEBUG SPECIAL LAYERS
+    # if part.custom:
+    #     print(f"    Custom      : {part.custom}")
 
 # ---------------------------------------------------------------------------
 # SAVE JSON

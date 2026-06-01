@@ -115,6 +115,10 @@ for input_dxf in dxf_files:
             msp,
             tolerance=tolerance,
             explode_inserts=True,
+            special_layers={
+                "MARK": "engrave",
+                "MARCATURA": "bending",
+            },
             label=base_name,
             source_file=Path(input_dxf).name,
 )
@@ -136,10 +140,7 @@ for input_dxf in dxf_files:
         forge.detect(
             result,
             msp,
-            special_layers={
-                "MARK": "engrave",
-                "MARCATURA": "bending",
-            }
+
         )
 
         # ---------------- WRITE + INJECT ----------------

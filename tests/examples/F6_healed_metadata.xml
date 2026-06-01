@@ -14,7 +14,7 @@
       <quantity>1</quantity>
       <material>S275JR</material>
       <thickness_mm>0.0</thickness_mm>
-      <bending_lines>0</bending_lines>
+      <bending_lines>1</bending_lines>
       <countersink_count>0</countersink_count>
       <threaded_holes_count>0</threaded_holes_count>
       <total_engrave_length_mm>0.0</total_engrave_length_mm>

@@ -24,7 +24,7 @@ import snapmark as sm
 
 
 # ← CAMBIA QUI
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC\6200012773 Sviluppo.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\6200012976_INDAGARE_LINEA_PIEGATURA.dxf"
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
 customer = 'ARC02'
@@ -148,7 +148,7 @@ for e in result.trash_entities:
     print(f"  {e.dxftype()} layer={e.dxf.layer}")
 
 print(f"\n--- DETECT ---")
-forge.detect(result, msp, interpreter=GeometricInterpreter(),)
+forge.detect(result, msp)
 
 print(f"\n--- INJECT ---")
 forge.inject(msp, result, data_injector=make_data_injector(doc))

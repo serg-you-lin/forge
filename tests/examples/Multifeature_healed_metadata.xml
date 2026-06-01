@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>Multifeature.dxf</source_file>
+  <is_valid>true</is_valid>
+  <part_count>1</part_count>
+  <warnings>
+    <warning>19 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).</warning>
+  </warnings>
+  <parts>
+    <part>
+      <label>Multifeature</label>
+      <source_file>Multifeature.dxf</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>2</bending_lines>
+      <countersink_count>7</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>51.4432</total_engrave_length_mm>
+      <area_mm2>26975.6747</area_mm2>
+      <holes_count>17</holes_count>
+      <inner_contours_count>3</inner_contours_count>
+      <outer_perimeter_mm>860.0</outer_perimeter_mm>
+      <inner_perimeter_mm>119.0784</inner_perimeter_mm>
+      <total_perimeter_mm>979.0784</total_perimeter_mm>
+      <bbox>
+        <minx>224.727</minx>
+        <miny>135.3048</miny>
+        <maxx>574.727</maxx>
+        <maxy>215.3048</maxy>
+      </bbox>
+    </part>
+  </parts>
+</forge>
