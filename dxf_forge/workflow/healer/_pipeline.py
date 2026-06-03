@@ -34,6 +34,7 @@ from ._utils import (
     _deduplicate_entities,
     _deduplicate_loops,
     _explode_inserts,
+    _filter_spurious_loops,
 )
 from ...core.gap import close_gaps
 from ...core.graph import spline_endpoints
@@ -169,6 +170,44 @@ class HealerPipeline:
                     )
                     break
 
+    # def _find_bending_candidates(self):
+    #     if not (self.all_lines or self.all_arcs):
+    #         return
+
+    #     graph_full      = self._build_graph()
+    #     branching_nodes = {
+    #         node for node, neighbors in graph_full.items() if len(neighbors) > 2
+    #     }
+
+    #     if not branching_nodes:
+    #         return
+
+    #     for line in self.all_lines:
+    #         s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
+    #         e = round_point((line.dxf.end.x,   line.dxf.end.y),   self.node_decimals)
+    #         if s in branching_nodes and e in branching_nodes:
+    #             self.candidate_bending_ids.add(id(line))
+
+    #     print(f"[DEBUG bending] branching_nodes: {branching_nodes}")
+    #     for line in self.all_lines:
+    #         s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
+    #         e = round_point((line.dxf.end.x,   line.dxf.end.y),   self.node_decimals)
+    #         print(f"  [CHECK] LINE ({line.dxf.start.x:.1f},{line.dxf.start.y:.1f})->({line.dxf.end.x:.1f},{line.dxf.end.y:.1f}) s_branch={s in branching_nodes} e_branch={e in branching_nodes}")
+
+    #     if self.candidate_bending_ids:
+    #         self.result.warnings.append(
+    #             f"{len(self.candidate_bending_ids)} LINE candidate come bending "
+    #             f"escluse dal grafo (entrambi gli endpoint su nodi di branching)."
+    #         )
+    #         self.all_lines = [l for l in self.all_lines if id(l) not in self.candidate_bending_ids]
+
+    #       # DEBUG
+    #         print(f"[DEBUG bending] candidate_bending_ids: {len(self.candidate_bending_ids)}")
+    #         for line in self.msp.query("LINE"):
+    #             if id(line) in self.candidate_bending_ids:
+    #                 print(f"  [BENDING] LINE ({line.dxf.start.x:.1f},{line.dxf.start.y:.1f}) -> ({line.dxf.end.x:.1f},{line.dxf.end.y:.1f})")
+
+
     def _find_bending_candidates(self):
         if not (self.all_lines or self.all_arcs):
             return
@@ -181,11 +220,49 @@ class HealerPipeline:
         if not branching_nodes:
             return
 
+
         for line in self.all_lines:
             s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
             e = round_point((line.dxf.end.x,   line.dxf.end.y),   self.node_decimals)
             if s in branching_nodes and e in branching_nodes:
                 self.candidate_bending_ids.add(id(line))
+
+        if not self.candidate_bending_ids:
+            return
+
+        from shapely.geometry import MultiPoint, LineString as SLS
+        hull = MultiPoint(list(graph_full.keys())).convex_hull
+
+        confirmed_bending_ids = set()
+        for line in self.all_lines:
+            if id(line) not in self.candidate_bending_ids:
+                continue
+
+            # bridge-check
+            test_graph = self._build_graph(exclude_ids={id(line)})
+            if not test_graph:
+                continue
+            start = next(iter(test_graph))
+            visited = {start}
+            queue = [start]
+            while queue:
+                node = queue.pop()
+                for _, neighbor in test_graph[node]:
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append(neighbor)
+            is_bridge = len(visited) < len(test_graph)
+
+            # hull-check: se il centroide sta sul boundary non è bending
+            line_geom   = SLS([(line.dxf.start.x, line.dxf.start.y),
+                            (line.dxf.end.x,   line.dxf.end.y)])
+            is_interior = hull.boundary.distance(line_geom.centroid) > self.tolerance
+
+            # if not is_bridge and is_interior:
+            if is_interior:
+                confirmed_bending_ids.add(id(line))
+
+        self.candidate_bending_ids = confirmed_bending_ids
 
         if self.candidate_bending_ids:
             self.result.warnings.append(
@@ -200,6 +277,30 @@ class HealerPipeline:
 
         graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
         loops = find_closed_loops(graph)
+
+        all_loop_ids = {id(e) for loop in loops for e, _ in loop}
+        seen_ids = set()
+        for node, neighbors in graph.items():
+            for e, _ in neighbors:
+                if id(e) not in all_loop_ids and id(e) not in seen_ids:
+                    seen_ids.add(id(e))
+                    if e.dxftype() == "LINE":
+                        coords = f"({e.dxf.start.x:.1f},{e.dxf.start.y:.1f})->({e.dxf.end.x:.1f},{e.dxf.end.y:.1f})"
+                    elif e.dxftype() == "ARC":
+                        coords = f"center=({e.dxf.center.x:.1f},{e.dxf.center.y:.1f}) r={e.dxf.radius:.1f}"
+                    else:
+                        coords = ""
+                    print(f"  [FUORI LOOP] {e.dxftype()} layer={e.dxf.layer} {coords}")
+
+
+
+        print(f"[DEBUG loops] loop trovati da find_closed_loops: {len(loops)}")
+        for i, loop in enumerate(loops):
+            print(f"  [LOOP {i}] entità: {len(loop)}")
+            for e, rev in loop:
+                print(f"    {e.dxftype()} layer={e.dxf.layer} rev={rev}")
+
+
         loops = _deduplicate_loops(loops)
 
         # reintegra le candidate: devono finire in trash per detect()

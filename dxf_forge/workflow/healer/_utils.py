@@ -1,9 +1,11 @@
+from shapely.geometry import Polygon, Point
+from ...core.geometry import arc_to_bulge, entity_midpoint
+from ...core.graph import spline_to_points, loop_to_points
+
+
 def _deduplicate_loops(loops):
     """Per ogni coppia diretta/inversa, tieni solo quella con area maggiore."""
-    from shapely.geometry import Polygon
-    from dxf_forge.core.graph import spline_to_points
-    from dxf_forge.core.geometry import arc_to_bulge
-
+    
     seen = {}  # frozenset(id) -> (loop, area)
     for loop in loops:
         key = frozenset(id(e) for e, _ in loop)
@@ -74,6 +76,51 @@ def _deduplicate_entities(msp, tolerance: float = 0.01) -> int:
         msp.delete_entity(entity)
 
     return len(to_delete)
+
+def _filter_spurious_loops(loops):
+    """
+    Scarta i loop in cui almeno un'entità ha il midpoint fuori dal poligono
+    formato dal loop stesso. Tipico di rettangoli con angoli raggiati dove
+    il greedy chiude un loop spurio tra uno stub e un arco.
+
+    Returns:
+        (valid, spurious): due liste separate
+    """
+
+    valid, spurious = [], []
+
+    for loop in loops:
+        pts = loop_to_points(loop)
+        if len(pts) < 3:
+            spurious.append(loop)
+            continue
+
+        try:
+            poly = Polygon(pts)
+            if not poly.is_valid:
+                poly = poly.buffer(0)
+        except Exception:
+            valid.append(loop)
+            continue
+
+        is_spurious = False
+        for entity, _ in loop:
+            mid = entity_midpoint(entity)
+            if mid is None:
+                continue
+            pt = Point(mid)
+            dist = poly.exterior.distance(pt)
+            inside = poly.contains(pt)
+            print(f"    [DEBUG] {entity.dxftype()} mid={mid} inside={inside} dist_border={dist:.4f}")
+
+            # tolleriamo punti sul bordo (distanza < 1e-3): sono endpoint connessi
+            if not poly.contains(pt) and poly.exterior.distance(pt) > 1e-3:
+                is_spurious = True
+                break
+
+        (spurious if is_spurious else valid).append(loop)
+
+    return valid, spurious
 
 def _explode_inserts(msp) -> int:
     """
