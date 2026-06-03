@@ -76,3 +76,6 @@ def _spline_to_polygon(spline) -> Optional[Polygon]:
         return poly if not poly.is_empty else None
     except Exception:
         return None
+    
+
+

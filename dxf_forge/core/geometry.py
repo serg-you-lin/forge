@@ -556,6 +556,34 @@ def spline_to_points(spline, tolerance=0.01):
         return []
     
 
+def entity_midpoint(entity) -> Optional[tuple]:
+    """
+    Restituisce il punto medio geometrico dell'entità:
+    - LINE: media aritmetica dei due endpoint
+    - ARC:  punto sull'arco all'angolo medio (non media dei due endpoint!)
+    """
+    try:
+        dtype = entity.dxftype()
+        if dtype == "LINE":
+            return (
+                (entity.dxf.start.x + entity.dxf.end.x) / 2,
+                (entity.dxf.start.y + entity.dxf.end.y) / 2,
+            )
+        if dtype == "ARC":
+            import math
+            start_a = math.radians(entity.dxf.start_angle)
+            end_a   = math.radians(entity.dxf.end_angle)
+            # angolo medio sull'arco, rispettando la direzione CCW
+            if end_a < start_a:
+                end_a += 2 * math.pi
+            mid_a = (start_a + end_a) / 2
+            cx, cy = entity.dxf.center.x, entity.dxf.center.y
+            r      = entity.dxf.radius
+            return (cx + r * math.cos(mid_a), cy + r * math.sin(mid_a))
+    except Exception:
+        pass
+    return None
+
 # ---------------------------------------------------------------------------
 # Rilevamento fori speciali
 # ---------------------------------------------------------------------------

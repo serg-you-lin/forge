@@ -18,7 +18,7 @@ import dxf_forge as forge
 import math
 
 
-DEFAULT_FILE = r"tests/examples/la_104.DXF"
+DEFAULT_FILE = r"tests/examples/linee_di_piegatura_interne.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(
@@ -128,7 +128,7 @@ def analyze_dxf(input_file: str):
     #         for ent, nbr in neighbors:
     #             print(f"    → {ent.dxftype()} layer={ent.dxf.layer}")
 
-    # inspector.analyze(msp, title=input_file, doc=doc)
+    inspector.analyze(msp, title=input_file, doc=doc)
     # debug_point_on_arc(msp, tolerance=2.0)
     # for e in msp:
     #   print(e.dxftype())

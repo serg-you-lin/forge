@@ -121,6 +121,56 @@ def _make_arc_rect_msp():
 
     return msp
 
+def _make_rounded_rect_msp():
+    """
+    Rettangolo con 4 angoli raggiati (r=10).
+    Genera nodi degree 3: ogni angolo è condiviso tra 1 ARC e 2 LINE.
+    Questo è il caso che produceva loop spuri prima del fix.
+
+    Geometria:
+      bottom : (37,30)→(74,30)
+      right  : (74,30)→(74,40) e (74,40)→(74,50)   ← degree 3 in (74,40)
+      arc TR : centro (64,40), 0→90°
+      top    : (64,50)→(47,50)
+      arc TL : centro (47,40), 90→180°
+      left   : (47,50)→(37,50) e (37,40)→(37,30)   ← degree 3 in (37,40)
+    """
+    doc = ezdxf.new('R2010')
+    msp = doc.modelspace()
+
+    msp.add_line((47, 50), (64, 50))          # top
+    msp.add_line((74, 40), (74, 30))          # right bottom
+    msp.add_line((74, 30), (37, 30))          # bottom
+    msp.add_line((37, 30), (37, 40))          # left bottom
+    msp.add_arc( (47, 40), 10,  90, 180)      # angolo top-left
+    msp.add_arc( (64, 40), 10,   0,  90)      # angolo top-right
+    msp.add_line((37, 40), (37, 50))          # left top  ← stub
+    msp.add_line((37, 50), (47, 50))          # top-left connector
+    msp.add_line((64, 50), (74, 50))          # top-right connector
+    msp.add_line((74, 50), (74, 40))          # right top ← stub
+
+    return msp
+
+
+def _make_stub_in_loop_msp():
+    """
+    Rettangolo con una lineetta interna che parte dal bordo inferiore
+    e ha l'endpoint superiore libero (degree 1).
+    Verifica che _prune_dead_ends escluda la lineetta dal loop.
+    """
+    doc = ezdxf.new('R2010')
+    msp = doc.modelspace()
+
+    msp.add_line((0,   0),  (100, 0))    # bottom
+    msp.add_line((100, 0),  (100, 50))   # right
+    msp.add_line((100, 50), (0,   50))   # top
+    msp.add_line((0,   50), (0,    0))   # left
+    msp.add_line((50,  0),  (50,   25))  # stub: parte dal bordo, endpoint libero
+
+    return msp
+
+
+
 
 # ---------------------------------------------------------------------------
 # Test: find_closed_loops — loop trovato
@@ -342,6 +392,55 @@ class TestHealHierarchy(unittest.TestCase):
     def test_005_net_area_correct(self):
         net = self.result.parts[0].area
         self.assertAlmostEqual(net, 100 * 80 - 40 * 30, delta=2.0)
+
+class TestRoundedRectLoop(unittest.TestCase):
+    """
+    Rettangolo con angoli raggiati — nodi degree 3.
+    Il fix deve produrre esattamente 1 loop valido (il profilo esterno)
+    e nessun loop spurio, con warning nel result.
+    """
+
+    def setUp(self):
+        import dxf_forge as forge
+        msp = _make_rounded_rect_msp()
+        self.result = forge.heal(msp, tolerance=0.05)
+
+    def test_001_no_parts_on_ambiguous(self):
+        self.assertEqual(self.result.part_count, 0,
+            "Geometria ambigua — nessun pezzo deve essere classificato")
+
+    def test_002_has_warning(self):
+        joined = " ".join(self.result.warnings)
+        self.assertIn("ambigua", joined.lower(),
+            "Atteso warning su loop spuri — geometria ambigua")
+
+    def test_003_no_area_on_ambiguous(self):
+        self.assertEqual(len(self.result.parts), 0,
+            "Geometria ambigua — nessuna parte deve avere area classificata")
+
+
+class TestStubInLoop(unittest.TestCase):
+    """
+    Rettangolo con lineetta interna (endpoint libero, degree 1).
+    La lineetta deve finire in trash, non rompere il loop.
+    """
+
+    def setUp(self):
+        import dxf_forge as forge
+        msp = _make_stub_in_loop_msp()
+        self.result = forge.heal(msp, tolerance=0.05)
+
+    def test_001_one_part(self):
+        self.assertEqual(self.result.part_count, 1,
+            "La lineetta con endpoint libero non deve rompere il loop")
+
+    def test_002_outer_area_correct(self):
+        area = self.result.parts[0].outer.area
+        self.assertAlmostEqual(area, 100 * 50, delta=2.0)
+
+    def test_003_stub_in_trash(self):
+        """La lineetta deve finire in trash, non nel loop."""
+        self.assertEqual(len(self.result.trash_entities), 1)
 
 
 if __name__ == "__main__":
