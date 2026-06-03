@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\6200012967_P1_NON_HEALATA.dxf"
+input_dxf = r"tests/examples/linee_di_piegatura_interne.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -89,6 +89,7 @@ result = forge.heal(
 forge.detect(
     result,
     msp,
+    bending_tolerance=5,
 )
 
 forge.write(msp, result)

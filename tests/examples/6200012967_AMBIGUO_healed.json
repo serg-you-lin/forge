@@ -5,8 +5,6 @@
   "warnings": [
     "10 INSERT esplosi prima dell'healing.",
     "Rimosse 4 entità duplicate dal msp.",
-    "10 LINE con endpoint libero escluse dal grafo (geometria aperta o trash).",
-    "16 LINE ridondanti escluse dal grafo (angoli già raccordati da ARC).",
     "2 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching)."
   ],
   "errors": [],

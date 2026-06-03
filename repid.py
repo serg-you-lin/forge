@@ -1,102 +1,38 @@
 import ezdxf
-import dxf_forge as forge
-import copy
 
-input_file = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012912 Esplosi.dxf"
+def _make_rounded_rect_msp():
+    """
+    Rettangolo con 4 angoli raggiati (r=10).
+    Genera nodi degree 3: ogni angolo è condiviso tra 1 ARC e 2 LINE.
+    """
+    # Crea un nuovo disegno DXF (versione R2010 è ampiamente compatibile)
+    doc = ezdxf.new('R2010')
+    msp = doc.modelspace()
 
-doc = ezdxf.readfile(input_file)
-msp = doc.modelspace()
+    # Aggiunta delle linee e degli archi come da tua geometria
+    msp.add_line((47, 50), (64, 50))          # top
+    msp.add_line((74, 40), (74, 30))          # right bottom
+    msp.add_line((74, 30), (37, 30))          # bottom
+    msp.add_line((37, 30), (37, 40))          # left bottom
+    msp.add_arc( (47, 40), 10,  90, 180)      # angolo top-left
+    msp.add_arc( (64, 40), 10,   0,  90)      # angolo top-right
+    msp.add_line((37, 40), (37, 50))          # left top  ← stub
+    msp.add_line((37, 50), (47, 50))          # top-left connector
+    msp.add_line((64, 50), (74, 50))          # top-right connector
+    msp.add_line((74, 50), (74, 40))          # right top ← stub
 
-def snapshot(result, tag):
-    print(f"\n--- SNAPSHOT {tag} ---")
-    for i, p in enumerate(result.parts):
-        print(
-            i,
-            p.label,
-            "bending:",
-            len(p.geometry_hints.bend_line_ids),
-            "custom_keys:",
-            list(p.custom.keys())
-        )
+    return doc  # Restituiamo il documento intero per poterlo salvare
 
-# -------------------------
-# HEAL + DETECT BASE
-# -------------------------
-
-result = forge.heal(msp)
-forge.detect(result, msp)
-
-snapshot(result, "AFTER DETECT")
-
-# deep copy per isolare split
-result_before_split = copy.deepcopy(result)
-
-# -------------------------
-# SPLIT
-# -------------------------
-
-output_dir = "./_split_debug"
-
-forge.split(
-    msp,
-    result,
-    output_folder=output_dir,
-    namer=lambda i, part: f"PART_{i}"
-)
-
-snapshot(result, "AFTER SPLIT")
-
-# -------------------------
-# COMPARAZIONE
-# -------------------------
-
-print("\n--- DIFF CHECK ---")
-
-for i in range(len(result.parts)):
-    a = result_before_split.parts[i]
-    b = result.parts[i]
-
-    print(
-        i,
-        "bend diff:",
-        len(a.geometry_hints.bend_line_ids),
-        "->",
-        len(b.geometry_hints.bend_line_ids),
-    )
-
-
-
-
-# import ezdxf
-# import dxf_forge as forge
-
-# input_file = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\6200012912 Esplosi.dxf"
-
-# doc = ezdxf.readfile(input_file)
-# msp = doc.modelspace()
-
-# def snapshot(result, tag):
-#     print(f"\n--- {tag} ---")
-#     for i, p in enumerate(result.parts):
-#         print(
-#             i,
-#             "bending:",
-#             len(p.geometry_hints.bend_line_ids)
-#         )
-
-# # -------------------------
-# # HEAL + DETECT
-# # -------------------------
-
-# result = forge.heal(msp)
-# forge.detect(result, msp)
-
-# snapshot(result, "BEFORE WRITE")
-
-# # -------------------------
-# # WRITE ONLY
-# # -------------------------
-
-# forge.write(msp, result)
-
-# snapshot(result, "AFTER WRITE")
+if __name__ == "__main__":
+    # 1. Genera il documento DXF
+    doc_cad = _make_rounded_rect_msp()
+    
+    # 2. Definisci il nome del file di output
+    nome_file = "rettangolo_raggiato.dxf"
+    
+    # 3. Salva il file
+    try:
+        doc_cad.saveas(nome_file)
+        print(f"File '{nome_file}' generato con successo! Ora puoi aprirlo col tuo CAD.")
+    except IOError:
+        print(f"Errore: Impossibile salvare il file '{nome_file}'. Forse è aperto in un altro programma?")

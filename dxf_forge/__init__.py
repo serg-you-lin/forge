@@ -35,7 +35,7 @@ Workflow multi-pezzo (split_to_files fa tutto internamente):
 """
 
 from .workflow.healer     import heal, LAYER_OUTER, LAYER_HOLE
-from .workflow.splitter   import split_to_files #is_multi
+from .workflow.splitter   import split_to_files 
 from .workflow.injector    import inject
 from .workflow.writeback import write, split
 from .rules.validator  import validate, validate_msp
@@ -59,7 +59,6 @@ __all__ = [
     "split_to_files",
     "write",
     "split",
-    #"is_multi",
     # Export
     "validate",
     "to_json",

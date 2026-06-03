@@ -30,6 +30,8 @@ creare una fingerprint geometrica per validare na forge part.
 
 ### API
 
+- bending lines: tolerance al momento non mi sembra ben implementato, difatti è la tolleranza in heal() che comanda le linee.
+
 - [ ] **`forge.process()` — punto di ingresso unico**
   - `result = forge.process(input_dxf, output_dxf, upgrade=True, tolerance=0.05, write_xdata=True)`
   - Nasconde doc/msp/upgrade/write_metadata all'utente
