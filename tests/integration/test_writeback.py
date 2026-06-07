@@ -149,11 +149,10 @@ class TestWritebackSpecialLayers(unittest.TestCase):
     def setUp(self):
         doc = load("rect_with_special_layers.dxf")
         self.msp = doc.modelspace()
-        self.result = forge.heal(self.msp)
+        self.result = forge.heal(self.msp, special_layers={"BEND": "bending", "MARK": "engrave"})
         forge.detect(
             self.result,
             self.msp,
-            special_layers={"BEND": "bending", "MARK": "engrave"},
         )
         forge.write(self.msp, self.result)
 
