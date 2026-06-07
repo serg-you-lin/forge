@@ -77,5 +77,3 @@ def _spline_to_polygon(spline) -> Optional[Polygon]:
     except Exception:
         return None
     
-
-

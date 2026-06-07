@@ -1,3 +1,4 @@
+
 """
 virtual.py
 -----------
@@ -12,7 +13,6 @@ VirtualShape ha due modalità:
 
 from dataclasses import dataclass, field
 from typing import List, Optional, Any
-from matplotlib.pylab import poly
 from shapely.geometry import Polygon
 import math
 
@@ -23,42 +23,27 @@ from .graph import spline_to_points, arc_to_bulge, spline_endpoints
 
 
 # ---------------------------------------------------------------------------
-# VirtualShape — shape costruita in memoria dal passo 1
+# VirtualShape
 # ---------------------------------------------------------------------------
 
 @dataclass
 class VirtualShape:
-    """
-    Rappresentazione in memoria di una shape da costruire.
-    Prodotta dal passo 1, consumata dal passo 3.
-
-    Non costruire direttamente — usa i classmethod:
-      - VirtualShape.from_loop(loop, layer, color)
-      - VirtualShape.from_spline_loop(loop, layer, color)
-
-    from_loop:         has_spline=False, pts_with_bulge popolato
-    from_spline_loop:  has_spline=True,  pts_with_bulge vuoto, loop salvato
-    """
-    pts_with_bulge: list          # vertici per LWPOLYLINE (solo se not has_spline)
-    polygon: Polygon              # polygon Shapely per gerarchia (sempre)
+    pts_with_bulge: list
+    polygon: Polygon
     layer: str
     color: int
-    has_spline: bool = False      # True se il loop contiene almeno una SPLINE
-    loop: list = field(default_factory=list)  # entità originali (entity, rev)
-    entity: Optional[Any] = None  # LWPOLYLINE materializzata (solo se not has_spline)
-    source_layer: str = ""  # ← layer originale delle entità del loop
-
-    # -----------------------------------------------------------------------
-    # Costruttori
-    # -----------------------------------------------------------------------
+    has_spline: bool = False
+    loop: list = field(default_factory=list)
+    entity: Optional[Any] = None
+    source_layer: str = ""
 
     @classmethod
     def from_loop(cls, loop, layer: str, color: int) -> Optional['VirtualShape']:
         pts_with_bulge = []
         _last_exit = None
 
-        # Passo 1: costruisci pts_with_bulge dal loop
-        for entity, rev in loop:
+        for edge, rev in loop:
+            entity = edge.entity
             if entity.dxftype() == 'LINE':
                 if rev:
                     sx, sy = entity.dxf.end.x,   entity.dxf.end.y
@@ -76,7 +61,6 @@ class VirtualShape:
                 entry_pt, _, bulge = arc_to_bulge(entity, reversed=rev)
                 pts_with_bulge.append((entry_pt[0], entry_pt[1], 0.0, 0.0, bulge))
 
-        # Passo 2: costruisci poly_pts da pts_with_bulge — stessa logica di pline_to_polygon()
         poly_pts = []
         n = len(pts_with_bulge)
         for i in range(n):
@@ -105,8 +89,11 @@ class VirtualShape:
         if poly is None:
             return None
 
-        layers = {e.dxf.layer for e, _ in loop if e.dxf.hasattr("layer") and e.dxf.layer != "0"}
-        source_layer = layers.pop() if len(layers) == 1 else ""
+        source_layers = {
+            edge.layer for edge, _ in loop
+            if edge.layer and edge.layer != "0"
+        }
+        source_layer = source_layers.pop() if len(source_layers) == 1 else ""
 
         return cls(
             pts_with_bulge=pts_with_bulge,
@@ -123,7 +110,8 @@ class VirtualShape:
         poly_pts = []
         _last_exit = None
 
-        for entity, rev in loop:
+        for edge, rev in loop:
+            entity = edge.entity
             if entity.dxftype() == 'LINE':
                 if rev:
                     sx, sy = entity.dxf.end.x,   entity.dxf.end.y
@@ -148,7 +136,6 @@ class VirtualShape:
                     arc_pts = list(reversed(arc_pts))
                 poly_pts.extend(arc_pts)
 
-
             elif entity.dxftype() == 'SPLINE':
                 if _last_exit is not None:
                     poly_pts.append(_last_exit)
@@ -160,13 +147,14 @@ class VirtualShape:
                     poly_pts.append(sp)
 
         poly = _build_polygon(poly_pts)
-        if poly:
-            pass
         if poly is None:
             return None
 
-        layers = {e.dxf.layer for e, _ in loop if e.dxf.hasattr("layer") and e.dxf.layer != "0"}
-        source_layer = layers.pop() if len(layers) == 1 else ""
+        source_layers = {
+            edge.layer for edge, _ in loop
+            if edge.layer and edge.layer != "0"
+        }
+        source_layer = source_layers.pop() if len(source_layers) == 1 else ""
 
         return cls(
             pts_with_bulge=[],
@@ -177,15 +165,13 @@ class VirtualShape:
             loop=loop,
             source_layer=source_layer,
         )
+
+
 # ---------------------------------------------------------------------------
-# Helper privato — costruzione polygon Shapely
+# Helper privato
 # ---------------------------------------------------------------------------
 
 def _build_polygon(pts: list) -> Optional[Polygon]:
-    """
-    Costruisce un Polygon Shapely da una lista di punti.
-    Ritorna None se i punti sono insufficienti o il polygon è invalido.
-    """
     if len(pts) < 3:
         return None
     try:
@@ -200,32 +186,20 @@ def _build_polygon(pts: list) -> Optional[Polygon]:
 
 
 # ---------------------------------------------------------------------------
-# Passo 1 — routing loop → VirtualShape
+# Routing loop → VirtualShape
 # ---------------------------------------------------------------------------
 
 def _loop_to_virtual_shape(loop, layer, color) -> Optional['VirtualShape']:
-    """
-    Instrada il loop al costruttore corretto in base alla presenza di SPLINE.
-    Non scrive nulla nel msp.
-    """
-    if any(e.dxftype() == 'SPLINE' for e, _ in loop):
+    if any(edge.entity.dxftype() == 'SPLINE' for edge, _ in loop):
         return VirtualShape.from_spline_loop(loop, layer, color)
     return VirtualShape.from_loop(loop, layer, color)
 
 
 # ---------------------------------------------------------------------------
-# Passo 3 — scrittura msp
+# Scrittura msp
 # ---------------------------------------------------------------------------
 
 def _write_virtual_shape(msp, vs: 'VirtualShape'):
-    """
-    Materializza una VirtualShape nel msp.
-
-    Se has_spline=False: scrive una LWPOLYLINE da pts_with_bulge e la restituisce.
-    Se has_spline=True:  scrive una LWPOLYLINE dai punti del poligono Shapely
-                         (nessun bulge — la spline è già discretizzata in poly_pts)
-                         e la restituisce.
-    """
     if vs.has_spline:
         pts = [(x, y, 0.0, 0.0, 0.0)
                for x, y in list(vs.polygon.exterior.coords)[:-1]]
