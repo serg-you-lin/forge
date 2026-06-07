@@ -94,6 +94,7 @@ def split_to_files(
         explode_inserts=explode_inserts,
         label=label,
         source_file=source_file,
+        special_layers=special_layers,
     )
 
     for w in result.warnings:
@@ -107,7 +108,6 @@ def split_to_files(
     detect(
         result,
         msp,
-        special_layers=special_layers,
         interpreter=interpreter,
     )
 
