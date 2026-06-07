@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/linee_di_piegatura_interne.dxf"
+input_dxf = r"tests/examples/archi_si_no.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)

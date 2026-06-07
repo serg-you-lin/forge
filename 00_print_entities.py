@@ -18,7 +18,7 @@ import dxf_forge as forge
 import math
 
 
-DEFAULT_FILE = r"tests/examples/linee_di_piegatura_interne.dxf"
+DEFAULT_FILE = r"rettangolo_raggiato.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(

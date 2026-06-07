@@ -7,6 +7,7 @@ from ...models import (
     ForgePart,
     ForgeContour,
     GeometryHints,
+    Edge,
     Hole,
     HOLE_TYPE_UNKNOWN,
 )
@@ -20,6 +21,7 @@ from ...core.graph import (
     find_closed_loops,
     classify_loops,
     check_loop_ambiguity,
+    _normalized_endpoints,
 )
 from ...core.virtual import (
     VirtualShape,
@@ -99,13 +101,10 @@ class HealerPipeline:
         self._build_trash()
         return self.result
 
+
     def _build_graph(self, exclude_ids=None):
-        return build_node_graph(
-            self.msp,
-            decimals=self.node_decimals,
-            exclude_ids=exclude_ids or set(),
-            exclude_layers=self.ignore_layers,
-        )
+        edges = self._edges_from_msp(exclude_ids=exclude_ids)
+        return build_node_graph(edges)
 
     def _handle_inserts(self):
         inserts_found = list(self.msp.query("INSERT"))
@@ -170,43 +169,6 @@ class HealerPipeline:
                     )
                     break
 
-    # def _find_bending_candidates(self):
-    #     if not (self.all_lines or self.all_arcs):
-    #         return
-
-    #     graph_full      = self._build_graph()
-    #     branching_nodes = {
-    #         node for node, neighbors in graph_full.items() if len(neighbors) > 2
-    #     }
-
-    #     if not branching_nodes:
-    #         return
-
-    #     for line in self.all_lines:
-    #         s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
-    #         e = round_point((line.dxf.end.x,   line.dxf.end.y),   self.node_decimals)
-    #         if s in branching_nodes and e in branching_nodes:
-    #             self.candidate_bending_ids.add(id(line))
-
-    #     print(f"[DEBUG bending] branching_nodes: {branching_nodes}")
-    #     for line in self.all_lines:
-    #         s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
-    #         e = round_point((line.dxf.end.x,   line.dxf.end.y),   self.node_decimals)
-    #         print(f"  [CHECK] LINE ({line.dxf.start.x:.1f},{line.dxf.start.y:.1f})->({line.dxf.end.x:.1f},{line.dxf.end.y:.1f}) s_branch={s in branching_nodes} e_branch={e in branching_nodes}")
-
-    #     if self.candidate_bending_ids:
-    #         self.result.warnings.append(
-    #             f"{len(self.candidate_bending_ids)} LINE candidate come bending "
-    #             f"escluse dal grafo (entrambi gli endpoint su nodi di branching)."
-    #         )
-    #         self.all_lines = [l for l in self.all_lines if id(l) not in self.candidate_bending_ids]
-
-    #       # DEBUG
-    #         print(f"[DEBUG bending] candidate_bending_ids: {len(self.candidate_bending_ids)}")
-    #         for line in self.msp.query("LINE"):
-    #             if id(line) in self.candidate_bending_ids:
-    #                 print(f"  [BENDING] LINE ({line.dxf.start.x:.1f},{line.dxf.start.y:.1f}) -> ({line.dxf.end.x:.1f},{line.dxf.end.y:.1f})")
-
 
     def _find_bending_candidates(self):
         if not (self.all_lines or self.all_arcs):
@@ -219,7 +181,6 @@ class HealerPipeline:
 
         if not branching_nodes:
             return
-
 
         for line in self.all_lines:
             s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
@@ -238,7 +199,6 @@ class HealerPipeline:
             if id(line) not in self.candidate_bending_ids:
                 continue
 
-            # bridge-check
             test_graph = self._build_graph(exclude_ids={id(line)})
             if not test_graph:
                 continue
@@ -253,12 +213,10 @@ class HealerPipeline:
                         queue.append(neighbor)
             is_bridge = len(visited) < len(test_graph)
 
-            # hull-check: se il centroide sta sul boundary non è bending
             line_geom   = SLS([(line.dxf.start.x, line.dxf.start.y),
                             (line.dxf.end.x,   line.dxf.end.y)])
             is_interior = hull.boundary.distance(line_geom.centroid) > self.tolerance
 
-            # if not is_bridge and is_interior:
             if is_interior:
                 confirmed_bending_ids.add(id(line))
 
@@ -271,6 +229,7 @@ class HealerPipeline:
             )
             self.all_lines = [l for l in self.all_lines if id(l) not in self.candidate_bending_ids]
 
+
     def _find_loops(self):
         if not (self.all_lines or self.all_arcs or self.open_splines):
             return
@@ -278,12 +237,13 @@ class HealerPipeline:
         graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
         loops = find_closed_loops(graph)
 
-        all_loop_ids = {id(e) for loop in loops for e, _ in loop}
+        all_loop_ids = {id(edge.entity) for loop in loops for edge, _ in loop}
         seen_ids = set()
         for node, neighbors in graph.items():
-            for e, _ in neighbors:
-                if id(e) not in all_loop_ids and id(e) not in seen_ids:
-                    seen_ids.add(id(e))
+            for edge, _ in neighbors:
+                if id(edge.entity) not in all_loop_ids and id(edge.entity) not in seen_ids:
+                    seen_ids.add(id(edge.entity))
+                    e = edge.entity
                     if e.dxftype() == "LINE":
                         coords = f"({e.dxf.start.x:.1f},{e.dxf.start.y:.1f})->({e.dxf.end.x:.1f},{e.dxf.end.y:.1f})"
                     elif e.dxftype() == "ARC":
@@ -292,14 +252,12 @@ class HealerPipeline:
                         coords = ""
                     print(f"  [FUORI LOOP] {e.dxftype()} layer={e.dxf.layer} {coords}")
 
-
-
         print(f"[DEBUG loops] loop trovati da find_closed_loops: {len(loops)}")
         for i, loop in enumerate(loops):
             print(f"  [LOOP {i}] entità: {len(loop)}")
-            for e, rev in loop:
+            for edge, rev in loop:
+                e = edge.entity
                 print(f"    {e.dxftype()} layer={e.dxf.layer} rev={rev}")
-
 
         loops = _deduplicate_loops(loops)
 
@@ -359,7 +317,7 @@ class HealerPipeline:
 
         outer_loops, inner_loops = classify_loops(loops)
         self.entities_in_loops = {
-            id(e) for loop in (outer_loops + inner_loops) for e, _ in loop
+            id(edge.entity) for loop in (outer_loops + inner_loops) for edge, _ in loop
         }
         self.result._entities_in_loops_ids = self.entities_in_loops
 
@@ -583,3 +541,26 @@ class HealerPipeline:
         ]
 
         self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
+
+
+    def _edges_from_msp(self, exclude_ids=None):
+        exclude_ids = set(exclude_ids or [])
+
+        def _is_excluded(entity):
+            if id(entity) in exclude_ids:
+                return True
+            if not self.ignore_layers:
+                return False
+            layer = entity.dxf.layer.lower() if entity.dxf.hasattr('layer') else ''
+            return any(sl in layer for sl in self.ignore_layers)
+
+        edges = []
+        for entity in self.msp:
+            if _is_excluded(entity):
+                continue
+            s, e = _normalized_endpoints(entity, self.node_decimals)
+            if s is None:
+                continue
+            layer = entity.dxf.layer if entity.dxf.hasattr('layer') else ''
+            edges.append(Edge(entity=entity, layer=layer, start=s, end=e))
+        return edges

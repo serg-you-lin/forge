@@ -1,3 +1,4 @@
+
 """
 graph.py
 --------
@@ -5,7 +6,7 @@ Costruisce il grafo topologico delle entità DXF e trova i loop chiusi.
 
 Il grafo modella LINE/ARC/SPLINE come archi tra i loro endpoint arrotondati.
 Ogni nodo è un punto (x, y) arrotondato a `decimals` cifre decimali.
-Ogni arco è una tupla (entity, nodo_opposto).
+Ogni arco è una tupla (Edge, nodo_opposto).
 
 Funzioni pubbliche:
   build_node_graph     — costruisce il grafo da un modelspace ezdxf
@@ -24,6 +25,7 @@ from collections import defaultdict
 from shapely.geometry import Polygon, LinearRing
 
 from .geometry import arc_endpoints, arc_to_bulge, round_point, spline_to_points
+from ..models import Edge
 
 # ---------------------------------------------------------------------------
 # Helpers — endpoint
@@ -33,10 +35,6 @@ _SUPPORTED_TYPES = frozenset({'LINE', 'ARC', 'SPLINE'})
 
 
 def spline_endpoints(spline):
-    """
-    Restituisce (start, end) di una SPLINE come tuple (x, y).
-    Restituisce (None, None) se non riesce.
-    """
     try:
         pts = list(spline.flattening(0.01))
         if len(pts) < 2:
@@ -47,10 +45,6 @@ def spline_endpoints(spline):
 
 
 def entity_endpoints(entity):
-    """
-    Restituisce (start, end) come tuple (x, y) per LINE, ARC, SPLINE.
-    Restituisce (None, None) per tipi non supportati.
-    """
     t = entity.dxftype()
     if t == 'LINE':
         return (
@@ -65,10 +59,6 @@ def entity_endpoints(entity):
 
 
 def _normalized_endpoints(entity, decimals):
-    """
-    Single entry point per ottenere gli endpoint normalizzati di un'entità.
-    Restituisce (None, None) se il tipo non è supportato o il calcolo fallisce.
-    """
     if entity.dxftype() not in _SUPPORTED_TYPES:
         return None, None
     s, e = entity_endpoints(entity)
@@ -81,74 +71,84 @@ def _normalized_endpoints(entity, decimals):
 # Costruzione grafo
 # ---------------------------------------------------------------------------
 
-def build_node_graph(msp, decimals=1, exclude_layers=None, exclude_ids=None):
-    exclude_layers = set(exclude_layers or [])
-    exclude_ids    = set(exclude_ids    or [])
-
-    def _is_excluded(entity):
-        if id(entity) in exclude_ids:
-            return True
-        if not exclude_layers:
-            return False
-        layer = entity.dxf.layer.lower() if entity.dxf.hasattr('layer') else ''
-        return any(sl in layer for sl in exclude_layers)
-
+def build_node_graph(edges: list) -> dict:
     graph = defaultdict(list)
-
-    for entity in msp:
-        if _is_excluded(entity):
-            continue
-        s, e = _normalized_endpoints(entity, decimals)
-        if s is None:
-            continue
-        graph[s].append((entity, e))
-        graph[e].append((entity, s))
-
+    for edge in edges:
+        graph[edge.start].append((edge, edge.end))
+        graph[edge.end].append((edge, edge.start))
     return graph
+
+# def build_node_graph(msp, decimals=1, exclude_layers=None, exclude_ids=None):
+#     exclude_layers = set(exclude_layers or [])
+#     exclude_ids    = set(exclude_ids    or [])
+
+#     def _is_excluded(entity):
+#         if id(entity) in exclude_ids:
+#             return True
+#         if not exclude_layers:
+#             return False
+#         layer = entity.dxf.layer.lower() if entity.dxf.hasattr('layer') else ''
+#         return any(sl in layer for sl in exclude_layers)
+
+#     graph = defaultdict(list)
+
+#     for entity in msp:
+#         if _is_excluded(entity):
+#             continue
+#         s, e = _normalized_endpoints(entity, decimals)
+#         if s is None:
+#             continue
+#         layer = entity.dxf.layer if entity.dxf.hasattr('layer') else ''
+#         edge = Edge(entity=entity, layer=layer, start=s, end=e)
+#         graph[s].append((edge, e))
+#         graph[e].append((edge, s))
+
+#     return graph
 
 
 # ---------------------------------------------------------------------------
 # Ricerca loop
 # ---------------------------------------------------------------------------
+
 def find_closed_loops(graph):
     pruned = _prune_dead_ends(graph)
     visited_edges = set()
     loops = []
 
     for start_node in pruned:
-        for (entity, next_node) in pruned[start_node]:
-            if id(entity) in visited_edges:
+        for (edge, next_node) in pruned[start_node]:
+            if id(edge.entity) in visited_edges:
                 continue
 
-            e_start, e_end = entity_endpoints(entity)
+            e_start, e_end = entity_endpoints(edge.entity)
             if e_start is None:
                 continue
             is_reversed = (round_point(e_start) != start_node)
 
-            chain = [(entity, is_reversed)]
-            visited_edges.add(id(entity))
+            chain = [(edge, is_reversed)]
+            visited_edges.add(id(edge.entity))
             current_node = next_node
 
             while current_node != start_node:
                 candidates = [
                     (e, n) for (e, n) in pruned[current_node]
-                    if id(e) not in visited_edges
+                    if id(e.entity) not in visited_edges
                 ]
                 if not candidates:
                     break
-                next_entity, current_node = candidates[0]
-                visited_edges.add(id(next_entity))
+                next_edge, current_node = candidates[0]
+                visited_edges.add(id(next_edge.entity))
 
-                ne_start, _ = entity_endpoints(next_entity)
+                ne_start, _ = entity_endpoints(next_edge.entity)
                 if ne_start is None:
                     break
-                prev_entity, prev_rev = chain[-1]
-                prev_s, prev_e = entity_endpoints(prev_entity)
+                prev_edge, prev_rev = chain[-1]
+                prev_s, prev_e = entity_endpoints(prev_edge.entity)
                 if prev_s is None:
                     break
                 arrive_from = round_point(prev_s if prev_rev else prev_e)
                 ne_reversed = (round_point(ne_start) != arrive_from)
-                chain.append((next_entity, ne_reversed))
+                chain.append((next_edge, ne_reversed))
 
             if current_node != start_node:
                 continue
@@ -165,22 +165,17 @@ def find_closed_loops(graph):
 
     return loops
 
+
 # ---------------------------------------------------------------------------
 # Classificazione loop
 # ---------------------------------------------------------------------------
 
 def classify_loops(loops):
-    """
-    Classifica i loop in outer e inner usando Shapely contains.
-
-    Un loop è inner se è contenuto dentro un altro loop.
-    Tutti gli altri sono outer.
-    Loop non validi (< 3 punti, geometria degenere) vanno in outer.
-    """
     shapely_polygons = []
     for loop in loops:
         pts = []
-        for entity, rev in loop:
+        for edge, rev in loop:
+            entity = edge.entity
             if entity.dxftype() == 'LINE':
                 pts.append(
                     (entity.dxf.end.x, entity.dxf.end.y) if rev
@@ -217,13 +212,9 @@ def classify_loops(loops):
 # ---------------------------------------------------------------------------
 
 def loop_to_points(loop) -> list:
-    """
-    Converte un loop (lista di (entity, is_reversed)) in lista di punti 2D.
-    Ogni punto è il punto di ingresso dell'entità nel loop.
-    Usato per costruire il Polygon del loop e per _filter_spurious_loops.
-    """
     pts = []
-    for e, rev in loop:
+    for edge, rev in loop:
+        e = edge.entity
         if e.dxftype() == "LINE":
             pts.append(
                 (e.dxf.end.x,   e.dxf.end.y)   if rev
@@ -245,8 +236,8 @@ def _prune_dead_ends(graph: dict) -> dict:
         for leaf in leaves:
             if leaf not in g:
                 continue
-            if g[leaf]:  # degree 1
-                entity, neighbor = g[leaf][0]
+            if g[leaf]:
+                edge, neighbor = g[leaf][0]
                 if neighbor in g:
                     g[neighbor] = [(e, n) for e, n in g[neighbor] if n != leaf]
             del g[leaf]
@@ -254,17 +245,14 @@ def _prune_dead_ends(graph: dict) -> dict:
 
     return g
 
+
 def check_loop_ambiguity(loops, graph):
-    """
-    Restituisce i nodi che hanno più di 2 connessioni all'interno
-    dei loop trovati — indicatori di geometria ambigua.
-    """
-    loop_entity_ids = {id(e) for loop in loops for e, _ in loop}
+    loop_entity_ids = {id(edge.entity) for loop in loops for edge, _ in loop}
     branching = []
     for node, connections in graph.items():
         loop_connections = [
-            (e, n) for (e, n) in connections
-            if id(e) in loop_entity_ids
+            (edge, n) for (edge, n) in connections
+            if id(edge.entity) in loop_entity_ids
         ]
         if len(loop_connections) > 2:
             branching.append(node)

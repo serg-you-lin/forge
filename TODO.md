@@ -236,3 +236,19 @@ Tipo:
 entity → classify → transform → route → output
 
 Questo è il tuo futuro “kernel”, non geometry.
+
+
+
+
+
+models.py          → aggiungi Edge                      ✓ da fare
+core/graph.py      → build_node_graph, find_closed_loops,
+                     classify_loops, loop_to_points,
+                     check_loop_ambiguity               ✓ da fare
+core/virtual.py    → from_loop, from_spline_loop        ✓ da fare
+healer/pipeline.py → _find_loops, entities_in_loops     ✓ da fare
+healer/_helpers.py → _free_endpoints                    ✓ da verificare
+healer/_utils.py   → _deduplicate_loops                 ✓ da verificare
+
+core/geometry.py   → nessuna modifica                   ✗
+core/gap.py        → nessuna modifica                   ✗
