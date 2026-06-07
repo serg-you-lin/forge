@@ -45,12 +45,12 @@ def _run_pipeline(
     result = forge.heal(
         msp,
         tolerance=tolerance,
+        special_layers=special_layers,
     )
 
     forge.detect(
         result,
-        msp,
-        special_layers=special_layers,
+        msp,     
     )
 
     forge.write(msp, result)
