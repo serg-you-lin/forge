@@ -242,23 +242,23 @@ class ForgePart:
 class Edge:
     """
     Rappresentazione topologica di una entità geometrica lineare.
-    
+
     Layer intermedio tra l'entità DXF grezza e il topology engine.
     Il riferimento all'entità originale non viene mai perso.
-    
+
     Campi:
         entity   : entità ezdxf originale (LINE, ARC, SPLINE)
         layer    : layer DXF — cached per non rileggere entity.dxf.layer
         start    : endpoint arrotondato alla tolerance
-        end      : endpoint arrotondato alla tolerance  
+        end      : endpoint arrotondato alla tolerance
         geometry : LineString shapely — approssimazione per calcoli topologici
-                   (mai usata per ricostruzione del file)
+                   (mai usata per ricostruzione del file, che usa sempre entity)
     """
     entity:   Any
     layer:    str
     start:    Tuple[float, float]
     end:      Tuple[float, float]
-    # TODO: geometry: LineString  — aggiungere quando polygonize diventa validatore
+    geometry: Optional['LineString'] = None
 
 
 @dataclass

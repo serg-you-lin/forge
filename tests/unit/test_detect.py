@@ -108,13 +108,13 @@ class TestDetectSpecialLayers(unittest.TestCase):
         doc = load("rect_special_countersink.dxf")
         self.msp = doc.modelspace()
 
-        self.result = forge.heal(self.msp)
-
         special_layers = {
             "Svasati": "countersink"
         }
 
-        forge.detect(self.result, self.msp, special_layers=special_layers)
+        self.result = forge.heal(self.msp, special_layers=special_layers)
+
+        forge.detect(self.result, self.msp)
 
     def test_001_special_layer_override(self):
         hole = self.result.parts[0].holes[0]
