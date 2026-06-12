@@ -18,8 +18,8 @@ import math
 
 from dxf_forge.rules import layers
 from ezdxf.math import bulge_to_arc
-from .geometry import arc_to_linestrings, arc_to_bulge, num_segments_for_bulge, arc_endpoints
-from .graph import spline_to_points, arc_to_bulge, spline_endpoints
+from ...core.geometry import arc_to_linestrings, arc_to_bulge, num_segments_for_bulge, arc_endpoints
+from ...core.graph import spline_to_points, arc_to_bulge, spline_endpoints
 
 
 # ---------------------------------------------------------------------------

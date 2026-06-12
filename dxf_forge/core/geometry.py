@@ -12,8 +12,9 @@ di convertire entità DXF in geometria Shapely.
 import math
 import numpy as np
 from ezdxf.math import bulge_to_arc
-from typing import Optional
+from typing import Optional, Tuple, List
 from shapely.geometry import Point, MultiPoint, Polygon
+
 
 # ---------------------------------------------------------------------------
 # Registries
@@ -675,3 +676,88 @@ def circle_to_lwpolyline(msp, entity, layer, color):
         dxfattribs={'layer': layer, 'color': color},
         close=True,
     )
+
+# ---------------------------------------------------------------------------
+# Gap - overlap detection 
+# ---------------------------------------------------------------------------
+
+def _line_intersection(p1: Point, p2: Point,
+                       p3: Point, p4: Point) -> Optional[Point]:
+    """Intersezione tra retta (p1,p2) e retta (p3,p4). None se parallele."""
+    x1, y1 = p1
+    x2, y2 = p2
+    x3, y3 = p3
+    x4, y4 = p4
+    denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    if abs(denom) < 1e-10:
+        return None
+    t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
+    return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
+
+
+def _distance(p1: Point, p2: Point) -> float:
+    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+
+def _circle_line_intersections(cx: float, cy: float, r: float,
+                                p1: Point, p2: Point) -> List[Point]:
+    """
+    Intersezioni tra la circonferenza (cx,cy,r) e la retta infinita (p1,p2).
+    Restituisce lista di 0, 1 o 2 punti.
+    """
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    fx = p1[0] - cx
+    fy = p1[1] - cy
+
+    a = dx * dx + dy * dy
+    if a < 1e-12:
+        return []
+    b = 2 * (fx * dx + fy * dy)
+    c = fx * fx + fy * fy - r * r
+
+    discriminant = b * b - 4 * a * c
+    if discriminant < 0:
+        return []
+
+    results = []
+    for sign in (-1, 1):
+        t = (-b + sign * math.sqrt(max(discriminant, 0))) / (2 * a)
+        results.append((p1[0] + t * dx, p1[1] + t * dy))
+
+    if discriminant < 1e-10:
+        return [results[0]]
+    return results
+
+
+def _circle_circle_intersections(cx1: float, cy1: float, r1: float,
+                                  cx2: float, cy2: float, r2: float) -> List[Point]:
+    """
+    Intersezioni tra due circonferenze. Restituisce 0, 1 o 2 punti.
+    """
+    d = _distance((cx1, cy1), (cx2, cy2))
+    if d < 1e-10 or d > r1 + r2 + 1e-10 or d < abs(r1 - r2) - 1e-10:
+        return []
+
+    a = (r1 * r1 - r2 * r2 + d * d) / (2 * d)
+    h_sq = r1 * r1 - a * a
+    if h_sq < 0:
+        return []
+    h = math.sqrt(max(h_sq, 0))
+
+    mx = cx1 + a * (cx2 - cx1) / d
+    my = cy1 + a * (cy2 - cy1) / d
+
+    if h < 1e-10:
+        return [(mx, my)]
+
+    px = h * (cy2 - cy1) / d
+    py = h * (cx2 - cx1) / d
+    return [(mx + px, my - py), (mx - px, my + py)]
+
+
+def _closest_to(candidates: List[Point], ref: Point) -> Optional[Point]:
+    """Restituisce il punto più vicino a ref tra i candidati."""
+    if not candidates:
+        return None
+    return min(candidates, key=lambda p: _distance(p, ref))
