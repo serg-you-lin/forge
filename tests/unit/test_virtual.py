@@ -265,7 +265,7 @@ from unittest.mock import MagicMock
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from dxf_forge.core.virtual import VirtualShape, _loop_to_virtual_shape
+from dxf_forge.adapters.dxf.virtual import VirtualShape, _loop_to_virtual_shape
 from dxf_forge.models import Edge
 
 
@@ -377,7 +377,7 @@ class TestFromLoopLines(unittest.TestCase):
 class TestFromSplineLoop(unittest.TestCase):
 
     def setUp(self):
-        import dxf_forge.core.virtual as vmod
+        import dxf_forge.adapters.dxf.virtual as vmod
         self._orig = vmod.spline_to_points
 
         spline_pts = [(0, 0), (0, 25), (0, 50), (0, 75), (0, 100)]
@@ -393,7 +393,7 @@ class TestFromSplineLoop(unittest.TestCase):
         self.vs = VirtualShape.from_spline_loop(loop, layer='outer', color=1)
 
     def tearDown(self):
-        import dxf_forge.core.virtual as vmod
+        import dxf_forge.adapters.dxf.virtual as vmod
         vmod.spline_to_points = self._orig
 
     def test_001_restituisce_virtual_shape(self):
@@ -429,12 +429,12 @@ class TestFromSplineLoop(unittest.TestCase):
 class TestLoopToVirtualShapeRouting(unittest.TestCase):
 
     def setUp(self):
-        import dxf_forge.core.virtual as vmod
+        import dxf_forge.adapters.dxf.virtual as vmod
         self._orig = vmod.spline_to_points
         vmod.spline_to_points = lambda e: e._mock_points
 
     def tearDown(self):
-        import dxf_forge.core.virtual as vmod
+        import dxf_forge.adapters.dxf.virtual as vmod
         vmod.spline_to_points = self._orig
 
     def test_001_loop_senza_spline_ha_has_spline_false(self):

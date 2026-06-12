@@ -77,14 +77,13 @@ def run_pipeline(
         explode_inserts=True,
         label=Path(dxf_name).stem,
         source_file=dxf_name,
+        special_layers=special_layers or {},
     )
 
     if do_detect:
         forge.detect(
             result,
             msp,
-            special_layers=special_layers or {},
-            interpreter=interpreter,
         )
 
     if do_inject:

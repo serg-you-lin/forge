@@ -31,7 +31,8 @@ import logging
 # import numpy as np
 from collections import defaultdict, Counter
 from dxf_forge.io.text_utils import extract_texts_from_msp, extract_texts
-from dxf_forge.core.graph import build_node_graph, entity_endpoints
+from dxf_forge.core.graph import build_node_graph
+from dxf_forge.adapters.dxf.graph_adapter import entity_endpoints
 
 # ---------------------------------------------------------------------------
 # Setup logger
@@ -299,55 +300,3 @@ class DxfInspector:
     def _round(self, pt):
         return (round(pt[0], self.decimals), round(pt[1], self.decimals))
 
-    # def _log_graph(self, msp):
-    #     logger.debug("\n--- GRAFO NODI ---")
-    #     graph = defaultdict(list)
-
-    #     for entity in msp.query('LINE'):
-    #         s = self._round((entity.dxf.start.x, entity.dxf.start.y))
-    #         e = self._round((entity.dxf.end.x,   entity.dxf.end.y))
-    #         graph[s].append(("LINE", e))
-    #         graph[e].append(("LINE", s))
-    #         logger.debug(f"  LINE  {s} -> {e}")
-
-    #     for entity in msp.query('ARC'):
-    #         cx, cy = entity.dxf.center.x, entity.dxf.center.y
-    #         r = entity.dxf.radius
-    #         s = self._round((
-    #             cx + r * np.cos(np.radians(entity.dxf.start_angle)),
-    #             cy + r * np.sin(np.radians(entity.dxf.start_angle)),
-    #         ))
-    #         e = self._round((
-    #             cx + r * np.cos(np.radians(entity.dxf.end_angle)),
-    #             cy + r * np.sin(np.radians(entity.dxf.end_angle)),
-    #         ))
-    #         graph[s].append(("ARC", e))
-    #         graph[e].append(("ARC", s))
-    #         logger.debug(f"  ARC   {s} -> {e}")
-
-    #     for entity in msp.query('SPLINE'):
-    #         try:
-    #             pts = list(entity.flattening(distance=0.01))
-    #             s = self._round((pts[0][0],  pts[0][1]))
-    #             e = self._round((pts[-1][0], pts[-1][1]))
-    #             graph[s].append(("SPLINE", e))
-    #             graph[e].append(("SPLINE", s))
-    #             logger.debug(f"  SPLINE {s} -> {e}")
-    #         except Exception:
-    #             pass
-
-    #     logger.debug("\n  Nodi e connessioni:")
-    #     branching = []
-    #     for node, neighbors in sorted(graph.items()):
-    #         degree = len(neighbors)
-    #         flag = "  ← AMBIGUO" if degree > 2 else ""
-    #         logger.debug(f"    {node}  grado={degree}{flag}")
-    #         for etype, neighbor in neighbors:
-    #             logger.debug(f"      [{etype}] -> {neighbor}")
-    #         if degree > 2:
-    #             branching.append(node)
-
-    #     if branching:
-    #         logger.debug(f"\n  Nodi ambigui ({len(branching)}): {branching}")
-    #     else:
-    #         logger.debug("\n  Nessun nodo ambiguo.")
