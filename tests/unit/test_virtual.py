@@ -266,7 +266,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from dxf_forge.adapters.dxf.virtual import VirtualShape, _loop_to_virtual_shape
-from dxf_forge.models import Edge
+from dxf_forge.core.models import Edge
 
 
 # ---------------------------------------------------------------------------

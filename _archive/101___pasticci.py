@@ -18,7 +18,7 @@ print(f"project root: {project_root}")
 sys.path.insert(0, str(project_root))
 
 
-from dxf_forge.models import ForgeContour, ForgePart, ForgeResult
+from dxf_forge.core.models import ForgeContour, ForgePart, ForgeResult
 from dxf_forge.adapters.dxf.virtual import VirtualShape
 
 def print_attributes(obj):

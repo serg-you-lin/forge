@@ -87,6 +87,11 @@ if result.warnings:
 for i, part in enumerate(result.parts):
     print(f"\n  Pezzo {i+1}: {part.label}")
     print(f"    Area netta : {part.area:.1f}")
+    print(f"    Area outer raw : {part.outer.polygon.area:.4f}")
+    for j, inner in enumerate(part.inners):
+        print(f"    Inner {j}: area={inner.polygon.area:.4f}")
+    for j, hole in enumerate(part.holes):
+        print(f"    Hole  {j}: area={hole.entity and hole.polygon.area:.4f}")
     print(f"    Fori       : {len(part.inners)}")
     print(f"    Bbox       : {part.bbox}")
 

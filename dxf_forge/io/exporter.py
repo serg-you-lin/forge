@@ -11,7 +11,7 @@ Per aggiungere, rinominare o rimuovere un campo — modificare solo metadata_sch
 import json
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from ..models import ForgeResult, ForgePart
+from ..core.models import ForgeResult, ForgePart
 from ..rules.metadata_schema import METADATA_FIELDS
 
 
