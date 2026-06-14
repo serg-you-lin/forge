@@ -167,7 +167,7 @@ class TestIsCountersinkOuter(unittest.TestCase):
     
     def _children(self, *circles):
         from shapely.geometry import Point
-        from dxf_forge.models import ForgeContour
+        from dxf_forge.core.models import ForgeContour
         result = []
         for c in circles:
             poly = Point(c.dxf.center.x, c.dxf.center.y).buffer(c.dxf.radius)
@@ -199,7 +199,7 @@ class TestIsCountersinkOuter(unittest.TestCase):
 
     def test_005_figlio_non_circle_ignorato(self):
         from unittest.mock import MagicMock
-        from dxf_forge.models import ForgeContour
+        from dxf_forge.core.models import ForgeContour
         from shapely.geometry import Point
 
         big = _make_circle(0, 0, 10)

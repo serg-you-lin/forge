@@ -15,7 +15,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from shapely.geometry import Polygon
-from dxf_forge.models import ForgeContour, ForgePart, ForgeResult
+from dxf_forge.core.models import ForgeContour, ForgePart, ForgeResult
 
 
 class TestForgeContour(unittest.TestCase):

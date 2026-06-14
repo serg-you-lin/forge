@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from ...models import (
+from ...core.models import (
     ForgeResult,
 )
 from ...core.graph import (

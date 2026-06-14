@@ -28,12 +28,13 @@ Flusso tipico:
 
 from shapely.geometry import Point
 from typing import Callable, Optional
-from ..core.geometry import get_representative_point, group_collinear_lines, entity_length
+from ..adapters.dxf.geometry_adapter import get_representative_point, entity_length
+from ..core.geometry import group_collinear_lines
 from ..io.text_utils import extract_texts_from_msp
 from ..rules.layers import (
     LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING, LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
 )
-from ..models import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED, HOLE_TYPE_PLAIN
+from ..core.models import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED, HOLE_TYPE_PLAIN
 
 ANNOTATION_TYPES = {'TEXT', 'MTEXT', 'DIMENSION', 'LEADER', 'MULTILEADER'}
 

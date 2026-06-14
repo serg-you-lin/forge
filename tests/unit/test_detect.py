@@ -10,7 +10,7 @@ from dxf_forge.rules.layers import (
     HOLE_DIAMETER_THRESHOLD,
 )
 
-from dxf_forge.models import (
+from dxf_forge.core.models import (
     HOLE_TYPE_PLAIN,
     HOLE_TYPE_COUNTERSINK,
     HOLE_TYPE_THREADED,

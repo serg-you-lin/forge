@@ -43,7 +43,7 @@ from .workflow.detection import detect
 from .io.exporter import (to_json, save_json, save_xml, to_nester_input,
                        write_metadata_to_dxf, read_metadata_from_dxf, 
                        upgrade_to_r2010, set_schema)
-from .models     import ForgeResult, ForgePart, ForgeContour
+from .core.models     import ForgeResult, ForgePart, ForgeContour
 from .io.text_utils import extract_texts_from_msp
 
 __version__ = "0.10.1"

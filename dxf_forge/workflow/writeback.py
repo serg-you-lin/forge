@@ -35,8 +35,8 @@ from typing import Callable, Optional
 
 import ezdxf
 
-from ..models import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
-from ..core.geometry import copy_entity
+from ..core.models import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
+from ..adapters.dxf.copy_adapter import copy_entity
 from ..adapters.dxf.virtual import _write_virtual_shape
 from ..rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
@@ -142,7 +142,7 @@ def split(
     include_annotations: bool               = True,
     min_area:            float              = DEFAULT_MIN_PART_AREA,
     exclude_types:       set                = None,
-    on_part:             Optional[Callable] = None,  # ← callable(part, doc_out, path)
+    on_part:             Optional[Callable] = None, 
 ) -> list:
     """
     Produce un documento ezdxf separato per ogni ForgePart.
@@ -168,13 +168,12 @@ def split(
     Returns:
         Lista di path dei file generati.
     """
-    os.makedirs(output_folder, exist_ok=True)
 
+    os.makedirs(output_folder, exist_ok=True)
     entity_to_work = _build_work_index(result)
     special_map    = _build_special_map(result)
     generated      = []
-
-    src_doc = msp.doc
+    src_doc        = msp.doc
 
     for i, part in enumerate(result.parts):
         if min_area > 0 and part.outer.polygon.area < min_area:
@@ -183,9 +182,8 @@ def split(
                 f"sotto soglia {min_area} mm²"
             )
             continue
- 
-        # name = namer(i, part) if namer else f"{i:03d}_{part.label}"    
-        name = namer(i, part) if namer else f"{part.label}_P{i + 1}"
+
+        name     = namer(i, part) if namer else f"{part.label}_P{i + 1}"
         out_path = os.path.join(output_folder, f"{name}.dxf")
 
         doc_out = ezdxf.new(dxfversion="R2010")
@@ -194,25 +192,31 @@ def split(
         _setup_layers(doc_out)
         msp_out = doc_out.modelspace()
 
+        vs_swap = _write_virtual_shapes_to_msp(msp_out, result, part)
+
+        effective_ids = set()
+        for eid in part.entity_ids:
+            if eid in vs_swap:
+                effective_ids.add(vs_swap[eid])
+            else:
+                effective_ids.add(eid)
 
         for entity in msp:
             if not entity.dxf.hasattr("layer"):
                 continue
-            if not entity.dxf.hasattr("layer"):
-                continue
             if exclude_types and entity.dxftype() in exclude_types:
                 continue
+
             is_annotation = entity.dxftype() in ANNOTATION_TYPES
             if is_annotation:
                 if not include_annotations:
                     continue
-                # annotazioni: copia se il punto di inserimento è dentro l'outer
-                from ..core.geometry import get_representative_point
+                from ..adapters.dxf.geometry_adapter import get_representative_point
                 pt = get_representative_point(entity)
                 if pt is None or not part.outer.polygon.covers(pt):
                     continue
             else:
-                if id(entity) not in part.entity_ids:
+                if id(entity) not in effective_ids:
                     continue
 
             entity_id = id(entity)
@@ -220,7 +224,6 @@ def split(
             work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
 
             new_entity = copy_entity(entity, msp_out)
-            
             if new_entity is None:
                 continue
 
@@ -236,6 +239,8 @@ def split(
                 new_entity.dxf.layer = TRASH_LAYER
                 new_entity.dxf.color = COLOR_TRASH
 
+        _assign_structural_layers(msp_out, result)
+
         if on_part is not None:
             on_part(part, doc_out, out_path)
         doc_out.saveas(out_path)
@@ -243,6 +248,82 @@ def split(
         part.label = name
 
     return generated
+
+    # os.makedirs(output_folder, exist_ok=True)
+
+    # entity_to_work = _build_work_index(result)
+    # special_map    = _build_special_map(result)
+    # generated      = []
+
+    # src_doc = msp.doc
+
+    # for i, part in enumerate(result.parts):
+    #     if min_area > 0 and part.outer.polygon.area < min_area:
+    #         result.warnings.append(
+    #             f"Part {i} scartato: area {part.outer.polygon.area:.2f} mm² "
+    #             f"sotto soglia {min_area} mm²"
+    #         )
+    #         continue
+ 
+    #     # name = namer(i, part) if namer else f"{i:03d}_{part.label}"    
+    #     name = namer(i, part) if namer else f"{part.label}_P{i + 1}"
+    #     out_path = os.path.join(output_folder, f"{name}.dxf")
+
+    #     doc_out = ezdxf.new(dxfversion="R2010")
+    #     doc_out.header['$INSUNITS']    = src_doc.header.get('$INSUNITS', 4)
+    #     doc_out.header['$MEASUREMENT'] = src_doc.header.get('$MEASUREMENT', 1)
+    #     _setup_layers(doc_out)
+    #     msp_out = doc_out.modelspace()
+
+
+    #     for entity in msp:
+    #         if not entity.dxf.hasattr("layer"):
+    #             continue
+    #         if not entity.dxf.hasattr("layer"):
+    #             continue
+    #         if exclude_types and entity.dxftype() in exclude_types:
+    #             continue
+    #         is_annotation = entity.dxftype() in ANNOTATION_TYPES
+    #         if is_annotation:
+    #             if not include_annotations:
+    #                 continue
+    #             # annotazioni: copia se il punto di inserimento è dentro l'outer
+    #             from ..core.geometry import get_representative_point
+    #             pt = get_representative_point(entity)
+    #             if pt is None or not part.outer.polygon.covers(pt):
+    #                 continue
+    #         else:
+    #             if id(entity) not in part.entity_ids:
+    #                 continue
+
+    #         entity_id = id(entity)
+    #         layer     = entity.dxf.layer
+    #         work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
+
+    #         new_entity = copy_entity(entity, msp_out)
+            
+    #         if new_entity is None:
+    #             continue
+
+    #         if work_type is not None:
+    #             target_layer, target_color = WORK_TYPE_TO_LAYER.get(
+    #                 work_type, (TRASH_LAYER, COLOR_TRASH)
+    #             )
+    #             new_entity.dxf.layer = target_layer
+    #             new_entity.dxf.color = target_color
+    #         elif layer.upper() in STRUCTURAL_LAYERS or layer.upper() in WORK_LAYERS:
+    #             pass
+    #         elif keep_trash:
+    #             new_entity.dxf.layer = TRASH_LAYER
+    #             new_entity.dxf.color = COLOR_TRASH
+
+    #     if on_part is not None:
+    #         on_part(part, doc_out, out_path)
+    #     doc_out.saveas(out_path)
+    #     generated.append(out_path)
+    #     part.label = name
+
+    # return generated
 
 
 # ---------------------------------------------------------------------------
@@ -374,3 +455,29 @@ def _all_classified_ids(result: ForgeResult) -> set:
     Se detect() non è stato chiamato, restituisce un insieme vuoto.
     """
     return {id(ce.entity) for ce in result.classified_entities if ce.entity is not None}
+
+
+def _write_virtual_shapes_to_msp(msp_out, result: ForgeResult, part: ForgePart) -> dict:
+    """
+    Materializza i VirtualShape del part corrente nel msp_out figlio.
+    
+    Non tocca result né part.entity_ids — restituisce uno swap dict
+    id(VS) → id(lwpoly) che split() usa localmente per filtrare le entità.
+    """
+    vs_swap = {}  # id(VS) → id(lwpoly) locale al figlio
+    
+    for vs in result._virtual_shapes:
+        if result._vs_to_part.get(id(vs)) is not part:
+            continue
+        if id(vs) in result._suppressed_vs_ids:
+            continue
+        
+        lwpoly = _write_virtual_shape(msp_out, vs)
+        if lwpoly is not None:
+            vs_swap[id(vs)] = id(lwpoly)
+        else:
+            # has_spline=True: registra le entità originali
+            for entity, _ in vs.loop:
+                vs_swap[id(vs)] = id(entity)  # placeholder
+    
+    return vs_swap

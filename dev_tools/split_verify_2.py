@@ -44,7 +44,7 @@ project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 
 import dxf_forge as forge
-from dxf_forge.models import ForgePart, ForgeResult
+from dxf_forge.core.models import ForgePart, ForgeResult
 
 # ---------------------------------------------------------------------------
 # Palette
