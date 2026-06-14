@@ -45,21 +45,17 @@ class VirtualShape:
         for edge, rev in loop:
             entity = edge.entity
             if entity.dxftype() == 'LINE':
-                if rev:
-                    sx, sy = entity.dxf.end.x,   entity.dxf.end.y
-                    ex, ey = entity.dxf.start.x, entity.dxf.start.y
-                else:
-                    sx, sy = entity.dxf.start.x, entity.dxf.start.y
-                    ex, ey = entity.dxf.end.x,   entity.dxf.end.y
-                pts_with_bulge.append((sx, sy, 0.0, 0.0, 0.0))
-                _last_exit = (ex, ey)
+                pt, ex = _handle_line(entity, rev)
+                pts_with_bulge.append(pt)
+                _last_exit = ex
 
             elif entity.dxftype() == 'ARC':
                 if _last_exit is not None:
                     pts_with_bulge.append((_last_exit[0], _last_exit[1], 0.0, 0.0, 0.0))
                     _last_exit = None
-                entry_pt, _, bulge = arc_to_bulge(entity, reversed=rev)
-                pts_with_bulge.append((entry_pt[0], entry_pt[1], 0.0, 0.0, bulge))
+
+                entry, exit_, bulge = _handle_arc_bulge(entity, rev)
+                pts_with_bulge.append((entry[0], entry[1], 0.0, 0.0, bulge))
 
         poly_pts = []
         n = len(pts_with_bulge)
@@ -85,24 +81,14 @@ class VirtualShape:
                     poly_pts.append((cx + radius * math.cos(a),
                                     cy + radius * math.sin(a)))
 
-        poly = _build_polygon(poly_pts)
-        if poly is None:
-            return None
-
-        source_layers = {
-            edge.layer for edge, _ in loop
-            if edge.layer and edge.layer != "0"
-        }
-        source_layer = source_layers.pop() if len(source_layers) == 1 else ""
-
-        return cls(
-            pts_with_bulge=pts_with_bulge,
-            polygon=poly,
-            layer=layer,
-            color=color,
-            has_spline=False,
-            loop=loop,
-            source_layer=source_layer,
+        return _build_virtualshape(
+            cls,
+            pts_with_bulge,
+            poly_pts,
+            layer,
+            color,
+            False,
+            loop,
         )
 
     @classmethod
@@ -113,27 +99,16 @@ class VirtualShape:
         for edge, rev in loop:
             entity = edge.entity
             if entity.dxftype() == 'LINE':
-                if rev:
-                    sx, sy = entity.dxf.end.x,   entity.dxf.end.y
-                    ex, ey = entity.dxf.start.x, entity.dxf.start.y
-                else:
-                    sx, sy = entity.dxf.start.x, entity.dxf.start.y
-                    ex, ey = entity.dxf.end.x,   entity.dxf.end.y
-                poly_pts.append((sx, sy))
-                _last_exit = (ex, ey)
+                pt, ex = _handle_line(entity, rev)
+                poly_pts.append((pt[0], pt[1]))
+                _last_exit = ex
 
             elif entity.dxftype() == 'ARC':
                 if _last_exit is not None:
                     poly_pts.append(_last_exit)
                     _last_exit = None
-                _, _, bulge = arc_to_bulge(entity, reversed=rev)
-                num_seg = num_segments_for_bulge(bulge)
-                arc_pts = []
-                for seg in arc_to_linestrings(entity, num_segments=num_seg):
-                    for coord in seg.coords:
-                        arc_pts.append(coord)
-                if rev:
-                    arc_pts = list(reversed(arc_pts))
+
+                arc_pts = _arc_discretize(entity, rev)
                 poly_pts.extend(arc_pts)
 
             elif entity.dxftype() == 'SPLINE':
@@ -146,29 +121,19 @@ class VirtualShape:
                 for sp in s_pts[1:]:
                     poly_pts.append(sp)
 
-        poly = _build_polygon(poly_pts)
-        if poly is None:
-            return None
-
-        source_layers = {
-            edge.layer for edge, _ in loop
-            if edge.layer and edge.layer != "0"
-        }
-        source_layer = source_layers.pop() if len(source_layers) == 1 else ""
-
-        return cls(
-            pts_with_bulge=[],
-            polygon=poly,
-            layer=layer,
-            color=color,
-            has_spline=True,
-            loop=loop,
-            source_layer=source_layer,
+        return _build_virtualshape(
+            cls,
+            [],
+            poly_pts,
+            layer,
+            color,
+            True,
+            loop,
         )
 
 
 # ---------------------------------------------------------------------------
-# Helper privato
+# Helper privati
 # ---------------------------------------------------------------------------
 
 def _build_polygon(pts: list) -> Optional[Polygon]:
@@ -184,6 +149,59 @@ def _build_polygon(pts: list) -> Optional[Polygon]:
     except Exception:
         return None
 
+def _build_virtualshape(cls, pts_with_bulge, poly_pts, layer, color, has_spline, loop):
+    poly = _build_polygon(poly_pts)
+    if poly is None:
+        return None
+
+    source_layers = {
+        e.layer for e, _ in loop
+        if e.layer and e.layer != "0"
+    }
+    source_layer = source_layers.pop() if len(source_layers) == 1 else ""
+
+    return cls(
+        pts_with_bulge=pts_with_bulge,
+        polygon=poly,
+        layer=layer,
+        color=color,
+        has_spline=has_spline,
+        loop=loop,
+        source_layer=source_layer,
+    )
+
+def _handle_line(entity, rev):
+    if rev:
+        sx, sy = entity.dxf.end.x, entity.dxf.end.y
+        ex, ey = entity.dxf.start.x, entity.dxf.start.y
+    else:
+        sx, sy = entity.dxf.start.x, entity.dxf.start.y
+        ex, ey = entity.dxf.end.x, entity.dxf.end.y
+
+    return (sx, sy, 0.0, 0.0, 0.0), (ex, ey)
+
+def _handle_arc_bulge(entity, rev):
+    _, _, bulge = arc_to_bulge(entity, reversed=rev)
+
+    if rev:
+        entry = (entity.end_point.x, entity.end_point.y)
+        exit_ = (entity.start_point.x, entity.start_point.y)
+    else:
+        entry = (entity.start_point.x, entity.start_point.y)
+        exit_ = (entity.end_point.x, entity.end_point.y)
+
+    return entry, exit_, bulge
+
+
+def _arc_discretize(entity, rev):
+    _, _, bulge = arc_to_bulge(entity, reversed=rev)
+    num_seg = num_segments_for_bulge(bulge)
+
+    pts = []
+    for seg in arc_to_linestrings(entity, num_segments=num_seg):
+        pts.extend(seg.coords)
+
+    return list(reversed(pts)) if rev else pts
 
 # ---------------------------------------------------------------------------
 # Routing loop → VirtualShape
@@ -228,3 +246,5 @@ def _write_virtual_shape(msp, vs: 'VirtualShape'):
             dxfattribs={'layer': vs.layer, 'color': vs.color},
             close=True,
         )
+
+
