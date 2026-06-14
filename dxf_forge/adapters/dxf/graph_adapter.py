@@ -1,3 +1,5 @@
+
+
 # """
 # adapters/dxf/graph_adapter.py
 # -----------------------------
@@ -10,7 +12,11 @@
 #     edges_from_msp — produce list[Edge] da un modelspace ezdxf
 # """
 
-# from ...models import Edge
+# import math
+# import numpy as np
+# from shapely.geometry import LineString
+
+# from ...core.models import Edge
 # from ...core.geometry import arc_endpoints, round_point
 
 # # ---------------------------------------------------------------------------
@@ -51,6 +57,7 @@
 #         return _spline_endpoints(entity)
 #     return None, None
 
+# entity_endpoints = _entity_endpoints
 
 # def _normalized_endpoints(entity, decimals):
 #     """
@@ -64,6 +71,53 @@
 #     if s is None or e is None:
 #         return None, None
 #     return round_point(s, decimals), round_point(e, decimals)
+
+
+# # ---------------------------------------------------------------------------
+# # Geometry — approssimazione LineString per il core topologico
+# # ---------------------------------------------------------------------------
+
+# def _entity_to_linestring(entity) -> LineString:
+#     """
+#     Produce una LineString shapely dall'entità DXF.
+#     Usata dal core per classificazione e loop detection — mai per writeback.
+
+#     LINE   → segmento diretto
+#     ARC    → poligonale approssimata (32 segmenti)
+#     SPLINE → flattening ezdxf
+#     """
+#     t = entity.dxftype()
+
+#     if t == 'LINE':
+#         return LineString([
+#             (entity.dxf.start.x, entity.dxf.start.y),
+#             (entity.dxf.end.x,   entity.dxf.end.y),
+#         ])
+
+#     if t == 'ARC':
+#         cx, cy = entity.dxf.center.x, entity.dxf.center.y
+#         r = entity.dxf.radius
+#         start = np.radians(entity.dxf.start_angle)
+#         end   = np.radians(entity.dxf.end_angle)
+#         if start > end:
+#             end += 2 * np.pi
+#         angles = np.linspace(start, end, 33)
+#         pts = [(cx + r * np.cos(a), cy + r * np.sin(a)) for a in angles]
+#         return LineString(pts)
+
+#     if t == 'SPLINE':
+#         try:
+#             pts = [(p[0], p[1]) for p in entity.flattening(0.01)]
+#             if len(pts) >= 2:
+#                 return LineString(pts)
+#         except Exception:
+#             pass
+
+#     # fallback: segmento diretto tra i due endpoint
+#     s, e = _entity_endpoints(entity)
+#     if s and e:
+#         return LineString([s, e])
+#     return LineString([(0, 0), (0, 0)])
 
 
 # # ---------------------------------------------------------------------------
@@ -101,32 +155,32 @@
 #         s, e = _normalized_endpoints(entity, node_decimals)
 #         if s is None:
 #             continue
-#         layer = entity.dxf.layer if entity.dxf.hasattr('layer') else ''
-#         edges.append(Edge(entity=entity, layer=layer, start=s, end=e))
+#         layer    = entity.dxf.layer if entity.dxf.hasattr('layer') else ''
+#         geometry = _entity_to_linestring(entity)
+#         edges.append(Edge(entity=entity, layer=layer, start=s, end=e, geometry=geometry))
 
 #     return edges
 
 
 
-
 """
 adapters/dxf/graph_adapter.py
------------------------------
+------------------------------
 Traduce entità DXF grezze in Edge topologici.
 
 Unico punto del progetto che conosce sia ezdxf che il modello Edge.
-Il core (graph.py, gap.py) non sa nulla di DXF — riceve solo Edge.
+Il core (graph.py) non sa nulla di DXF — riceve solo Edge.
 
 Funzioni pubbliche:
     edges_from_msp — produce list[Edge] da un modelspace ezdxf
 """
 
-import math
 import numpy as np
 from shapely.geometry import LineString
 
-from ...models import Edge
-from ...core.geometry import arc_endpoints, round_point
+from ...core.models import Edge
+from ...core.geometry import round_point
+from .geometry_adapter import arc_endpoints
 
 # ---------------------------------------------------------------------------
 # Tipi supportati — solo entità con due endpoint distinti
@@ -166,7 +220,10 @@ def _entity_endpoints(entity):
         return _spline_endpoints(entity)
     return None, None
 
+
+# alias pubblico usato da geometry_adapter per spline_endpoints
 entity_endpoints = _entity_endpoints
+
 
 def _normalized_endpoints(entity, decimals):
     """
@@ -204,10 +261,11 @@ def _entity_to_linestring(entity) -> LineString:
         ])
 
     if t == 'ARC':
+        import numpy as np
         cx, cy = entity.dxf.center.x, entity.dxf.center.y
-        r = entity.dxf.radius
-        start = np.radians(entity.dxf.start_angle)
-        end   = np.radians(entity.dxf.end_angle)
+        r      = entity.dxf.radius
+        start  = np.radians(entity.dxf.start_angle)
+        end    = np.radians(entity.dxf.end_angle)
         if start > end:
             end += 2 * np.pi
         angles = np.linspace(start, end, 33)

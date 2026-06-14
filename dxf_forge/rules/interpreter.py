@@ -15,7 +15,7 @@ from typing import List
 from shapely.geometry import Point, LineString
 import math
 
-from ..models import (
+from ..core.models import (
     BaseInterpreter,
     ClassifiedEntity,
     BendingLine,

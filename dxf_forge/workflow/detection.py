@@ -36,7 +36,7 @@ from typing import Optional
 
 from shapely.geometry import LineString, Point
 
-from ..models import (
+from ..core.models import (
     ForgeResult,
     ForgePart,
     ForgeContour,
@@ -49,8 +49,16 @@ from ..models import (
     HOLE_TYPE_THREADED,
     HOLE_TYPE_UNKNOWN,
 )
-from ..core.geometry import (
+# from ..core.geometry import (
+#     is_threaded_hole,
+# )
+from ..adapters.dxf.geometry_adapter import (
     is_threaded_hole,
+    is_threaded_arc,
+    is_countersink_outer,
+    entity_length,
+    get_representative_point,
+    entity_midpoint,
 )
 from ..rules.layers import WORK_TYPE_TO_LAYER, VALID_WORK_TYPES
 

@@ -385,7 +385,7 @@ sys.path.insert(0, str(project_root))
 from dxf_forge.core.graph import (
     build_node_graph, find_closed_loops, classify_loops,
 )
-from dxf_forge.models import Edge
+from dxf_forge.core.models import Edge
 
 
 # ---------------------------------------------------------------------------

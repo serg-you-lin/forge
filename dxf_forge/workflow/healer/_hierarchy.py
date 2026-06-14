@@ -1,13 +1,12 @@
-from ...models import (
+from ...core.models import (
     ForgePart,
     ForgeContour,
     GeometryHints,
     Hole,
     HOLE_TYPE_UNKNOWN,
 )
-from ...core.geometry import (
-    pline_to_polygon,
-    circle_to_polygon,
+from ...adapters.dxf.geometry_adapter import (
+    entity_to_polygon,
 )
 from ._helpers import _spline_to_polygon
 from ...rules.layers import (
@@ -17,16 +16,33 @@ from ...rules.layers import (
 )
 
 
+# def _build_hierarchy(self):
+#     shapes = []
+#     for vs in self.result._virtual_shapes:
+#         shapes.append((vs, vs.polygon, "VIRTUAL"))
+#     for pline in self.all_plines:
+#         poly = pline_to_polygon(pline)
+#         if poly:
+#             shapes.append((pline, poly, "LWPOLYLINE"))
+#     for circle in self.all_circles:
+#         poly = circle_to_polygon(circle)
+#         if poly:
+#             shapes.append((circle, poly, "CIRCLE"))
+#     for spline in self.closed_splines:
+#         poly = _spline_to_polygon(spline)
+#         if poly:
+#             shapes.append((spline, poly, "SPLINE"))
+
 def _build_hierarchy(self):
     shapes = []
     for vs in self.result._virtual_shapes:
         shapes.append((vs, vs.polygon, "VIRTUAL"))
     for pline in self.all_plines:
-        poly = pline_to_polygon(pline)
+        poly = entity_to_polygon(pline)
         if poly:
             shapes.append((pline, poly, "LWPOLYLINE"))
     for circle in self.all_circles:
-        poly = circle_to_polygon(circle)
+        poly = entity_to_polygon(circle)
         if poly:
             shapes.append((circle, poly, "CIRCLE"))
     for spline in self.closed_splines:

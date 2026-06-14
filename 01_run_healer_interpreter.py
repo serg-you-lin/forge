@@ -29,7 +29,7 @@ base_name = os.path.splitext(file_name)[0]
 # output nella stessa cartella
 output_dxf = os.path.join(base_dir, f"{base_name}_healed.dxf")
 
-tolerance = .2
+tolerance = 5
 print("tolleranza:", tolerance)
 
 inspector = DxfInspector(
@@ -86,11 +86,11 @@ result = forge.heal(
 )
 
 
-forge.detect(
-    result,
-    msp,
-    bending_tolerance=5,
-)
+# forge.detect(
+#     result,
+#     msp,
+#     bending_tolerance=.5,
+# )
 
 forge.write(msp, result)
 

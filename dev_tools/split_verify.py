@@ -41,7 +41,7 @@ sys.path.insert(0, str(project_root))
 
 import dxf_forge as forge
 from dxf_forge.io.exporter import build_metadata
-from dxf_forge.models import ForgePart, ForgeResult
+from dxf_forge.core.models import ForgePart, ForgeResult
 from dxf_forge.rules.layers import LAYER_HOLE, LAYER_INNER, LAYER_OUTER
 
 # ---------------------------------------------------------------------------

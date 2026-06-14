@@ -9,8 +9,9 @@ from typing import Optional, Set
 
 from shapely.geometry import Polygon
 
-from ...core.geometry import arc_endpoints
-from ...core.graph import spline_to_points, spline_endpoints, round_point
+from ...adapters.dxf.geometry_adapter import arc_endpoints, spline_to_points
+from ...core.geometry import round_point
+from ...core.graph import spline_endpoints
 
 
 def _spline_is_closed(spline, tolerance: float = 0.01) -> bool:
