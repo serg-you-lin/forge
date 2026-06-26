@@ -2,7 +2,9 @@
   "source_file": "Multifeature.dxf",
   "is_valid": true,
   "part_count": 1,
-  "warnings": [],
+  "warnings": [
+    "Geometria ambigua: 13 nodi con più di 2 connessioni. Il risultato potrebbe essere impreciso."
+  ],
   "errors": [],
   "parts": [
     {

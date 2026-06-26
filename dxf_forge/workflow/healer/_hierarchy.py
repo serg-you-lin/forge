@@ -12,6 +12,7 @@ from ._helpers import _spline_to_polygon
 from ...rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     COLOR_INNER,
+    color_for_layer,
     HOLE_DIAMETER_THRESHOLD, STRUCTURAL_LAYERS,
 )
 
@@ -57,8 +58,8 @@ def _build_hierarchy(self):
         for child in node[3]:
             if child[2] == "VIRTUAL":
                 child[0].layer = LAYER_INNER
-                child[0].color = COLOR_INNER
-
+                child[0].color = color_for_layer(LAYER_INNER)
+                
     for father in fathers:
         father_obj, father_poly, father_tipo, children = father
 

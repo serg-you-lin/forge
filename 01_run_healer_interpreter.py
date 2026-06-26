@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/example_15_flattener.dxf"
+input_dxf = r"tests/examples/Multifeature.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -29,7 +29,7 @@ base_name = os.path.splitext(file_name)[0]
 # output nella stessa cartella
 output_dxf = os.path.join(base_dir, f"{base_name}_healed.dxf")
 
-tolerance = .2
+tolerance = 1
 print("tolleranza:", tolerance)
 
 inspector = DxfInspector(
@@ -76,12 +76,12 @@ result = forge.heal(
     msp,
     tolerance=tolerance,
     explode_inserts=True,
-    # special_layers={
-    #     "MARK": "engrave",
-    #     "Filettati": "threaded_hole",
-    #     "Svasati": "countersink",   
-    #     "Piega": "bending", 
-    # },
+    special_layers={
+        "MARK": "engrave",
+        "Filettati": "threaded_hole",
+        "Svasati": "countersink",   
+        "Piega": "bending", 
+    },
     label=base_name,
     source_file=file_name,
 )
