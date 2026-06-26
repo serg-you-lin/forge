@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ProTest\Ostici\F6.DXF"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_25-06-2026\gamba tavolo NO SPLIT\gamba tavolo NO SPLIT_P1.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -29,7 +29,7 @@ base_name = os.path.splitext(file_name)[0]
 # output nella stessa cartella
 output_dxf = os.path.join(base_dir, f"{base_name}_healed.dxf")
 
-tolerance = 5
+tolerance = .2
 print("tolleranza:", tolerance)
 
 inspector = DxfInspector(
@@ -86,11 +86,11 @@ result = forge.heal(
 )
 
 
-# forge.detect(
-#     result,
-#     msp,
-#     bending_tolerance=.5,
-# )
+forge.detect(
+    result,
+    msp,
+    bending_tolerance=.2,
+)
 
 forge.write(msp, result)
 

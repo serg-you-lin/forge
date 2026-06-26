@@ -13,6 +13,12 @@ from ...rules.layers import (
 
 
 def _collect_loops(self, graph):
+    branching_nodes = [n for n, conn in graph.items() if len(conn) > 2]
+    if branching_nodes:
+        self.result.warnings.append(
+            f"Geometria ambigua: {len(branching_nodes)} nodi con più di 2 "
+            f"connessioni. Il risultato potrebbe essere impreciso."
+        )
     loops = find_closed_loops(graph)
 
     all_loop_ids = {id(edge.entity) for loop in loops for edge, _ in loop}

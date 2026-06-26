@@ -18,7 +18,7 @@ import dxf_forge as forge
 import math
 
 
-DEFAULT_FILE = r"rettangolo_raggiato.dxf"
+DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_25-06-2026\gamba tavolo NO SPLIT\gamba tavolo NO SPLIT_P1.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(

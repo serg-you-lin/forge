@@ -74,11 +74,12 @@ def validate_msp(msp) -> ForgeResult:
     lines   = list(msp.query('LINE'))
     arcs    = list(msp.query('ARC'))
     plines  = list(msp.query('LWPOLYLINE'))
+    polylines  = list(msp.query('POLYLINE'))
     circles = list(msp.query('CIRCLE'))
     ellipsises = list(msp.query('ELLIPSE'))
     inserts = list(msp.query('INSERT'))
 
-    if not lines and not arcs and not plines and not circles and not ellipsises and not inserts:
+    if not lines and not arcs and not plines and not polylines and not circles and not ellipsises and not inserts:
         result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
         result.is_valid = False
         return result
@@ -101,11 +102,16 @@ def validate_msp(msp) -> ForgeResult:
             f"Trovate {len(lines)} LINE e {len(arcs)} ARC — potrebbe essere necessario heal()."
         )
 
-    if plines:
+    if plines or polylines:
         open_plines = [p for p in plines if not p.closed]
         if open_plines:
             result.warnings.append(
                 f"{len(open_plines)} LWPOLYLINE non chiuse trovate."
+            )
+        open_polylines = [p for p in polylines if not p.is_closed]
+        if open_polylines:
+            result.warnings.append(
+                f"{len(open_polylines)} POLYLINE non chiuse trovate."
             )
 
     if inserts:

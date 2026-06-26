@@ -15,12 +15,14 @@ import dxf_forge as forge
 import os
 
 # ← CAMBIA QUI con il tuo file
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ProTest\Ostici\fa_che_non_mi_incazzi.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_25-06-2026\gamba tavolo NO SPLIT.dxf"
 #input_dir = os.path.abspath(input_dxf)
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
 print(f"Apertura: {input_dxf}")
 doc = ezdxf.readfile(input_dxf)
+if doc.dxfversion < "AC1015":
+    doc = forge.upgrade_to_r2010(doc)
 msp = doc.modelspace()
 
 from collections import Counter

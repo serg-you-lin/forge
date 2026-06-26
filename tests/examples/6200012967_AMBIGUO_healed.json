@@ -5,7 +5,8 @@
   "warnings": [
     "10 INSERT esplosi prima dell'healing.",
     "Rimosse 4 entità duplicate dal msp.",
-    "2 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching)."
+    "2 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).",
+    "Geometria ambigua: 12 nodi con più di 2 connessioni. Il risultato potrebbe essere impreciso."
   ],
   "errors": [],
   "parts": [

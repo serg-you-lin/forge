@@ -97,6 +97,12 @@ def _copy_lwpolyline(entity, msp, attribs) -> None:
     msp.add_lwpolyline(pts, format='xyseb', dxfattribs=attribs, close=entity.closed)
 
 
+@_register_copy('POLYLINE')
+def _copy_polyline(entity, msp, attribs) -> None:
+    pts = [(v.dxf.location.x, v.dxf.location.y) for v in entity.vertices]
+    safe_attribs = {k: v for k, v in attribs.items() if k in ('layer', 'linetype', 'lineweight')}
+    msp.add_lwpolyline(pts, dxfattribs=safe_attribs, close=entity.is_closed)
+
 @_register_copy('SPLINE')
 def _copy_spline(entity, msp, attribs) -> None:
     new_entity = entity.copy()

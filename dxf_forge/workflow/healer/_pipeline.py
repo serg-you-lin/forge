@@ -169,6 +169,7 @@ class HealerPipeline:
             s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
             e = round_point((line.dxf.end.x,   line.dxf.end.y),   self.node_decimals)
             if s in branching_nodes and e in branching_nodes:
+                print(f"[BENDING CANDIDATE] s={s} grado={len(graph_full[s])} e={e} grado={len(graph_full[e])}")
                 self.candidate_bending_ids.add(id(line))
 
         if not self.candidate_bending_ids:
