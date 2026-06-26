@@ -110,11 +110,6 @@ WORK_LAYERS = {
 
 # ---------------------------------------------------------------------------
 # Mapping work_type → (layer canonico, colore)
-#
-# Unica fonte di verità per la risoluzione work_type → layer DXF.
-# detect() lo usa per sapere su quale layer spostare l'entità classificata.
-# _apply_to_msp() lo usa per assegnare layer e colore nel DXF in output.
-#
 # Chiavi: stringhe lowercase — confronto sempre via .lower()
 # ---------------------------------------------------------------------------
 WORK_TYPE_TO_LAYER = {
@@ -146,3 +141,15 @@ ALL_FORGE_LAYERS = {
     LAYER_THREADED_HOLE: COLOR_THREADED_HOLE,
     TRASH_LAYER:         COLOR_TRASH,
 }
+
+
+# ---------------------------------------------------------------------------
+# Helper — risoluzione layer → colore
+# Single point of truth: evita dict inline sparsi nel codice.
+# ---------------------------------------------------------------------------
+def color_for_layer(layer_name: str) -> int:
+    """Restituisce il colore DXF canonico per un layer forge.
+    
+    Se il layer non è riconosciuto, restituisce COLOR_TRASH (rosso).
+    """
+    return ALL_FORGE_LAYERS.get(layer_name, COLOR_TRASH)
