@@ -18,7 +18,7 @@ import dxf_forge as forge
 import math
 
 
-DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_25-06-2026\gamba tavolo NO SPLIT\gamba tavolo NO SPLIT_P1.dxf"
+DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_25-06-2026\029-A.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(
@@ -95,6 +95,8 @@ def analyze_dxf(input_file: str):
     print(f"\n--- MARK LINES ---")
     print(f"Totale LINE su layer MARK: {len(mark_lines)}")
 
+    for e in msp:
+        print(e.dxftype(), e.dxf.layer, e.dxf.get('color', 'NO_COLOR'))
 
     # from collections import defaultdict
     # import math

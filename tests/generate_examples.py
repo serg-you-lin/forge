@@ -206,6 +206,37 @@ msp.add_line((50, 0, 0), (50, 25, 0))
 save(doc, "rect_centerline.dxf")
 
 
+# ---------------------------------------------------------------------------
+# Esempio 15: test flattener (Z non uniforme + geometria mista)
+# ---------------------------------------------------------------------------
+
+doc = ezdxf.new('R2010')
+msp = doc.modelspace()
+
+# LINE con Z diverso (deve essere appiattita)
+msp.add_line((0, 0, 5), (100, 0, -3))
+msp.add_line((100, 0, -3), (100, 50, 2))
+msp.add_line((100, 50, 2), (0, 50, 0))
+msp.add_line((0, 50, 0), (0, 0, 5))
+
+# # ARC con Z diverso (stress flattener)
+# msp.add_arc(
+#     center=(50, 25, 10),
+#     radius=20,
+#     start_angle=0,
+#     end_angle=180,
+#     dxfattribs={"layer": "0"}
+# )
+
+# # poligono semplice a quota mista
+# msp.add_lwpolyline(
+#     [(150, 0, 1), (250, 0, -2), (250, 60, 3), (150, 60, 0)],
+#     close=True
+# )
+
+save(doc, "example_15_flattener.dxf")
+
+
 def generate_rect_with_threaded_holes():
     doc = ezdxf.new()
     msp = doc.modelspace()

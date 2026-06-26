@@ -24,6 +24,7 @@ Funzioni pubbliche:
 
 import math
 import numpy as np
+from ezdxf import upright as _upright
 from ezdxf.math import bulge_to_arc
 from typing import Optional, Tuple, List
 from shapely.geometry import Point, MultiPoint, Polygon, LineString
@@ -79,19 +80,24 @@ def _register_repr_pt(*dxftypes: str):
 # Endpoint di entità
 # ---------------------------------------------------------------------------
 
+# def arc_endpoints(entity) -> Tuple[Point2D, Point2D]:
+#     """Restituisce (start_pt, end_pt) di un ARC come tuple (x, y)."""
+#     cx, cy = entity.dxf.center.x, entity.dxf.center.y
+#     r = entity.dxf.radius
+#     start_pt = (
+#         cx + r * np.cos(np.radians(entity.dxf.start_angle)),
+#         cy + r * np.sin(np.radians(entity.dxf.start_angle)),
+#     )
+#     end_pt = (
+#         cx + r * np.cos(np.radians(entity.dxf.end_angle)),
+#         cy + r * np.sin(np.radians(entity.dxf.end_angle)),
+#     )
+#     return start_pt, end_pt
+
 def arc_endpoints(entity) -> Tuple[Point2D, Point2D]:
-    """Restituisce (start_pt, end_pt) di un ARC come tuple (x, y)."""
-    cx, cy = entity.dxf.center.x, entity.dxf.center.y
-    r = entity.dxf.radius
-    start_pt = (
-        cx + r * np.cos(np.radians(entity.dxf.start_angle)),
-        cy + r * np.sin(np.radians(entity.dxf.start_angle)),
-    )
-    end_pt = (
-        cx + r * np.cos(np.radians(entity.dxf.end_angle)),
-        cy + r * np.sin(np.radians(entity.dxf.end_angle)),
-    )
-    return start_pt, end_pt
+    s = entity.start_point
+    e = entity.end_point
+    return (s.x, s.y), (e.x, e.y)
 
 
 def arc_to_bulge(entity, reversed: bool = False) -> Tuple[Point2D, Point2D, float]:

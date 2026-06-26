@@ -10,10 +10,11 @@ import ezdxf
 import dxf_forge as forge
 from dxf_forge.dxf_inspect import DxfInspector
 from dxf_forge.rules.interpreter import GeometricInterpreter
+from dxf_forge.adapters.dxf.sanitize import sanitize
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/example_15_flattener.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_25-06-2026\PiastraBloccaggioXYU_R7_T.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
@@ -47,8 +48,15 @@ inspector = DxfInspector(
 print(f"Apertura: {input_dxf}")
 
 doc = ezdxf.readfile(input_dxf)
-
 msp = doc.modelspace()
+
+# ---------------------------------------------------------------------------
+# PREPROCESSING
+# ---------------------------------------------------------------------------
+
+print("\n--- PREPROCESSING ---")
+
+sanitize(msp)
 
 #inspector.analyze(msp, title=input_dxf)
 
