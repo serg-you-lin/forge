@@ -279,16 +279,20 @@ class DxfInspector:
     # ---------------------------------------------------------------------------
 
     def _log_graph(self, msp):
+        from dxf_forge.adapters.dxf.graph_adapter import edges_from_msp
+        from dxf_forge.core.graph import build_node_graph
+
         logger.debug("\n--- GRAFO NODI ---")
-        graph = build_node_graph(msp, decimals=self.decimals)
-        
+        edges = edges_from_msp(msp, node_decimals=self.decimals)
+        graph = build_node_graph(edges)
+
         branching = []
         for node, connections in sorted(graph.items()):
             degree = len(connections)
             flag = "  ← AMBIGUO" if degree > 2 else ""
             logger.debug(f"    {node}  grado={degree}{flag}")
-            for entity, neighbor in connections:
-                logger.debug(f"      [{entity.dxftype()}] -> {neighbor}")
+            for edge, neighbor in connections:
+                logger.debug(f"      [{edge.layer}] -> {neighbor}")
             if degree > 2:
                 branching.append(node)
 
@@ -296,7 +300,7 @@ class DxfInspector:
             logger.debug(f"\n  Nodi ambigui ({len(branching)}): {branching}")
         else:
             logger.debug("\n  Nessun nodo ambiguo.")
-
+            
     def _round(self, pt):
         return (round(pt[0], self.decimals), round(pt[1], self.decimals))
 

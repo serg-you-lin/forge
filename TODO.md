@@ -9,7 +9,7 @@ Obiettivo: tool vendibile per normalizzazione DXF e estrazione metadati da tagli
 ## PRIORITÀ ALTA — blocca il prodotto
 
 
-sessione dedicata ai test
+
 
 healer/
   __init__.py      ← espone solo heal() — API pubblica
@@ -24,7 +24,7 @@ healer/
 ## PRIORITÀ MEDIA — migliora la qualità
 
 ### Hashing
-bending lines nell'interpreter
+
 creare una fingerprint geometrica per validare na forge part.
 
 
