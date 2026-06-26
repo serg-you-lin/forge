@@ -45,6 +45,8 @@ from ..rules.layers import (
     TRASH_LAYER, COLOR_TRASH,
     WORK_TYPE_TO_LAYER,
     HOLE_DIAMETER_THRESHOLD,
+    ALL_FORGE_LAYERS,
+    color_for_layer,
 )
 
 _HOLE_TYPE_TO_WORK_TYPE = {
@@ -78,7 +80,6 @@ def write(
         - assegna layer lavorazioni (bending, countersink, engrave...)
           leggendo geometry_hints e Hole.hole_type da result
     """
-    print(f"  [write entry] msp ids: {[id(e) for e in msp]}")
     for vs in result._virtual_shapes:
         if id(vs) in result._suppressed_vs_ids:
             continue
@@ -103,6 +104,9 @@ def write(
     entity_to_work = _build_work_index(result)
     special_map    = _build_special_map(result)
 
+    # Assicurati che i layer siano configurati con i colori corretti anche nel msp originale
+    _setup_layers(msp.doc)
+
     for entity in list(msp):
         if not entity.dxf.hasattr("layer"):
             continue
@@ -112,23 +116,20 @@ def write(
         work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
 
         if work_type is not None:
-            target_layer, target_color = WORK_TYPE_TO_LAYER.get(
+            target_layer, _ = WORK_TYPE_TO_LAYER.get(
                 work_type, (TRASH_LAYER, COLOR_TRASH)
             )
-            if entity.dxftype() == "CIRCLE":
-                print(f"  → assegno layer={target_layer} color={target_color}")
-
             entity.dxf.layer = target_layer
-            entity.dxf.color = target_color
+            entity.dxf.color = 256  # 256 = BYLAYER
         elif layer.upper() in STRUCTURAL_LAYERS:
+            entity.dxf.color = 256  # Forza BYLAYER anche sulle esistenti
             continue
         elif keep_trash:
             entity.dxf.layer = TRASH_LAYER
-            entity.dxf.color = COLOR_TRASH
+            entity.dxf.color = 256  # 256 = BYLAYER
         else:
             msp.delete_entity(entity)
 
-        # print(f"  [write exit] msp ids: {[id(e) for e in msp]}")
 
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
 DEFAULT_MIN_PART_AREA = 50.0  # mm²
@@ -236,16 +237,16 @@ def split(
                 continue
 
             if work_type is not None:
-                target_layer, target_color = WORK_TYPE_TO_LAYER.get(
+                target_layer, _ = WORK_TYPE_TO_LAYER.get(
                     work_type, (TRASH_LAYER, COLOR_TRASH)
                 )
                 new_entity.dxf.layer = target_layer
-                new_entity.dxf.color = target_color
+                new_entity.dxf.color = 256
             elif layer.upper() in STRUCTURAL_LAYERS or layer.upper() in WORK_LAYERS:
-                pass
+                new_entity.dxf.color = 256  # BYLAYER
             elif keep_trash:
                 new_entity.dxf.layer = TRASH_LAYER
-                new_entity.dxf.color = COLOR_TRASH
+                new_entity.dxf.color = 256
 
         _assign_structural_layers(msp_out, result)
 
@@ -263,35 +264,17 @@ def split(
 # ---------------------------------------------------------------------------
 
 def _assign_structural_layers(msp, result: ForgeResult) -> None:
-    """
-    Assegna layer e colori strutturali alle entità reali classificate da heal().
-
-    Gestisce tre categorie:
-        - part.outer        → LAYER_OUTER
-        - part.inners       → LAYER_INNER (ForgeContour non-foro)
-        - part.holes        → LAYER_HOLE di default, ma se detect() ha promosso
-                              hole_type a countersink/threaded, il layer lavorazione
-                              viene assegnato in Fase 2 da _build_work_index.
-                              Qui assegniamo solo LAYER_HOLE come base strutturale.
-    """
+    """ Assegna i layer strutturali e imposta il colore a BYLAYER (256). """
     for part in result.parts:
-        
         for contour in [part.outer] + part.inners:
             if contour.entity is not None:
                 contour.entity.dxf.layer = contour.layer
-                contour.entity.dxf.color = {
-                    LAYER_OUTER: COLOR_OUTER,
-                    LAYER_INNER: COLOR_INNER,
-                    LAYER_HOLE:  COLOR_HOLE,
-                }.get(contour.layer, COLOR_TRASH)
+                contour.entity.dxf.color = 256  # BYLAYER
 
         for hole in part.holes:
             if hole.entity is not None:
                 hole.entity.dxf.layer = hole.layer
-                hole.entity.dxf.color = {
-                    LAYER_HOLE:  COLOR_HOLE,
-                    LAYER_INNER: COLOR_INNER,
-                }.get(hole.layer, COLOR_HOLE)
+                hole.entity.dxf.color = 256  # BYLAYER
 
 
 def _remove_superseded_line_arc(msp, result: ForgeResult) -> None:
@@ -353,33 +336,27 @@ def _build_special_map(result: ForgeResult) -> dict:
     return {k.lower(): v.lower() for k, v in result.special_layers.items()}
 
 
+# def _setup_layers(doc) -> None:
+#     """
+#     Crea i layer forge standard nel documento di output.
+#     """
+#     for name, color in ALL_FORGE_LAYERS.items():
+#         if name not in doc.layers:
+#             layer = doc.layers.new(name)
+#             layer.color = color
+            
 def _setup_layers(doc) -> None:
     """
-    Crea i layer forge standard nel documento di output.
+    Crea o aggiorna i layer forge standard nel documento, 
+    garantendo che il colore del layer sia quello stabilito.
     """
-    from ..rules.layers import (
-        LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING,
-        LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
-        COLOR_BENDING, COLOR_ENGRAVE, COLOR_MARKING,
-        COLOR_COUNTERSINK, COLOR_THREADED_HOLE,
-    )
-
-    all_layers = {
-        LAYER_OUTER:         COLOR_OUTER,
-        LAYER_INNER:         COLOR_INNER,
-        LAYER_HOLE:          COLOR_HOLE,
-        LAYER_BENDING:       COLOR_BENDING,
-        LAYER_ENGRAVE:       COLOR_ENGRAVE,
-        LAYER_MARKING:       COLOR_MARKING,
-        LAYER_COUNTERSINK:   COLOR_COUNTERSINK,
-        LAYER_THREADED_HOLE: COLOR_THREADED_HOLE,
-        TRASH_LAYER:         COLOR_TRASH,
-    }
-
-    for name, color in all_layers.items():
+    for name, color in ALL_FORGE_LAYERS.items():
         if name not in doc.layers:
             layer = doc.layers.new(name)
-            layer.color = color
+        else:
+            layer = doc.layers.get(name)
+        
+        layer.color = color  # Fissa il colore a livello di Layer nella tabella DXF
 
 
 def _all_classified_ids(result: ForgeResult) -> set:

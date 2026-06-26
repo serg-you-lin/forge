@@ -34,9 +34,8 @@ def _collect_loops(self, graph):
                     coords = f"center=({e.dxf.center.x:.1f},{e.dxf.center.y:.1f}) r={e.dxf.radius:.1f}"
                 else:
                     coords = ""
-                print(f"  [FUORI LOOP] {e.dxftype()} layer={e.dxf.layer} {coords}")
 
-    print(f"[DEBUG loops] loop trovati da find_closed_loops: {len(loops)}")
+
     for i, loop in enumerate(loops):
         print(f"  [LOOP {i}] entità: {len(loop)}")
         for edge, rev in loop:

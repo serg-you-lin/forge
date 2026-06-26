@@ -15,6 +15,14 @@ Obiettivo: tool vendibile per normalizzazione DXF e estrazione metadati da tagli
 
 ## PRIORITÀ MEDIA — migliora la qualità
 
+### Leaf bug
+
+Il file lineette bastarde genera ancora bending lines li dove deovrebbe mettere le lineette sul trash e non bestemmio perhcè ho già bestemmiato a sufficienza oggi.
+
+### Hashing
+
+creare una fingerprint geometrica per validare na forge part.
+
 ### Hashing
 
 creare una fingerprint geometrica per validare na forge part.
@@ -22,6 +30,7 @@ creare una fingerprint geometrica per validare na forge part.
 ### Layers
 
 al momento uso name layer e color layer, non va bene, deve essere layer e il layer deve avere il colore al suo interno.
+Bisognerebbe anche implementare i test perhcè ne esco matto così.
 
 ### API
 
