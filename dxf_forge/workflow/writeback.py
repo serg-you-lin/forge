@@ -78,7 +78,7 @@ def write(
         - assegna layer lavorazioni (bending, countersink, engrave...)
           leggendo geometry_hints e Hole.hole_type da result
     """
-
+    print(f"  [write entry] msp ids: {[id(e) for e in msp]}")
     for vs in result._virtual_shapes:
         if id(vs) in result._suppressed_vs_ids:
             continue
@@ -128,6 +128,7 @@ def write(
         else:
             msp.delete_entity(entity)
 
+        # print(f"  [write exit] msp ids: {[id(e) for e in msp]}")
 
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
 DEFAULT_MIN_PART_AREA = 50.0  # mm²
@@ -174,6 +175,7 @@ def split(
     special_map    = _build_special_map(result)
     generated      = []
     src_doc        = msp.doc
+    print(f"  [split entry msp ids] {[id(e) for e in msp]}")
 
     for i, part in enumerate(result.parts):
         if min_area > 0 and part.outer.polygon.area < min_area:
@@ -200,6 +202,12 @@ def split(
                 effective_ids.add(vs_swap[eid])
             else:
                 effective_ids.add(eid)
+
+        if i == 0:
+            print(f"  [match check] effective_ids={effective_ids}")
+            print(f"  [match check] msp ids={[id(e) for e in msp]}")        
+
+        # print(f"  [split loop] part {i} entity_ids={part.entity_ids} vs_swap={vs_swap} effective_ids={effective_ids}")
 
         for entity in msp:
             if not entity.dxf.hasattr("layer"):
@@ -249,82 +257,6 @@ def split(
 
     return generated
 
-    # os.makedirs(output_folder, exist_ok=True)
-
-    # entity_to_work = _build_work_index(result)
-    # special_map    = _build_special_map(result)
-    # generated      = []
-
-    # src_doc = msp.doc
-
-    # for i, part in enumerate(result.parts):
-    #     if min_area > 0 and part.outer.polygon.area < min_area:
-    #         result.warnings.append(
-    #             f"Part {i} scartato: area {part.outer.polygon.area:.2f} mm² "
-    #             f"sotto soglia {min_area} mm²"
-    #         )
-    #         continue
- 
-    #     # name = namer(i, part) if namer else f"{i:03d}_{part.label}"    
-    #     name = namer(i, part) if namer else f"{part.label}_P{i + 1}"
-    #     out_path = os.path.join(output_folder, f"{name}.dxf")
-
-    #     doc_out = ezdxf.new(dxfversion="R2010")
-    #     doc_out.header['$INSUNITS']    = src_doc.header.get('$INSUNITS', 4)
-    #     doc_out.header['$MEASUREMENT'] = src_doc.header.get('$MEASUREMENT', 1)
-    #     _setup_layers(doc_out)
-    #     msp_out = doc_out.modelspace()
-
-
-    #     for entity in msp:
-    #         if not entity.dxf.hasattr("layer"):
-    #             continue
-    #         if not entity.dxf.hasattr("layer"):
-    #             continue
-    #         if exclude_types and entity.dxftype() in exclude_types:
-    #             continue
-    #         is_annotation = entity.dxftype() in ANNOTATION_TYPES
-    #         if is_annotation:
-    #             if not include_annotations:
-    #                 continue
-    #             # annotazioni: copia se il punto di inserimento è dentro l'outer
-    #             from ..core.geometry import get_representative_point
-    #             pt = get_representative_point(entity)
-    #             if pt is None or not part.outer.polygon.covers(pt):
-    #                 continue
-    #         else:
-    #             if id(entity) not in part.entity_ids:
-    #                 continue
-
-    #         entity_id = id(entity)
-    #         layer     = entity.dxf.layer
-    #         work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
-
-    #         new_entity = copy_entity(entity, msp_out)
-            
-    #         if new_entity is None:
-    #             continue
-
-    #         if work_type is not None:
-    #             target_layer, target_color = WORK_TYPE_TO_LAYER.get(
-    #                 work_type, (TRASH_LAYER, COLOR_TRASH)
-    #             )
-    #             new_entity.dxf.layer = target_layer
-    #             new_entity.dxf.color = target_color
-    #         elif layer.upper() in STRUCTURAL_LAYERS or layer.upper() in WORK_LAYERS:
-    #             pass
-    #         elif keep_trash:
-    #             new_entity.dxf.layer = TRASH_LAYER
-    #             new_entity.dxf.color = COLOR_TRASH
-
-    #     if on_part is not None:
-    #         on_part(part, doc_out, out_path)
-    #     doc_out.saveas(out_path)
-    #     generated.append(out_path)
-    #     part.label = name
-
-    # return generated
-
 
 # ---------------------------------------------------------------------------
 # Helpers interni
@@ -343,6 +275,7 @@ def _assign_structural_layers(msp, result: ForgeResult) -> None:
                               Qui assegniamo solo LAYER_HOLE come base strutturale.
     """
     for part in result.parts:
+        
         for contour in [part.outer] + part.inners:
             if contour.entity is not None:
                 contour.entity.dxf.layer = contour.layer

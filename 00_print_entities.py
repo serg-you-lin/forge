@@ -18,7 +18,7 @@ import dxf_forge as forge
 import math
 
 
-DEFAULT_FILE = r"rettangolo_raggiato.dxf"
+DEFAULT_FILE = r"LOCAL_DRAWING.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(

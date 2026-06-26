@@ -21,6 +21,8 @@ output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.b
 
 print(f"Apertura: {input_dxf}")
 doc = ezdxf.readfile(input_dxf)
+if doc.dxfversion < "AC1015":
+    doc = forge.upgrade_to_r2010(doc)
 msp = doc.modelspace()
 
 from collections import Counter
