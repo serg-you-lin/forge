@@ -95,6 +95,8 @@ def analyze_dxf(input_file: str):
     print(f"\n--- MARK LINES ---")
     print(f"Totale LINE su layer MARK: {len(mark_lines)}")
 
+    for e in msp:
+        print(e.dxftype(), e.dxf.layer, e.dxf.get('color', 'NO_COLOR'))
 
     # from collections import defaultdict
     # import math

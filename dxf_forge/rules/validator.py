@@ -71,20 +71,57 @@ def validate_msp(msp) -> ForgeResult:
     """
     result = ForgeResult()
 
-    lines   = list(msp.query('LINE'))
-    arcs    = list(msp.query('ARC'))
-    plines  = list(msp.query('LWPOLYLINE'))
+    lines      = list(msp.query('LINE'))
+    arcs       = list(msp.query('ARC'))
+    plines     = list(msp.query('LWPOLYLINE'))
     polylines  = list(msp.query('POLYLINE'))
-    circles = list(msp.query('CIRCLE'))
+    circles    = list(msp.query('CIRCLE'))
     ellipsises = list(msp.query('ELLIPSE'))
-    inserts = list(msp.query('INSERT'))
+    inserts    = list(msp.query('INSERT'))
 
     if not lines and not arcs and not plines and not polylines and not circles and not ellipsises and not inserts:
         result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
         result.is_valid = False
         return result
 
-    # Controlla geometria 3D
+    # ---------------------------------------------------------------------------
+    # Hint sanitize — condizioni che sanitize() può correggere
+    # ---------------------------------------------------------------------------
+
+    # OCS invertito
+    inverted_ocs = [
+        e for e in list(arcs) + list(circles)
+        if e.dxf.hasattr('extrusion') and e.dxf.extrusion[2] < 0
+    ]
+    if inverted_ocs:
+        result.warnings.append(
+            f"{len(inverted_ocs)} entità con vettore di estrusione invertito (OCS -1) — "
+            f"questo file may be sanitized."
+        )
+
+    # Z non zero
+    z_nonzero = []
+    for e in lines:
+        if e.dxf.start.z != 0.0 or e.dxf.end.z != 0.0:
+            z_nonzero.append(e)
+    for e in list(arcs) + list(circles) + list(ellipsises):
+        if e.dxf.center.z != 0.0:
+            z_nonzero.append(e)
+    for e in plines:
+        if e.dxf.get('elevation', 0.0) != 0.0:
+            z_nonzero.append(e)
+
+    if z_nonzero:
+        result.warnings.append(
+            f"{len(z_nonzero)} entità con Z != 0 rilevate — "
+            f"questo file may be sanitized."
+        )
+
+    # ---------------------------------------------------------------------------
+    # Controlli geometrici standard
+    # ---------------------------------------------------------------------------
+
+    # Errore bloccante solo se Z != 0 non è recuperabile via sanitize
     for entity in lines:
         if entity.dxf.start.z != 0 or entity.dxf.end.z != 0:
             result.errors.append("Geometria 3D rilevata (LINE con z != 0). dxf-forge lavora solo in 2D.")
