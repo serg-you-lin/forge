@@ -1,6 +1,8 @@
 
 import numpy as np
 
+from dxf_forge.adapters.dxf import sanitize
+
 from ...core.models import (
     ForgeResult,
 )
@@ -34,6 +36,7 @@ class HealerPipeline:
         label="",
         source_file="",
         explode_inserts=False,
+        flatten_z: bool = True,
         ignore_layers=None,
         special_layers=None,
     ):
@@ -42,6 +45,7 @@ class HealerPipeline:
         self.label           = label
         self.source_file     = source_file
         self.explode_inserts = explode_inserts
+        self.flatten_z       = flatten_z
         self.ignore_layers   = {l.lower() for l in (ignore_layers or [])}
         # nomi layer (lowercase) da non inghiottire nei loop
         self.special_layer_names = {k.lower() for k in (special_layers or {})}
@@ -67,6 +71,8 @@ class HealerPipeline:
         self.open_splines   = []
 
     def run(self):
+        from ...adapters.dxf.sanitize import sanitize
+        sanitize(self.msp, flatten_z_flag=self.flatten_z)
         self._handle_inserts()
         self._load()
         if not self.result.is_valid:

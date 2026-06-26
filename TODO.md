@@ -10,14 +10,6 @@ Obiettivo: tool vendibile per normalizzazione DXF e estrazione metadati da tagli
 
 
 
-
-healer/
-  __init__.py      ← espone solo heal() — API pubblica
-  _geometry.py     ← build_node_graph, find_loops, close_gaps, ecc.
-  _hierarchy.py    ← gerarchia padre-figlio, costruzione ForgeResult
-  _writer.py       ← _apply_to_msp
-  _utils.py        ← _deduplicate, _special_layer_names, ecc.
-
   
 ---
 
@@ -27,10 +19,11 @@ healer/
 
 creare una fingerprint geometrica per validare na forge part.
 
+### Layers
+
+al momento uso name layer e color layer, non va bene, deve essere layer e il layer deve avere il colore al suo interno.
 
 ### API
-
-- bending lines: tolerance al momento non mi sembra ben implementato, difatti è la tolleranza in heal() che comanda le linee.
 
 - [ ] **`forge.process()` — punto di ingresso unico**
   - `result = forge.process(input_dxf, output_dxf, upgrade=True, tolerance=0.05, write_xdata=True)`
@@ -40,6 +33,9 @@ creare una fingerprint geometrica per validare na forge part.
 - [ ] **`upgrade_to_r2010` — integrato automaticamente**
   - Attualmente va chiamato manualmente nel batch
   - `forge.process()` lo chiama sempre se `doc.dxfversion < 'AC1015'`. bisognerebbe consentire all'utente opzionalmente di upgrdare tutti i files, mentre per quanto mi riguarda se si vuole avere il forge i files che non gestiscono gli XDATA devono obbligatoriamente essere upgradati.
+
+### Aggiunta in script
+forse recover.readfile() e doc.audit(), capire se ha senso farlo per non perdere cose importanti
 
 ### Analisi
 
@@ -51,6 +47,17 @@ creare una fingerprint geometrica per validare na forge part.
 
 ## PRIORITÀ BASSA — futuro
 
+Refactor Virtual — OCS come responsabilità dell'adapter
+Attualmente VirtualShape riceve entità ezdxf e ricostruisce geometria (bulge, archi, angoli) internamente. Questo significa che il layer Virtual conosce implicitamente concetti DXF come OCS, extrusion, start/end angle.
+La proposta è spostare tutta la conversione DXF→geometria nell'adapter, in modo che Virtual riceva solo primitive già in WCS:
+LineSeg(start, end)
+ArcSeg(start, end, center, radius)
+SplineSeg(points)
+Virtual diventerebbe un layer "dumb" — riceve geometria pura, non sa nulla di DXF. Tutto il casino OCS, bulge, angoli, extrusion viene gestito una volta sola nell'adapter e non trapela mai oltre.
+Il vantaggio è che Hierarchy, Graph e Splitter ragionerebbero sempre in coordinate WCS pulite, senza dipendere da come il formato DXF ha codificato la geometria. Debug molto più semplice, zero edge case nascosti.
+È un refactor grosso che tocca tutta la pipeline — da fare a freddo, non in emergenza.
+
+può essere qualcosa di simile a questo?
 parse_geometry()
 build_topology()
 heal()
