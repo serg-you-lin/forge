@@ -19,29 +19,24 @@ Obiettivo: tool vendibile per normalizzazione DXF e estrazione metadati da tagli
 
 Il file lineette bastarde genera ancora bending lines li dove deovrebbe mettere le lineette sul trash e non bestemmio perhcè ho già bestemmiato a sufficienza oggi.
 
+
+### Apertura files
+
+I files splittati non vengono aperti in Autocad, vengono aperti in sigmanest senza problemi e anche in edrawing. Se si aprono in autocad è meglio, perhcè così a lavoro posso guardarli e se i colleghi vogliono guardarli non rompono il cazzo che non si aprono.
+
 ### Hashing
 
 creare una fingerprint geometrica per validare na forge part.
 
-### Hashing
+### Cornice
 
-creare una fingerprint geometrica per validare na forge part.
-
-### Layers
-
-al momento uso name layer e color layer, non va bene, deve essere layer e il layer deve avere il colore al suo interno.
-Bisognerebbe anche implementare i test perhcè ne esco matto così.
+Ho già un protomodulo che funziona male per individuare e non considerare il cartiglio-cornice dei disegni, che al momento devo cancellare a mano per poter healare correttamente i disegni per esempio impaginati (non sono pochi). 
 
 ### API
 
-- [ ] **`forge.process()` — punto di ingresso unico**
-  - `result = forge.process(input_dxf, output_dxf, upgrade=True, tolerance=0.05, write_xdata=True)`
-  - Nasconde doc/msp/upgrade/write_metadata all'utente
-  - Il batch script diventa 5 righe
-
 - [ ] **`upgrade_to_r2010` — integrato automaticamente**
   - Attualmente va chiamato manualmente nel batch
-  - `forge.process()` lo chiama sempre se `doc.dxfversion < 'AC1015'`. bisognerebbe consentire all'utente opzionalmente di upgrdare tutti i files, mentre per quanto mi riguarda se si vuole avere il forge i files che non gestiscono gli XDATA devono obbligatoriamente essere upgradati.
+bisognerebbe consentire all'utente opzionalmente di upgrdare tutti i files, mentre per quanto mi riguarda se si vuole avere il forge i files che non gestiscono gli XDATA devono obbligatoriamente essere upgradati. capire se farlo direttametne nel modulo sanitizae con flatternig e normalizzazione ocs.
 
 ### Aggiunta in script
 forse recover.readfile() e doc.audit(), capire se ha senso farlo per non perdere cose importanti
@@ -56,7 +51,18 @@ forse recover.readfile() e doc.audit(), capire se ha senso farlo per non perdere
 
 ## PRIORITÀ BASSA — futuro
 
-Refactor Virtual — OCS come responsabilità dell'adapter
+### Feature di tracciatura.
+Simil_arcardini_segni_tracciati_stretto_healed --> questo file ha una serie di dentelli che partono da una linea orizzontele, che sono considerati parte del grafo giustamnete. vorrei aggiungere un parametro che sotto una certa distanza queste linee siano considerate solo dei segni di marcatura, completando il grafo solo con la linea orizzontale. Anche se ho degli inner che hanno distanza inferiore alla tolleranza di cui sopra, devono essere detectati come segni di incisione e posti sul layer 'Engrave'. probabilmente questa cosa va implementata nel modulo detect e può essere individuato il tutto solo passando detect() come facciamo con le bl che hanno la loro tolleranza.
+
+
+### Implementazione nuiovo formato:
+Al momento in input posso avere solo dxf, ma mi sono messo in condizione di poter prendere anche svg o pdf. Da capire se implementare ad esempio almeno i pdf.
+
+### Comprensione futura:
+Capire le responsabilità del modulo, che è outputare dxf sani ed omologati e tirare fuori dati comprensibili. ma da cosa? al momento da disegni piatti, e posso splittarli. Forse un agente futuro può: entrare, capire di che si tratta e decidere cosa fare per outputare il file di taglio preciso. può essere un file multipezzo, o un file multivista da cui poter estrarre anche lo sviluppo e lo spessore, componendo le varie viste. Difficile, ma l'agente ha senso solo così.
+
+### Refactoring Virtual
+OCS come responsabilità dell'adapter
 Attualmente VirtualShape riceve entità ezdxf e ricostruisce geometria (bulge, archi, angoli) internamente. Questo significa che il layer Virtual conosce implicitamente concetti DXF come OCS, extrusion, start/end angle.
 La proposta è spostare tutta la conversione DXF→geometria nell'adapter, in modo che Virtual riceva solo primitive già in WCS:
 LineSeg(start, end)

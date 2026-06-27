@@ -9,11 +9,10 @@ Produce un file healed.dxf nella cartella di output.
 import ezdxf
 import dxf_forge as forge
 from dxf_forge.dxf_inspect import DxfInspector
-from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/6200012964_lineette_bastarde.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_06_05_2026\Simil_arcardini_segni_tracciati_stretto.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
