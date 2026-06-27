@@ -13,7 +13,7 @@ project_root = Path(".").resolve()
 sys.path.insert(0, str(project_root))
 
 import dxf_forge as forge
-from dxf_forge.adapters.dxf.virtual import _loop_to_virtual_shape
+from dxf_forge.adapters.dxf.virtual_adapter import _loop_to_virtual_shape
 from dxf_forge.core.graph import build_node_graph, find_closed_loops, classify_loops
 from dxf_forge.core.geometry import circle_to_polygon
 
