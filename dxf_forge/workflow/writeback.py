@@ -38,7 +38,7 @@ import ezdxf
 from ..core.models import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..adapters.dxf.copy_adapter import copy_entity
 from ..adapters.dxf.geometry_adapter import get_representative_point
-from ..adapters.dxf.virtual import _write_virtual_shape
+from ..adapters.dxf.virtual_adapter import _write_virtual_shape
 from ..rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     COLOR_OUTER, COLOR_INNER, COLOR_HOLE,

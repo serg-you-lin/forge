@@ -2,7 +2,8 @@ from shapely.geometry import Polygon, LineString
 from shapely.ops import unary_union, snap, polygonize
 
 from ...core.graph import find_closed_loops, classify_loops, check_loop_ambiguity
-from ...adapters.dxf.virtual import VirtualShape, _loop_to_virtual_shape
+from ...core.virtual import VirtualShape
+from ...adapters.dxf.virtual_adapter import _loop_to_virtual_shape
 from ...adapters.dxf.geometry_adapter import arc_to_linestrings
 from ._utils import _deduplicate_loops
 

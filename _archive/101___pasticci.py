@@ -19,7 +19,7 @@ sys.path.insert(0, str(project_root))
 
 
 from dxf_forge.core.models import ForgeContour, ForgePart, ForgeResult
-from dxf_forge.adapters.dxf.virtual import VirtualShape
+from dxf_forge.adapters.dxf.virtual_adapter import VirtualShape
 
 def print_attributes(obj):
     """Stampa gli attributi di un oggetto."""
