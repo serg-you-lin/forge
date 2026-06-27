@@ -33,8 +33,7 @@ def copy_entity(entity, target_msp) -> None:
     """
     handler = _COPY_HANDLERS.get(entity.dxftype())
     if handler is None:
-        return
-
+        return None
     attribs = entity.dxfattribs()
     attribs.pop('handle', None)
     attribs.pop('owner',  None)
@@ -42,24 +41,27 @@ def copy_entity(entity, target_msp) -> None:
     attribs.pop('true_color', None)
 
     try:
-        handler(entity, target_msp, attribs)
+        return handler(entity, target_msp, attribs)  # ← return
     except Exception as ex:
         print(f"  [WARN] Copia {entity.dxftype()} fallita: {ex}")
+
+        return None
 
 
 @_register_copy('LINE')
 def _copy_line(entity, msp, attribs) -> None:
-    msp.add_line(entity.dxf.start, entity.dxf.end, dxfattribs=attribs)
+    return msp.add_line(entity.dxf.start, entity.dxf.end, dxfattribs=attribs)
+    
 
 
 @_register_copy('CIRCLE')
 def _copy_circle(entity, msp, attribs) -> None:
-    msp.add_circle(entity.dxf.center, entity.dxf.radius, dxfattribs=attribs)
+    return msp.add_circle(entity.dxf.center, entity.dxf.radius, dxfattribs=attribs)
 
 
 @_register_copy('ARC')
 def _copy_arc(entity, msp, attribs) -> None:
-    msp.add_arc(
+    return msp.add_arc(
         entity.dxf.center, entity.dxf.radius,
         entity.dxf.start_angle, entity.dxf.end_angle,
         dxfattribs=attribs,
@@ -68,12 +70,12 @@ def _copy_arc(entity, msp, attribs) -> None:
 
 @_register_copy('TEXT')
 def _copy_text(entity, msp, attribs) -> None:
-    msp.add_text(entity.dxf.text, dxfattribs=attribs)
+    return msp.add_text(entity.dxf.text, dxfattribs=attribs)
 
 
 @_register_copy('MTEXT')
 def _copy_mtext(entity, msp, attribs) -> None:
-    msp.add_mtext(entity.text, dxfattribs=attribs)
+    return msp.add_mtext(entity.text, dxfattribs=attribs)
 
 
 @_register_copy('MULTILEADER')
@@ -88,32 +90,32 @@ def _copy_multileader(entity, msp, attribs) -> None:
 
 @_register_copy('INSERT')
 def _copy_insert(entity, msp, attribs) -> None:
-    msp.add_blockref(entity.dxf.name, entity.dxf.insert, dxfattribs=attribs)
+    return msp.add_blockref(entity.dxf.name, entity.dxf.insert, dxfattribs=attribs)
 
 
 @_register_copy('LWPOLYLINE')
 def _copy_lwpolyline(entity, msp, attribs) -> None:
     pts = list(entity.get_points(format='xyseb'))
-    msp.add_lwpolyline(pts, format='xyseb', dxfattribs=attribs, close=entity.closed)
+    return msp.add_lwpolyline(pts, format='xyseb', dxfattribs=attribs, close=entity.closed)
 
 
 @_register_copy('POLYLINE')
 def _copy_polyline(entity, msp, attribs) -> None:
     pts = [(v.dxf.location.x, v.dxf.location.y) for v in entity.vertices]
     safe_attribs = {k: v for k, v in attribs.items() if k in ('layer', 'linetype', 'lineweight')}
-    msp.add_lwpolyline(pts, dxfattribs=safe_attribs, close=entity.is_closed)
+    return msp.add_lwpolyline(pts, dxfattribs=safe_attribs, close=entity.is_closed)
 
 @_register_copy('SPLINE')
 def _copy_spline(entity, msp, attribs) -> None:
     new_entity = entity.copy()
     new_entity.dxf.layer = attribs.get('layer', entity.dxf.layer)
     new_entity.dxf.color = attribs.get('color', entity.dxf.color)
-    msp.add_entity(new_entity)
+    return msp.add_entity(new_entity)
 
 
 @_register_copy('ELLIPSE')
 def _copy_ellipse(entity, msp, attribs) -> None:
-    msp.add_ellipse(
+    return msp.add_ellipse(
         entity.dxf.center,
         entity.dxf.major_axis,
         entity.dxf.ratio,

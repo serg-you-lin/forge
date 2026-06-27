@@ -243,7 +243,7 @@ def _write_virtual_shape(msp, vs: 'VirtualShape'):
         return msp.add_lwpolyline(
             vs.pts_with_bulge,
             format='xyseb',
-            dxfattribs={'layer': vs.layer, 'color': vs.color},
+            dxfattribs={'layer': vs.layer, 'color': 256},
             close=True,
         )
 
