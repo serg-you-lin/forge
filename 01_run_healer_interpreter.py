@@ -9,11 +9,10 @@ Produce un file healed.dxf nella cartella di output.
 import ezdxf
 import dxf_forge as forge
 from dxf_forge.dxf_inspect import DxfInspector
-from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/ORDERCODE_lineette_bastarde.dxf"
+input_dxf = r"LOCAL_DRAWING.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)
