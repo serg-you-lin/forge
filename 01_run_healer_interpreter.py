@@ -13,7 +13,7 @@ from dxf_forge.rules.interpreter import GeometricInterpreter
 import os
 
 # ← CAMBIA QUI
-input_dxf = r"tests/examples/Multifeature.dxf"
+input_dxf = r"tests/examples/6200012964_lineette_bastarde.dxf"
 
 # percorso assoluto
 input_dxf = os.path.abspath(input_dxf)

@@ -1,368 +1,4 @@
 
-# """
-# test_graph.py
-# -------------
-# Test per dxf_forge.graph — find_closed_loops e classify_loops.
-# """
-
-# import unittest
-# import math
-# from pathlib import Path
-# import sys
-# import ezdxf
-# from shapely.geometry import LinearRing, Polygon
-
-# project_root = Path(__file__).resolve().parent.parent
-# sys.path.insert(0, str(project_root))
-
-# # from dxf_forge.core.graph import (
-# #     build_node_graph, find_closed_loops, classify_loops,
-# #     round_point, entity_endpoints,
-# # )
-
-# from dxf_forge.core.geometry import arc_to_bulge
-
-# from dxf_forge.core.graph import (
-#     build_node_graph, find_closed_loops, classify_loops,
-#     round_point,
-# )
-# from dxf_forge.adapters.dxf.graph_adapter import entity_endpoints
-
-# # ---------------------------------------------------------------------------
-# # Helper: costruisce poligono approssimato da un loop
-# # ---------------------------------------------------------------------------
-
-# def _loop_to_polygon(loop) -> Polygon:
-#     """Converte un loop in Polygon Shapely (stesso metodo di classify_loops)."""
-#     pts = []
-#     for edge, rev in loop:
-#         entity = edge.entity
-#         if entity.dxftype() == 'LINE':
-#             pts.append(
-#                 (entity.dxf.end.x, entity.dxf.end.y) if rev
-#                 else (entity.dxf.start.x, entity.dxf.start.y)
-#             )
-#         elif entity.dxftype() == 'ARC':
-#             entry_pt, _, _ = arc_to_bulge(entity, reversed=rev)
-#             pts.append(entry_pt)
-#     return Polygon(pts) if len(pts) >= 3 else None
-
-
-# def _make_rect_msp(w=100.0, h=50.0, ccw=True):
-#     doc = ezdxf.new('R2010')
-#     msp = doc.modelspace()
-#     if ccw:
-#         msp.add_line((0, 0),   (w, 0))
-#         msp.add_line((w, 0),   (w, h))
-#         msp.add_line((w, h),   (0, h))
-#         msp.add_line((0, h),   (0, 0))
-#     else:
-#         msp.add_line((0, 0),   (0, h))
-#         msp.add_line((0, h),   (w, h))
-#         msp.add_line((w, h),   (w, 0))
-#         msp.add_line((w, 0),   (0, 0))
-#     return msp
-
-
-# def _make_rect_with_inner_msp(outer_w=100.0, outer_h=80.0,
-#                                inner_w=40.0,  inner_h=30.0):
-#     doc = ezdxf.new('R2010')
-#     msp = doc.modelspace()
-
-#     msp.add_line((0,      0),       (outer_w, 0))
-#     msp.add_line((outer_w, 0),      (outer_w, outer_h))
-#     msp.add_line((outer_w, outer_h),(0,       outer_h))
-#     msp.add_line((0,      outer_h), (0,       0))
-
-#     ox = (outer_w - inner_w) / 2
-#     oy = (outer_h - inner_h) / 2
-#     msp.add_line((ox,          oy),          (ox + inner_w, oy))
-#     msp.add_line((ox + inner_w, oy),         (ox + inner_w, oy + inner_h))
-#     msp.add_line((ox + inner_w, oy + inner_h),(ox,          oy + inner_h))
-#     msp.add_line((ox,          oy + inner_h),(ox,          oy))
-
-#     return msp
-
-
-# def _make_arc_rect_msp():
-#     doc = ezdxf.new('R2010')
-#     msp = doc.modelspace()
-
-#     msp.add_line((10, 60), (90, 60))
-#     msp.add_line((90, 60), (90, 10))
-#     msp.add_arc( (80, 10), 10, 270, 360)
-#     msp.add_line((80, 0),  (20, 0))
-#     msp.add_arc( (20, 10), 10, 180, 270)
-#     msp.add_line((10, 10), (10, 60))
-
-#     return msp
-
-
-# def _make_rounded_rect_msp():
-#     doc = ezdxf.new('R2010')
-#     msp = doc.modelspace()
-
-#     msp.add_line((47, 50), (64, 50))
-#     msp.add_line((74, 40), (74, 30))
-#     msp.add_line((74, 30), (37, 30))
-#     msp.add_line((37, 30), (37, 40))
-#     msp.add_arc( (47, 40), 10,  90, 180)
-#     msp.add_arc( (64, 40), 10,   0,  90)
-#     msp.add_line((37, 40), (37, 50))
-#     msp.add_line((37, 50), (47, 50))
-#     msp.add_line((64, 50), (74, 50))
-#     msp.add_line((74, 50), (74, 40))
-
-#     return msp
-
-
-# def _make_stub_in_loop_msp():
-#     doc = ezdxf.new('R2010')
-#     msp = doc.modelspace()
-
-#     msp.add_line((0,   0),  (100, 0))
-#     msp.add_line((100, 0),  (100, 50))
-#     msp.add_line((100, 50), (0,   50))
-#     msp.add_line((0,   50), (0,    0))
-#     msp.add_line((50,  0),  (50,   25))
-
-#     return msp
-
-
-# # ---------------------------------------------------------------------------
-# # Test: find_closed_loops — loop trovato
-# # ---------------------------------------------------------------------------
-
-# class TestFindClosedLoopsBasic(unittest.TestCase):
-
-#     def setUp(self):
-#         msp = _make_rect_msp(ccw=True)
-#         graph = build_node_graph(msp, decimals=1)
-#         self.loops = find_closed_loops(graph)
-
-#     def test_001_finds_one_loop(self):
-#         self.assertEqual(len(self.loops), 1)
-
-#     def test_002_loop_has_four_entities(self):
-#         self.assertEqual(len(self.loops[0]), 4)
-
-#     def test_003_loop_is_closed(self):
-#         loop = self.loops[0]
-#         first_edge, first_rev = loop[0]
-#         last_edge,  last_rev  = loop[-1]
-#         s, e = entity_endpoints(first_edge.entity)
-#         first_start = round_point(s)
-#         ls, le = entity_endpoints(last_edge.entity)
-#         last_exit = round_point(ls if last_rev else le)
-#         self.assertEqual(last_exit, first_start)
-
-
-# # ---------------------------------------------------------------------------
-# # Test: orientamento — CCW preservato, CW invertito
-# # ---------------------------------------------------------------------------
-
-# class TestLoopOrientationCCW(unittest.TestCase):
-
-#     def setUp(self):
-#         msp = _make_rect_msp(ccw=True)
-#         graph = build_node_graph(msp, decimals=1)
-#         loops = find_closed_loops(graph)
-#         self.poly = _loop_to_polygon(loops[0])
-
-#     def test_001_polygon_valid(self):
-#         self.assertIsNotNone(self.poly)
-#         self.assertTrue(self.poly.is_valid)
-
-#     def test_002_is_ccw(self):
-#         ring = LinearRing(self.poly.exterior.coords)
-#         self.assertTrue(ring.is_ccw)
-
-#     def test_003_area_positive(self):
-#         self.assertGreater(self.poly.area, 0)
-
-
-# class TestLoopOrientationCW(unittest.TestCase):
-
-#     def setUp(self):
-#         msp = _make_rect_msp(ccw=False)
-#         graph = build_node_graph(msp, decimals=1)
-#         loops = find_closed_loops(graph)
-#         self.poly = _loop_to_polygon(loops[0])
-
-#     def test_001_polygon_valid(self):
-#         self.assertIsNotNone(self.poly)
-#         self.assertTrue(self.poly.is_valid)
-
-#     def test_002_is_ccw(self):
-#         ring = LinearRing(self.poly.exterior.coords)
-#         self.assertTrue(ring.is_ccw)
-
-#     def test_003_area_correct(self):
-#         self.assertAlmostEqual(self.poly.area, 5000.0, delta=1.0)
-
-
-# # ---------------------------------------------------------------------------
-# # Test: geometria con raccordi (caso maniglia)
-# # ---------------------------------------------------------------------------
-
-# class TestLoopWithArcs(unittest.TestCase):
-
-#     EXPECTED_AREA = 100 * 60 - (math.pi * 10**2 / 2)
-
-#     def setUp(self):
-#         msp = _make_arc_rect_msp()
-#         graph = build_node_graph(msp, decimals=1)
-#         loops = find_closed_loops(graph)
-#         self.loops = loops
-#         self.polygons = [_loop_to_polygon(l) for l in loops]
-#         self.valid_polys = [p for p in self.polygons if p is not None and p.is_valid]
-
-#     def test_001_finds_at_least_one_loop(self):
-#         self.assertGreaterEqual(len(self.loops), 1)
-
-#     def test_002_largest_loop_is_outer_profile(self):
-#         max_area = max(p.area for p in self.valid_polys)
-#         self.assertGreater(max_area, 4000.0)
-
-#     def test_003_all_loops_ccw(self):
-#         for i, poly in enumerate(self.valid_polys):
-#             ring = LinearRing(poly.exterior.coords)
-#             self.assertTrue(ring.is_ccw,
-#                             f"Loop {i+1} non è CCW (area={poly.area:.1f})")
-
-
-# # ---------------------------------------------------------------------------
-# # Test: classify_loops — outer e inner
-# # ---------------------------------------------------------------------------
-
-# class TestClassifyLoops(unittest.TestCase):
-
-#     def setUp(self):
-#         msp = _make_rect_with_inner_msp()
-#         graph = build_node_graph(msp, decimals=1)
-#         loops = find_closed_loops(graph)
-#         self.outer, self.inner = classify_loops(loops)
-
-#     def test_001_finds_two_loops(self):
-#         total = len(self.outer) + len(self.inner)
-#         self.assertEqual(total, 2)
-
-#     def test_002_one_outer(self):
-#         self.assertEqual(len(self.outer), 1)
-
-#     def test_003_one_inner(self):
-#         self.assertEqual(len(self.inner), 1)
-
-#     def test_004_outer_area_larger(self):
-#         outer_poly = _loop_to_polygon(self.outer[0])
-#         inner_poly  = _loop_to_polygon(self.inner[0])
-#         self.assertGreater(outer_poly.area, inner_poly.area)
-
-#     def test_005_outer_contains_inner(self):
-#         outer_poly = _loop_to_polygon(self.outer[0])
-#         inner_poly  = _loop_to_polygon(self.inner[0])
-#         self.assertTrue(outer_poly.contains(inner_poly))
-
-
-# class TestClassifyLoopsSeparate(unittest.TestCase):
-
-#     def setUp(self):
-#         doc = ezdxf.new('R2010')
-#         msp = doc.modelspace()
-
-#         msp.add_line((0,  0),  (40, 0))
-#         msp.add_line((40, 0),  (40, 30))
-#         msp.add_line((40, 30), (0,  30))
-#         msp.add_line((0,  30), (0,  0))
-
-#         msp.add_line((60, 0),  (100, 0))
-#         msp.add_line((100, 0), (100, 30))
-#         msp.add_line((100, 30),(60,  30))
-#         msp.add_line((60,  30),(60,  0))
-
-#         graph = build_node_graph(msp, decimals=1)
-#         loops = find_closed_loops(graph)
-#         self.outer, self.inner = classify_loops(loops)
-
-#     def test_001_two_outer(self):
-#         self.assertEqual(len(self.outer), 2)
-
-#     def test_002_no_inner(self):
-#         self.assertEqual(len(self.inner), 0)
-
-
-# # ---------------------------------------------------------------------------
-# # Test: heal end-to-end
-# # ---------------------------------------------------------------------------
-
-# class TestHealHierarchy(unittest.TestCase):
-
-#     def setUp(self):
-#         import dxf_forge as forge
-#         msp = _make_rect_with_inner_msp(outer_w=100, outer_h=80,
-#                                          inner_w=40,  inner_h=30)
-#         self.result = forge.heal(msp, tolerance=0.05)
-
-#     def test_001_one_part(self):
-#         self.assertEqual(self.result.part_count, 1)
-
-#     def test_002_one_inner(self):
-#         self.assertEqual(len(self.result.parts[0].inners), 1)
-
-#     def test_003_outer_area_correct(self):
-#         area = self.result.parts[0].outer.area
-#         self.assertAlmostEqual(area, 100 * 80, delta=2.0)
-
-#     def test_004_inner_area_correct(self):
-#         inner_area = self.result.parts[0].inners[0].area
-#         self.assertAlmostEqual(inner_area, 40 * 30, delta=2.0)
-
-#     def test_005_net_area_correct(self):
-#         net = self.result.parts[0].area
-#         self.assertAlmostEqual(net, 100 * 80 - 40 * 30, delta=2.0)
-
-
-# class TestRoundedRectLoop(unittest.TestCase):
-
-#     def setUp(self):
-#         import dxf_forge as forge
-#         msp = _make_rounded_rect_msp()
-#         self.result = forge.heal(msp, tolerance=0.05)
-
-#     def test_001_no_parts_on_ambiguous(self):
-#         self.assertEqual(self.result.part_count, 0)
-
-#     def test_002_has_warning(self):
-#         joined = " ".join(self.result.warnings)
-#         self.assertIn("ambigua", joined.lower())
-
-#     def test_003_no_area_on_ambiguous(self):
-#         self.assertEqual(len(self.result.parts), 0)
-
-
-# class TestStubInLoop(unittest.TestCase):
-
-#     def setUp(self):
-#         import dxf_forge as forge
-#         msp = _make_stub_in_loop_msp()
-#         self.result = forge.heal(msp, tolerance=0.05)
-
-#     def test_001_one_part(self):
-#         self.assertEqual(self.result.part_count, 1)
-
-#     def test_002_outer_area_correct(self):
-#         area = self.result.parts[0].outer.area
-#         self.assertAlmostEqual(area, 100 * 50, delta=2.0)
-
-#     def test_003_stub_in_trash(self):
-#         self.assertEqual(len(self.result.trash_entities), 1)
-
-
-# if __name__ == "__main__":
-#     unittest.main(verbosity=2)
-
-
-
 """
 test_graph.py
 -------------
@@ -505,6 +141,80 @@ def _make_stub_in_loop_edges():
         _edge((0,   50), (0,   0)),
         _edge((50,  0),  (50,  25)),  # stub — dead end
     ]
+
+
+def _make_rect_with_split_arcs_and_stubs(
+    w=1000.0, h=500.0, r=3.0, stub_len=5.0
+):
+    """
+    Rettangolo con 4 angoli raccordati da archi concavi spezzati in 2 metà.
+    Ogni punto di spezzatura ha una LINE stub verso l'interno.
+    
+    Riproduce il bug: leaf attaccate a nodi di grado 3 (2 semiarchi + LINE).
+    """
+    import numpy as np
+
+    def arc_pts(cx, cy, r, start_deg, end_deg, n=8):
+        angles = np.linspace(math.radians(start_deg), math.radians(end_deg), n)
+        return [(cx + r * math.cos(a), cy + r * math.sin(a)) for a in angles]
+
+    edges = []
+
+    # lati rettilinei
+    edges.append(_edge((r, 0),       (w - r, 0)))
+    edges.append(_edge((w, r),       (w, h - r)))
+    edges.append(_edge((w - r, h),   (r, h)))
+    edges.append(_edge((0, h - r),   (0, r)))
+
+    # angolo in basso a sinistra — arco concavo spezzato in 2 metà
+    # il punto di spezzatura è a 225° (verso l'interno)
+    split_bl = (r - r * math.cos(math.radians(45)),
+                r - r * math.sin(math.radians(45)))
+    pts_bl_1 = arc_pts(r, r, r, 180, 225, n=5)
+    pts_bl_2 = arc_pts(r, r, r, 225, 270, n=5)
+    edges.append(_arc_edge(pts_bl_1[0],  pts_bl_1[-1],  pts_bl_1))
+    edges.append(_arc_edge(pts_bl_2[0],  pts_bl_2[-1],  pts_bl_2))
+    # stub verso l'interno
+    stub_end_bl = (split_bl[0] + stub_len * math.cos(math.radians(45)),
+                   split_bl[1] + stub_len * math.sin(math.radians(45)))
+    edges.append(_edge(split_bl, stub_end_bl))
+
+    # angolo in basso a destra
+    split_br = (w - r + r * math.cos(math.radians(45)),
+                r - r * math.sin(math.radians(45)))
+    pts_br_1 = arc_pts(w - r, r, r, 270, 315, n=5)
+    pts_br_2 = arc_pts(w - r, r, r, 315, 360, n=5)
+    edges.append(_arc_edge(pts_br_1[0], pts_br_1[-1], pts_br_1))
+    edges.append(_arc_edge(pts_br_2[0], pts_br_2[-1], pts_br_2))
+    split_br = pts_br_1[-1]
+    stub_end_br = (split_br[0] - stub_len * math.cos(math.radians(45)),
+                   split_br[1] + stub_len * math.sin(math.radians(45)))
+    edges.append(_edge(split_br, stub_end_br))
+
+    # angolo in alto a destra
+    split_tr = (w - r + r * math.cos(math.radians(45)),
+                h - r + r * math.sin(math.radians(45)))
+    pts_tr_1 = arc_pts(w - r, h - r, r, 0, 45, n=5)
+    pts_tr_2 = arc_pts(w - r, h - r, r, 45, 90, n=5)
+    edges.append(_arc_edge(pts_tr_1[0], pts_tr_1[-1], pts_tr_1))
+    edges.append(_arc_edge(pts_tr_2[0], pts_tr_2[-1], pts_tr_2))
+    split_tr = pts_tr_1[-1]
+    stub_end_tr = (split_tr[0] - stub_len * math.cos(math.radians(45)),
+                   split_tr[1] - stub_len * math.sin(math.radians(45)))
+    edges.append(_edge(split_tr, stub_end_tr))
+
+    # angolo in alto a sinistra
+    pts_tl_1 = arc_pts(r, h - r, r, 90, 135, n=5)
+    pts_tl_2 = arc_pts(r, h - r, r, 135, 180, n=5)
+    edges.append(_arc_edge(pts_tl_1[0], pts_tl_1[-1], pts_tl_1))
+    edges.append(_arc_edge(pts_tl_2[0], pts_tl_2[-1], pts_tl_2))
+    split_tl = pts_tl_1[-1]
+    stub_end_tl = (split_tl[0] + stub_len * math.cos(math.radians(45)),
+                   split_tl[1] - stub_len * math.sin(math.radians(45)))
+    edges.append(_edge(split_tl, stub_end_tl))
+
+    return edges
+
 
 
 # ---------------------------------------------------------------------------
@@ -693,6 +403,37 @@ class TestStubInLoop(unittest.TestCase):
     def test_003_outer_area_correct(self):
         poly = _loop_to_polygon(self.outer[0])
         self.assertAlmostEqual(poly.area, 100 * 50, delta=2.0)
+
+class TestSplitArcStubs(unittest.TestCase):
+    """
+    BUG NOTO: archi concavi spezzati + LINE stub attaccate al punto di spezzatura.
+    Il nodo di spezzatura ha grado 3 (2 semiarchi + 1 stub) — _prune_dead_ends
+    non riconosce la stub come leaf e non la elimina.
+    """
+
+    def setUp(self):
+        edges = _make_rect_with_split_arcs_and_stubs()
+        graph = build_node_graph(edges)
+        loops = find_closed_loops(graph)
+        self.outer, self.inner = classify_loops(loops)
+
+    @unittest.expectedFailure
+    def test_un_solo_loop(self):
+        """BUG: le stub non vengono potate → loop non chiuso o loop spuri."""
+        self.assertEqual(len(self.outer), 1)
+
+    # @unittest.expectedFailure
+    # def test_nessun_inner(self):
+    #     """BUG: stub verso l'interno possono generare loop interni spuri."""
+    #     self.assertEqual(len(self.inner), 0)
+
+    @unittest.expectedFailure
+    def test_area_corretta(self):
+        """BUG: se il loop viene trovato, l'area deve essere quella del rettangolo."""
+        if not self.outer:
+            self.fail("Nessun outer loop trovato")
+        poly = _loop_to_polygon(self.outer[0])
+        self.assertAlmostEqual(poly.area, 1000.0 * 500.0, delta=100.0)
 
 
 if __name__ == "__main__":

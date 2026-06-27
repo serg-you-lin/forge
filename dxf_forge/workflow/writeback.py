@@ -37,6 +37,7 @@ import ezdxf
 
 from ..core.models import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..adapters.dxf.copy_adapter import copy_entity
+from ..adapters.dxf.geometry_adapter import get_representative_point
 from ..adapters.dxf.virtual import _write_virtual_shape
 from ..rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
@@ -102,7 +103,7 @@ def write(
     _assign_structural_layers(msp, result)
 
     entity_to_work = _build_work_index(result)
-    special_map    = _build_special_map(result)
+    special_map = _build_special_map(result)
 
     # Assicurati che i layer siano configurati con i colori corretti anche nel msp originale
     _setup_layers(msp.doc)
@@ -144,39 +145,29 @@ def split(
     include_annotations: bool               = True,
     min_area:            float              = DEFAULT_MIN_PART_AREA,
     exclude_types:       set                = None,
-    on_part:             Optional[Callable] = None, 
+    on_part:             Optional[Callable] = None,
 ) -> list:
     """
     Produce un documento ezdxf separato per ogni ForgePart.
-
-    Deve essere chiamato DOPO write() — legge part.entity_ids popolati da heal()
-    e aggiornati dallo swap VS→LWPOLYLINE in write().
-
-    Non ricalcola l'appartenenza geometrica: usa part.entity_ids come fonte
-    di verità, costruita una volta sola in heal().
-
-    Args:
-        msp:                  modelspace ezdxf originale (dopo write())
-        result:               ForgeResult completo
-        output_folder:        cartella di output per i file generati
-        namer:                funzione (int, ForgePart) -> str per il nome file
-                              default: "{i:03d}_{part.label}"
-        keep_trash:           se True copia anche le entità Trash nel figlio
-        include_annotations:  se False esclude TEXT, MTEXT, DIMENSION, ecc.
-        min_area:             area minima mm² per considerare un part reale.
-                              Parts sotto soglia vengono scartati con warning.
-                              Passa 0 per disabilitare.
-
-    Returns:
-        Lista di path dei file generati.
+    ...
     """
-
     os.makedirs(output_folder, exist_ok=True)
-    entity_to_work = _build_work_index(result)
-    special_map    = _build_special_map(result)
-    generated      = []
-    src_doc        = msp.doc
-    print(f"  [split entry msp ids] {[id(e) for e in msp]}")
+
+    entity_to_work     = _build_work_index(result)
+    special_map        = _build_special_map(result)
+    entity_to_structural = {}
+    for p in result.parts:
+        if p.outer.entity is not None:
+            entity_to_structural[id(p.outer.entity)] = p.outer.layer
+        for inner in p.inners:
+            if inner.entity is not None:
+                entity_to_structural[id(inner.entity)] = inner.layer
+        for hole in p.holes:
+            if hole.entity is not None:
+                entity_to_structural[id(hole.entity)] = hole.layer
+
+    generated = []
+    src_doc   = msp.doc
 
     for i, part in enumerate(result.parts):
         if min_area > 0 and part.outer.polygon.area < min_area:
@@ -199,16 +190,7 @@ def split(
 
         effective_ids = set()
         for eid in part.entity_ids:
-            if eid in vs_swap:
-                effective_ids.add(vs_swap[eid])
-            else:
-                effective_ids.add(eid)
-
-        if i == 0:
-            print(f"  [match check] effective_ids={effective_ids}")
-            print(f"  [match check] msp ids={[id(e) for e in msp]}")        
-
-        # print(f"  [split loop] part {i} entity_ids={part.entity_ids} vs_swap={vs_swap} effective_ids={effective_ids}")
+            effective_ids.add(vs_swap.get(eid, eid))
 
         for entity in msp:
             if not entity.dxf.hasattr("layer"):
@@ -220,7 +202,6 @@ def split(
             if is_annotation:
                 if not include_annotations:
                     continue
-                from ..adapters.dxf.geometry_adapter import get_representative_point
                 pt = get_representative_point(entity)
                 if pt is None or not part.outer.polygon.covers(pt):
                     continue
@@ -228,30 +209,31 @@ def split(
                 if id(entity) not in effective_ids:
                     continue
 
-            entity_id = id(entity)
-            layer     = entity.dxf.layer
-            work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
-
             new_entity = copy_entity(entity, msp_out)
             if new_entity is None:
                 continue
 
-            if work_type is not None:
-                target_layer, _ = WORK_TYPE_TO_LAYER.get(
-                    work_type, (TRASH_LAYER, COLOR_TRASH)
-                )
+            entity_id = id(entity)
+            layer     = entity.dxf.layer
+            work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
+
+            structural_layer = entity_to_structural.get(entity_id)
+            if structural_layer is not None:
+                new_entity.dxf.layer = structural_layer
+                new_entity.dxf.color = 256
+            elif work_type is not None:
+                target_layer, _ = WORK_TYPE_TO_LAYER.get(work_type, (TRASH_LAYER, COLOR_TRASH))
                 new_entity.dxf.layer = target_layer
                 new_entity.dxf.color = 256
             elif layer.upper() in STRUCTURAL_LAYERS or layer.upper() in WORK_LAYERS:
-                new_entity.dxf.color = 256  # BYLAYER
+                new_entity.dxf.color = 256
             elif keep_trash:
                 new_entity.dxf.layer = TRASH_LAYER
                 new_entity.dxf.color = 256
 
-        _assign_structural_layers(msp_out, result)
-
         if on_part is not None:
             on_part(part, doc_out, out_path)
+
         doc_out.saveas(out_path)
         generated.append(out_path)
         part.label = name

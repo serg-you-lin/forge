@@ -37,10 +37,10 @@ def _collect_loops(self, graph):
 
 
     for i, loop in enumerate(loops):
-        print(f"  [LOOP {i}] entità: {len(loop)}")
+        # print(f"  [LOOP {i}] entità: {len(loop)}")
         for edge, rev in loop:
             e = edge.entity
-            print(f"    {e.dxftype()} layer={e.dxf.layer} rev={rev}")
+            # print(f"    {e.dxftype()} layer={e.dxf.layer} rev={rev}")
 
     return _deduplicate_loops(loops)
 

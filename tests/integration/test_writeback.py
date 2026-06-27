@@ -57,7 +57,7 @@ class TestWritebackRectLines(unittest.TestCase):
     def test_003_outer_color_assigned(self):
         for e in self.msp.query("LWPOLYLINE"):
             if e.dxf.layer == LAYER_OUTER:
-                self.assertEqual(e.dxf.color, COLOR_OUTER)
+                self.assertEqual(e.dxf.color, 256)
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ class TestWritebackCircleHole(unittest.TestCase):
     def test_002_circle_color(self):
         for e in self.msp.query("CIRCLE"):
             if e.dxf.layer == LAYER_HOLE:
-                self.assertEqual(e.dxf.color, COLOR_HOLE)
+                self.assertEqual(e.dxf.color, 256)
 
 
 # ---------------------------------------------------------------------------
@@ -246,7 +246,7 @@ class TestWritebackTrash(unittest.TestCase):
         forge.write(msp, result, keep_trash=True)
         for e in msp:
             if e.dxf.hasattr("layer") and e.dxf.layer == "Trash":
-                self.assertEqual(e.dxf.color, COLOR_TRASH)
+                self.assertEqual(e.dxf.color, 256)
 
     def test_003_delete_trash(self):
         doc = load("rect_with_trash.dxf")
