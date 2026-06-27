@@ -17,7 +17,7 @@ import ezdxf
 
 import dxf_forge as forge
 
-from dxf_forge.rules.interpreter import GeometricInterpreter
+# from dxf_forge.rules.interpreter import GeometricInterpreter
 
 
 TESTS_DIR = Path(__file__).resolve().parent
@@ -63,8 +63,8 @@ def run_pipeline(
             reloaded_result
     """
 
-    if interpreter is None:
-        interpreter = GeometricInterpreter()
+    # if interpreter is None:
+    #     interpreter = GeometricInterpreter()
 
     path = load(dxf_name)
 

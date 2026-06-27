@@ -52,12 +52,10 @@ def load(name):
 def _heal_and_inject(dxf_name, special_layers=None, data_injector=None, interpreter=None):
     doc = load(dxf_name)
     msp = doc.modelspace()
-    result = forge.heal(msp)
+    result = forge.heal(msp, special_layers=special_layers or {},)
     forge.detect(
         result,
         msp,
-        special_layers=special_layers or {},
-        interpreter=interpreter,
     )
     forge.write(msp, result)
     forge.inject(msp, result, data_injector=data_injector)
@@ -144,11 +142,7 @@ class TestInjectEngraveLength(unittest.TestCase):
 class TestInjectCountersink(unittest.TestCase):
 
     def setUp(self):
-        from dxf_forge.rules.interpreter import GeometricInterpreter
-        _, self.result = _heal_and_inject(
-            "rect_with_countersink.dxf",
-            interpreter=GeometricInterpreter(),
-        )
+        _, self.result = _heal_and_inject("rect_with_countersink.dxf")
 
     def test_001_countersink_count_present(self):
         """countersink_count deve comparire in part.custom."""
@@ -202,13 +196,12 @@ class TestInjectDataInjector(unittest.TestCase):
     def setUp(self):
         self.doc = load("rect_with_special_layers.dxf")
         self.msp = self.doc.modelspace()
-        # self.result = forge.heal(
-        #     self.msp,
-        #     write_to_msp=True,
-        #     special_layers={"BEND": "bending", "MARK": "engrave"},
-        # )
+        self.result = forge.heal(
+            self.msp,
+            special_layers={"BEND": "bending", "MARK": "engrave"},
+        )
         self.result = forge.heal(self.msp)
-        forge.detect(self.result, self.msp, special_layers={"BEND": "bending", "MARK": "engrave"})
+        forge.detect(self.result, self.msp)
         forge.write(self.msp, self.result)
 
     def test_001_data_injector_viene_chiamato(self):
