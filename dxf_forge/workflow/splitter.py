@@ -110,8 +110,6 @@ def split_to_files(
         msp,
     )
 
-    # write(msp, result)
-
     split(
         msp,
         result,

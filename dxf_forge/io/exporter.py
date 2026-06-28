@@ -310,95 +310,95 @@ def read_metadata_from_dxf(doc) -> dict:
         return {}
 
 
-# ---------------------------------------------------------------------------
-# Upgrade R12 → R2010
-# ---------------------------------------------------------------------------
+# # ---------------------------------------------------------------------------
+# # Upgrade R12 → R2010
+# # ---------------------------------------------------------------------------
 
-def upgrade_to_r2010(doc) -> object:
-    """
-    Converte un documento DXF (qualsiasi versione) in R2010.
-    Ricopia tutte le entità del modelspace nel nuovo documento.
-    Utile per file R12 che non supportano XDATA.
+# def upgrade_to_r2010(doc) -> object:
+#     """
+#     Converte un documento DXF (qualsiasi versione) in R2010.
+#     Ricopia tutte le entità del modelspace nel nuovo documento.
+#     Utile per file R12 che non supportano XDATA.
 
-    Le POLYLINE R12 (anche con bulge/archi) vengono esplose in LINE/ARC
-    prima della copia — così heal() le gestisce correttamente.
-    """
-    if doc.dxfversion >= 'AC1015':
-        return doc  # già R2010+, nessuna operazione
+#     Le POLYLINE R12 (anche con bulge/archi) vengono esplose in LINE/ARC
+#     prima della copia — così heal() le gestisce correttamente.
+#     """
+#     if doc.dxfversion >= 'AC1015':
+#         return doc  # già R2010+, nessuna operazione
     
-    import ezdxf
+#     import ezdxf
 
-    new_doc = ezdxf.new('R2010')
-    new_msp = new_doc.modelspace()
-    old_msp = doc.modelspace()
+#     new_doc = ezdxf.new('R2010')
+#     new_msp = new_doc.modelspace()
+#     old_msp = doc.modelspace()
 
-    # --- Passo 0: esplodi INSERT in place ---
-    for entity in list(old_msp.query('INSERT')):
-        try:
-            entity.explode()
-        except Exception as ex:
-            print(f"  [WARN] upgrade_to_r2010: explode INSERT fallito — {ex}")
+#     # --- Passo 0: esplodi INSERT in place ---
+#     for entity in list(old_msp.query('INSERT')):
+#         try:
+#             entity.explode()
+#         except Exception as ex:
+#             print(f"  [WARN] upgrade_to_r2010: explode INSERT fallito — {ex}")
 
-    # --- Passo 1: esplodi tutte le POLYLINE in place ---
-    # entity.explode() aggiunge LINE/ARC al old_msp e rimuove la POLYLINE
-    for entity in list(old_msp.query('POLYLINE')):
-        try:
-            entity.explode()
-        except Exception as ex:
-            print(f"  [WARN] upgrade_to_r2010: explode POLYLINE fallito — {ex}")
+#     # --- Passo 1: esplodi tutte le POLYLINE in place ---
+#     # entity.explode() aggiunge LINE/ARC al old_msp e rimuove la POLYLINE
+#     for entity in list(old_msp.query('POLYLINE')):
+#         try:
+#             entity.explode()
+#         except Exception as ex:
+#             print(f"  [WARN] upgrade_to_r2010: explode POLYLINE fallito — {ex}")
 
-    # --- Passo 2: copia tutto nel nuovo doc ---
-    copied = 0
-    skipped = 0
+#     # --- Passo 2: copia tutto nel nuovo doc ---
+#     copied = 0
+#     skipped = 0
 
-    for entity in old_msp:
-        dxftype = entity.dxftype()
-        attribs = entity.dxfattribs()
-        attribs.pop('handle', None)
-        attribs.pop('owner', None)
+#     for entity in old_msp:
+#         dxftype = entity.dxftype()
+#         attribs = entity.dxfattribs()
+#         attribs.pop('handle', None)
+#         attribs.pop('owner', None)
 
-        try:
-            if dxftype == 'LINE':
-                new_msp.add_line(entity.dxf.start, entity.dxf.end,
-                                 dxfattribs=attribs)
+#         try:
+#             if dxftype == 'LINE':
+#                 new_msp.add_line(entity.dxf.start, entity.dxf.end,
+#                                  dxfattribs=attribs)
 
-            elif dxftype == 'ARC':
-                new_msp.add_arc(
-                    entity.dxf.center, entity.dxf.radius,
-                    entity.dxf.start_angle, entity.dxf.end_angle,
-                    dxfattribs=attribs,
-                )
+#             elif dxftype == 'ARC':
+#                 new_msp.add_arc(
+#                     entity.dxf.center, entity.dxf.radius,
+#                     entity.dxf.start_angle, entity.dxf.end_angle,
+#                     dxfattribs=attribs,
+#                 )
 
-            elif dxftype == 'CIRCLE':
-                new_msp.add_circle(entity.dxf.center, entity.dxf.radius,
-                                   dxfattribs=attribs)
+#             elif dxftype == 'CIRCLE':
+#                 new_msp.add_circle(entity.dxf.center, entity.dxf.radius,
+#                                    dxfattribs=attribs)
 
-            elif dxftype == 'LWPOLYLINE':
-                pts = list(entity.get_points(format='xyseb'))
-                new_msp.add_lwpolyline(
-                    pts, format='xyseb',
-                    dxfattribs=attribs,
-                    close=entity.closed,
-                )
+#             elif dxftype == 'LWPOLYLINE':
+#                 pts = list(entity.get_points(format='xyseb'))
+#                 new_msp.add_lwpolyline(
+#                     pts, format='xyseb',
+#                     dxfattribs=attribs,
+#                     close=entity.closed,
+#                 )
 
-            elif dxftype == 'SPLINE':
-                new_msp.add_spline(entity.control_points, dxfattribs=attribs)
+#             elif dxftype == 'SPLINE':
+#                 new_msp.add_spline(entity.control_points, dxfattribs=attribs)
 
-            elif dxftype == 'TEXT':
-                new_msp.add_text(entity.dxf.text, dxfattribs=attribs)
+#             elif dxftype == 'TEXT':
+#                 new_msp.add_text(entity.dxf.text, dxfattribs=attribs)
 
-            elif dxftype == 'MTEXT':
-                new_msp.add_mtext(entity.text, dxfattribs=attribs)
+#             elif dxftype == 'MTEXT':
+#                 new_msp.add_mtext(entity.text, dxfattribs=attribs)
 
-            else:
-                skipped += 1
-                continue
+#             else:
+#                 skipped += 1
+#                 continue
 
-            copied += 1
+#             copied += 1
 
-        except Exception as ex:
-            print(f"  [WARN] upgrade_to_r2010: skip {dxftype} — {ex}")
-            skipped += 1
+#         except Exception as ex:
+#             print(f"  [WARN] upgrade_to_r2010: skip {dxftype} — {ex}")
+#             skipped += 1
 
-    print(f"  [upgrade] {copied} entità copiate, {skipped} skippate → R2010")
-    return new_doc
+#     print(f"  [upgrade] {copied} entità copiate, {skipped} skippate → R2010")
+#     return new_doc
