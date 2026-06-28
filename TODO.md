@@ -28,6 +28,9 @@ I files splittati non vengono aperti in Autocad, vengono aperti in sigmanest sen
 
 creare una fingerprint geometrica per validare na forge part.
 
+### DWG
+Moltissime volte i files sono dwg, capire  se sia possibile (magari nel sanitizer) implementare la conversione automatica in dxf, e se c'è bisogno di qualche licenza o se si può fare for free.
+
 ### Cornice
 
 Ho già un protomodulo che funziona male per individuare e non considerare il cartiglio-cornice dei disegni, che al momento devo cancellare a mano per poter healare correttamente i disegni per esempio impaginati (non sono pochi). 
@@ -55,22 +58,15 @@ forse recover.readfile() e doc.audit(), capire se ha senso farlo per non perdere
 Simil_arcardini_segni_tracciati_stretto_healed --> questo file ha una serie di dentelli che partono da una linea orizzontele, che sono considerati parte del grafo giustamnete. vorrei aggiungere un parametro che sotto una certa distanza queste linee siano considerate solo dei segni di marcatura, completando il grafo solo con la linea orizzontale. Anche se ho degli inner che hanno distanza inferiore alla tolleranza di cui sopra, devono essere detectati come segni di incisione e posti sul layer 'Engrave'. probabilmente questa cosa va implementata nel modulo detect e può essere individuato il tutto solo passando detect() come facciamo con le bl che hanno la loro tolleranza.
 
 
-### Implementazione nuiovo formato:
+### Implementazione nuovo formato:
 Al momento in input posso avere solo dxf, ma mi sono messo in condizione di poter prendere anche svg o pdf. Da capire se implementare ad esempio almeno i pdf.
 
 ### Comprensione futura:
 Capire le responsabilità del modulo, che è outputare dxf sani ed omologati e tirare fuori dati comprensibili. ma da cosa? al momento da disegni piatti, e posso splittarli. Forse un agente futuro può: entrare, capire di che si tratta e decidere cosa fare per outputare il file di taglio preciso. può essere un file multipezzo, o un file multivista da cui poter estrarre anche lo sviluppo e lo spessore, componendo le varie viste. Difficile, ma l'agente ha senso solo così.
 
 ### Refactoring Virtual
-OCS come responsabilità dell'adapter
-Attualmente VirtualShape riceve entità ezdxf e ricostruisce geometria (bulge, archi, angoli) internamente. Questo significa che il layer Virtual conosce implicitamente concetti DXF come OCS, extrusion, start/end angle.
-La proposta è spostare tutta la conversione DXF→geometria nell'adapter, in modo che Virtual riceva solo primitive già in WCS:
-LineSeg(start, end)
-ArcSeg(start, end, center, radius)
-SplineSeg(points)
-Virtual diventerebbe un layer "dumb" — riceve geometria pura, non sa nulla di DXF. Tutto il casino OCS, bulge, angoli, extrusion viene gestito una volta sola nell'adapter e non trapela mai oltre.
-Il vantaggio è che Hierarchy, Graph e Splitter ragionerebbero sempre in coordinate WCS pulite, senza dipendere da come il formato DXF ha codificato la geometria. Debug molto più semplice, zero edge case nascosti.
-È un refactor grosso che tocca tutta la pipeline — da fare a freddo, non in emergenza.
+ArcSeg usa bulge invece di center/radius — scelta consapevole perché il bulge è già WCS e serve per costruire le LWPOLYLINE in writeback. Da valutare se completare il refactoring.
+
 
 può essere qualcosa di simile a questo?
 parse_geometry()
