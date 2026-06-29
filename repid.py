@@ -1,7 +1,5 @@
-import struct
-
-path = r"LOCAL_DRAWING.dxf"
-
-with open(path, 'rb') as f:
-    version = f.read(6).decode('ascii')
-print(version)
+import ezdxf
+doc = ezdxf.readfile(r"LOCAL_DRAWING.dxf")
+msp = doc.modelspace()
+for e in msp:
+    print(e.dxftype(), e.dxf.layer)
