@@ -28,21 +28,12 @@ I files splittati non vengono aperti in Autocad, vengono aperti in sigmanest sen
 
 creare una fingerprint geometrica per validare na forge part.
 
-### DWG
-Moltissime volte i files sono dwg, capire  se sia possibile (magari nel sanitizer) implementare la conversione automatica in dxf, e se c'è bisogno di qualche licenza o se si può fare for free.
-
 ### Cornice
 
 Ho già un protomodulo che funziona male per individuare e non considerare il cartiglio-cornice dei disegni, che al momento devo cancellare a mano per poter healare correttamente i disegni per esempio impaginati (non sono pochi). 
 
 ### API
 
-- [ ] **`upgrade_to_r2010` — integrato automaticamente**
-  - Attualmente va chiamato manualmente nel batch
-bisognerebbe consentire all'utente opzionalmente di upgrdare tutti i files, mentre per quanto mi riguarda se si vuole avere il forge i files che non gestiscono gli XDATA devono obbligatoriamente essere upgradati. capire se farlo direttametne nel modulo sanitizae con flatternig e normalizzazione ocs.
-
-### Aggiunta in script
-forse recover.readfile() e doc.audit(), capire se ha senso farlo per non perdere cose importanti
 
 ### Analisi
 
@@ -69,11 +60,12 @@ ArcSeg usa bulge invece di center/radius — scelta consapevole perché il bulge
 
 
 può essere qualcosa di simile a questo?
-parse_geometry()
-build_topology()
-heal()
-detect_features()
-writeback()
+
+parse_geometry()     ← explode INSERT, detect & exclude frame
+build_topology()     ← costruisce il grafo
+heal()               ← healing geometrico puro
+detect_features()    ← detect(), holes, bending lines
+writeback()          ← scrive il DXF
 split()
 inject()
 

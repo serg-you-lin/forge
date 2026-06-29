@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"LOCAL_DRAWING.dxf''.dwg"
+input_dxf = r"LOCAL_DRAWING.dxf"
 
 tolerance = 1
 
