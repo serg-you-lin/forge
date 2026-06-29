@@ -18,7 +18,7 @@ import dxf_forge as forge
 import math
 
 
-DEFAULT_FILE = r"tests/examples/6200012964_lineette_bastarde_healed.dxf"
+DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\disegni\271004g13.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(

@@ -1,9 +1,12 @@
 """
-ARC_splitter_injecter.py
-------------------------
+ARC_splitter.py
+---------------
 Pipeline forge completa su file DXF cliente.
 Produce un file separato per ogni pezzo con nome dal codice nel testo,
 in una subfolder con il nome dell'originale.
+
+Nota: write() e inject() rimossi — split() materializza i VS internamente,
+snapmark lavora sul doc figlio dentro on_part.
 """
 
 import ezdxf
@@ -23,7 +26,7 @@ import snapmark as sm
 
 
 # ← CAMBIA QUI
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC - Copia\ARC.6200012648 Sviluppo\6200012648 Sviluppo.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC - Copia\ARC.6200012803 Sviluppo\6200012803 Sviluppo.dxf"
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
 customer = 'ARC02'
@@ -44,7 +47,6 @@ MATERIAL_MAP = {
     "s235": "FE-DECAPATO",
     "aisi 304": "I304",
     "aisi304": "I304",
-    # Puoi aggiungere altre conversioni qui in futuro
 }
 
 def sanitize_filename(name: str) -> str:
@@ -54,18 +56,13 @@ def sanitize_filename(name: str) -> str:
     return name.strip('_.') or "UNNAMED"
 
 def normalizza_materiale(raw_material: str) -> str:
-    """Semplifica e mappa il nome del materiale in base alla tabella aziendale."""
     if not raw_material:
         return "N/D"
-    
     mat_clean = raw_material.strip().lower()
-    
-    # Controlla se il testo contiene una delle chiavi della mappa
     for chiave, valore_mappato in MATERIAL_MAP.items():
         if chiave in mat_clean:
             return valore_mappato
-            
-    return raw_material.strip() # Ritorna l'originale pulito se non trova corrispondenze
+    return raw_material.strip()
 
 def estrai_materiale(doc) -> str:
     for block in doc.blocks:
@@ -75,7 +72,7 @@ def estrai_materiale(doc) -> str:
                     txt = clean_mtext(e.text)
                     if 'materiale' in txt.lower():
                         raw_mat = txt.split(':', 1)[-1].strip()
-                        return normalizza_materiale(raw_mat) # ← Modificato qui
+                        return normalizza_materiale(raw_mat)
     return "N/D"
 
 
@@ -172,9 +169,6 @@ forge.detect(result, msp)
 print(f"\n--- INJECT ---")
 forge.inject(msp, result, data_injector=make_data_injector(doc))
 
-print(f"\n--- WRITE ---")
-forge.write(msp, result)
-
 # ---------------------------------------------------------------------------
 # Snapmark — configurato una volta sola
 # ---------------------------------------------------------------------------
@@ -191,7 +185,7 @@ marker = sm.AddMark(
 )
 
 # ---------------------------------------------------------------------------
-# Split + post-processing in un unico passaggio
+# Split — snapmark e post-processing lavorano sul doc figlio
 # ---------------------------------------------------------------------------
 
 print(f"\n--- SPLIT → {output_dir} ---")
@@ -225,7 +219,6 @@ def post_process(part, doc_out, path):
         file_name=file_name,
         folder=output_dir,
     )
-
 
     meta = build_metadata(part)
     json_path = os.path.splitext(path)[0] + ".json"

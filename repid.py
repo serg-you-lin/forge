@@ -1,7 +1,5 @@
-import struct
-
-path = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_25-06-2026\disegni\Otto INOX 2.dwg"
-
-with open(path, 'rb') as f:
-    version = f.read(6).decode('ascii')
-print(version)
+import ezdxf
+doc = ezdxf.readfile(r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC - Copia\ARC.6200012803 Sviluppo\6200012803 Sviluppo\6200012803_2.dxf")
+msp = doc.modelspace()
+for e in msp:
+    print(e.dxftype(), e.dxf.layer)

@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_25-06-2026\disegni\Leva INOX 2''.dwg"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\33-24\Cornici Tetto\Z02_P2_ZINC_SP1_Q1.DXF"
 
 tolerance = 1
 

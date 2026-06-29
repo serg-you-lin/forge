@@ -46,11 +46,11 @@ C_ACCENT = '#f78166'
 
 LAYER_COLORS = {
     LAYER_OUTER   : ('#3fb950', 0.12, 2.0),
-    LAYER_INNER   : ('#58a6ff', 0.12, 1.5),
-    LAYER_HOLE    : ('#ff7b72', 0.15, 1.5),
-    LAYER_BENDING : ('#ffa657', 0.0,  1.5),   # arancio — linee di piega, no fill
-    LAYER_MARKING : ('#d2a8ff', 0.0,  1.2),   # viola  — marcature, no fill
-    TRASH_LAYER   : ('#484f58', 0.0,  0.7),
+    LAYER_INNER   : ("#fddd3e", 0.12, 1.5),
+    LAYER_HOLE    : ("#950680", 0.15, 1.5),
+    LAYER_BENDING : ("#e38cc3", 0.0,  1.5),   # arancio — linee di piega, no fill
+    LAYER_MARKING : ("#949196", 0.0,  1.2),   # viola  — marcature, no fill
+    TRASH_LAYER   : ("#931515", 0.0,  0.7),
 }
 
 _PALETTE = ['#ffa657', '#d2a8ff', '#79c0ff', '#56d364',
@@ -335,7 +335,6 @@ def run(input_dxf, tolerance=0.05, output_png=None, special_layers=None):
     result = forge.heal(
         msp_healed,
         tolerance=tolerance,
-        write_to_msp=True,
         label=Path(input_dxf).stem,
         source_file=Path(input_dxf).name,
         special_layers=special_layers,
