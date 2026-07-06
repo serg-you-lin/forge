@@ -41,7 +41,7 @@ from typing import Callable, Optional
 from unittest import result
 
 from ..model.result import ForgeResult
-from .healer import heal
+from ..pipeline import heal
 from .detection import detect
 from .writeback import split, DEFAULT_MIN_PART_AREA, write
 

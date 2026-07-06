@@ -38,7 +38,7 @@ from ...core.geometry import (
     _circle_circle_intersections,
     _closest_to,
 )
-from ...core.graph import spline_endpoints
+from ...core.geometry import spline_endpoints
 
 Point2D = Tuple[float, float]
 

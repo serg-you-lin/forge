@@ -1,3 +1,9 @@
+from typing import Optional
+from shapely.geometry import Polygon
+import math
+
+from ...core.geometry import spline_endpoints
+
 from ...model.part import (
     ForgePart,
     ForgeContour,
@@ -11,7 +17,7 @@ from ...model.hole import (
 from ...adapters.dxf.geometry_adapter import (
     entity_to_polygon,
 )
-from ._helpers import _spline_to_polygon
+
 from ...rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     COLOR_INNER,
@@ -19,6 +25,7 @@ from ...rules.layers import (
     HOLE_DIAMETER_THRESHOLD, STRUCTURAL_LAYERS,
 )
 
+from ...adapters.dxf.geometry_adapter import arc_endpoints, spline_to_points
 
 def _build_hierarchy(self):
     shapes = []
@@ -232,3 +239,29 @@ def _build_trash(self):
     ]
 
     self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
+
+def _spline_to_polygon(spline) -> Optional[Polygon]:
+    """
+    Converte una SPLINE chiusa in Polygon Shapely via discretizzazione.
+    Usato solo internamente per la gerarchia padre-figlio.
+    """
+    pts = spline_to_points(spline)
+    if len(pts) < 3:
+        return None
+    try:
+        poly = Polygon(pts)
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+        if poly.geom_type == "MultiPolygon":
+            poly = max(poly.geoms, key=lambda p: p.area)
+        return poly if not poly.is_empty else None
+    except Exception:
+        return None
+    
+
+def _spline_is_closed(spline, tolerance: float = 0.01) -> bool:
+    """Restituisce True se la SPLINE è chiusa (start ≈ end)."""
+    s, e = spline_endpoints(spline)
+    if s is None or e is None:
+        return False
+    return math.sqrt((e[0] - s[0]) ** 2 + (e[1] - s[1]) ** 2) < tolerance
