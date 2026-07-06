@@ -12,7 +12,7 @@ dxf-forge/
 │   │
 │   ├── core/                      # Motore geometrico puro
 │   │   ├── primitives/            # LineSeg, ArcSeg, SplineSeg
-│   │   ├── graph/                 # topologia, loop detection
+│   │   ├── topology/              # topologia, loop detection, graph
 │   │   ├── hierarchy/             # containment, holes
 │   │   ├── healing/               # gap closing, dedup, normalize
 │   │   └── frame/                 # frame detection

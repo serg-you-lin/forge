@@ -3,32 +3,31 @@ import numpy as np
 
 from forge.adapters.dxf import sanitize
 
-from ...model.result import (
+from ..model.result import (
     ForgeResult,
 )
-from ...core.graph import (
+from ..core.topology.graph import (
     build_node_graph,
 )
-from ._helpers import (
-    # _free_endpoints,
+from ..core.healing.hierarchy import (
     _spline_is_closed,
 )
-from ._utils import (
+from .normalization import (
     _deduplicate_entities,
-    _explode_inserts,
 )
 # from ...core.gap import close_gaps
-from ...core.graph import spline_endpoints
-from ...core.geometry import round_point
-from ...adapters.dxf.graph_adapter import edges_from_msp as _edges_from_msp_adapter
-from ...adapters.dxf.geometry_adapter import close_gaps, free_endpoints_from_msp
+from ..core.geometry import spline_endpoints
+from ..core.geometry import round_point
+from ..adapters.dxf.graph_adapter import edges_from_msp as _edges_from_msp_adapter
+from ..adapters.dxf.geometry_adapter import close_gaps, free_endpoints_from_msp
+from ..adapters.dxf.sanitize import _explode_inserts 
 
-from ...rules.layers import (
+from ..rules.layers import (
     STRUCTURAL_LAYERS,
 )
 
 
-class HealerPipeline:
+class HealStep:
     def __init__(
         self,
         msp,
@@ -71,7 +70,7 @@ class HealerPipeline:
         self.open_splines   = []
 
     def run(self):
-        from ...adapters.dxf.sanitize import sanitize
+        from ..adapters.dxf.sanitize import sanitize
         sanitize(self.msp, flatten_z_flag=self.flatten_z)
         self._handle_inserts()
         self._load()
@@ -235,12 +234,12 @@ class HealerPipeline:
 
 
 # metodi estratti in moduli separati
-from ._loops     import _collect_loops, _reintegrate_bending, _fallback_polygonize, _classify_and_build  # noqa: E402
-from ._hierarchy import _build_hierarchy, _build_trash  # noqa: E402
+from ..core.topology.loops     import _collect_loops, _reintegrate_bending, _fallback_polygonize, _classify_and_build  # noqa: E402
+from ..core.healing.hierarchy import _build_hierarchy, _build_trash  # noqa: E402
 
-HealerPipeline._collect_loops       = _collect_loops
-HealerPipeline._reintegrate_bending = _reintegrate_bending
-HealerPipeline._fallback_polygonize = _fallback_polygonize
-HealerPipeline._classify_and_build  = _classify_and_build
-HealerPipeline._build_hierarchy     = _build_hierarchy
-HealerPipeline._build_trash         = _build_trash
+HealStep._collect_loops       = _collect_loops
+HealStep._reintegrate_bending = _reintegrate_bending
+HealStep._fallback_polygonize = _fallback_polygonize
+HealStep._classify_and_build  = _classify_and_build
+HealStep._build_hierarchy     = _build_hierarchy
+HealStep._build_trash         = _build_trash

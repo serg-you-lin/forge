@@ -18,9 +18,13 @@ from shapely.geometry import LinearRing, Polygon, LineString
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from forge.core.graph import (
-    build_node_graph, find_closed_loops, classify_loops,
+from forge.core.topology.graph import (
+    build_node_graph
 )
+from forge.core.topology.loops import (
+    find_closed_loops, classify_loops,
+)
+
 from forge.model import Edge
 
 
