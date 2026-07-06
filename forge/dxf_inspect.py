@@ -31,7 +31,7 @@ import logging
 # import numpy as np
 from collections import defaultdict, Counter
 from forge.io.text_utils import extract_texts_from_msp, extract_texts
-from forge.core.graph import build_node_graph
+from forge.core.topology.graph import build_node_graph
 from forge.adapters.dxf.graph_adapter import entity_endpoints
 
 # ---------------------------------------------------------------------------

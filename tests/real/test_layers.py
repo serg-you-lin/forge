@@ -243,10 +243,10 @@ class TestLineetteBastarde(unittest.TestCase):
         self.assertEqual(len(trash), 4, f"Attese 4 entità su Trash, trovate {len(trash)}")
 
     def test_nessuna_line_su_bending(self):
-        """Nessuna LINE deve finire su Bending se non è in bend_line_ids."""
+        """Nessuna LINE deve finire su Bending se non è una BendingLine riconosciuta."""
         from forge.rules.layers import LAYER_BENDING
         part = self.result.parts[0]
-        bend_ids = part.geometry_hints.bend_line_ids
+        bend_ids = {id(bl.entity) for bl in part.bending_lines}
         linee_bastarde = [
             e for e in self.msp
             if e.dxftype() == "LINE"
@@ -257,7 +257,7 @@ class TestLineetteBastarde(unittest.TestCase):
         self.assertEqual(
             linee_bastarde,
             [],
-            msg=f"{len(linee_bastarde)} LINE su Bending non presenti in bend_line_ids",
+            msg=f"{len(linee_bastarde)} LINE su Bending non presenti in bending_lines",
         )
 
 

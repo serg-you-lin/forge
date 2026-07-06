@@ -35,7 +35,7 @@ Workflow multi-pezzo:
 
 from .adapters.dxf.loader import load_dxf
 from .adapters.pdf.loader import load_pdf
-from .workflow.healer     import heal, LAYER_OUTER, LAYER_HOLE
+from .pipeline            import heal, LAYER_OUTER, LAYER_HOLE
 from .workflow.splitter   import split_to_files
 from .workflow.injector   import inject
 from .workflow.writeback  import write, split

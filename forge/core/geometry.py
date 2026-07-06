@@ -190,3 +190,21 @@ def _closest_to(candidates: List[Point], ref: Point) -> Optional[Point]:
     if not candidates:
         return None
     return min(candidates, key=lambda p: _distance(p, ref))
+
+# ---------------------------------------------------------------------------
+# spline_endpoints — helper per geometry_adapter e graph_adapter
+# ---------------------------------------------------------------------------
+
+def spline_endpoints(spline):
+    """
+    Restituisce (start, end) come tuple (x, y) di una SPLINE ezdxf.
+    Unica funzione di questo modulo che tocca ezdxf — accetta l'entity
+    ma legge solo i punti flattening, non entity.dxf.
+    """
+    try:
+        pts = list(spline.flattening(0.01))
+        if len(pts) < 2:
+            return None, None
+        return (pts[0][0], pts[0][1]), (pts[-1][0], pts[-1][1])
+    except Exception:
+        return None, None

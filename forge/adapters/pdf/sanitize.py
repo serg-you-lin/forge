@@ -99,3 +99,5 @@ def sanitize_pdf_geometries(raw_items: list, page_height: float, snap_tolerance:
                 sanitized_items.append(("c_poly", cleaned_curve_pts))
 
     return sanitized_items
+
+
