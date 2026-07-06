@@ -21,8 +21,8 @@ import ezdxf
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-import dxf_forge as forge
-from dxf_forge.rules.layers import (
+import forge
+from forge.rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     LAYER_COUNTERSINK, LAYER_BENDING, LAYER_ENGRAVE,
     COLOR_OUTER, COLOR_INNER, COLOR_HOLE, COLOR_TRASH,
@@ -219,7 +219,7 @@ class TestWritebackDeduplication(unittest.TestCase):
         self.assertEqual(len(outer), 1)
 
     def test_002_no_duplicate_lines_in_msp(self):
-        from dxf_forge.workflow.healer._utils import _deduplicate_entities
+        from forge.workflow.healer._utils import _deduplicate_entities
         removed = _deduplicate_entities(self.msp)
         self.assertEqual(removed, 0)
 

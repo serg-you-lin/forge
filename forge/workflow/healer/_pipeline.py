@@ -1,9 +1,9 @@
 
 import numpy as np
 
-from dxf_forge.adapters.dxf import sanitize
+from forge.adapters.dxf import sanitize
 
-from ...core.models import (
+from ...model.result import (
     ForgeResult,
 )
 from ...core.graph import (

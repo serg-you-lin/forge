@@ -10,11 +10,11 @@ e il routing _loop_to_virtual_shape.
 import unittest
 from unittest.mock import MagicMock, patch
 
-from dxf_forge.core.virtual import (
+from forge.core.virtual import (
     VirtualShape, LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg,
 )
-from dxf_forge.core.models import Edge
-from dxf_forge.adapters.dxf.virtual_adapter import (
+from forge.model import Edge
+from forge.adapters.dxf.virtual_adapter import (
     parse_loop, _loop_to_virtual_shape,
 )
 
@@ -114,14 +114,14 @@ class TestParseLoopArc(unittest.TestCase):
         ]
 
     def test_001_arco_senza_spline_produce_arcseg(self):
-        with patch('dxf_forge.adapters.dxf.virtual_adapter.arc_to_bulge',
+        with patch('forge.adapters.dxf.virtual_adapter.arc_to_bulge',
                    return_value=(None, None, 1.0)):
             prims = parse_loop(self._make_arc_loop())
         arc_prims = [p for p in prims if isinstance(p, ArcSeg)]
         self.assertEqual(len(arc_prims), 1)
 
     def test_002_arco_senza_spline_non_produce_discretized(self):
-        with patch('dxf_forge.adapters.dxf.virtual_adapter.arc_to_bulge',
+        with patch('forge.adapters.dxf.virtual_adapter.arc_to_bulge',
                    return_value=(None, None, 1.0)):
             prims = parse_loop(self._make_arc_loop())
         self.assertFalse(any(isinstance(p, DiscretizedArcSeg) for p in prims))
@@ -148,13 +148,13 @@ class TestParseLoopSpline(unittest.TestCase):
 
     def setUp(self):
         fake_arc_pts = [(0.0, 100.0), (50.0, 150.0), (100.0, 100.0)]
-        with patch('dxf_forge.adapters.dxf.virtual_adapter.spline_to_points',
+        with patch('forge.adapters.dxf.virtual_adapter.spline_to_points',
                    side_effect=lambda e: e._mock_points), \
-             patch('dxf_forge.adapters.dxf.virtual_adapter.arc_to_bulge',
+             patch('forge.adapters.dxf.virtual_adapter.arc_to_bulge',
                    return_value=(None, None, 1.0)), \
-             patch('dxf_forge.adapters.dxf.virtual_adapter.arc_to_linestrings',
+             patch('forge.adapters.dxf.virtual_adapter.arc_to_linestrings',
                    return_value=[MagicMock(coords=fake_arc_pts)]), \
-             patch('dxf_forge.adapters.dxf.virtual_adapter.num_segments_for_bulge',
+             patch('forge.adapters.dxf.virtual_adapter.num_segments_for_bulge',
                    return_value=3):
             self.primitives = parse_loop(self._make_spline_loop())
 
@@ -190,7 +190,7 @@ class TestLoopToVirtualShape(unittest.TestCase):
             (make_edge(make_line(100, 100, 100, 0)),     False),
             (make_edge(make_line(100, 0, 0, 0)),         False),
         ]
-        with patch('dxf_forge.adapters.dxf.virtual_adapter.spline_to_points',
+        with patch('forge.adapters.dxf.virtual_adapter.spline_to_points',
                    side_effect=lambda e: e._mock_points):
             vs = _loop_to_virtual_shape(loop, 'outer', 1)
         self.assertTrue(vs.has_spline)
@@ -203,7 +203,7 @@ class TestLoopToVirtualShape(unittest.TestCase):
             (make_edge(make_line(100, 100, 100, 0)),     False),
             (make_edge(make_line(100, 0, 0, 0)),         False),
         ]
-        with patch('dxf_forge.adapters.dxf.virtual_adapter.spline_to_points',
+        with patch('forge.adapters.dxf.virtual_adapter.spline_to_points',
                    side_effect=lambda e: e._mock_points):
             vs = _loop_to_virtual_shape(loop, 'outer', 1)
         self.assertEqual(vs.pts_with_bulge, [])

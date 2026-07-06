@@ -50,9 +50,9 @@ import ezdxf
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-import dxf_forge as forge
-from dxf_forge.workflow.writeback import split, ANNOTATION_TYPES, DEFAULT_MIN_PART_AREA
-from dxf_forge.rules.layers import ALL_FORGE_LAYERS
+import forge
+from forge.workflow.writeback import split, ANNOTATION_TYPES, DEFAULT_MIN_PART_AREA
+from forge.rules.layers import ALL_FORGE_LAYERS
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
@@ -296,7 +296,7 @@ class TestUnitSplitLayers(unittest.TestCase):
 
     def test_001_tutti_i_layer_presenti(self):
         """Tutti i layer forge standard sono presenti nel documento figlio."""
-        from dxf_forge.rules.layers import (
+        from forge.rules.layers import (
             LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
             LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, TRASH_LAYER,
         )
@@ -311,7 +311,7 @@ class TestUnitSplitLayers(unittest.TestCase):
 
     def test_002_colori_canonici(self):
         """Ogni layer forge ha il colore canonico definito in layers.py."""
-        from dxf_forge.rules.layers import ALL_FORGE_LAYERS
+        from forge.rules.layers import ALL_FORGE_LAYERS
         for path in self.generated:
             child_doc = ezdxf.readfile(path)
             for layer_name, expected_color in ALL_FORGE_LAYERS.items():
@@ -428,7 +428,7 @@ class TestIntegrationContours(unittest.TestCase):
 
     def test_001_lwpolyline_outer_chiusa(self):
         """LWPOLYLINE su OuterContour nei figli è closed=True."""
-        from dxf_forge.rules.layers import LAYER_OUTER
+        from forge.rules.layers import LAYER_OUTER
         children = self._children("two_parts.dxf", "two_parts")
         self.assertGreater(len(children), 0)
         for fname, msp in children.items():
@@ -440,7 +440,7 @@ class TestIntegrationContours(unittest.TestCase):
 
     def test_002_lwpolyline_inner_chiusa(self):
         """LWPOLYLINE su InnerContour/Hole nei figli è closed=True."""
-        from dxf_forge.rules.layers import LAYER_INNER, LAYER_HOLE
+        from forge.rules.layers import LAYER_INNER, LAYER_HOLE
         children = self._children("pline_with_hole.dxf", "pline_with_hole")
         for fname, msp in children.items():
             for e in msp.query("LWPOLYLINE"):
@@ -451,7 +451,7 @@ class TestIntegrationContours(unittest.TestCase):
 
     def test_003_circle_outer_esportato(self):
         """CIRCLE su OuterContour viene esportato nel file figlio."""
-        from dxf_forge.rules.layers import LAYER_OUTER
+        from forge.rules.layers import LAYER_OUTER
         children = self._children("cerchi_ciambella.dxf", "cerchi_ciambella")
         self.assertGreater(len(children), 0,
                            "Nessun file figlio da cerchi_ciambella.dxf")
@@ -464,7 +464,7 @@ class TestIntegrationContours(unittest.TestCase):
 
     def test_004_spline_outer_esportato(self):
         """File con SPLINE: entità originali su OuterContour presenti nel figlio."""
-        from dxf_forge.rules.layers import LAYER_OUTER
+        from forge.rules.layers import LAYER_OUTER
         children = self._children("intricato_doppio.dxf", "intricato_doppio")
         figli_con_outer = [
             fname for fname, msp in children.items()
@@ -480,7 +480,7 @@ class TestIntegrationContours(unittest.TestCase):
         Regressione: per ogni file in examples/, ogni LWPOLYLINE strutturale
         nei figli è closed=True. File non splittabili ignorati silenziosamente.
         """
-        from dxf_forge.rules.layers import LAYER_OUTER, LAYER_INNER, LAYER_HOLE
+        from forge.rules.layers import LAYER_OUTER, LAYER_INNER, LAYER_HOLE
         structural = {LAYER_OUTER, LAYER_INNER, LAYER_HOLE}
         for src in Path(EXAMPLES_DIR).glob("*.dxf"):
             if src.stem.endswith("_healed"):
@@ -520,7 +520,7 @@ class TestIntegrationLayers(unittest.TestCase):
 
     def test_001_outer_layer_colore_canonico(self):
         """LAYER_OUTER ha COLOR_OUTER in ogni file figlio."""
-        from dxf_forge.rules.layers import LAYER_OUTER, COLOR_OUTER
+        from forge.rules.layers import LAYER_OUTER, COLOR_OUTER
         for f in self.files:
             child_doc = ezdxf.readfile(str(f))
             layer = child_doc.layers.get(LAYER_OUTER)
@@ -531,7 +531,7 @@ class TestIntegrationLayers(unittest.TestCase):
 
     def test_002_tutti_i_layer_forge_presenti(self):
         """Tutti i layer forge standard sono presenti in ogni file figlio."""
-        from dxf_forge.rules.layers import (
+        from forge.rules.layers import (
             LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
             LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, TRASH_LAYER,
         )
@@ -546,7 +546,7 @@ class TestIntegrationLayers(unittest.TestCase):
 
     def test_003_tutti_i_colori_canonici(self):
         """Ogni layer forge ha il colore canonico definito in layers.py."""
-        from dxf_forge.rules.layers import ALL_FORGE_LAYERS
+        from forge.rules.layers import ALL_FORGE_LAYERS
         for f in self.files:
             child_doc = ezdxf.readfile(str(f))
             for layer_name, expected_color in ALL_FORGE_LAYERS.items():

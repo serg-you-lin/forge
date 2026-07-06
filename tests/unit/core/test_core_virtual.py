@@ -8,7 +8,7 @@ Zero dipendenze da ezdxf — tutto in termini di primitive pure.
 
 import unittest
 import math
-from dxf_forge.core.virtual import (
+from forge.core.virtual import (
     LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg,
     VirtualShape, _build_polygon,
 )

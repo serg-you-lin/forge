@@ -10,12 +10,12 @@ snapmark lavora sul doc figlio dentro on_part.
 """
 
 import ezdxf
-import dxf_forge as forge
+import forge
 import os
 import re
 import json
-from dxf_forge.io.text_utils import clean_mtext
-from dxf_forge.io.exporter import build_metadata
+from forge.io.text_utils import clean_mtext
+from forge.io.exporter import build_metadata
 from pathlib import Path
 import sys
 

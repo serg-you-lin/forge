@@ -1,10 +1,13 @@
-from ...core.models import (
+from ...model.part import (
     ForgePart,
     ForgeContour,
-    GeometryHints,
+)
+    
+from ...model.hole import (
     Hole,
     HOLE_TYPE_UNKNOWN,
 )
+
 from ...adapters.dxf.geometry_adapter import (
     entity_to_polygon,
 )
@@ -196,7 +199,7 @@ def _build_hierarchy(self):
             label=self.label,
             source_file=self.source_file,
             custom={},
-            geometry_hints=GeometryHints(),
+            # geometry_hints=GeometryHints(),
             entity_ids=entity_ids,
         )
 

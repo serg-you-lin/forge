@@ -5,7 +5,7 @@ Traduce entità vettoriali sanificate del PDF in Edge topologici per il core.
 """
 
 from shapely.geometry import LineString
-from ...core.models import Edge
+from ...model.edge import Edge
 from ...core.geometry import round_point
 
 

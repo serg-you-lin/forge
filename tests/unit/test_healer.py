@@ -21,8 +21,8 @@ import ezdxf
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-import dxf_forge as forge
-from dxf_forge.rules.layers import (
+import forge
+from forge.rules.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     COLOR_OUTER, COLOR_INNER, COLOR_HOLE,
 )

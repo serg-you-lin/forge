@@ -5,15 +5,15 @@ Testa l'healer su un file DXF reale.
 Produce un file healed.dxf nella cartella di output.
 """
 
-import dxf_forge as forge
-from dxf_forge.dxf_inspect import DxfInspector
+import forge
+from forge.dxf_inspect import DxfInspector
 import os
 
 # ---------------------------------------------------------------------------
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"d:\Freecad\lamiera-Body_Unfold.dxf"
+input_dxf = r"tests/examples/intricato_doppio.dxf"
 
 tolerance = .01
 

@@ -35,7 +35,7 @@ from typing import Callable, Optional
 
 import ezdxf
 
-from ..core.models import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
+from ..model import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..adapters.dxf.copy_adapter import copy_entity
 from ..adapters.dxf.geometry_adapter import get_representative_point
 from ..adapters.dxf.virtual_adapter import _write_virtual_shape
@@ -282,11 +282,37 @@ def _remove_superseded_line_arc(msp, result: ForgeResult) -> None:
         msp.delete_entity(e)
 
 
+# def _build_work_index(result: ForgeResult) -> dict:
+#     """
+#     Costruisce un indice id(entity) → work_type da:
+#         - part.holes con hole_type classificato da detect()
+#         - part.geometry_hints.bend_line_ids (linee di piega)
+
+#     I fori plain non entrano nell'indice — rimangono su LAYER_HOLE.
+#     I fori unknown (detect() non chiamato) non entrano — nessuna diagnosi.
+#     """
+#     index = {}
+#     for part in result.parts:
+#         for hole in part.holes:
+#             # print(f"[work_index] hole_type={hole.hole_type} entity={hole.entity} outer_entity={hole.outer_entity}")
+#             if hole.hole_type == HOLE_TYPE_COUNTERSINK and hole.outer_entity is not None:
+#                 index[id(hole.outer_entity)] = "countersink"
+#             elif hole.hole_type == HOLE_TYPE_THREADED and hole.entity is not None:
+#                 index[id(hole.entity)] = "threaded_hole"
+#                 # print(f"  → indicizzato id={id(hole.entity)} come threaded_hole")
+
+#         for eid in part.geometry_hints.bend_line_ids:
+#             index[eid] = "bending"
+#             part.entity_ids.add(eid)
+
+#     # print(f"[work_index] totale: {len(index)} entità")
+#     return index
+
 def _build_work_index(result: ForgeResult) -> dict:
     """
     Costruisce un indice id(entity) → work_type da:
         - part.holes con hole_type classificato da detect()
-        - part.geometry_hints.bend_line_ids (linee di piega)
+        - part.bending_lines (linee di piega)
 
     I fori plain non entrano nell'indice — rimangono su LAYER_HOLE.
     I fori unknown (detect() non chiamato) non entrano — nessuna diagnosi.
@@ -294,18 +320,16 @@ def _build_work_index(result: ForgeResult) -> dict:
     index = {}
     for part in result.parts:
         for hole in part.holes:
-            # print(f"[work_index] hole_type={hole.hole_type} entity={hole.entity} outer_entity={hole.outer_entity}")
             if hole.hole_type == HOLE_TYPE_COUNTERSINK and hole.outer_entity is not None:
                 index[id(hole.outer_entity)] = "countersink"
             elif hole.hole_type == HOLE_TYPE_THREADED and hole.entity is not None:
                 index[id(hole.entity)] = "threaded_hole"
-                # print(f"  → indicizzato id={id(hole.entity)} come threaded_hole")
 
-        for eid in part.geometry_hints.bend_line_ids:
+        for bl in part.bending_lines:
+            eid = id(bl.entity)
             index[eid] = "bending"
             part.entity_ids.add(eid)
 
-    # print(f"[work_index] totale: {len(index)} entità")
     return index
 
 
