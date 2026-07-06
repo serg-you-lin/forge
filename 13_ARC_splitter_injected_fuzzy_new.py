@@ -16,17 +16,25 @@ import re
 import json
 from dxf_forge.io.text_utils import clean_mtext
 from dxf_forge.io.exporter import build_metadata
+from pathlib import Path
 import sys
 
-sys.path.insert(
-    0,
-    r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\snapmark"
-)
+SNAPMARK_REPO = Path(r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\snapmark").resolve()
+
+# Rimuove eventuali riferimenti precedenti alla repo
+sys.path = [p for p in sys.path if Path(p).resolve() != SNAPMARK_REPO]
+
+# La mette come prima scelta
+sys.path.insert(0, str(SNAPMARK_REPO))
+
+# Se snapmark era già stato importato, lo elimina dalla cache
+sys.modules.pop("snapmark", None)
+
 import snapmark as sm
 
 
 # ← CAMBIA QUI
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC - Copia\ARC.6200012803 Sviluppo\6200012803 Sviluppo.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_02_07_2026\6200012608_DownTo_Bug.dxf"
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
 customer = 'ARC02'
@@ -177,10 +185,10 @@ marker = sm.AddMark(
     sequence=sm.SequenceBuilder().file_name(trim_start=5).build(),
     max_height=9,
     min_height=7,
-    down_to=5,
+    down_to=4,
     margin=4,
     scale_factor=50,
-    avoid_layers=["Trash"],
+    avoid_layers=["Trash", "Bending"],
     start_y=5,
 )
 

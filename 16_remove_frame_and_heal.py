@@ -7,9 +7,9 @@ import dxf_forge as forge
 from dxf_forge.adapters.dxf.frame_adapter_dxf import extract_frame_handles
 
 # ── CONFIG ──────────────────────────────────────────────────────────────────
-INPUT_DXF = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\disegni\050690-02.dxf"
+INPUT_DXF = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_02_07_2026\U07010Z21.dxf"
 
-tolerance = 1
+tolerance = .02
 special_layers = {
     "MARK"      : "engrave",
     "Filettati" : "threaded_hole",

@@ -1,21 +1,21 @@
 """
-run_healer.py
--------------
-Testa l'healer su un file DXF reale.
-Produce un file healed.dxf nella cartella di output.
+run_healer_pdf.py
+-----------------
+Testa l'healer su un file PDF reale, convertendolo al volo in strutture compatibili.
 """
 
 import dxf_forge as forge
 from dxf_forge.dxf_inspect import DxfInspector
 import os
+import ezdxf  # Ci serve per creare il documento fasullo
 
 # ---------------------------------------------------------------------------
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"d:\Freecad\lamiera-Body_Unfold.dxf"
+input_pdf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_02_07_2026\U07010Z21.pdf"
 
-tolerance = .01
+tolerance = 1
 
 special_layers = {
     "MARK"      : "engrave",
@@ -26,28 +26,48 @@ special_layers = {
 
 # ---------------------------------------------------------------------------
 
-input_dxf  = os.path.abspath(input_dxf)
-base_dir   = os.path.dirname(input_dxf)
-file_name  = os.path.basename(input_dxf)
+input_pdf  = os.path.abspath(input_pdf)
+base_dir   = os.path.dirname(input_pdf)
+file_name  = os.path.basename(input_pdf)
 base_name  = os.path.splitext(file_name)[0]
-output_dxf = os.path.join(base_dir, f"{base_name}_healed.dxf")
-output_json = os.path.join(base_dir, f"{base_name}_healed.json")
+
+# L'output finale sarà comunque un DXF elaborato partendo dal PDF!
+output_dxf = os.path.join(base_dir, f"{base_name}_from_pdf_healed.dxf")
+output_json = os.path.join(base_dir, f"{base_name}_from_pdf_healed.json")
 
 # ---------------------------------------------------------------------------
-# Apertura
+# Apertura e Conversione al volo in DXF Virtuale
 # ---------------------------------------------------------------------------
 
-print(f"Apertura: {input_dxf}")
+print(f"Apertura PDF: {input_pdf}")
 print(f"Tolleranza: {tolerance}")
 
-doc, msp = forge.load_dxf(input_dxf)
+# 1. Carichiamo gli Edge dal PDF tramite il loader che abbiamo scritto
+edges = forge.load_pdf(input_pdf, node_decimals=3)
 
-# inspector = DxfInspector(summary=False, lines=True, arcs=False,
-#                          polylines=True, circles=False, splines=True, graph=False)
-# inspector.analyze(msp, title=input_dxf)
+# 2. Creiamo il documento DXF fasullo (virtuale)
+doc = ezdxf.new("R2010")
+doc.header['$INSUNITS'] = 4  # Millimetri
+msp = doc.modelspace()
+
+# 3. Travasiamo gli Edge del PDF nel Modelspace fasullo usando il copy_adapter del DXF!
+# Visto che hai già un copy_adapter che sa come scrivere su msp partendo dalle entità,
+# oppure puoi scriverle direttamente usando la geometria delle LineString degli Edge:
+for edge in edges:
+    # Se l'edge arriva da una linea vettoriale
+    if edge.geometry.geom_type == 'LineString':
+        coords = list(edge.geometry.coords)
+        if len(coords) == 2:
+            # È una linea semplice
+            msp.add_line(coords[0], coords[1], dxfattribs={"layer": edge.layer})
+        else:
+            # È una poligonale o una curva discretizzata
+            msp.add_lwpolyline(coords, dxfattribs={"layer": edge.layer})
+
+print(f"[Fasullo] Generato Modelspace virtuale con {len(msp)} entità provenienti dal PDF.")
 
 # ---------------------------------------------------------------------------
-# Validazione
+# Validazione (Uguale a prima!)
 # ---------------------------------------------------------------------------
 
 print("\n--- VALIDAZIONE ---")
@@ -60,7 +80,7 @@ if not check.errors:
     print("  OK")
 
 # ---------------------------------------------------------------------------
-# Pipeline
+# Pipeline (Identica, non tochi una virgola!)
 # ---------------------------------------------------------------------------
 
 result = forge.heal(
@@ -86,8 +106,6 @@ for i, part in enumerate(result.parts):
     print(f"    Area outer : {part.outer.area:.1f}")
     print(f"    Fori       : {len(part.inners)}")
     print(f"    Bbox       : {part.bbox}")
-    # if part.custom:
-    #     print(f"    Custom     : {part.custom}")
 
 # ---------------------------------------------------------------------------
 # Save
@@ -101,4 +119,4 @@ if not result.is_valid:
     raise SystemExit(1)
 
 doc.saveas(output_dxf)
-print(f"DXF salvato : {output_dxf}")
+print(f"DXF salvato da sorgente PDF : {output_dxf}")
