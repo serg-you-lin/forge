@@ -53,7 +53,7 @@ from .io.exporter         import (
 from .core.models         import ForgeResult, ForgePart, ForgeContour
 from .io.text_utils       import extract_texts_from_msp
 
-__version__ = "0.11.3"
+__version__ = "0.3.0"
 
 __all__ = [
     # Apertura file
