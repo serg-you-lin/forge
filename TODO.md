@@ -1,7 +1,8 @@
 # dxf-forge — TODO
 
+
 Stato attuale: healing funzionante, export JSON/XDATA base, layer centralizzati.
-Obiettivo: tool vendibile per normalizzazione DXF e estrazione metadati da taglio laser.
+Forge è un motore per comprendere geometria CAD 2D.
 
 ---
 
@@ -29,8 +30,7 @@ I files splittati non vengono aperti in Autocad, vengono aperti in sigmanest sen
 creare una fingerprint geometrica per validare na forge part.
 
 ### Cornice
-
-Ho già un protomodulo che funziona male per individuare e non considerare il cartiglio-cornice dei disegni, che al momento devo cancellare a mano per poter healare correttamente i disegni per esempio impaginati (non sono pochi). 
+Qualcosa abbiamo implementato, migliorabile e da capire dove va (vedi comprensione futura qui avanti). 
 
 ### API
 
@@ -52,13 +52,12 @@ Simil_arcardini_segni_tracciati_stretto_healed --> questo file ha una serie di d
 ### Implementazione nuovo formato:
 Al momento in input posso avere solo dxf, ma mi sono messo in condizione di poter prendere anche svg o pdf. Da capire se implementare ad esempio almeno i pdf.
 
-### Comprensione futura:
-Capire le responsabilità del modulo, che è outputare dxf sani ed omologati e tirare fuori dati comprensibili. ma da cosa? al momento da disegni piatti, e posso splittarli. Forse un agente futuro può: entrare, capire di che si tratta e decidere cosa fare per outputare il file di taglio preciso. può essere un file multipezzo, o un file multivista da cui poter estrarre anche lo sviluppo e lo spessore, componendo le varie viste. Difficile, ma l'agente ha senso solo così.
+
 
 ### Refactoring Virtual
 ArcSeg usa bulge invece di center/radius — scelta consapevole perché il bulge è già WCS e serve per costruire le LWPOLYLINE in writeback. Da valutare se completare il refactoring.
 
-
+### Comprensione futura:
 può essere qualcosa di simile a questo?
 
 parse_geometry()     ← explode INSERT, detect & exclude frame
@@ -68,6 +67,159 @@ detect_features()    ← detect(), holes, bending lines
 writeback()          ← scrive il DXF
 split()
 inject()
+
+
+  INPUT
+
+ DWG
+ DXF
+ PDF
+ STEP (domani)
+ SVG  (domani)
+
+      │
+      ▼
+
+  Adapter Layer
+(load, sanitize, convert)
+
+      │
+      ▼
+
+ GEOMETRY ENGINE
+
+ graph
+ loops
+ polygon
+ healing
+ hierarchy
+ frame detection
+
+      │
+      ▼
+
+ Forge Model
+
+ ForgePart
+ Hole
+ Edge
+ Metadata
+ GeometryHints
+
+      │
+      ▼
+
+      API
+
+ result.parts
+ result.holes
+ result.edges
+
+      │
+      ▼
+
+    Plugins
+
+
+Domani potrebbe semplicemente fare
+
+parts = forge.load(file).heal().detect().parts
+
+e basta.
+
+Lui non sa cosa sia un arco.
+
+Non sa cos'è un grafo.
+
+Non sa cos'è una spline.
+
+Non gli interessa.
+
+Lo splitter è un plugin
+
+Non è Forge.
+
+È
+
+forge.split(...)
+
+
+
+dxf-forge/
+│
+├── forge/
+│   │
+│   ├── adapters/                  # Traduzione formato → primitivi
+│   │   ├── dxf/
+│   │   │   ├── virtual_adapter.py
+│   │   │   ├── copy_adapter.py
+│   │   │   └── loader.py
+│   │   ├── pdf/                   # futuro
+│   │   └── svg/                   # futuro
+│   │
+│   ├── core/                      # Motore geometrico puro
+│   │   ├── primitives/            # LineSeg, ArcSeg, SplineSeg
+│   │   ├── graph/                 # topologia, loop detection
+│   │   ├── hierarchy/             # containment, holes
+│   │   ├── healing/               # gap closing, dedup, normalize
+│   │   └── frame/                 # frame detection
+│   │
+│   ├── model/                     # Forge domain model
+│   │   ├── part.py                # ForgePart
+│   │   ├── hole.py                # Hole
+│   │   ├── edge.py                # Edge
+│   │   ├── result.py              # ForgeResult
+│   │   └── hints.py               # GeometryHints
+│   │
+│   ├── pipeline/                  # Le fasi orchestrate
+│   │   ├── heal.py
+│   │   ├── detect.py
+│   │   ├── write.py
+│   │   └── split.py
+│   │
+│   └── tools/                     # Tools sul modello (futuri)
+│       ├── validator.py
+│       ├── hasher.py              # fingerprint geometrica
+│       ├── analyzer.py            # DxfAnalyzer, CSV export
+│       └── offset.py      
+│
+|  drawing_parser/          #     Plugin esterno - usa forge internamente    
+|      ├── view_classifier.py    ← ragiona su ForgeModel
+|      ├── view_reconstructor.py ← ricompone interruzioni, parti piegate, ecc...
+|      └── thickness_extractor.py
+│
+└── tests/
+
+
+I tools possibili sul motore geometrico:
+Interrogazione (query)
+
+measure() — distanze, aree, perimetri, bounding box
+classify() — aperto/chiuso, convesso/concavo, presenza fori
+compare() — similarity tra due parti (base per l'hashing/fingerprint che hai in lista)
+validate() — check topologico: ci sono gap? self-intersections? geometrie degeneri?
+
+Trasformazione
+
+heal() — già ce l'hai
+simplify() — riduzione punti, merge di segmenti collineari
+offset() — kerf compensation, inset/outset contours
+normalize() — porta tutto in coordinate canoniche (utile per comparison e hashing)
+
+Analisi
+
+nest_hint() — bounding box ottimale, orientamento suggerito per nesting
+grain_direction() — suggerisce orientamento rispetto alla fibra del materiale
+engrave_detect() — quello che hai in lista come "feature di tracciatura"
+
+Decomposizione
+
+split() — già ce l'hai
+skeleton() — asse mediano (utile per bend detection avanzato)
+region_decompose() — divide parti complesse in regioni semantiche
+
+
+## PRIORITÀ INSENSATA — probabilmente mai o comunque non in questo contesto
 
 Agente
 

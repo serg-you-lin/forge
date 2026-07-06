@@ -16,12 +16,20 @@ import re
 import json
 from dxf_forge.io.text_utils import clean_mtext
 from dxf_forge.io.exporter import build_metadata
+from pathlib import Path
 import sys
 
-sys.path.insert(
-    0,
-    r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\snapmark"
-)
+SNAPMARK_REPO = Path(r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\snapmark").resolve()
+
+# Rimuove eventuali riferimenti precedenti alla repo
+sys.path = [p for p in sys.path if Path(p).resolve() != SNAPMARK_REPO]
+
+# La mette come prima scelta
+sys.path.insert(0, str(SNAPMARK_REPO))
+
+# Se snapmark era già stato importato, lo elimina dalla cache
+sys.modules.pop("snapmark", None)
+
 import snapmark as sm
 
 
@@ -177,10 +185,10 @@ marker = sm.AddMark(
     sequence=sm.SequenceBuilder().file_name(trim_start=5).build(),
     max_height=9,
     min_height=7,
-    down_to=5,
+    down_to=4,
     margin=4,
     scale_factor=50,
-    avoid_layers=["Trash"],
+    avoid_layers=["Trash", "Bending"],
     start_y=5,
 )
 

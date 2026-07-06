@@ -34,6 +34,7 @@ Workflow multi-pezzo:
 """
 
 from .adapters.dxf.loader import load_dxf
+from .adapters.pdf.loader import load_pdf
 from .workflow.healer     import heal, LAYER_OUTER, LAYER_HOLE
 from .workflow.splitter   import split_to_files
 from .workflow.injector   import inject
@@ -57,6 +58,7 @@ __version__ = "0.11.3"
 __all__ = [
     # Apertura file
     "load_dxf",
+    "load_pdf",
     # Validazione
     "validate",
     "validate_msp",
