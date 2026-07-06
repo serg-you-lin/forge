@@ -7,9 +7,9 @@ Produce un file healed.dxf nella cartella di output.
 """
 
 import ezdxf
-import dxf_forge as forge
-from dxf_forge.dxf_inspect import DxfInspector
-from dxf_forge.adapters.dxf.sanitize import sanitize
+import forge
+from forge.dxf_inspect import DxfInspector
+from forge.adapters.dxf.sanitize import sanitize
 import os
 
 # ← CAMBIA QUI

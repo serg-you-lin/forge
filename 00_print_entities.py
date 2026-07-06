@@ -12,9 +12,9 @@ Uso:
 import sys
 import os
 import ezdxf
-from dxf_forge.dxf_inspect import DxfInspector
+from forge.dxf_inspect import DxfInspector
 from collections import Counter
-import dxf_forge as forge
+import forge
 import math
 
 

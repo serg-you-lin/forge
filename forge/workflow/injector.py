@@ -34,7 +34,7 @@ from ..io.text_utils import extract_texts_from_msp
 from ..rules.layers import (
     LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING, LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
 )
-from ..core.models import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED, HOLE_TYPE_PLAIN
+from ..model import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED, HOLE_TYPE_PLAIN
 
 ANNOTATION_TYPES = {'TEXT', 'MTEXT', 'DIMENSION', 'LEADER', 'MULTILEADER'}
 
@@ -137,26 +137,37 @@ def _inject_holes(part) -> None:
     if plain_hole_count:
         part.custom["plain_holes_count"]   = plain_hole_count
 
+# def _inject_bending(part, msp, tolerance: float) -> None:
+#     """
+#     Conta le pieghe da geometry_hints.bend_line_ids.
+#     Fonte di verità: detect() — indipendente da write().
+#     """
+#     id_to_entity = {id(e): e for e in msp if e.dxftype() == "LINE"}
+    
+#     candidates = [
+#         id_to_entity[eid]
+#         for eid in part.geometry_hints.bend_line_ids
+#         if eid in id_to_entity
+#     ]
+    
+#     if not candidates:
+#         return
+    
+#     groups = group_collinear_lines(candidates, tolerance=tolerance)
+#     part.custom["bending_lines"] = len(groups)
+
 def _inject_bending(part, msp, tolerance: float) -> None:
     """
-    Conta le pieghe da geometry_hints.bend_line_ids.
+    Conta le pieghe da part.bending_lines.
     Fonte di verità: detect() — indipendente da write().
     """
-    id_to_entity = {id(e): e for e in msp if e.dxftype() == "LINE"}
-    
-    candidates = [
-        id_to_entity[eid]
-        for eid in part.geometry_hints.bend_line_ids
-        if eid in id_to_entity
-    ]
-    
-    if not candidates:
+    if not part.bending_lines:
         return
-    
+
+    candidates = [bl.entity for bl in part.bending_lines]
     groups = group_collinear_lines(candidates, tolerance=tolerance)
     part.custom["bending_lines"] = len(groups)
-
-
+    
 
 def _inject_classified(part, classified_entities, outer_poly) -> None:
     total_engrave = 0.0

@@ -30,9 +30,9 @@ import logging
 # from pydoc import doc
 # import numpy as np
 from collections import defaultdict, Counter
-from dxf_forge.io.text_utils import extract_texts_from_msp, extract_texts
-from dxf_forge.core.graph import build_node_graph
-from dxf_forge.adapters.dxf.graph_adapter import entity_endpoints
+from forge.io.text_utils import extract_texts_from_msp, extract_texts
+from forge.core.graph import build_node_graph
+from forge.adapters.dxf.graph_adapter import entity_endpoints
 
 # ---------------------------------------------------------------------------
 # Setup logger

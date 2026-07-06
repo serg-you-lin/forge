@@ -8,7 +8,7 @@ import ezdxf
 import sys
 sys.path.insert(0, r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\dxf-forge")
 
-from dxf_forge.adapters.dxf.frame_adapter_dxf import extract_frame_handles
+from forge.adapters.dxf.frame_adapter_dxf import extract_frame_handles
 
 # ── CONFIG ──────────────────────────────────────────────────────────────────
 INPUT_DXF = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\disegni\271004g13.dxf"
@@ -46,7 +46,7 @@ def main():
         OUTPUT_DXF = INPUT_DXF.replace(".dxf", "_noframe.dxf")
         doc.saveas(OUTPUT_DXF)
         print(f"\nSalvato: {OUTPUT_DXF}")
-        
+
 
 if __name__ == "__main__":
     main()

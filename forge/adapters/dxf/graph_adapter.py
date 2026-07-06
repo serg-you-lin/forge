@@ -14,7 +14,7 @@ Funzioni pubbliche:
 import numpy as np
 from shapely.geometry import LineString
 
-from ...core.models import Edge
+from ...model.edge import Edge
 from ...core.geometry import round_point
 from .geometry_adapter import arc_endpoints
 

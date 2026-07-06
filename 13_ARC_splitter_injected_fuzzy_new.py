@@ -10,12 +10,12 @@ snapmark lavora sul doc figlio dentro on_part.
 """
 
 import ezdxf
-import dxf_forge as forge
+import forge
 import os
 import re
 import json
-from dxf_forge.io.text_utils import clean_mtext
-from dxf_forge.io.exporter import build_metadata
+from forge.io.text_utils import clean_mtext
+from forge.io.exporter import build_metadata
 from pathlib import Path
 import sys
 
@@ -34,7 +34,7 @@ import snapmark as sm
 
 
 # ← CAMBIA QUI
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_02_07_2026\6200012608_DownTo_Bug.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ProTest\intricato_doppio.dxf"
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
 
 customer = 'ARC02'

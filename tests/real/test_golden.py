@@ -18,7 +18,7 @@ from shapely import wkt as shapely_wkt
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import dxf_forge as forge
+import forge
 
 EXAMPLES_DIR      = project_root / "tests" / "examples"
 GOLDEN_DXF_DIR    = EXAMPLES_DIR / "golden"
@@ -60,12 +60,16 @@ def _make_golden_test(golden_path: Path):
 
         config         = _load_config(dxf_path)
         tolerance      = config.get("tolerance", DEFAULT_TOLERANCE)
-        special_layers = {**GLOBAL_SPECIAL_LAYERS, **config.get("special_layers", {})}
+        special_layers = {
+            **GLOBAL_SPECIAL_LAYERS,
+            **config.get("special_layers", {})
+        }
 
-        doc = ezdxf.readfile(dxf_path)
-        if doc.dxfversion < "AC1015":
-            doc = forge.upgrade_to_r2010(doc)
-        msp = doc.modelspace()
+        # ✔ entry point unico moderno
+        doc, msp = forge.load_dxf(
+            str(dxf_path),
+            upgrade=True,
+        )
 
         result = forge.heal(
             msp,
@@ -74,11 +78,7 @@ def _make_golden_test(golden_path: Path):
             special_layers=special_layers,
         )
 
-        forge.detect(
-            result,
-            msp,
-        )
-
+        forge.detect(result, msp)
         forge.inject(msp, result)
 
         # --- part count ---

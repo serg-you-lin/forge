@@ -16,7 +16,8 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from shapely.geometry import Polygon, LineString, Point
-from dxf_forge.core.models import (
+
+from forge.model import (
     ForgeContour,
     ForgePart,
     ForgeResult,
@@ -24,7 +25,6 @@ from dxf_forge.core.models import (
     Edge,
     BendingLine,
     ClassifiedEntity,
-    GeometryHints,
     HOLE_TYPE_UNKNOWN,
     HOLE_TYPE_PLAIN,
     HOLE_TYPE_COUNTERSINK,
@@ -298,34 +298,6 @@ class TestBendingLine(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Test GeometryHints
-# ---------------------------------------------------------------------------
-
-class TestGeometryHints(unittest.TestCase):
-
-    def test_001_default_empty(self):
-        """bend_line_ids è un set vuoto di default."""
-        hints = GeometryHints()
-        print(f"\n[GeometryHints] bend_line_ids={hints.bend_line_ids}")
-        self.assertIsInstance(hints.bend_line_ids, set)
-        self.assertEqual(len(hints.bend_line_ids), 0)
-
-    def test_002_add_id(self):
-        """Si può aggiungere un id al set."""
-        hints = GeometryHints()
-        hints.bend_line_ids.add(12345)
-        self.assertIn(12345, hints.bend_line_ids)
-
-    def test_003_instances_are_independent(self):
-        """Due istanze non condividono lo stesso set (field factory)."""
-        h1 = GeometryHints()
-        h2 = GeometryHints()
-        h1.bend_line_ids.add(999)
-        print(f"[GeometryHints] h1={h1.bend_line_ids} h2={h2.bend_line_ids}")
-        self.assertNotIn(999, h2.bend_line_ids)
-
-
-# ---------------------------------------------------------------------------
 # Test ForgePart
 # ---------------------------------------------------------------------------
 
@@ -374,11 +346,11 @@ class TestForgePart(unittest.TestCase):
         print(f"[ForgePart] bbox={part.bbox}")
         self.assertEqual(part.bbox, (0, 0, 100, 100))
 
-    def test_006_geometry_hints_default(self):
-        """geometry_hints è GeometryHints vuoto di default."""
+    def test_006_bending_lines_default_empty(self):
+        """bending_lines è lista vuota di default."""
         part = ForgePart(outer=self._make_outer())
-        self.assertIsInstance(part.geometry_hints, GeometryHints)
-        self.assertEqual(len(part.geometry_hints.bend_line_ids), 0)
+        self.assertIsInstance(part.bending_lines, list)
+        self.assertEqual(len(part.bending_lines), 0)
 
     def test_007_entity_ids_default_empty(self):
         """entity_ids è set vuoto di default."""

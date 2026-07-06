@@ -10,7 +10,7 @@ Lancia:
 Modifica input_dxf con il tuo percorso.
 """
 
-import dxf_forge as forge
+import forge
 import os
 from collections import Counter
 
@@ -18,7 +18,7 @@ from collections import Counter
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_25-06-2026\gamba tavolo NO SPLIT.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ProTest\intricato_doppio.dxf"
 
 # ---------------------------------------------------------------------------
 

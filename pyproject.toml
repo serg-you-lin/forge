@@ -31,4 +31,4 @@ dev = ["pytest", "pytest-cov"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["dxf_forge*"]
+include = ["forge*"]

@@ -28,8 +28,8 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import ezdxf
-from dxf_forge.adapters.dxf.geometry_adapter import is_threaded_arc, is_threaded_hole, is_countersink_outer
-from dxf_forge.core.geometry import are_collinear, group_collinear_lines
+from forge.adapters.dxf.geometry_adapter import is_threaded_arc, is_threaded_hole, is_countersink_outer
+from forge.core.geometry import are_collinear, group_collinear_lines
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +167,7 @@ class TestIsCountersinkOuter(unittest.TestCase):
     
     def _children(self, *circles):
         from shapely.geometry import Point
-        from dxf_forge.core.models import ForgeContour
+        from forge.core.models import ForgeContour
         result = []
         for c in circles:
             poly = Point(c.dxf.center.x, c.dxf.center.y).buffer(c.dxf.radius)
@@ -199,7 +199,7 @@ class TestIsCountersinkOuter(unittest.TestCase):
 
     def test_005_figlio_non_circle_ignorato(self):
         from unittest.mock import MagicMock
-        from dxf_forge.core.models import ForgeContour
+        from forge.core.models import ForgeContour
         from shapely.geometry import Point
 
         big = _make_circle(0, 0, 10)

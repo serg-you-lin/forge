@@ -4,8 +4,8 @@ run_healer_pdf.py
 Testa l'healer su un file PDF reale, convertendolo al volo in strutture compatibili.
 """
 
-import dxf_forge as forge
-from dxf_forge.dxf_inspect import DxfInspector
+import forge
+from forge.dxf_inspect import DxfInspector
 import os
 import ezdxf  # Ci serve per creare il documento fasullo
 

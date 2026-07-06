@@ -23,7 +23,7 @@ Flusso:
 import ezdxf
 from pathlib import Path
 from collections import deque
-import dxf_forge as forge
+import forge
 
 # ------------------------------------------------
 # CARTELLA DA PROCESSARE

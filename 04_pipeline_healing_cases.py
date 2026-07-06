@@ -16,8 +16,8 @@ Output:
 """
 
 import ezdxf
-import dxf_forge as forge
-from dxf_forge.dxf_inspect import DxfInspector
+import forge
+from forge.dxf_inspect import DxfInspector
 from pathlib import Path
 
 

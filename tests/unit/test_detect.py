@@ -3,14 +3,14 @@ import ezdxf
 from pathlib import Path
 import sys
 
-import dxf_forge as forge
-from dxf_forge.rules.layers import (
+import forge
+from forge.rules.layers import (
     LAYER_HOLE,
     LAYER_INNER,
     HOLE_DIAMETER_THRESHOLD,
 )
 
-from dxf_forge.core.models import (
+from forge.model import (
     HOLE_TYPE_PLAIN,
     HOLE_TYPE_COUNTERSINK,
     HOLE_TYPE_THREADED,
