@@ -9,7 +9,7 @@ from dxf_forge.adapters.dxf.frame_adapter_dxf import extract_frame_handles
 # ── CONFIG ──────────────────────────────────────────────────────────────────
 INPUT_DXF = r"LOCAL_DRAWING.dxf"
 
-tolerance = 1
+tolerance = .02
 special_layers = {
     "MARK"      : "engrave",
     "Filettati" : "threaded_hole",
