@@ -15,9 +15,7 @@ from pathlib import Path
 import tempfile
 import ezdxf
 
-import dxf_forge as forge
-
-# from dxf_forge.rules.interpreter import GeometricInterpreter
+import forge
 
 
 TESTS_DIR = Path(__file__).resolve().parent

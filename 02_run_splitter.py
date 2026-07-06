@@ -10,7 +10,7 @@ Lancia:
 Modifica input_dxf con il tuo percorso.
 """
 
-import dxf_forge as forge
+import forge
 import os
 from collections import Counter
 

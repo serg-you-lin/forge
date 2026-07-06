@@ -20,7 +20,7 @@ import json
 from pathlib import Path
 
 import ezdxf
-import dxf_forge as forge
+import forge
 
 GREEN  = "\033[92m"
 YELLOW = "\033[93m"

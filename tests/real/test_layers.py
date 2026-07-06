@@ -16,8 +16,8 @@ import ezdxf
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import dxf_forge as forge
-from dxf_forge.rules.layers import ALL_FORGE_LAYERS, TRASH_LAYER
+import forge
+from forge.rules.layers import ALL_FORGE_LAYERS, TRASH_LAYER
 
 EXAMPLES_DIR   = project_root / "tests" / "examples"
 MULTIFEATURE   = EXAMPLES_DIR / "Multifeature.dxf"
@@ -119,7 +119,7 @@ class TestEntitaBylayer(unittest.TestCase):
 
     def test_outer_contour_su_layer_corretto(self):
         """Il contorno esterno di ogni part deve essere su OuterContour."""
-        from dxf_forge.rules.layers import LAYER_OUTER
+        from forge.rules.layers import LAYER_OUTER
         for i, part in enumerate(self.result.parts):
             with self.subTest(part=i):
                 self.assertEqual(
@@ -130,7 +130,7 @@ class TestEntitaBylayer(unittest.TestCase):
 
     def test_holes_su_layer_corretto(self):
         """I fori devono essere su Hole o InnerContour (mai su layer non-forge)."""
-        from dxf_forge.rules.layers import LAYER_HOLE, LAYER_INNER
+        from forge.rules.layers import LAYER_HOLE, LAYER_INNER
         layer_fori_validi = {LAYER_HOLE, LAYER_INNER}
         for i, part in enumerate(self.result.parts):
             for j, hole in enumerate(part.holes):
@@ -228,23 +228,23 @@ class TestLineetteBastarde(unittest.TestCase):
         self.assertEqual(self.result.part_count, 1, "Atteso 1 part")
 
     def test_outer_su_layer_corretto(self):
-        from dxf_forge.rules.layers import LAYER_OUTER
+        from forge.rules.layers import LAYER_OUTER
         part = self.result.parts[0]
         self.assertEqual(part.outer.layer, LAYER_OUTER)
 
     def test_due_entita_su_bending(self):
-        from dxf_forge.rules.layers import LAYER_BENDING
+        from forge.rules.layers import LAYER_BENDING
         bending = [e for e in self.msp if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_BENDING]
         self.assertEqual(len(bending), 2, f"Attese 2 entità su Bending, trovate {len(bending)}")
 
     def test_quattro_entita_su_trash(self):
-        from dxf_forge.rules.layers import TRASH_LAYER
+        from forge.rules.layers import TRASH_LAYER
         trash = [e for e in self.msp if e.dxf.hasattr("layer") and e.dxf.layer == TRASH_LAYER]
         self.assertEqual(len(trash), 4, f"Attese 4 entità su Trash, trovate {len(trash)}")
 
     def test_nessuna_line_su_bending(self):
         """Nessuna LINE deve finire su Bending se non è in bend_line_ids."""
-        from dxf_forge.rules.layers import LAYER_BENDING
+        from forge.rules.layers import LAYER_BENDING
         part = self.result.parts[0]
         bend_ids = part.geometry_hints.bend_line_ids
         linee_bastarde = [
@@ -295,7 +295,7 @@ class TestGambaTavoloSplit(unittest.TestCase):
 
     def test_tutti_i_figli_hanno_outer_su_layer_corretto(self):
         """Ogni figlio deve avere almeno una LWPOLYLINE su OuterContour."""
-        from dxf_forge.rules.layers import LAYER_OUTER
+        from forge.rules.layers import LAYER_OUTER
         for path in self.generated:
             doc_out = ezdxf.readfile(path)
             msp_out = doc_out.modelspace()

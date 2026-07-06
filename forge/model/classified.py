@@ -1,0 +1,44 @@
+from dataclasses import dataclass
+from dataclasses import field
+from typing import Any
+from abc import ABC, abstractmethod
+from shapely.geometry import Polygon
+
+@dataclass
+class ClassifiedEntity:
+    """
+    Risultato della classificazione di una entità da detect().
+
+    Prodotto da detect(), consumato da inject() e write().
+
+    Campi:
+        entity     : entità ezdxf originale
+        work_type  : tipo lavorazione — chiave di WORK_TYPE_TO_LAYER
+        confidence : 1.0 da special_layers, < 1.0 da geometria o agente
+        source     : "special_layers" | "geometric" | "agent"
+        data       : dati estratti pronti per CAM — inject() li usa direttamente
+    """
+    entity:     Any
+    work_type:  str
+    confidence: float
+    source:     str
+    data:       dict = field(default_factory=dict)
+    polygon:    Any  = None  # Polygon shapely — solo per VirtualShape (entity=None)
+
+
+class BaseInterpreter(ABC):
+    """
+    Interfaccia che ogni interpreter deve implementare.
+
+    detect() non sa quale interpreter sta usando — chiama questo metodo e basta.
+    """
+    @abstractmethod
+    def classify(
+        self,
+        entities:    list,
+        outer_poly:  Polygon,
+        inner_polys: list,
+        msp,
+        hints:       dict = None,
+    ) -> list:  # list[ClassifiedEntity]
+        ...

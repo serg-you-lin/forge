@@ -26,7 +26,7 @@ from collections import defaultdict
 from shapely.geometry import Polygon, LinearRing
 
 from .geometry import round_point
-from .models import Edge
+from ..model.edge import Edge
 
 
 # ---------------------------------------------------------------------------

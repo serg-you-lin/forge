@@ -40,7 +40,7 @@ from __future__ import annotations
 from typing import Callable, Optional
 from unittest import result
 
-from ..core.models import ForgeResult, BaseInterpreter
+from ..model.result import ForgeResult
 from .healer import heal
 from .detection import detect
 from .writeback import split, DEFAULT_MIN_PART_AREA, write
@@ -58,7 +58,6 @@ def split_to_files(
     tolerance:       float                    = 0.05,
     explode_inserts: bool                     = False,
     special_layers:  dict                     = None,
-    interpreter:     Optional[BaseInterpreter] = None,
     namer:           Optional[Callable]        = None,
     keep_trash:      bool                     = False,
     include_annotations: bool                 = True,

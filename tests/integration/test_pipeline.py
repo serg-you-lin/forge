@@ -151,7 +151,7 @@ class TestPipelineDetectIdempotency(unittest.TestCase):
 
         before = len(result.parts[0].custom.get("bending_lines", []))
 
-        import dxf_forge as forge
+        import forge
 
         forge.heal(
             msp,

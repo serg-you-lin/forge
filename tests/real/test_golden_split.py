@@ -37,7 +37,7 @@ from shapely import wkt as shapely_wkt
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import dxf_forge as forge
+import forge
 
 MULTIPLI_DIR = project_root / "tests" / "examples" / "golden_multipli"
 GOLDEN_DIR   = MULTIPLI_DIR / "golden"

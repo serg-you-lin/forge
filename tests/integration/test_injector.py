@@ -34,8 +34,8 @@ import ezdxf
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-import dxf_forge as forge
-from dxf_forge.rules.layers import LAYER_BENDING, LAYER_ENGRAVE
+import forge
+from forge.rules.layers import LAYER_BENDING, LAYER_ENGRAVE
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
