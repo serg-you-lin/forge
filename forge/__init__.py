@@ -35,11 +35,12 @@ Workflow multi-pezzo:
 
 from .adapters.dxf.loader import load_dxf
 from .adapters.pdf.loader import load_pdf
-from .pipeline            import heal, LAYER_OUTER, LAYER_HOLE
+from .pipeline            import heal
+from .rules.layers import LAYER_OUTER, LAYER_HOLE
 from .workflow.splitter   import split_to_files
-from .workflow.injector   import inject
-from .workflow.writeback  import write, split
-from .workflow.detection  import detect
+from .pipeline.inject   import inject
+from .pipeline.write  import write, split
+from .pipeline.detect  import detect
 from .rules.validator     import validate, validate_msp
 from .io.exporter         import (
     to_json,

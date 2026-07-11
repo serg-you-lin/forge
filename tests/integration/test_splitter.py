@@ -51,7 +51,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.workflow.writeback import split, ANNOTATION_TYPES, DEFAULT_MIN_PART_AREA
+from forge.pipeline.write import split, ANNOTATION_TYPES, DEFAULT_MIN_PART_AREA
 from forge.rules.layers import ALL_FORGE_LAYERS
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"

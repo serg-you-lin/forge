@@ -29,6 +29,7 @@ dxf-forge/
 │   │   ├── detect.py
 │   │   ├── write.py
 │   │   └── split.py
+│   │   └── inject.py
 │   │
 │   └── tools/                     # Tools sul modello (futuri)
 │       ├── validator.py

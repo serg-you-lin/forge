@@ -9,7 +9,10 @@ Funzioni pubbliche:
 """
 
 import os
-import fitz  # PyMuPDF
+try:
+    import fitz
+except ImportError:
+    fitz = None
 
 from .extractor_adapter import extract_drawings_from_page
 from .sanitize import sanitize_pdf_geometries

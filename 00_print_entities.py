@@ -18,7 +18,7 @@ import forge
 import math
 
 
-DEFAULT_FILE = r"LOCAL_DRAWING.dxf"
+DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\img\leaf.dxf"
 
 # ← CONFIGURA COSA VUOI VEDERE
 inspector = DxfInspector(
@@ -26,8 +26,8 @@ inspector = DxfInspector(
     lines     = True,
     arcs      = True,
     polylines = True,
-    circles   = False,
-    splines   = False,
+    circles   = True,
+    splines   = True,
     graph     = True,
     dimensions = False,
     text      = False,
