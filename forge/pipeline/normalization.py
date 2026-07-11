@@ -51,20 +51,3 @@ def _deduplicate_entities(msp, tolerance: float = 0.01) -> int:
 
     return len(to_delete)
 
-
-# def _explode_inserts(msp) -> int:
-#     """
-#     Esplode tutti gli INSERT (blocchi) nel modelspace in entità primitive.
-#     Restituisce il numero di INSERT esplosi.
-#     """
-#     inserts = list(msp.query('INSERT'))
-#     if not inserts:
-#         return 0
-
-#     for insert in inserts:
-#         try:
-#             insert.explode()
-#         except Exception as ex:
-#             print(f"  [WARN] Esplosione INSERT fallita: {ex}")
-
-#     return len(inserts)
