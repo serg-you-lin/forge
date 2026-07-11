@@ -2,10 +2,11 @@ from shapely.geometry import Point, Polygon, LineString, LinearRing
 from shapely.ops import unary_union, snap, polygonize
 
 from .graph import _first_coord, _arrival_direction, _angular_deviation, _edge_coords, round_point, _prune_dead_ends
-from ..virtual import VirtualShape
+from ..primitives.virtual import VirtualShape
 from ...adapters.dxf.virtual_adapter import _loop_to_virtual_shape
 from ...adapters.dxf.geometry_adapter import arc_to_linestrings
 from ...adapters.dxf.geometry_adapter import arc_to_bulge, entity_midpoint, spline_to_points
+from ...adapters.dxf.virtual_adapter import DxfWriteContext
 
 from ...rules.layers import (
     LAYER_OUTER, LAYER_INNER,
@@ -198,16 +199,26 @@ def _fallback_polygonize(self):
             if not poly.is_valid:
                 poly = poly.buffer(0)
             pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
-            self.result._virtual_shapes.append(VirtualShape(
-                pts_with_bulge=pts, polygon=poly,
-                layer=LAYER_OUTER, color=COLOR_OUTER,
-            ))
+            vs = VirtualShape(polygon=poly, layer=LAYER_OUTER, color=COLOR_OUTER)
+            self.result._virtual_shapes.append(DxfWriteContext(vs=vs, pts_with_bulge=pts, loop=[]))
             for interior in poly.interiors:
                 pts_i = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
-                self.result._virtual_shapes.append(VirtualShape(
-                    pts_with_bulge=pts_i, polygon=Polygon(interior),
-                    layer=LAYER_INNER, color=COLOR_INNER,
-                ))
+                vs_i = VirtualShape(polygon=Polygon(interior), layer=LAYER_INNER, color=COLOR_INNER)
+                self.result._virtual_shapes.append(DxfWriteContext(vs=vs_i, pts_with_bulge=pts_i, loop=[]))
+        # for poly in polygons:
+        #     if not poly.is_valid:
+        #         poly = poly.buffer(0)
+        #     pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
+        #     self.result._virtual_shapes.append(VirtualShape(
+        #         pts_with_bulge=pts, polygon=poly,
+        #         layer=LAYER_OUTER, color=COLOR_OUTER,
+        #     ))
+        #     for interior in poly.interiors:
+        #         pts_i = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
+        #         self.result._virtual_shapes.append(VirtualShape(
+        #             pts_with_bulge=pts_i, polygon=Polygon(interior),
+        #             layer=LAYER_INNER, color=COLOR_INNER,
+        #         ))
     else:
         self.result.warnings.append(
             "LINE/ARC non formano loop chiusi — "
@@ -229,14 +240,23 @@ def _classify_and_build(self, loops, graph):
     }
     self.result._entities_in_loops_ids = self.entities_in_loops
 
+    # for loop in outer_loops:
+    #     vs = _loop_to_virtual_shape(loop, LAYER_OUTER, COLOR_OUTER)
+    #     if vs is not None:
+    #         self.result._virtual_shapes.append(vs)
+    # for loop in inner_loops:
+    #     vs = _loop_to_virtual_shape(loop, LAYER_INNER, COLOR_INNER)
+    #     if vs is not None:
+    #         self.result._virtual_shapes.append(vs)
+    # _classify_and_build — già corretto, _loop_to_virtual_shape restituisce DxfWriteContext
     for loop in outer_loops:
-        vs = _loop_to_virtual_shape(loop, LAYER_OUTER, COLOR_OUTER)
-        if vs is not None:
-            self.result._virtual_shapes.append(vs)
+        ctx = _loop_to_virtual_shape(loop, LAYER_OUTER, COLOR_OUTER)
+        if ctx is not None:
+            self.result._virtual_shapes.append(ctx)
     for loop in inner_loops:
-        vs = _loop_to_virtual_shape(loop, LAYER_INNER, COLOR_INNER)
-        if vs is not None:
-            self.result._virtual_shapes.append(vs)
+        ctx = _loop_to_virtual_shape(loop, LAYER_INNER, COLOR_INNER)
+        if ctx is not None:
+            self.result._virtual_shapes.append(ctx)
 
 
 def _deduplicate_loops(loops):
