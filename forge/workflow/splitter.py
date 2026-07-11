@@ -42,8 +42,8 @@ from unittest import result
 
 from ..model.result import ForgeResult
 from ..pipeline import heal
-from .detection import detect
-from .writeback import split, DEFAULT_MIN_PART_AREA, write
+from ..pipeline.detect import detect
+from ..pipeline.write import split, DEFAULT_MIN_PART_AREA, write
 
 
 # ---------------------------------------------------------------------------
