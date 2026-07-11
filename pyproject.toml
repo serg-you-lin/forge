@@ -26,8 +26,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-snapmark = ["snapmark"]   # opzionale: solo se si usa con snapmark
-dev = ["pytest", "pytest-cov"]
+raster = ["opencv-python", "Pillow"]
+pdf    = ["PyMuPDF"]
+dev    = ["pytest", "pytest-cov"]
+all    = ["dxf-forge[raster,pdf]"]
 
 [tool.setuptools.packages.find]
 where = ["."]
