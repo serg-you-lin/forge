@@ -29,8 +29,10 @@ from ...adapters.dxf.geometry_adapter import arc_endpoints, spline_to_points
 
 def _build_hierarchy(self):
     shapes = []
-    for vs in self.result._virtual_shapes:
-        shapes.append((vs, vs.polygon, "VIRTUAL"))
+    for ctx in self.result._virtual_shapes:
+     shapes.append((ctx, ctx.vs.polygon, "VIRTUAL"))
+    # for vs in self.result._virtual_shapes:
+    #     shapes.append((vs, vs.polygon, "VIRTUAL"))
     for pline in self.all_plines:
         poly = entity_to_polygon(pline)
         if poly:
@@ -67,9 +69,9 @@ def _build_hierarchy(self):
     for node in fathers:
         for child in node[3]:
             if child[2] == "VIRTUAL":
-                child[0].layer = LAYER_INNER
-                child[0].color = color_for_layer(LAYER_INNER)
-                
+                child[0].vs.layer = LAYER_INNER
+                child[0].vs.color = color_for_layer(LAYER_INNER)
+
     for father in fathers:
         father_obj, father_poly, father_tipo, children = father
 
@@ -115,7 +117,7 @@ def _build_hierarchy(self):
                             geometric_hint="countersink",
                             layer=layer,
                             source_layer=(
-                                gc_obj.source_layer if gc_tipo == "VIRTUAL"
+                                gc_obj.vs.source_layer if gc_tipo == "VIRTUAL"
                                 else gc_obj.dxf.layer if gc_obj.dxf.hasattr("layer")
                                 else ""
                             ),
@@ -131,7 +133,7 @@ def _build_hierarchy(self):
                             is_hole=False,
                             entity=gc_obj if gc_tipo != "VIRTUAL" else None,
                             source_layer=(
-                                gc_obj.source_layer if gc_tipo == "VIRTUAL"
+                                gc_obj.vs.source_layer if gc_tipo == "VIRTUAL"
                                 else gc_obj.dxf.layer if gc_obj.dxf.hasattr("layer")
                                 else ""
                             ),
@@ -167,7 +169,7 @@ def _build_hierarchy(self):
                         is_hole=False,
                         entity=child_obj if child_tipo != "VIRTUAL" else None,
                         source_layer=(
-                            child_obj.source_layer if child_tipo == "VIRTUAL"
+                            child_obj.vs.source_layer if child_tipo == "VIRTUAL"
                             else child_obj.dxf.layer if child_obj.dxf.hasattr("layer")
                             else ""
                         ),
