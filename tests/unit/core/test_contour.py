@@ -1,3 +1,5 @@
+
+
 # """
 # test_core_virtual.py
 # --------------------
@@ -7,15 +9,12 @@
 # """
 
 # import unittest
-# import math
-# from forge.core.virtual import (
-#     LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg,
-#     VirtualShape, _build_polygon,
-# )
+# from forge.core.primitives import LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg
+# from forge.core.primitives.virtual import VirtualShape, _build_polygon
 
 
 # # ---------------------------------------------------------------------------
-# # Primitive — dataclass base
+# # Primitive — dataclass base (ora in core/primitives)
 # # ---------------------------------------------------------------------------
 
 # class TestPrimitives(unittest.TestCase):
@@ -86,27 +85,37 @@
 #     def test_002_has_spline_false(self):
 #         self.assertFalse(self.vs.has_spline)
 
-#     def test_003_pts_with_bulge_popolato(self):
-#         self.assertEqual(len(self.vs.pts_with_bulge), 4)
-
-#     def test_004_bulge_zero(self):
-#         for pt in self.vs.pts_with_bulge:
-#             self.assertEqual(pt[4], 0.0)
-
-#     def test_005_polygon_valido(self):
+#     def test_003_polygon_valido(self):
 #         self.assertTrue(self.vs.polygon.is_valid)
 
-#     def test_006_area_corretta(self):
+#     def test_004_area_corretta(self):
 #         self.assertAlmostEqual(self.vs.polygon.area, 10000.0, delta=1.0)
 
-#     def test_007_layer(self):
+#     def test_005_layer(self):
 #         self.assertEqual(self.vs.layer, 'outer')
 
-#     def test_008_color(self):
+#     def test_006_color(self):
 #         self.assertEqual(self.vs.color, 1)
 
-#     def test_009_entity_none(self):
-#         self.assertIsNone(self.vs.entity)
+#     def test_007_source_ref_non_none(self):
+#         self.assertIsNotNone(self.vs.source_ref)
+
+#     def test_008_source_ref_ha_pts_with_bulge(self):
+#         self.assertIn('pts_with_bulge', self.vs.source_ref)
+#         self.assertEqual(len(self.vs.source_ref['pts_with_bulge']), 4)
+
+#     def test_009_source_ref_bulge_zero(self):
+#         for pt in self.vs.source_ref['pts_with_bulge']:
+#             self.assertEqual(pt[4], 0.0)
+
+#     def test_010_source_ref_ha_loop(self):
+#         self.assertIn('loop', self.vs.source_ref)
+
+#     def test_011_no_pts_with_bulge_su_vs(self):
+#         self.assertFalse(hasattr(self.vs, 'pts_with_bulge'))
+
+#     def test_012_no_entity_su_vs(self):
+#         self.assertFalse(hasattr(self.vs, 'entity'))
 
 
 # # ---------------------------------------------------------------------------
@@ -134,14 +143,14 @@
 #     def test_002_has_spline_true(self):
 #         self.assertTrue(self.vs.has_spline)
 
-#     def test_003_pts_with_bulge_vuoto(self):
-#         self.assertEqual(self.vs.pts_with_bulge, [])
-
-#     def test_004_polygon_valido(self):
+#     def test_003_polygon_valido(self):
 #         self.assertTrue(self.vs.polygon.is_valid)
 
-#     def test_005_area_positiva(self):
+#     def test_004_area_positiva(self):
 #         self.assertGreater(self.vs.polygon.area, 0.0)
+
+#     def test_005_source_ref_pts_with_bulge_vuoto(self):
+#         self.assertEqual(self.vs.source_ref['pts_with_bulge'], [])
 
 
 # # ---------------------------------------------------------------------------
@@ -151,12 +160,7 @@
 # class TestFromPrimitivesDiscretizedArc(unittest.TestCase):
 
 #     def setUp(self):
-#         # rettangolo con un lato sostituito da un DiscretizedArcSeg
-#         # geometria coerente: tutti i giunti connessi
-#         # lato sinistro: SplineSeg (forza has_spline=True)
-#         # lato superiore: DiscretizedArcSeg
-#         # lati destro e inferiore: LineSeg
-#         arc_pts = [(0.0, 100.0), (50.0, 110.0), (100.0, 100.0)]  # arco da (0,100) a (100,100)
+#         arc_pts = [(0.0, 100.0), (50.0, 110.0), (100.0, 100.0)]
 #         primitives = [
 #             SplineSeg(points=[(0, 0), (0, 50), (0, 100)]),
 #             DiscretizedArcSeg(points=arc_pts),
@@ -171,9 +175,6 @@
 #     def test_002_polygon_valido(self):
 #         if self.vs is not None:
 #             self.assertTrue(self.vs.polygon.is_valid)
-
-
-
 
 
 # # ---------------------------------------------------------------------------
@@ -196,43 +197,18 @@
 # if __name__ == "__main__":
 #     unittest.main(verbosity=2)
 
+
 """
-test_core_virtual.py
+test_core_contour.py
 --------------------
-Test unitari per core/virtual.py.
+Test unitari per core/primitives/contour.py.
 
 Zero dipendenze da ezdxf — tutto in termini di primitive pure.
 """
 
 import unittest
 from forge.core.primitives import LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg
-from forge.core.primitives.virtual import VirtualShape, _build_polygon
-
-
-# ---------------------------------------------------------------------------
-# Primitive — dataclass base (ora in core/primitives)
-# ---------------------------------------------------------------------------
-
-class TestPrimitives(unittest.TestCase):
-
-    def test_lineseg(self):
-        s = LineSeg(start=(0.0, 0.0), end=(10.0, 0.0))
-        self.assertEqual(s.start, (0.0, 0.0))
-        self.assertEqual(s.end,   (10.0, 0.0))
-
-    def test_arcseg(self):
-        a = ArcSeg(start=(1.0, 0.0), end=(0.0, 1.0), bulge=0.5)
-        self.assertEqual(a.bulge, 0.5)
-
-    def test_splineseg(self):
-        pts = [(0, 0), (1, 1), (2, 0)]
-        s = SplineSeg(points=pts)
-        self.assertEqual(s.points, pts)
-
-    def test_discretized_arcseg(self):
-        pts = [(1.0, 0.0), (0.707, 0.707), (0.0, 1.0)]
-        d = DiscretizedArcSeg(points=pts)
-        self.assertEqual(len(d.points), 3)
+from forge.core.primitives.contour import Contour, _build_polygon
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +231,7 @@ class TestBuildPolygon(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# VirtualShape.from_primitives — loop di sole LINE
+# Contour.from_primitives — loop di sole LINE
 # ---------------------------------------------------------------------------
 
 class TestFromPrimitivesLines(unittest.TestCase):
@@ -263,59 +239,49 @@ class TestFromPrimitivesLines(unittest.TestCase):
     def _square_primitives(self, side=100.0):
         s = side
         return [
-            LineSeg(start=(0, 0),   end=(s, 0)),
-            LineSeg(start=(s, 0),   end=(s, s)),
-            LineSeg(start=(s, s),   end=(0, s)),
-            LineSeg(start=(0, s),   end=(0, 0)),
+            LineSeg(start=(0, 0), end=(s, 0)),
+            LineSeg(start=(s, 0), end=(s, s)),
+            LineSeg(start=(s, s), end=(0, s)),
+            LineSeg(start=(0, s), end=(0, 0)),
         ]
 
     def setUp(self):
-        self.vs = VirtualShape.from_primitives(
-            self._square_primitives(100.0), layer='outer', color=1
+        self.contour = Contour.from_primitives(
+            primitives=self._square_primitives(100.0),
+            source_layer='outer',
         )
 
-    def test_001_restituisce_virtual_shape(self):
-        self.assertIsNotNone(self.vs)
-        self.assertIsInstance(self.vs, VirtualShape)
+    def test_001_restituisce_contour(self):
+        self.assertIsNotNone(self.contour)
+        self.assertIsInstance(self.contour, Contour)
 
     def test_002_has_spline_false(self):
-        self.assertFalse(self.vs.has_spline)
+        self.assertFalse(self.contour.has_spline)
 
     def test_003_polygon_valido(self):
-        self.assertTrue(self.vs.polygon.is_valid)
+        self.assertTrue(self.contour.polygon.is_valid)
 
     def test_004_area_corretta(self):
-        self.assertAlmostEqual(self.vs.polygon.area, 10000.0, delta=1.0)
+        self.assertAlmostEqual(self.contour.polygon.area, 10000.0, delta=1.0)
 
-    def test_005_layer(self):
-        self.assertEqual(self.vs.layer, 'outer')
+    def test_005_source_layer(self):
+        self.assertEqual(self.contour.source_layer, 'outer')
 
-    def test_006_color(self):
-        self.assertEqual(self.vs.color, 1)
+    def test_006_segments_popolati(self):
+        self.assertEqual(len(self.contour.segments), 4)
 
-    def test_007_source_ref_non_none(self):
-        self.assertIsNotNone(self.vs.source_ref)
+    def test_007_source_ref_none_se_non_passato(self):
+        self.assertIsNone(self.contour.source_ref)
 
-    def test_008_source_ref_ha_pts_with_bulge(self):
-        self.assertIn('pts_with_bulge', self.vs.source_ref)
-        self.assertEqual(len(self.vs.source_ref['pts_with_bulge']), 4)
+    def test_008_no_layer_su_contour(self):
+        self.assertFalse(hasattr(self.contour, 'layer'))
 
-    def test_009_source_ref_bulge_zero(self):
-        for pt in self.vs.source_ref['pts_with_bulge']:
-            self.assertEqual(pt[4], 0.0)
-
-    def test_010_source_ref_ha_loop(self):
-        self.assertIn('loop', self.vs.source_ref)
-
-    def test_011_no_pts_with_bulge_su_vs(self):
-        self.assertFalse(hasattr(self.vs, 'pts_with_bulge'))
-
-    def test_012_no_entity_su_vs(self):
-        self.assertFalse(hasattr(self.vs, 'entity'))
+    def test_009_no_color_su_contour(self):
+        self.assertFalse(hasattr(self.contour, 'color'))
 
 
 # ---------------------------------------------------------------------------
-# VirtualShape.from_primitives — loop con SplineSeg
+# Contour.from_primitives — loop con SplineSeg
 # ---------------------------------------------------------------------------
 
 class TestFromPrimitivesSpline(unittest.TestCase):
@@ -329,28 +295,29 @@ class TestFromPrimitivesSpline(unittest.TestCase):
         ]
 
     def setUp(self):
-        self.vs = VirtualShape.from_primitives(
-            self._spline_loop_primitives(), layer='outer', color=1
+        self.contour = Contour.from_primitives(
+            primitives=self._spline_loop_primitives(),
+            source_layer='outer',
         )
 
-    def test_001_restituisce_virtual_shape(self):
-        self.assertIsNotNone(self.vs)
+    def test_001_restituisce_contour(self):
+        self.assertIsNotNone(self.contour)
 
     def test_002_has_spline_true(self):
-        self.assertTrue(self.vs.has_spline)
+        self.assertTrue(self.contour.has_spline)
 
     def test_003_polygon_valido(self):
-        self.assertTrue(self.vs.polygon.is_valid)
+        self.assertTrue(self.contour.polygon.is_valid)
 
     def test_004_area_positiva(self):
-        self.assertGreater(self.vs.polygon.area, 0.0)
+        self.assertGreater(self.contour.polygon.area, 0.0)
 
-    def test_005_source_ref_pts_with_bulge_vuoto(self):
-        self.assertEqual(self.vs.source_ref['pts_with_bulge'], [])
+    def test_005_segments_popolati(self):
+        self.assertEqual(len(self.contour.segments), 4)
 
 
 # ---------------------------------------------------------------------------
-# VirtualShape.from_primitives — loop con DiscretizedArcSeg
+# Contour.from_primitives — loop con DiscretizedArcSeg
 # ---------------------------------------------------------------------------
 
 class TestFromPrimitivesDiscretizedArc(unittest.TestCase):
@@ -363,14 +330,45 @@ class TestFromPrimitivesDiscretizedArc(unittest.TestCase):
             LineSeg(start=(100.0, 100.0), end=(100.0, 0.0)),
             LineSeg(start=(100.0, 0.0),   end=(0.0, 0.0)),
         ]
-        self.vs = VirtualShape.from_primitives(primitives, layer='inner', color=2)
+        self.contour = Contour.from_primitives(
+            primitives=primitives,
+            source_layer='inner',
+        )
 
     def test_001_has_spline_true(self):
-        self.assertTrue(self.vs.has_spline)
+        self.assertTrue(self.contour.has_spline)
 
     def test_002_polygon_valido(self):
-        if self.vs is not None:
-            self.assertTrue(self.vs.polygon.is_valid)
+        if self.contour is not None:
+            self.assertTrue(self.contour.polygon.is_valid)
+
+
+# ---------------------------------------------------------------------------
+# source_ref — opaco, passato dal chiamante
+# ---------------------------------------------------------------------------
+
+class TestSourceRef(unittest.TestCase):
+
+    def test_001_source_ref_passato_viene_conservato(self):
+        primitives = [
+            LineSeg(start=(0, 0),   end=(100, 0)),
+            LineSeg(start=(100, 0), end=(100, 100)),
+            LineSeg(start=(100, 100), end=(0, 100)),
+            LineSeg(start=(0, 100), end=(0, 0)),
+        ]
+        ref = {"loop": [], "pts_with_bulge": [(0,0,0,0,0)]}
+        contour = Contour.from_primitives(primitives=primitives, source_ref=ref)
+        self.assertEqual(contour.source_ref, ref)
+
+    def test_002_source_ref_default_none(self):
+        primitives = [
+            LineSeg(start=(0, 0),   end=(100, 0)),
+            LineSeg(start=(100, 0), end=(100, 100)),
+            LineSeg(start=(100, 100), end=(0, 100)),
+            LineSeg(start=(0, 100), end=(0, 0)),
+        ]
+        contour = Contour.from_primitives(primitives=primitives)
+        self.assertIsNone(contour.source_ref)
 
 
 # ---------------------------------------------------------------------------
@@ -380,14 +378,14 @@ class TestFromPrimitivesDiscretizedArc(unittest.TestCase):
 class TestFromPrimitivesDegeneri(unittest.TestCase):
 
     def test_001_lista_vuota_restituisce_none(self):
-        vs = VirtualShape.from_primitives([], layer='outer', color=1)
-        self.assertIsNone(vs)
+        contour = Contour.from_primitives(primitives=[])
+        self.assertIsNone(contour)
 
     def test_002_una_sola_line_restituisce_none(self):
-        vs = VirtualShape.from_primitives(
-            [LineSeg(start=(0,0), end=(10,0))], layer='outer', color=1
+        contour = Contour.from_primitives(
+            primitives=[LineSeg(start=(0,0), end=(10,0))]
         )
-        self.assertIsNone(vs)
+        self.assertIsNone(contour)
 
 
 if __name__ == "__main__":

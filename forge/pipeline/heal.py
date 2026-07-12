@@ -233,9 +233,129 @@ class HealStep:
         self._classify_and_build(loops, graph)
 
 
+# # metodi estratti in moduli separati
+# from ..core.topology.loops     import _collect_loops, _reintegrate_bending, _fallback_polygonize, _classify_and_build  # noqa: E402
+# from ..core.healing.hierarchy import _build_hierarchy, _build_trash  # noqa: E402
+
+# HealStep._collect_loops       = _collect_loops
+# HealStep._reintegrate_bending = _reintegrate_bending
+# HealStep._fallback_polygonize = _fallback_polygonize
+# HealStep._classify_and_build  = _classify_and_build
+# HealStep._build_hierarchy     = _build_hierarchy
+# HealStep._build_trash         = _build_trash
+
 # metodi estratti in moduli separati
-from ..core.topology.loops     import _collect_loops, _reintegrate_bending, _fallback_polygonize, _classify_and_build  # noqa: E402
-from ..core.healing.hierarchy import _build_hierarchy, _build_trash  # noqa: E402
+from ..core.topology.loops import _collect_loops, _reintegrate_bending  # noqa: E402
+from ..core.healing.hierarchy  import _build_hierarchy, _build_trash         # noqa: E402
+from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext  # noqa: E402
+from ..core.primitives.contour import Contour                                  # noqa: E402
+from ..rules.layers import LAYER_OUTER, LAYER_INNER, COLOR_OUTER, COLOR_INNER  # noqa: E402
+from shapely.geometry import Polygon                                            # noqa: E402
+
+
+def _fallback_polygonize(self):
+    from shapely.ops import unary_union, snap, polygonize
+    from ..adapters.dxf.geometry_adapter import arc_to_linestrings
+    from shapely.geometry import LineString
+
+    self.result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
+    segments = []
+    for l in self.all_lines:
+        segments.append(LineString([
+            (l.dxf.start.x, l.dxf.start.y),
+            (l.dxf.end.x,   l.dxf.end.y),
+        ]))
+    for a in self.all_arcs:
+        segments.extend(arc_to_linestrings(a))
+
+    merged   = unary_union(segments)
+    snapped  = snap(merged, merged, self.tolerance)
+    polygons = list(polygonize(snapped))
+
+    if polygons:
+        self.result.warnings.append(
+            f"Geometria ricostruita via fallback polygonize "
+            f"({len(polygons)} poligoni). Verificare il risultato."
+        )
+        self.entities_in_loops = {id(e) for e in self.all_lines + self.all_arcs}
+        self.result._entities_in_loops_ids = self.entities_in_loops
+
+        for poly in polygons:
+            if not poly.is_valid:
+                poly = poly.buffer(0)
+            pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
+            contour = Contour(polygon=poly, segments=[], source_layer="", source_ref=None)
+            ctx = DxfWriteContext(
+                contour=contour,
+                pts_with_bulge=pts,
+                loop=[],
+                layer=LAYER_OUTER,
+                color=COLOR_OUTER,
+            )
+            self.result._virtual_shapes.append(ctx)
+
+            for interior in poly.interiors:
+                pts_i   = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
+                contour_i = Contour(
+                    polygon=Polygon(interior),
+                    segments=[],
+                    source_layer="",
+                    source_ref=None,
+                )
+                ctx_i = DxfWriteContext(
+                    contour=contour_i,
+                    pts_with_bulge=pts_i,
+                    loop=[],
+                    layer=LAYER_INNER,
+                    color=COLOR_INNER,
+                )
+                self.result._virtual_shapes.append(ctx_i)
+    else:
+        self.result.warnings.append(
+            "LINE/ARC non formano loop chiusi — "
+            "potrebbero essere marcature o geometria aperta."
+        )
+
+
+def _classify_and_build(self, loops, graph):
+    from ..core.topology.loops import classify_loops, check_loop_ambiguity
+
+    branching_check = check_loop_ambiguity(loops, graph)
+    if branching_check:
+        self.result.warnings.append(
+            f"Geometria ambigua: {len(branching_check)} nodi con più di 2 "
+            f"connessioni all'interno dei loop chiusi. Verificare il risultato."
+        )
+
+    outer_loops, inner_loops = classify_loops(loops)
+    self.entities_in_loops = {
+        id(edge.entity) for loop in (outer_loops + inner_loops) for edge, _ in loop
+    }
+    self.result._entities_in_loops_ids = self.entities_in_loops
+
+    for loop in outer_loops:
+        ctx = _loop_to_contour(loop, LAYER_OUTER, COLOR_OUTER)
+        if ctx is not None:
+            self.result._virtual_shapes.append(ctx)
+    for loop in inner_loops:
+        ctx = _loop_to_contour(loop, LAYER_INNER, COLOR_INNER)
+        if ctx is not None:
+            self.result._virtual_shapes.append(ctx)
+
+
+# def _collect_loops(self, graph):
+#     from ..core.topology.loops import find_closed_loops, _deduplicate_loops
+
+#     branching_nodes = [n for n, conn in graph.items() if len(conn) > 2]
+#     if branching_nodes:
+#         self.result.warnings.append(
+#             f"Geometria ambigua: {len(branching_nodes)} nodi con più di 2 "
+#             f"connessioni. Il risultato potrebbe essere impreciso."
+#         )
+
+#     loops = find_closed_loops(graph)
+#     return _deduplicate_loops(loops)
+
 
 HealStep._collect_loops       = _collect_loops
 HealStep._reintegrate_bending = _reintegrate_bending
