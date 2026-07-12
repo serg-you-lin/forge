@@ -12,14 +12,11 @@ from ..core.topology.graph import (
 from ..core.healing.hierarchy import (
     _spline_is_closed,
 )
-from .normalization import (
-    _deduplicate_entities,
-)
-# from ...core.gap import close_gaps
+from ..adapters.dxf.dedup_adapter import deduplicate as _deduplicate_entities
 from ..core.geometry import spline_endpoints
 from ..core.geometry import round_point
 from ..adapters.dxf.graph_adapter import edges_from_msp as _edges_from_msp_adapter
-from ..adapters.dxf.geometry_adapter import close_gaps, free_endpoints_from_msp
+from ..adapters.dxf.gap_adapter import extract_free_endpoints, apply_gap_fixes
 from ..adapters.dxf.sanitize import _explode_inserts 
 
 from ..rules.layers import (
@@ -131,10 +128,13 @@ class HealStep:
             return
 
         graph_pre = self._build_graph()
-        free = free_endpoints_from_msp(graph_pre, self.msp, self.node_decimals)
+        endpoints = extract_free_endpoints(graph_pre, self.msp, self.node_decimals)
 
-        if free:
-            fixed = close_gaps(self.msp, free, self.tolerance)
+        if endpoints:
+            from ..core.healing.gap_solver import compute_gap_fixes
+            fixes = compute_gap_fixes(endpoints, self.tolerance)
+            fixed = apply_gap_fixes(fixes, self.msp)
+
             if fixed:
                 self.all_lines = list(self.msp.query("LINE"))
                 self.all_arcs  = list(self.msp.query("ARC"))
