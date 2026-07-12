@@ -24,7 +24,7 @@ from ...core.frame_detector import (
     detect_frame,
 )
 
-from forge.pipeline.normalization import _explode_inserts
+from .sanitize import _explode_inserts
 
 if TYPE_CHECKING:
     from ezdxf.layouts import Modelspace
