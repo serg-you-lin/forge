@@ -22,7 +22,7 @@ dxf-forge/
 │   │   ├── hole.py                # Hole
 │   │   ├── edge.py                # Edge
 │   │   ├── result.py              # ForgeResult
-│   │   └── hints.py               # GeometryHints
+│   │   └── classified.py              
 │   │
 │   ├── pipeline/                  # Le fasi orchestrate
 │   │   ├── heal.py
