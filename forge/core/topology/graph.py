@@ -103,48 +103,8 @@ def _angular_deviation(arrival_dir, edge: Edge, rev: bool):
 
 
 # # ---------------------------------------------------------------------------
-# # Classificazione loop
-# # ---------------------------------------------------------------------------
-
-# def classify_loops(loops: list):
-#     shapely_polygons = []
-#     for loop in loops:
-#         pts = loop_to_points(loop)
-#         shapely_polygons.append(Polygon(pts) if len(pts) >= 3 else None)
-
-#     outer, inners = [], []
-#     for i, (loop, poly) in enumerate(zip(loops, shapely_polygons)):
-#         if poly is None or not poly.is_valid:
-#             outer.append(loop)
-#             continue
-#         is_inner = any(
-#             j != i
-#             and shapely_polygons[j] is not None
-#             and shapely_polygons[j].contains(poly)
-#             for j in range(len(shapely_polygons))
-#         )
-#         inners.append(loop) if is_inner else outer.append(loop)
-
-#     return outer, inners
-
-
-# # ---------------------------------------------------------------------------
 # # Utility
 # # ---------------------------------------------------------------------------
-
-# def loop_to_points(loop: list) -> list:
-#     """
-#     Converte un loop in lista di punti (x, y).
-#     Legge da edge.geometry — nessun accesso a entity.dxf.
-#     Il primo punto di ogni edge viene preso per evitare duplicati
-#     (l'ultimo di un edge coincide con il primo del successivo).
-#     """
-#     pts = []
-#     for edge, rev in loop:
-#         coords = _edge_coords(edge, rev)
-#         if coords:
-#             pts.append(coords[0])
-#     return pts
 
 
 def _prune_dead_ends(graph: dict) -> dict:
