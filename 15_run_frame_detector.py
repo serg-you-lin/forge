@@ -11,7 +11,7 @@ sys.path.insert(0, r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\
 from forge.adapters.dxf.frame_adapter_dxf import extract_frame_handles
 
 # ── CONFIG ──────────────────────────────────────────────────────────────────
-INPUT_DXF = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_27_05_2026\disegni\271004g13.dxf"
+INPUT_DXF = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\img\360_F_smooth.dxf"
 # ────────────────────────────────────────────────────────────────────────────
 
 def main():
