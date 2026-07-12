@@ -60,6 +60,77 @@ _HOLE_TYPE_TO_WORK_TYPE = {
 # API pubblica
 # ---------------------------------------------------------------------------
 
+# def write(
+#     msp,
+#     result:     ForgeResult,
+#     keep_trash: bool = True,
+# ) -> None:
+#     """
+#     Materializza il ForgeResult sul msp originale.
+
+#     Deve essere chiamato DOPO heal() — e opzionalmente dopo detect()
+#     se si vogliono anche i layer di lavorazione.
+
+#     Fase 1 — strutturale (sempre):
+#         - scrive i VirtualShape come LWPOLYLINE nel msp
+#         - aggiorna part.entity_ids: swap id(VS) → id(LWPOLYLINE) per i VS non-spline
+#         - assegna layer/colori strutturali (outer, inner, hole) alle entità reali
+#         - rimuove le LINE/ARC originali sostituite dai VirtualShape
+
+#     Fase 2 — lavorazioni (solo se detect() è stato chiamato):
+#         - assegna layer lavorazioni (bending, countersink, engrave...)
+#           leggendo geometry_hints e Hole.hole_type da result
+#     """
+#     for vs in result._virtual_shapes:
+#         if id(vs) in result._suppressed_vs_ids:
+#             continue
+#         lwpoly = _write_virtual_shape(msp, vs)
+#         if lwpoly is not None:
+#             part = result._vs_to_part.get(id(vs))
+#             if part is not None:
+#                 part.entity_ids.discard(id(vs))
+#                 part.entity_ids.add(id(lwpoly))
+#         else:
+#             # has_spline=True: le entità originali restano nel msp
+#             # registra i loro id() in entity_ids
+#             part = result._vs_to_part.get(id(vs))
+#             if part is not None:
+#                 part.entity_ids.discard(id(vs))
+#                 for entity, _ in vs.loop:
+#                     part.entity_ids.add(id(entity))
+
+#     _remove_superseded_line_arc(msp, result)
+#     _assign_structural_layers(msp, result)
+
+#     entity_to_work = _build_work_index(result)
+#     special_map = _build_special_map(result)
+
+#     # Assicurati che i layer siano configurati con i colori corretti anche nel msp originale
+#     _setup_layers(msp.doc)
+
+#     for entity in list(msp):
+#         if not entity.dxf.hasattr("layer"):
+#             continue
+
+#         entity_id = id(entity)
+#         layer     = entity.dxf.layer
+#         work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
+
+#         if work_type is not None:
+#             target_layer, _ = WORK_TYPE_TO_LAYER.get(
+#                 work_type, (TRASH_LAYER, COLOR_TRASH)
+#             )
+#             entity.dxf.layer = target_layer
+#             entity.dxf.color = 256  # 256 = BYLAYER
+#         elif layer.upper() in STRUCTURAL_LAYERS:
+#             entity.dxf.color = 256  # Forza BYLAYER anche sulle esistenti
+#             continue
+#         elif keep_trash:
+#             entity.dxf.layer = TRASH_LAYER
+#             entity.dxf.color = 256  # 256 = BYLAYER
+#         else:
+#             msp.delete_entity(entity)
+
 def write(
     msp,
     result:     ForgeResult,
@@ -72,40 +143,38 @@ def write(
     se si vogliono anche i layer di lavorazione.
 
     Fase 1 — strutturale (sempre):
-        - scrive i VirtualShape come LWPOLYLINE nel msp
-        - aggiorna part.entity_ids: swap id(VS) → id(LWPOLYLINE) per i VS non-spline
+        - scrive i Contour come LWPOLYLINE nel msp
+        - aggiorna part.entity_ids: swap id(ctx) → id(LWPOLYLINE) per i non-spline
         - assegna layer/colori strutturali (outer, inner, hole) alle entità reali
-        - rimuove le LINE/ARC originali sostituite dai VirtualShape
+        - rimuove le LINE/ARC originali sostituite dai Contour
 
     Fase 2 — lavorazioni (solo se detect() è stato chiamato):
         - assegna layer lavorazioni (bending, countersink, engrave...)
           leggendo geometry_hints e Hole.hole_type da result
     """
-    for vs in result._virtual_shapes:
-        if id(vs) in result._suppressed_vs_ids:
+    for ctx in result._virtual_shapes:
+        if id(ctx) in result._suppressed_vs_ids:
             continue
-        lwpoly = _write_virtual_shape(msp, vs)
+        lwpoly = _write_virtual_shape(msp, ctx)
         if lwpoly is not None:
-            part = result._vs_to_part.get(id(vs))
+            part = result._vs_to_part.get(id(ctx))
             if part is not None:
-                part.entity_ids.discard(id(vs))
+                part.entity_ids.discard(id(ctx))
                 part.entity_ids.add(id(lwpoly))
         else:
             # has_spline=True: le entità originali restano nel msp
-            # registra i loro id() in entity_ids
-            part = result._vs_to_part.get(id(vs))
+            part = result._vs_to_part.get(id(ctx))
             if part is not None:
-                part.entity_ids.discard(id(vs))
-                for entity, _ in vs.loop:
+                part.entity_ids.discard(id(ctx))
+                for entity, _ in ctx.loop:
                     part.entity_ids.add(id(entity))
 
     _remove_superseded_line_arc(msp, result)
     _assign_structural_layers(msp, result)
 
     entity_to_work = _build_work_index(result)
-    special_map = _build_special_map(result)
+    special_map    = _build_special_map(result)
 
-    # Assicurati che i layer siano configurati con i colori corretti anche nel msp originale
     _setup_layers(msp.doc)
 
     for entity in list(msp):
@@ -121,16 +190,16 @@ def write(
                 work_type, (TRASH_LAYER, COLOR_TRASH)
             )
             entity.dxf.layer = target_layer
-            entity.dxf.color = 256  # 256 = BYLAYER
+            entity.dxf.color = 256
         elif layer.upper() in STRUCTURAL_LAYERS:
-            entity.dxf.color = 256  # Forza BYLAYER anche sulle esistenti
+            entity.dxf.color = 256
             continue
         elif keep_trash:
             entity.dxf.layer = TRASH_LAYER
-            entity.dxf.color = 256  # 256 = BYLAYER
+            entity.dxf.color = 256
         else:
             msp.delete_entity(entity)
-
+            
 
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
 DEFAULT_MIN_PART_AREA = 50.0  # mm²
