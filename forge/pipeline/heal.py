@@ -233,17 +233,6 @@ class HealStep:
         self._classify_and_build(loops, graph)
 
 
-# # metodi estratti in moduli separati
-# from ..core.topology.loops     import _collect_loops, _reintegrate_bending, _fallback_polygonize, _classify_and_build  # noqa: E402
-# from ..core.healing.hierarchy import _build_hierarchy, _build_trash  # noqa: E402
-
-# HealStep._collect_loops       = _collect_loops
-# HealStep._reintegrate_bending = _reintegrate_bending
-# HealStep._fallback_polygonize = _fallback_polygonize
-# HealStep._classify_and_build  = _classify_and_build
-# HealStep._build_hierarchy     = _build_hierarchy
-# HealStep._build_trash         = _build_trash
-
 # metodi estratti in moduli separati
 from ..core.topology.loops import _collect_loops, _reintegrate_bending  # noqa: E402
 from ..core.healing.hierarchy  import _build_hierarchy, _build_trash         # noqa: E402
@@ -341,20 +330,6 @@ def _classify_and_build(self, loops, graph):
         ctx = _loop_to_contour(loop, LAYER_INNER, COLOR_INNER)
         if ctx is not None:
             self.result._virtual_shapes.append(ctx)
-
-
-# def _collect_loops(self, graph):
-#     from ..core.topology.loops import find_closed_loops, _deduplicate_loops
-
-#     branching_nodes = [n for n, conn in graph.items() if len(conn) > 2]
-#     if branching_nodes:
-#         self.result.warnings.append(
-#             f"Geometria ambigua: {len(branching_nodes)} nodi con più di 2 "
-#             f"connessioni. Il risultato potrebbe essere impreciso."
-#         )
-
-#     loops = find_closed_loops(graph)
-#     return _deduplicate_loops(loops)
 
 
 HealStep._collect_loops       = _collect_loops

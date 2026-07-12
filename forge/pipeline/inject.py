@@ -137,24 +137,6 @@ def _inject_holes(part) -> None:
     if plain_hole_count:
         part.custom["plain_holes_count"]   = plain_hole_count
 
-# def _inject_bending(part, msp, tolerance: float) -> None:
-#     """
-#     Conta le pieghe da geometry_hints.bend_line_ids.
-#     Fonte di verità: detect() — indipendente da write().
-#     """
-#     id_to_entity = {id(e): e for e in msp if e.dxftype() == "LINE"}
-    
-#     candidates = [
-#         id_to_entity[eid]
-#         for eid in part.geometry_hints.bend_line_ids
-#         if eid in id_to_entity
-#     ]
-    
-#     if not candidates:
-#         return
-    
-#     groups = group_collinear_lines(candidates, tolerance=tolerance)
-#     part.custom["bending_lines"] = len(groups)
 
 def _inject_bending(part, msp, tolerance: float) -> None:
     """
