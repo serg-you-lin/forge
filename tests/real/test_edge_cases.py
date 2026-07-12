@@ -7,8 +7,9 @@ import unittest
 from pathlib import Path
 import sys
 import ezdxf
-import numpy as np
 from collections import defaultdict
+from forge.adapters.dxf.geometry_adapter import arc_endpoints as _arc_endpoints
+from forge.core.geometry import round_point as _round_point
 
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
@@ -18,23 +19,6 @@ import forge
 COORD_TOLERANCE = 0.01
 EDGE_CASES_DIR = project_root / "tests" / "examples" / "edge_cases"
 
-
-def _arc_endpoints(entity):
-    cx, cy = entity.dxf.center.x, entity.dxf.center.y
-    r = entity.dxf.radius
-    s = (
-        cx + r * np.cos(np.radians(entity.dxf.start_angle)),
-        cy + r * np.sin(np.radians(entity.dxf.start_angle)),
-    )
-    e = (
-        cx + r * np.cos(np.radians(entity.dxf.end_angle)),
-        cy + r * np.sin(np.radians(entity.dxf.end_angle)),
-    )
-    return s, e
-
-
-def _round_point(pt, decimals=1):
-    return (round(pt[0], decimals), round(pt[1], decimals))
 
 
 def _find_loop_nodes(msp):
