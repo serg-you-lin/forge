@@ -219,7 +219,7 @@ class TestWritebackDeduplication(unittest.TestCase):
         self.assertEqual(len(outer), 1)
 
     def test_002_no_duplicate_lines_in_msp(self):
-        from forge.adapters.dxf.dedup_adapter import deduplicate as _deduplicate_entities
+        from forge.adapters.dxf.sanitize import deduplicate as _deduplicate_entities
         removed = _deduplicate_entities(self.msp)
         self.assertEqual(removed, 0)
 
