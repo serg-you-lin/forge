@@ -9,10 +9,10 @@ from ..model.result import (
 from ..core.topology.graph import (
     build_node_graph,
 )
-from ..core.healing.hierarchy import (
+from ..adapters.dxf.geometry_adapter import (
     _spline_is_closed,
 )
-from ..adapters.dxf.dedup_adapter import deduplicate as _deduplicate_entities
+from ..adapters.dxf.sanitize import deduplicate as _deduplicate_entities
 from ..core.geometry import spline_endpoints
 from ..core.geometry import round_point
 from ..adapters.dxf.graph_adapter import edges_from_msp as _edges_from_msp_adapter

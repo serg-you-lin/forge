@@ -11,3 +11,4 @@ from .edge import Edge, BendingLine
 from .classified import ClassifiedEntity, BaseInterpreter
 from .part import ForgeContour, ForgePart
 from .result import ForgeResult
+from .shape_proxy import ShapeProxy

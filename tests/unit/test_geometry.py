@@ -28,7 +28,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import ezdxf
-from forge.adapters.dxf.geometry_adapter import is_threaded_arc, is_threaded_hole, is_countersink_outer
+from forge.adapters.dxf.hole_detector import is_threaded_arc, is_threaded_hole, is_countersink_outer
 from forge.core.geometry import are_collinear, group_collinear_lines
 
 

@@ -48,14 +48,18 @@ from ..model import (
     HOLE_TYPE_THREADED,
     HOLE_TYPE_UNKNOWN,
 )
-from ..adapters.dxf.geometry_adapter import (
+from ..adapters.dxf.hole_detector import (
     is_threaded_hole,
     is_threaded_arc,
     is_countersink_outer,
+)
+
+from ..adapters.dxf.geometry_adapter import (
     entity_length,
     get_representative_point,
     entity_midpoint,
 )
+
 from ..rules.layers import WORK_TYPE_TO_LAYER, VALID_WORK_TYPES
 
 # Work type → hole_type: mappa per special_layers sui fori
