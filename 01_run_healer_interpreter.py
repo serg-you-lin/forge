@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\img\leaf.dxf"
+input_dxf = r"tests/examples/pline_with_hole.dxf"
 
 tolerance = .01
 

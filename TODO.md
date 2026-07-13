@@ -30,10 +30,109 @@ I files splittati non vengono aperti in Autocad, vengono aperti in sigmanest sen
 creare una fingerprint geometrica per validare na forge part.
 
 ### Cornice
-Qualcosa abbiamo implementato, migliorabile e da capire dove va (vedi comprensione futura qui avanti). 
+Capire dove deve lavorare perhcè potrebbe essere parte del plugin per i draft
 
-### API
+### Refactoring hierarchy
+La soluzione: ShapeProxy
+Un dataclass che l'adapter produce una volta sola, e che _build_hierarchy consuma senza sapere nulla di DXF.
+python@dataclass
+class ShapeProxy:
+    polygon: Polygon
+    source_layer: str
+    shape_type: str          # "circle", "polyline", "spline", "virtual"
+    diameter: Optional[float]  # solo per cerchi
+    center: Optional[tuple]    # solo per cerchi
+    source_ref: Any            # entità originale o DxfWriteContext
+La funzione di conversione va in adapters/dxf/:
+def entity_to_proxy(entity) -> Optional[ShapeProxy]:
+    poly = entity_to_polygon(entity)
+    if poly is None:
+        return None
+    t = entity.dxftype()
+    return ShapeProxy(
+        polygon=poly,
+        source_layer=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
+        shape_type="circle" if t == "CIRCLE" else "polyline" if "PLINE" in t else "spline",
+        diameter=entity.dxf.radius * 2 if t == "CIRCLE" else None,
+        center=(entity.dxf.center.x, entity.dxf.center.y) if t == "CIRCLE" else None,
+        source_ref=entity,
+    )
 
+def virtual_to_proxy(ctx: DxfWriteContext) -> ShapeProxy:
+    return ShapeProxy(
+        polygon=ctx.contour.polygon,
+        source_layer=ctx.contour.source_layer,
+        shape_type="virtual",
+        diameter=None,
+        center=None,
+        source_ref=ctx,
+    )
+_build_hierarchy diventa:
+pythondef _build_hierarchy(self):
+    proxies = []
+    for ctx in self.result._virtual_shapes:
+        proxies.append(virtual_to_proxy(ctx))
+    for pline in self.all_plines:
+        p = entity_to_proxy(pline)
+        if p: proxies.append(p)
+    for circle in self.all_circles:
+        p = entity_to_proxy(circle)
+        if p: proxies.append(p)
+    # ... splines
+    
+    # da qui in poi: zero .dxf.*, solo ShapeProxy
+    _build_topology(self, proxies)
+
+
+### Refactoring Adapters
+# core/adapter_base.py  ← agnostico, zero import DXF
+from abc import ABC, abstractmethod
+
+class ForgeAdapter(ABC):
+    
+    @abstractmethod
+    def to_edges(self) -> List[Edge]:
+        """Produce gli archi per il grafo topologico."""
+        ...
+    
+    @abstractmethod
+    def to_proxies(self) -> List[ShapeProxy]:
+        """Produce le forme chiuse pre-esistenti (cerchi, polyline chiuse)."""
+        ...
+    
+    @abstractmethod
+    def source_layer(self, ref: Any) -> str:
+        """Estrae il layer dall'oggetto originale."""
+        ...
+E DxfAdapter diventa:
+python# adapters/dxf/adapter.py
+class DxfAdapter(ForgeAdapter):
+    def __init__(self, msp, node_decimals, exclude_ids=None, ignore_layers=None):
+        self.msp = msp
+        ...
+    
+    def to_edges(self) -> List[Edge]:
+        # tutto ciò che oggi fa edges_from_msp()
+        ...
+    
+    def to_proxies(self) -> List[ShapeProxy]:
+        # converte circles, plines chiuse, splines chiuse
+        # tutto ciò che oggi _build_hierarchy() fa nella prima sezione
+        ...
+E HealStep diventa:
+pythonclass HealStep:
+    def __init__(self, adapter: ForgeAdapter, tolerance, label="", ...):
+        self.adapter   = adapter
+        self.edges     = adapter.to_edges()      # List[Edge] — zero formato
+        self.proxies   = adapter.to_proxies()    # List[ShapeProxy] — zero formato
+        self.tolerance = tolerance
+        # mai più self.msp, mai più self.all_lines, mai più ezdxf
+
+
+Il pattern if entity.dxftype() == "ARC" sparso in 150 posti è fragile e non scala.
+Però questa è una terza cosa grossa — separata da ShapeProxy e da ForgeAdapter. E si collega direttamente al discorso di prima: se l'obiettivo è essere format-agnostici, allora il dispatcher per tipo entità è esattamente il problema che ForgeAdapter risolve a livello architetturale. Quando hai DxfAdapter come classe, il dispatcher per tipo diventa un metodo interno all'adapter — e fuori non esiste più.
+2. ForgeAdapter / DxfAdapter        ← elimina il dispatcher sparso
+3. entity_length, entity_to_proxy   ← diventano metodi di DxfAdapter
 
 ### Analisi
 
@@ -53,9 +152,6 @@ Simil_arcardini_segni_tracciati_stretto_healed --> questo file ha una serie di d
 Al momento in input posso avere solo dxf, ma mi sono messo in condizione di poter prendere anche svg o pdf. Da capire se implementare ad esempio almeno i pdf.
 
 
-
-### Refactoring Virtual
-ArcSeg usa bulge invece di center/radius — scelta consapevole perché il bulge è già WCS e serve per costruire le LWPOLYLINE in writeback. Da valutare se completare il refactoring.
 
 ### Comprensione futura:
 può essere qualcosa di simile a questo?
@@ -145,50 +241,6 @@ forge.split(...)
 
 
 
-dxf-forge/
-│
-├── forge/
-│   │
-│   ├── adapters/                  # Traduzione formato → primitivi
-│   │   ├── dxf/
-│   │   │   ├── virtual_adapter.py
-│   │   │   ├── copy_adapter.py
-│   │   │   └── loader.py
-│   │   ├── pdf/                   # futuro
-│   │   └── svg/                   # futuro
-│   │
-│   ├── core/                      # Motore geometrico puro
-│   │   ├── primitives/            # LineSeg, ArcSeg, SplineSeg
-│   │   ├── graph/                 # topologia, loop detection
-│   │   ├── hierarchy/             # containment, holes
-│   │   ├── healing/               # gap closing, dedup, normalize
-│   │   └── frame/                 # frame detection
-│   │
-│   ├── model/                     # Forge domain model
-│   │   ├── part.py                # ForgePart
-│   │   ├── hole.py                # Hole
-│   │   ├── edge.py                # Edge
-│   │   ├── result.py              # ForgeResult
-│   │   └── hints.py               # GeometryHints
-│   │
-│   ├── pipeline/                  # Le fasi orchestrate
-│   │   ├── heal.py
-│   │   ├── detect.py
-│   │   ├── write.py
-│   │   └── split.py
-│   │
-│   └── tools/                     # Tools sul modello (futuri)
-│       ├── validator.py
-│       ├── hasher.py              # fingerprint geometrica
-│       ├── analyzer.py            # DxfAnalyzer, CSV export
-│       └── offset.py      
-│
-|  drawing_parser/          #     Plugin esterno - usa forge internamente    
-|      ├── view_classifier.py    ← ragiona su ForgeModel
-|      ├── view_reconstructor.py ← ricompone interruzioni, parti piegate, ecc...
-|      └── thickness_extractor.py
-│
-└── tests/
 
 
 I tools possibili sul motore geometrico:
@@ -217,6 +269,9 @@ Decomposizione
 split() — già ce l'hai
 skeleton() — asse mediano (utile per bend detection avanzato)
 region_decompose() — divide parti complesse in regioni semantiche
+
+
+
 
 
 ## PRIORITÀ INSENSATA — probabilmente mai o comunque non in questo contesto

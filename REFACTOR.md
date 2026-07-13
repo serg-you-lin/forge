@@ -43,3 +43,50 @@ dxf-forge/
 |      └── thickness_extractor.py
 │
 └── tests/
+
+
+
+
+
+📂 forge\adapters\dxf\
+
+├── loader.py                    (invariato)
+│     load_dxf, _read_dwg, _upgrade_to_r2010
+
+├── sanitize.py                  (+ dedup_adapter)
+│     sanitize, normalize_ocs, flatten_z, _explode_inserts
+│     deduplicate, _key_for, extract_keyed_entities, delete_entities
+
+├── geometry_adapter.py          (solo geometria pura)
+│     entity_to_polygon, pline_to_polygon
+│     arc_endpoints, arc_to_bulge, arc_to_linestrings
+│     spline_to_points
+│     _polygon_pline, _polygon_circle, _polygon_flattened
+│     _arc_endpoint
+│     + registri interni (_register_polygon, ecc.)
+
+├── graph_adapter.py             (invariato + frame)
+│     edges_from_msp
+│     _entity_endpoints, _normalized_endpoints, _entity_to_linestring, _spline_endpoints
+│     _line_to_raw, _lwpoly_to_raw, _entity_to_raw, extract_frame_handles
+
+├── virtual_adapter.py           (invariato)
+│     DxfWriteContext
+│     _loop_to_contour, parse_loop
+│     _parse_line, _parse_arc, _parse_arc_discretized, _parse_spline
+│     _build_pts_with_bulge, _extract_source_layer
+│     _write_virtual_shape
+
+├── proxy_adapter.py             (nuovo)
+│     entity_to_proxy, contour_to_proxy
+
+├── copy_adapter.py              (invariato)
+│     copy_entity, _copy_*, _register_copy
+
+├── gap_adapter.py               (invariato)
+│     extract_free_endpoints, apply_gap_fixes, _apply_move, _apply_add_segment, _meta_for
+
+└── hole_detector.py             (estratto da geometry_adapter)
+│     is_threaded_arc, is_threaded_hole, is_countersink_outer
+      get_representative_point, entity_midpoint, entity_length
+      _repr_pt_*, _line_length, _arc_length, ecc.
