@@ -161,7 +161,7 @@ class TestFlangeCountersink(unittest.TestCase):
 
         for h in big_holes:
             self.assertNotEqual(h.hole_type, HOLE_TYPE_COUNTERSINK)
-            self.assertEqual(h.layer, LAYER_INNER)
+            self.assertEqual(h.role, "inner")
 
     def test_flangia_struttura(self):
         self.assertEqual(len(self.result.parts), 1)
@@ -169,7 +169,7 @@ class TestFlangeCountersink(unittest.TestCase):
         self.assertEqual(len(part.holes), 1)
         
         hole = part.holes[0]
-        self.assertEqual(hole.layer, LAYER_INNER)
+        self.assertEqual(hole.role, "inner")
         self.assertEqual(hole.hole_type, HOLE_TYPE_PLAIN)
         self.assertNotEqual(hole.hole_type, HOLE_TYPE_COUNTERSINK)
 

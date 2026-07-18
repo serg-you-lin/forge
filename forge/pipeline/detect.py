@@ -112,7 +112,7 @@ def detect(
 # ---------------------------------------------------------------------------
 # Step 1 — special layers (certezza 1.0)
 # ---------------------------------------------------------------------------
-
+# TODO: step 7b — rinominare in source_context
 def _detect_special_layers(
     result:         ForgeResult,
     msp,
@@ -154,7 +154,7 @@ def _detect_special_layers(
     # --- Hole sui part: promozione diretta da layer speciale ---
     for part in result.parts:
         for hole in part.holes:
-            check_layer = (hole.source_layer or hole.layer).lower()
+            check_layer = hole.source_layer.lower()
             work_type   = layer_to_work.get(check_layer)
             if work_type is None:
                 continue
@@ -168,7 +168,7 @@ def _detect_special_layers(
         # --- contorni inner non-foro su layer speciale ---
         remaining = []
         for inner in part.inners:
-            check_layer = (inner.source_layer or inner.layer).lower()
+            check_layer = inner.source_layer.lower()
             work_type   = layer_to_work.get(check_layer)
             if work_type is None:
                 remaining.append(inner)

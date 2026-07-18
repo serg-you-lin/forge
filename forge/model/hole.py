@@ -55,7 +55,7 @@ class Hole:
     confidence:     float = 0.0
     source:         str   = ""
 
-    layer:          str   = ""
+    role:          str   = ""
     source_layer:   str   = ""
     source_ref:     Any   = None
 
@@ -82,7 +82,7 @@ class Hole:
             "hole_type":  self.hole_type,
             "diameter":   round(self.diameter, 4),
             "center":     (round(self.center[0], 4), round(self.center[1], 4)),
-            "layer":      self.layer,
+            "role":       self.role,
             "confidence": round(self.confidence, 4),
             "source":     self.source,
         }

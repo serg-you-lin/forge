@@ -18,9 +18,7 @@ class ForgeContour:
                  rileggere il msp. Non serializzato: id() non ha senso su disco.
     """
     polygon:      Polygon
-    is_inner:     bool    = False
-    layer:        str     = ""
-    is_hole:      bool    = False   # sempre False su ForgeContour — i fori usano Hole
+    role:         str     = ""
     source_ref:   Any = None
     area:         float   = field(init=False)
     bbox:         Tuple[float, float, float, float] = field(init=False)
@@ -61,7 +59,6 @@ class ForgePart:
     label:          str                = ""
     source_file:    str                = ""
     custom:         dict               = field(default_factory=dict)
-    # geometry_hints: GeometryHints      = field(default_factory=GeometryHints)
     entity_ids:     Set[int]           = field(default_factory=set)
 
     @property

@@ -153,3 +153,10 @@ def color_for_layer(layer_name: str) -> int:
     Se il layer non è riconosciuto, restituisce COLOR_TRASH (rosso).
     """
     return ALL_FORGE_LAYERS.get(layer_name, COLOR_TRASH)
+
+
+ROLE_TO_LAYER = {
+    "outer": LAYER_OUTER,
+    "inner": LAYER_INNER,
+    "hole":  LAYER_HOLE,
+}
