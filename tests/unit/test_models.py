@@ -50,34 +50,34 @@ class TestForgeContour(unittest.TestCase):
     def test_001_area(self):
         """Area calcolata correttamente."""
         poly = Polygon([(0,0), (10,0), (10,10), (0,10)])
-        contour = ForgeContour(polygon=poly, is_inner=False, layer="OuterContour")
+        contour = ForgeContour(polygon=poly, role="outer")
         print(f"\n[ForgeContour] area={contour.area}")
         self.assertEqual(contour.area, 100.0)
 
     def test_002_bbox(self):
         """Bbox calcolato correttamente."""
         poly = Polygon([(0,0), (10,0), (10,10), (0,10)])
-        contour = ForgeContour(polygon=poly, is_inner=False, layer="OuterContour")
+        contour = ForgeContour(polygon=poly, role="outer")
         print(f"[ForgeContour] bbox={contour.bbox}")
         self.assertEqual(contour.bbox, (0, 0, 10, 10))
 
-    def test_003_is_hole_default(self):
-        """is_hole default è False."""
+    def test_003_role_default(self):
+        """role default è stringa vuota."""
         poly = Polygon([(0,0), (10,0), (10,10), (0,10)])
         contour = ForgeContour(polygon=poly)
-        self.assertFalse(contour.is_inner)
+        self.assertEqual(contour.role, "")
 
-    def test_004_is_hole_always_false(self):
-        """is_hole è sempre False su ForgeContour — i fori usano Hole."""
+    def test_004_role_inner(self):
+        """role inner assegnato correttamente."""
         poly = Polygon([(0,0), (10,0), (10,10), (0,10)])
-        contour = ForgeContour(polygon=poly)
-        self.assertFalse(contour.is_hole)
+        contour = ForgeContour(polygon=poly, role="inner")
+        self.assertEqual(contour.role, "inner")
 
-    def test_005_layer_preserved(self):
-        """Layer preservato correttamente."""
+    def test_005_role_preserved(self):
+        """Role preservato correttamente."""
         poly = Polygon([(0,0), (10,0), (10,10), (0,10)])
-        contour = ForgeContour(polygon=poly, layer="TAGLIO")
-        self.assertEqual(contour.layer, "TAGLIO")
+        contour = ForgeContour(polygon=poly, role="outer")
+        self.assertEqual(contour.role, "outer")
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ class TestHole(unittest.TestCase):
             hole_type=hole_type,
             confidence=1.0,
             source="geometric",
-            layer="0",
+            role='hole',
         )
 
     def test_001_area(self):
@@ -134,7 +134,7 @@ class TestHole(unittest.TestCase):
         hole = self._make_hole()
         d = hole.to_dict()
         print(f"\n[Hole.to_dict] keys={list(d.keys())}")
-        for key in ["hole_type", "diameter", "center", "layer", "confidence", "source"]:
+        for key in ["hole_type", "diameter", "center", "role", "confidence", "source"]:
             self.assertIn(key, d)
 
     def test_006_to_dict_values(self):

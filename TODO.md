@@ -36,7 +36,7 @@ Capire dove deve lavorare perhcè potrebbe essere parte del plugin per i draft
 DXF adapter → produce List[ShapeProxy] già pronti
 core._collect_proxies → riceve List[ShapeProxy], non sa niente di ezdxf
     _build_topology(self, proxies)
-
+Se ti fa senso, potresti eliminare Contour e fare in modo che _loop_to_contour produca direttamente uno ShapeProxy — salteresti un passaggio. Ma è un refactoring separato.
 
 ### Refactoring Adapters
 # core/adapter_base.py  ← agnostico, zero import DXF
@@ -104,6 +104,8 @@ Il campo entity diventa source_ref. detect.py smette di leggere entity.dxf.* dir
 Step 7 — load() generico
 load_dxf() diventa load(path) con dispatch per formato. DxfAdapter istanziato dentro il loader DXF.
 Step 7b — source_layer rinominato source_context
+
+
 
 
 ### Analisi

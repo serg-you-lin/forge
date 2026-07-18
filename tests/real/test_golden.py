@@ -19,7 +19,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-
+from forge.rules.layers import ROLE_TO_LAYER, LAYER_OUTER, LAYER_INNER, LAYER_HOLE
 EXAMPLES_DIR      = project_root / "tests" / "examples"
 GOLDEN_DXF_DIR    = EXAMPLES_DIR / "golden"
 GOLDEN_JSON_DIR   = EXAMPLES_DIR / "golden" / "json"
@@ -33,6 +33,7 @@ GLOBAL_SPECIAL_LAYERS = {
     "MARK":      "engrave",
     "Signature": "engrave",
 }
+
 
 
 def _load_config(dxf_path: Path) -> dict:
@@ -124,7 +125,7 @@ def _make_golden_test(golden_path: Path):
 
             # --- outer layer ---
             self.assertEqual(
-                part.outer.layer,
+                ROLE_TO_LAYER.get(part.outer.role),
                 exp["outer_layer"],
                 msg=f"{label} — outer_layer",
             )
@@ -141,7 +142,8 @@ def _make_golden_test(golden_path: Path):
                 msg=f"{label} — holes_count",
             )
             self.assertEqual(
-                [h.layer for h in holes],
+                # [h.layer for h in holes],
+                [ROLE_TO_LAYER.get(h.role, LAYER_HOLE) for h in holes],
                 exp["holes_layers"],
                 msg=f"{label} — holes_layers",
             )
@@ -157,7 +159,8 @@ def _make_golden_test(golden_path: Path):
                 msg=f"{label} — inners_count",
             )
             self.assertEqual(
-                [i.layer for i in inners],
+                # [i.layer for i in inners],
+                [ROLE_TO_LAYER.get(i.role, LAYER_INNER) for i in inners],
                 exp["inners_layers"],
                 msg=f"{label} — inners_layers",
             )

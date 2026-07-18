@@ -38,6 +38,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
+from forge.rules.layers import ROLE_TO_LAYER, LAYER_INNER, LAYER_OUTER, LAYER_HOLE
 
 MULTIPLI_DIR = project_root / "tests" / "examples" / "golden_multipli"
 GOLDEN_DIR   = MULTIPLI_DIR / "golden"
@@ -258,17 +259,33 @@ def _make_split_test(golden_path: Path):
         # --- Layer ---
         if "outer_layer" in golden:
             self.assertEqual(
-                part.outer.layer,
+                ROLE_TO_LAYER.get(part.outer.role),
                 golden["outer_layer"],
-                msg=f"{label}: outer_layer '{part.outer.layer}' != atteso '{golden['outer_layer']}'",
+                msg=f"{label}: outer_layer '{ROLE_TO_LAYER.get(part.outer.role)}' != atteso '{golden['outer_layer']}'",
             )
 
         if "inners_layers" in golden:
+            actual_layers = [ROLE_TO_LAYER.get(h.role, LAYER_INNER) for h in all_inners]
             self.assertEqual(
-                [h.layer for h in all_inners],
+                actual_layers,
                 golden["inners_layers"],
-                msg=f"{label}: inners_layers {[h.layer for h in all_inners]} != attesi {golden['inners_layers']}",
+                msg=f"{label}: inners_layers {actual_layers} != attesi {golden['inners_layers']}",
             )
+
+        # # --- Layer ---
+        # if "outer_layer" in golden:
+        #     self.assertEqual(
+        #         part.outer.layer,
+        #         golden["outer_layer"],
+        #         msg=f"{label}: outer_layer '{part.outer.layer}' != atteso '{golden['outer_layer']}'",
+        #     )
+
+        # if "inners_layers" in golden:
+        #     self.assertEqual(
+        #         [h.layer for h in all_inners],
+        #         golden["inners_layers"],
+        #         msg=f"{label}: inners_layers {[h.layer for h in all_inners]} != attesi {golden['inners_layers']}",
+        #     )
 
         # --- Custom ---
         if "custom" in golden:

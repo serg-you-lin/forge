@@ -61,30 +61,53 @@ def _build_tree(proxies: list[ShapeProxy]) -> list:
 # Costruzione semantica — legge solo ShapeProxy, zero .dxf.*
 # ---------------------------------------------------------------------------
 
+# def _make_hole(proxy: ShapeProxy, geometric_hint: str = "",
+#                outer_proxy: Optional[ShapeProxy] = None) -> Hole:
+#     layer = LAYER_HOLE if proxy.diameter < HOLE_DIAMETER_THRESHOLD else LAYER_INNER
+#     return Hole(
+#         polygon=proxy.polygon,
+#         diameter=proxy.diameter,
+#         center=proxy.center,
+#         hole_type=HOLE_TYPE_UNKNOWN,
+#         geometric_hint=geometric_hint,
+#         layer=layer,
+#         source_layer=proxy.source_layer,
+#         source_ref=proxy.source_ref,
+#         outer_diameter=outer_proxy.diameter if outer_proxy else None,
+#         outer_source_ref=outer_proxy.source_ref if outer_proxy else None,
+#     )
 def _make_hole(proxy: ShapeProxy, geometric_hint: str = "",
                outer_proxy: Optional[ShapeProxy] = None) -> Hole:
-    layer = LAYER_HOLE if proxy.diameter < HOLE_DIAMETER_THRESHOLD else LAYER_INNER
+    role = "hole" if proxy.diameter < HOLE_DIAMETER_THRESHOLD else "inner"
     return Hole(
         polygon=proxy.polygon,
         diameter=proxy.diameter,
         center=proxy.center,
         hole_type=HOLE_TYPE_UNKNOWN,
         geometric_hint=geometric_hint,
-        layer=layer,
+        role=role,
         source_layer=proxy.source_layer,
         source_ref=proxy.source_ref,
         outer_diameter=outer_proxy.diameter if outer_proxy else None,
         outer_source_ref=outer_proxy.source_ref if outer_proxy else None,
     )
 
-
+# def _make_inner(proxy: ShapeProxy) -> ForgeContour:
+#     is_virtual = proxy.shape_type == "virtual"
+#     return ForgeContour(
+#         polygon=proxy.polygon,
+#         is_inner=True,
+#         layer=LAYER_INNER,
+#         is_hole=False,
+#         source_ref=proxy.source_ref if not is_virtual else None,
+#         source_layer=proxy.source_layer,
+#         vs_id=id(proxy.source_ref) if is_virtual else None,
+#     )
 def _make_inner(proxy: ShapeProxy) -> ForgeContour:
     is_virtual = proxy.shape_type == "virtual"
     return ForgeContour(
         polygon=proxy.polygon,
-        is_inner=True,
-        layer=LAYER_INNER,
-        is_hole=False,
+        role="inner",
         source_ref=proxy.source_ref if not is_virtual else None,
         source_layer=proxy.source_layer,
         vs_id=id(proxy.source_ref) if is_virtual else None,
@@ -166,13 +189,18 @@ def _build_hierarchy(self):
     for root_node in tree:
         father_proxy, children = root_node
 
-        # contorno esterno
         outer = ForgeContour(
             polygon=father_proxy.polygon,
-            is_inner=False,
-            layer=LAYER_OUTER,
+            role="outer",
             source_ref=father_proxy.source_ref if father_proxy.shape_type != "virtual" else None,
         )
+        # # contorno esterno
+        # outer = ForgeContour(
+        #     polygon=father_proxy.polygon,
+        #     is_inner=False,
+        #     layer=LAYER_OUTER,
+        #     source_ref=father_proxy.source_ref if father_proxy.shape_type != "virtual" else None,
+        # )
 
         _register(father_proxy, self.classified_virtual_ids, self.classified_entity_ids)
 
