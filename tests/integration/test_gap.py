@@ -129,6 +129,7 @@ class TestParallelClose(unittest.TestCase):
         self.assertEqual(self.result.part_count, 1)
 
     def test_002_no_errors(self):
+        print("ERRORS:", self.result.errors)
         self.assertEqual(len(self.result.errors), 0)
 
     def test_003_no_holes(self):

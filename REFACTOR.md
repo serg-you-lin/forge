@@ -4,10 +4,7 @@ dxf-forge/
 │   │
 │   ├── adapters/                  # Traduzione formato → primitivi
 │   │   ├── dxf/
-│   │   │   ├── virtual_adapter.py
-│   │   │   ├── copy_adapter.py
-│   │   │   └── loader.py
-│   │   ├── pdf/                   # futuro
+│   │   ├── pdf/                   # in costruzione
 │   │   └── svg/                   # futuro
 │   │
 │   ├── core/                      # Motore geometrico puro
@@ -22,6 +19,7 @@ dxf-forge/
 │   │   ├── hole.py                # Hole
 │   │   ├── edge.py                # Edge
 │   │   ├── result.py              # ForgeResult
+│   │   ├── shape_proxy.py         # ShapeProxy
 │   │   └── classified.py              
 │   │
 │   ├── pipeline/                  # Le fasi orchestrate

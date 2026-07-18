@@ -155,14 +155,14 @@ def split(
     special_map        = _build_special_map(result)
     entity_to_structural = {}
     for p in result.parts:
-        if p.outer.entity is not None:
-            entity_to_structural[id(p.outer.entity)] = p.outer.layer
+        if p.outer.source_ref is not None:
+            entity_to_structural[id(p.outer.source_ref)] = p.outer.layer
         for inner in p.inners:
-            if inner.entity is not None:
-                entity_to_structural[id(inner.entity)] = inner.layer
+            if inner.source_ref is not None:
+                entity_to_structural[id(inner.source_ref)] = inner.layer
         for hole in p.holes:
-            if hole.entity is not None:
-                entity_to_structural[id(hole.entity)] = hole.layer
+            if hole.source_ref is not None:
+                entity_to_structural[id(hole.source_ref)] = hole.layer
 
     generated = []
     src_doc   = msp.doc
@@ -247,14 +247,14 @@ def _assign_structural_layers(msp, result: ForgeResult) -> None:
     """ Assegna i layer strutturali e imposta il colore a BYLAYER (256). """
     for part in result.parts:
         for contour in [part.outer] + part.inners:
-            if contour.entity is not None:
-                contour.entity.dxf.layer = contour.layer
-                contour.entity.dxf.color = 256  # BYLAYER
+            if contour.source_ref is not None:
+                contour.source_ref.dxf.layer = contour.layer
+                contour.source_ref.dxf.color = 256  # BYLAYER
 
         for hole in part.holes:
-            if hole.entity is not None:
-                hole.entity.dxf.layer = hole.layer
-                hole.entity.dxf.color = 256  # BYLAYER
+            if hole.source_ref is not None:
+                hole.source_ref.dxf.layer = hole.layer
+                hole.source_ref.dxf.color = 256  # BYLAYER
 
 
 def _remove_superseded_line_arc(msp, result: ForgeResult) -> None:
@@ -271,40 +271,10 @@ def _remove_superseded_line_arc(msp, result: ForgeResult) -> None:
         and id(e) in result._entities_in_loops_ids
         and (not e.dxf.hasattr("layer") or e.dxf.layer.lower() not in special_layer_names)
     ]
-    # to_delete = [
-    #     e for e in list(msp)
-    #     if e.dxftype() in ("LINE", "ARC")
-    #     and id(e) in result._entities_in_loops_ids
-    # ]
+
     for e in to_delete:
         msp.delete_entity(e)
 
-
-# def _build_work_index(result: ForgeResult) -> dict:
-#     """
-#     Costruisce un indice id(entity) → work_type da:
-#         - part.holes con hole_type classificato da detect()
-#         - part.geometry_hints.bend_line_ids (linee di piega)
-
-#     I fori plain non entrano nell'indice — rimangono su LAYER_HOLE.
-#     I fori unknown (detect() non chiamato) non entrano — nessuna diagnosi.
-#     """
-#     index = {}
-#     for part in result.parts:
-#         for hole in part.holes:
-#             # print(f"[work_index] hole_type={hole.hole_type} entity={hole.entity} outer_entity={hole.outer_entity}")
-#             if hole.hole_type == HOLE_TYPE_COUNTERSINK and hole.outer_entity is not None:
-#                 index[id(hole.outer_entity)] = "countersink"
-#             elif hole.hole_type == HOLE_TYPE_THREADED and hole.entity is not None:
-#                 index[id(hole.entity)] = "threaded_hole"
-#                 # print(f"  → indicizzato id={id(hole.entity)} come threaded_hole")
-
-#         for eid in part.geometry_hints.bend_line_ids:
-#             index[eid] = "bending"
-#             part.entity_ids.add(eid)
-
-#     # print(f"[work_index] totale: {len(index)} entità")
-#     return index
 
 def _build_work_index(result: ForgeResult) -> dict:
     """
@@ -318,13 +288,13 @@ def _build_work_index(result: ForgeResult) -> dict:
     index = {}
     for part in result.parts:
         for hole in part.holes:
-            if hole.hole_type == HOLE_TYPE_COUNTERSINK and hole.outer_entity is not None:
-                index[id(hole.outer_entity)] = "countersink"
-            elif hole.hole_type == HOLE_TYPE_THREADED and hole.entity is not None:
-                index[id(hole.entity)] = "threaded_hole"
+            if hole.hole_type == HOLE_TYPE_COUNTERSINK and hole.outer_source_ref is not None:
+                index[id(hole.outer_source_ref)] = "countersink"
+            elif hole.hole_type == HOLE_TYPE_THREADED and hole.source_ref is not None:
+                index[id(hole.source_ref)] = "threaded_hole"
 
         for bl in part.bending_lines:
-            eid = id(bl.entity)
+            eid = id(bl.source_ref)
             index[eid] = "bending"
             part.entity_ids.add(eid)
 
@@ -339,15 +309,6 @@ def _build_special_map(result: ForgeResult) -> dict:
         return {}
     return {k.lower(): v.lower() for k, v in result.special_layers.items()}
 
-
-# def _setup_layers(doc) -> None:
-#     """
-#     Crea i layer forge standard nel documento di output.
-#     """
-#     for name, color in ALL_FORGE_LAYERS.items():
-#         if name not in doc.layers:
-#             layer = doc.layers.new(name)
-#             layer.color = color
             
 def _setup_layers(doc) -> None:
     """
@@ -368,7 +329,7 @@ def _all_classified_ids(result: ForgeResult) -> set:
     Restituisce gli id() di tutte le entità già classificate da detect().
     Se detect() non è stato chiamato, restituisce un insieme vuoto.
     """
-    return {id(ce.entity) for ce in result.classified_entities if ce.entity is not None}
+    return {id(ce.source_ref) for ce in result.classified_entities if ce.source_ref is not None}
 
 
 def _write_virtual_shapes_to_msp(msp_out, result: ForgeResult, part: ForgePart) -> dict:

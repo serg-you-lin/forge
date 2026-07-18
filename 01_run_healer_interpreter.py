@@ -13,9 +13,9 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/pline_with_hole.dxf"
+input_dxf = r"tests/examples/intricato_doppio.dxf"
 
-tolerance = .01
+tolerance = .02
 
 special_layers = {
     "MARK"      : "engrave",
