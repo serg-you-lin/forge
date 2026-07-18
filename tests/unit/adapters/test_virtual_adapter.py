@@ -53,7 +53,7 @@ def make_spline_entity(points, layer="0"):
 
 
 def make_edge(entity, layer="0"):
-    return Edge(entity=entity, layer=layer, start=(0.0, 0.0), end=(0.0, 0.0))
+    return Edge(source_ref=entity, layer=layer, start=(0.0, 0.0), end=(0.0, 0.0))
 
 
 def make_square_loop(side=100.0):

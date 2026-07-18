@@ -55,11 +55,11 @@ def parse_loop(loop) -> List:
     Restituisce List[LineSeg | ArcSeg | SplineSeg | DiscretizedArcSeg].
     Se il loop contiene SPLINE, gli archi vengono discretizzati.
     """
-    has_spline = any(edge.entity.dxftype() == "SPLINE" for edge, _ in loop)
+    has_spline = any(edge.source_ref.dxftype() == "SPLINE" for edge, _ in loop)
     primitives = []
 
     for edge, rev in loop:
-        entity = edge.entity
+        entity = edge.source_ref
 
         if entity.dxftype() == "LINE":
             seg, _ = _parse_line(entity, rev)

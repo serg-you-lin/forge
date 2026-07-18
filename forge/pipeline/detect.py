@@ -137,7 +137,7 @@ def _detect_special_layers(
             continue
         data = _extract_data(entity, work_type)
         ce   = ClassifiedEntity(
-            entity=entity,
+            source_ref=entity,
             work_type=work_type,
             confidence=1.0,
             source="special_layers",
@@ -173,12 +173,12 @@ def _detect_special_layers(
             if work_type is None:
                 remaining.append(inner)
                 continue
-            data = _extract_data(inner.entity, work_type) if inner.entity is not None else {
+            data = _extract_data(inner.source_ref, work_type) if inner.source_ref is not None else {
                 "length": round(inner.polygon.exterior.length, 4),
                 "layer":  inner.source_layer,
             }
             ce = ClassifiedEntity(
-                entity=inner.entity,
+                source_ref=inner.source_ref,
                 work_type=work_type,
                 confidence=1.0,
                 source="special_layers",
@@ -200,7 +200,7 @@ def _detect_bending_lines(result: ForgeResult, bending_tolerance: float = 1.0) -
     """
     Individua LINE interne all'outer di ogni part e popola part.bending_lines.
     """
-    classified_ids = {id(ce.entity) for ce in result.classified_entities}
+    classified_ids = {id(ce.source_ref) for ce in result.classified_entities}
 
     for entity in result.trash_entities:
         if entity.dxftype() != "LINE":
@@ -251,7 +251,7 @@ def _detect_holes(result: ForgeResult, all_arcs: list) -> None:
                 hole.source     = "geometric"
                 continue
 
-            if hole.entity is not None and is_threaded_hole(hole.entity, all_arcs):
+            if hole.source_ref is not None and is_threaded_hole(hole.source_ref, all_arcs):
                 hole.hole_type  = HOLE_TYPE_THREADED
                 hole.confidence = 0.80
                 hole.source     = "geometric"
@@ -276,9 +276,9 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
         if not part.outer.polygon.contains(probe):
             continue
 
-        if work_type == "bending" and ce.entity is not None:
-            part.bending_lines.append(_make_bending_line(ce.entity, part.label))
-            part.entity_ids.add(id(ce.entity))
+        if work_type == "bending" and ce.source_ref is not None:
+            part.bending_lines.append(_make_bending_line(ce.source_ref, part.label))
+            part.entity_ids.add(id(ce.source_ref))
 
         _write_custom(ce, part)
         return
@@ -320,10 +320,9 @@ def _make_bending_line(entity, part_label: str) -> BendingLine:
         (entity.dxf.end.x,   entity.dxf.end.y),
     ])
     return BendingLine(
-        entity=entity,
+        source_ref=entity,
         geometry=geom,
         length=geom.length,
-        layer=entity.dxf.layer,
         angle_deg=math.degrees(math.atan2(
             entity.dxf.end.y - entity.dxf.start.y,
             entity.dxf.end.x - entity.dxf.start.x,
@@ -361,11 +360,11 @@ def _extract_data(entity, work_type: str) -> dict:
 
 
 def _entity_probe_point(ce: ClassifiedEntity) -> Optional[Point]:
-    if ce.entity is None:
+    if ce.source_ref is None:
         if ce.polygon is not None:
             return ce.polygon.centroid
         return None
-    entity = ce.entity
+    entity = ce.source_ref
     try:
         dtype = entity.dxftype()
         if dtype == "LINE":

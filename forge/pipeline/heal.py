@@ -15,7 +15,6 @@ from ..adapters.dxf.geometry_adapter import (
 from ..adapters.dxf.sanitize import deduplicate as _deduplicate_entities
 from ..core.geometry import spline_endpoints
 from ..core.geometry import round_point
-from ..adapters.dxf.graph_adapter import edges_from_msp as _edges_from_msp_adapter
 from ..adapters.dxf.gap_adapter import extract_free_endpoints, apply_gap_fixes
 from ..adapters.dxf.sanitize import _explode_inserts 
 
@@ -23,10 +22,10 @@ from ..rules.layers import (
     STRUCTURAL_LAYERS,
 )
 
-
 class HealStep:
     def __init__(
         self,
+        adapter,
         msp,
         tolerance,
         label="",
@@ -36,6 +35,7 @@ class HealStep:
         ignore_layers=None,
         special_layers=None,
     ):
+        self.adapter         = adapter
         self.msp             = msp
         self.tolerance       = tolerance
         self.label           = label
@@ -43,13 +43,11 @@ class HealStep:
         self.explode_inserts = explode_inserts
         self.flatten_z       = flatten_z
         self.ignore_layers   = {l.lower() for l in (ignore_layers or [])}
-        # nomi layer (lowercase) da non inghiottire nei loop
         self.special_layer_names = {k.lower() for k in (special_layers or {})}
 
         self.node_decimals = max(round(-np.log10(tolerance * 2)), 1)
         self.result        = ForgeResult(source_file=source_file)
 
-        # salva special_layers nel result — detect() lo legge da qui
         if special_layers:
             self.result.special_layers = special_layers
 
@@ -57,6 +55,10 @@ class HealStep:
         self.classified_entity_ids  = set()
         self.classified_virtual_ids = set()
         self.entities_in_loops      = set()
+
+        # self.edges   = adapter.to_edges()
+        # self.proxies = adapter.to_proxies()
+        self.proxies = []
 
         self.all_lines      = []
         self.all_arcs       = []
@@ -74,21 +76,18 @@ class HealStep:
         if not self.result.is_valid:
             return self.result
         self._preprocess()
+        self.proxies = self.adapter.to_proxies()
         self._find_bending_candidates()
         self._find_loops()
         self._reintegrate_bending()
         self._build_hierarchy()
         self._build_trash()
         return self.result
-
-
+    
     def _build_graph(self, exclude_ids=None):
-        edges = _edges_from_msp_adapter(
-            self.msp,
-            self.node_decimals,
-            exclude_ids=exclude_ids,
-            ignore_layers=self.ignore_layers,
-        )
+        edges = self.adapter.to_edges()
+        if exclude_ids:
+            edges = [e for e in edges if id(e.source_ref) not in exclude_ids]
         return build_node_graph(edges)
 
     def _handle_inserts(self):
@@ -174,7 +173,6 @@ class HealStep:
             s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
             e = round_point((line.dxf.end.x,   line.dxf.end.y),   self.node_decimals)
             if s in branching_nodes and e in branching_nodes:
-                print(f"[BENDING CANDIDATE] s={s} grado={len(graph_full[s])} e={e} grado={len(graph_full[e])}")
                 self.candidate_bending_ids.add(id(line))
 
         if not self.candidate_bending_ids:
@@ -234,12 +232,12 @@ class HealStep:
 
 
 # metodi estratti in moduli separati
-from ..core.topology.loops import _collect_loops, _reintegrate_bending  # noqa: E402
-from ..core.healing.hierarchy  import _build_hierarchy, _build_trash         # noqa: E402
-from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext  # noqa: E402
-from ..core.primitives.contour import Contour                                  # noqa: E402
-from ..rules.layers import LAYER_OUTER, LAYER_INNER, COLOR_OUTER, COLOR_INNER  # noqa: E402
-from shapely.geometry import Polygon                                            # noqa: E402
+from ..core.topology.loops import _collect_loops, _reintegrate_bending 
+from ..core.healing.hierarchy  import _build_hierarchy, _build_trash        
+from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext  
+from ..core.primitives.contour import Contour                                  
+from ..rules.layers import LAYER_OUTER, LAYER_INNER, COLOR_OUTER, COLOR_INNER  
+from shapely.geometry import Polygon                                            
 
 
 def _fallback_polygonize(self):
@@ -317,8 +315,9 @@ def _classify_and_build(self, loops, graph):
         )
 
     outer_loops, inner_loops = classify_loops(loops)
+        
     self.entities_in_loops = {
-        id(edge.entity) for loop in (outer_loops + inner_loops) for edge, _ in loop
+        id(edge.source_ref) for loop in (outer_loops + inner_loops) for edge, _ in loop
     }
     self.result._entities_in_loops_ids = self.entities_in_loops
 

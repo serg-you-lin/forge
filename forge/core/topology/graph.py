@@ -114,8 +114,7 @@ def _prune_dead_ends(graph: dict) -> dict:
     while changed:
         changed = False
         leaves = [node for node, neighbors in g.items() if len(neighbors) <= 1]
-        # for leaf in leaves:
-        #     print(f"[PRUNE] rimuovo: {leaf} neighbors={g[leaf]}")
+
         for leaf in leaves:
             if leaf not in g:
                 continue
@@ -128,15 +127,3 @@ def _prune_dead_ends(graph: dict) -> dict:
 
     return g
 
-
-# def check_loop_ambiguity(loops: list, graph: dict) -> list:
-#     loop_edge_ids = {id(edge) for loop in loops for edge, _ in loop}
-#     branching = []
-#     for node, connections in graph.items():
-#         loop_connections = [
-#             (edge, n) for (edge, n) in connections
-#             if id(edge) in loop_edge_ids
-#         ]
-#         if len(loop_connections) > 2:
-#             branching.append(node)
-#     return branching
