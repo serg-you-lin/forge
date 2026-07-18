@@ -119,26 +119,26 @@ class TestEntitaBylayer(unittest.TestCase):
 
     def test_outer_contour_su_layer_corretto(self):
         """Il contorno esterno di ogni part deve essere su OuterContour."""
-        from forge.rules.layers import LAYER_OUTER
+        from forge.rules.layers import LAYER_OUTER, ROLE_TO_LAYER
         for i, part in enumerate(self.result.parts):
             with self.subTest(part=i):
                 self.assertEqual(
-                    part.outer.layer,
+                    ROLE_TO_LAYER.get(part.outer.role),
                     LAYER_OUTER,
-                    msg=f"Part {i}: outer.layer atteso '{LAYER_OUTER}', trovato '{part.outer.layer}'",
+                    msg=f"Part {i}: outer.role atteso 'outer', trovato '{part.outer.role}'",
                 )
 
     def test_holes_su_layer_corretto(self):
         """I fori devono essere su Hole o InnerContour (mai su layer non-forge)."""
-        from forge.rules.layers import LAYER_HOLE, LAYER_INNER
-        layer_fori_validi = {LAYER_HOLE, LAYER_INNER}
+        from forge.rules.layers import ROLE_TO_LAYER
+        role_fori_validi = {"hole", "inner"}
         for i, part in enumerate(self.result.parts):
             for j, hole in enumerate(part.holes):
                 with self.subTest(part=i, hole=j):
                     self.assertIn(
-                        hole.layer,
-                        layer_fori_validi,
-                        msg=f"Part {i} hole {j}: layer '{hole.layer}' non valido per un foro",
+                        hole.role,
+                        role_fori_validi,
+                        msg=f"Part {i} hole {j}: role '{hole.role}' non valido per un foro",
                     )
 
 
@@ -227,10 +227,14 @@ class TestLineetteBastarde(unittest.TestCase):
     def test_un_solo_part(self):
         self.assertEqual(self.result.part_count, 1, "Atteso 1 part")
 
+    # def test_outer_su_layer_corretto(self):
+    #     from forge.rules.layers import LAYER_OUTER
+    #     part = self.result.parts[0]
+    #     self.assertEqual(part.outer.layer, LAYER_OUTER)
     def test_outer_su_layer_corretto(self):
-        from forge.rules.layers import LAYER_OUTER
+        from forge.rules.layers import LAYER_OUTER, ROLE_TO_LAYER
         part = self.result.parts[0]
-        self.assertEqual(part.outer.layer, LAYER_OUTER)
+        self.assertEqual(ROLE_TO_LAYER.get(part.outer.role), LAYER_OUTER)
 
     def test_due_entita_su_bending(self):
         from forge.rules.layers import LAYER_BENDING

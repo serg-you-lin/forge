@@ -55,6 +55,11 @@ _HOLE_TYPE_TO_WORK_TYPE = {
     HOLE_TYPE_THREADED:    "threaded_hole",
 }
 
+ROLE_TO_LAYER = {
+    "outer": LAYER_OUTER,
+    "inner": LAYER_INNER,
+    "hole":  LAYER_HOLE,
+}
 
 # ---------------------------------------------------------------------------
 # API pubblica
@@ -156,13 +161,16 @@ def split(
     entity_to_structural = {}
     for p in result.parts:
         if p.outer.source_ref is not None:
-            entity_to_structural[id(p.outer.source_ref)] = p.outer.layer
+            # entity_to_structural[id(p.outer.source_ref)] = p.outer.layer
+            entity_to_structural[id(p.outer.source_ref)] = ROLE_TO_LAYER.get(p.outer.role, LAYER_OUTER)
         for inner in p.inners:
             if inner.source_ref is not None:
-                entity_to_structural[id(inner.source_ref)] = inner.layer
+                # entity_to_structural[id(inner.source_ref)] = inner.layer
+                entity_to_structural[id(inner.source_ref)] = ROLE_TO_LAYER.get(inner.role, LAYER_INNER)
         for hole in p.holes:
             if hole.source_ref is not None:
-                entity_to_structural[id(hole.source_ref)] = hole.layer
+                # entity_to_structural[id(hole.source_ref)] = hole.layer
+                entity_to_structural[id(hole.source_ref)] = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
 
     generated = []
     src_doc   = msp.doc
@@ -243,18 +251,29 @@ def split(
 # Helpers interni
 # ---------------------------------------------------------------------------
 
+# def _assign_structural_layers(msp, result: ForgeResult) -> None:
+#     """ Assegna i layer strutturali e imposta il colore a BYLAYER (256). """
+#     for part in result.parts:
+#         for contour in [part.outer] + part.inners:
+#             if contour.source_ref is not None:
+#                 contour.source_ref.dxf.layer = contour.layer
+#                 contour.source_ref.dxf.color = 256  # BYLAYER
+
+#         for hole in part.holes:
+#             if hole.source_ref is not None:
+#                 hole.source_ref.dxf.layer = hole.layer
+#                 hole.source_ref.dxf.color = 256  # BYLAYER
 def _assign_structural_layers(msp, result: ForgeResult) -> None:
-    """ Assegna i layer strutturali e imposta il colore a BYLAYER (256). """
     for part in result.parts:
         for contour in [part.outer] + part.inners:
             if contour.source_ref is not None:
-                contour.source_ref.dxf.layer = contour.layer
-                contour.source_ref.dxf.color = 256  # BYLAYER
+                contour.source_ref.dxf.layer = ROLE_TO_LAYER.get(contour.role, LAYER_OUTER)
+                contour.source_ref.dxf.color = 256
 
         for hole in part.holes:
             if hole.source_ref is not None:
-                hole.source_ref.dxf.layer = hole.layer
-                hole.source_ref.dxf.color = 256  # BYLAYER
+                hole.source_ref.dxf.layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
+                hole.source_ref.dxf.color = 256
 
 
 def _remove_superseded_line_arc(msp, result: ForgeResult) -> None:
