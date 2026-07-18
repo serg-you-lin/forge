@@ -42,14 +42,14 @@ def is_countersink_outer(circle, siblings: list, tolerance: float = 1.0) -> bool
 
     Args:
         circle:    entità CIRCLE ezdxf da testare
-        siblings:  lista di ForgeContour con .entity popolato
+        siblings:  lista di ForgeContour con .source_ref popolato
         tolerance: distanza massima tra centri per considerarli concentrici (mm)
     """
     cx = circle.dxf.center.x
     cy = circle.dxf.center.y
     cr = circle.dxf.radius
     for sibling in siblings:
-        other = sibling.entity
+        other = sibling.source_ref
         if other is None or other.dxftype() != 'CIRCLE' or other is circle:
             continue
         if other.dxf.radius >= cr:

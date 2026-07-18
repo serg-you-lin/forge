@@ -84,8 +84,10 @@ def extract_free_endpoints(
         meta = _meta_for(entity)
 
         if len(graph.get(s_r, [])) < 2:
+            print(f"[FREE] {entity.dxftype()} start {s_r} grado {len(graph.get(s_r, []))}")
             free.append(GapEndpoint(pt=s, ref=entity, role='start', kind=kind, meta=meta))
         if len(graph.get(e_r, [])) < 2:
+            print(f"[FREE] {entity.dxftype()} end {e_r} grado {len(graph.get(e_r, []))}")
             free.append(GapEndpoint(pt=e, ref=entity, role='end',   kind=kind, meta=meta))
 
     return free

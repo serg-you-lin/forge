@@ -35,7 +35,7 @@ from forge.model import Edge
 def _edge(start, end):
     """Crea un Edge lineare puro — niente ezdxf."""
     return Edge(
-        entity=None,
+        source_ref=None,
         layer="0",
         start=start,
         end=end,
@@ -49,7 +49,7 @@ def _arc_edge(start, end, arc_pts):
     arc_pts: lista di (x,y) che discretizzano l'arco da start a end.
     """
     return Edge(
-        entity=None,
+        source_ref=None,
         layer="0",
         start=start,
         end=end,

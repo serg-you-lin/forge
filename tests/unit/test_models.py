@@ -186,7 +186,7 @@ class TestEdge(unittest.TestCase):
         """Edge costruito correttamente con campi minimi."""
         entity = _FakeEntity()
         edge = Edge(
-            entity=entity,
+            source_ref=entity,
             layer="TAGLIO",
             start=(0.0, 0.0),
             end=(100.0, 0.0),
@@ -199,19 +199,19 @@ class TestEdge(unittest.TestCase):
     def test_002_entity_reference_preserved(self):
         """Riferimento all'entità originale non viene perso."""
         entity = _FakeEntity()
-        edge = Edge(entity=entity, layer="0", start=(0, 0), end=(1, 1))
-        self.assertIs(edge.entity, entity)
+        edge = Edge(source_ref=entity, layer="0", start=(0, 0), end=(1, 1))
+        self.assertIs(edge.source_ref, entity)
 
     def test_003_geometry_optional(self):
         """geometry è None di default."""
-        edge = Edge(entity=_FakeEntity(), layer="0", start=(0, 0), end=(1, 1))
+        edge = Edge(source_ref=_FakeEntity(), layer="0", start=(0, 0), end=(1, 1))
         self.assertIsNone(edge.geometry)
 
     def test_004_geometry_linestring(self):
         """geometry può essere un LineString shapely."""
         geom = LineString([(0, 0), (100, 0)])
         edge = Edge(
-            entity=_FakeEntity(),
+            source_ref=_FakeEntity(),
             layer="0",
             start=(0.0, 0.0),
             end=(100.0, 0.0),
@@ -223,12 +223,12 @@ class TestEdge(unittest.TestCase):
 
     def test_005_layer_preserved(self):
         """Layer cached sull'Edge — non rileggere entity.dxf.layer."""
-        edge = Edge(entity=_FakeEntity(), layer="PIEGA", start=(0, 0), end=(1, 0))
+        edge = Edge(source_ref=_FakeEntity(), layer="PIEGA", start=(0, 0), end=(1, 0))
         self.assertEqual(edge.layer, "PIEGA")
 
     def test_006_start_end_are_tuples(self):
         """start e end sono tuple (x, y)."""
-        edge = Edge(entity=_FakeEntity(), layer="0", start=(5.0, 10.0), end=(15.0, 20.0))
+        edge = Edge(source_ref=_FakeEntity(), layer="0", start=(5.0, 10.0), end=(15.0, 20.0))
         self.assertEqual(len(edge.start), 2)
         self.assertEqual(len(edge.end), 2)
 
@@ -239,17 +239,16 @@ class TestEdge(unittest.TestCase):
 
 class TestBendingLine(unittest.TestCase):
 
-    def _make_bl(self, start=(0, 0), end=(100, 0), layer="PIEGA", part_label=""):
+    def _make_bl(self, start=(0, 0), end=(100, 0), part_label=""):
         geom = LineString([start, end])
         import math
         dx = end[0] - start[0]
         dy = end[1] - start[1]
         angle = math.degrees(math.atan2(dy, dx)) % 180.0
         return BendingLine(
-            entity=_FakeEntity(),
+            source_ref=_FakeEntity(),
             geometry=geom,
             length=geom.length,
-            layer=layer,
             angle_deg=angle,
             part_label=part_label,
         )
@@ -259,7 +258,7 @@ class TestBendingLine(unittest.TestCase):
         bl = self._make_bl(part_label="p1")
         d = bl.to_dict()
         print(f"\n[BendingLine.to_dict] keys={list(d.keys())}")
-        for key in ["start", "end", "length", "angle_deg", "layer", "part_label"]:
+        for key in ["start", "end", "length", "angle_deg", "part_label"]:
             self.assertIn(key, d)
 
     def test_002_to_dict_length(self):
@@ -290,11 +289,6 @@ class TestBendingLine(unittest.TestCase):
         self.assertEqual(len(d["start"]), 2)
         self.assertEqual(len(d["end"]), 2)
 
-    def test_006_layer_preserved(self):
-        """Layer originale preservato in to_dict."""
-        bl = self._make_bl(layer="PIEGA")
-        d = bl.to_dict()
-        self.assertEqual(d["layer"], "PIEGA")
 
 
 # ---------------------------------------------------------------------------

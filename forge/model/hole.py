@@ -57,10 +57,10 @@ class Hole:
 
     layer:          str   = ""
     source_layer:   str   = ""
-    entity:         Any   = None   # CIRCLE ezdxf — non serializzato
+    source_ref:     Any   = None
 
     outer_diameter: Optional[float] = None   # solo countersink
-    outer_entity:   Any             = None   # CIRCLE ezdxf del cerchio esterno — solo countersink, non serializzato
+    outer_source_ref: Any   = None
     is_hole:        bool            = True   # sempre True — compatibilità
 
     @property

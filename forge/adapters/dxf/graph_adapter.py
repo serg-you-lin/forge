@@ -12,9 +12,10 @@ Funzioni pubbliche:
 """
 
 import numpy as np
+import math
 from shapely.geometry import LineString
 
-from ...model.edge import Edge
+from ...model.edge import Edge, BendingLine
 from ...core.geometry import round_point
 from .geometry_adapter import arc_endpoints
 
@@ -160,6 +161,11 @@ def edges_from_msp(msp, node_decimals, exclude_ids=None, ignore_layers=None) -> 
             continue
         layer    = entity.dxf.layer if entity.dxf.hasattr('layer') else ''
         geometry = _entity_to_linestring(entity)
-        edges.append(Edge(entity=entity, layer=layer, start=s, end=e, geometry=geometry))
+        edges.append(Edge(source_ref=entity, layer=layer, start=s, end=e, geometry=geometry))
 
     return edges
+
+
+
+
+

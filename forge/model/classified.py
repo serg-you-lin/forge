@@ -12,13 +12,13 @@ class ClassifiedEntity:
     Prodotto da detect(), consumato da inject() e write().
 
     Campi:
-        entity     : entità ezdxf originale
+        source_ref : riferimento all'entità originale
         work_type  : tipo lavorazione — chiave di WORK_TYPE_TO_LAYER
         confidence : 1.0 da special_layers, < 1.0 da geometria o agente
         source     : "special_layers" | "geometric" | "agent"
         data       : dati estratti pronti per CAM — inject() li usa direttamente
     """
-    entity:     Any
+    source_ref: Any        
     work_type:  str
     confidence: float
     source:     str

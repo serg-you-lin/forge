@@ -420,3 +420,4 @@ def _spline_is_closed(spline, tolerance: float = 0.01) -> bool:
     if s is None or e is None:
         return False
     return math.sqrt((e[0] - s[0]) ** 2 + (e[1] - s[1]) ** 2) < tolerance
+

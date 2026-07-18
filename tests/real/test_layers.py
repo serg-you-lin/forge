@@ -246,7 +246,7 @@ class TestLineetteBastarde(unittest.TestCase):
         """Nessuna LINE deve finire su Bending se non è una BendingLine riconosciuta."""
         from forge.rules.layers import LAYER_BENDING
         part = self.result.parts[0]
-        bend_ids = {id(bl.entity) for bl in part.bending_lines}
+        bend_ids = {id(bl.source_ref) for bl in part.bending_lines}
         linee_bastarde = [
             e for e in self.msp
             if e.dxftype() == "LINE"

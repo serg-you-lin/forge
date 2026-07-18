@@ -21,7 +21,7 @@ class ForgeContour:
     is_inner:     bool    = False
     layer:        str     = ""
     is_hole:      bool    = False   # sempre False su ForgeContour — i fori usano Hole
-    entity:       Any     = None
+    source_ref:   Any = None
     area:         float   = field(init=False)
     bbox:         Tuple[float, float, float, float] = field(init=False)
     source_layer: str     = ""

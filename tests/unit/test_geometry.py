@@ -171,7 +171,7 @@ class TestIsCountersinkOuter(unittest.TestCase):
         result = []
         for c in circles:
             poly = Point(c.dxf.center.x, c.dxf.center.y).buffer(c.dxf.radius)
-            result.append(ForgeContour(polygon=poly, entity=c, is_inner=True))
+            result.append(ForgeContour(polygon=poly, source_ref=c, is_inner=True))
         return result
 
     def test_001_cerchio_grande_con_piccolo_concentrico(self):
@@ -208,7 +208,7 @@ class TestIsCountersinkOuter(unittest.TestCase):
         fake.dxftype.return_value = 'LWPOLYLINE'
         fake_contour = ForgeContour(
             polygon=Point(0, 0).buffer(5),
-            entity=fake,
+            source_ref=fake,
             is_inner=True,
         )
         self.assertFalse(is_countersink_outer(big, [fake_contour]))

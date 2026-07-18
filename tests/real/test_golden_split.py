@@ -127,7 +127,7 @@ def _process_child(child_path: Path, tolerance: float):
     result = forge.heal(msp, tolerance=tolerance, explode_inserts=True)
 
     for idx, p in enumerate(result.parts):
-        print(f"  [CHILD] part{idx} outer.entity={type(p.outer.entity).__name__} area={p.area:.4f}")
+        print(f"  [CHILD] part{idx} outer.source_ref={type(p.outer.source_ref).__name__} area={p.area:.4f}")
 
     if not result.is_valid or not result.parts:
         return None

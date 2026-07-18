@@ -33,54 +33,8 @@ creare una fingerprint geometrica per validare na forge part.
 Capire dove deve lavorare perhcè potrebbe essere parte del plugin per i draft
 
 ### Refactoring hierarchy
-La soluzione: ShapeProxy
-Un dataclass che l'adapter produce una volta sola, e che _build_hierarchy consuma senza sapere nulla di DXF.
-python@dataclass
-class ShapeProxy:
-    polygon: Polygon
-    source_layer: str
-    shape_type: str          # "circle", "polyline", "spline", "virtual"
-    diameter: Optional[float]  # solo per cerchi
-    center: Optional[tuple]    # solo per cerchi
-    source_ref: Any            # entità originale o DxfWriteContext
-La funzione di conversione va in adapters/dxf/:
-def entity_to_proxy(entity) -> Optional[ShapeProxy]:
-    poly = entity_to_polygon(entity)
-    if poly is None:
-        return None
-    t = entity.dxftype()
-    return ShapeProxy(
-        polygon=poly,
-        source_layer=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
-        shape_type="circle" if t == "CIRCLE" else "polyline" if "PLINE" in t else "spline",
-        diameter=entity.dxf.radius * 2 if t == "CIRCLE" else None,
-        center=(entity.dxf.center.x, entity.dxf.center.y) if t == "CIRCLE" else None,
-        source_ref=entity,
-    )
-
-def virtual_to_proxy(ctx: DxfWriteContext) -> ShapeProxy:
-    return ShapeProxy(
-        polygon=ctx.contour.polygon,
-        source_layer=ctx.contour.source_layer,
-        shape_type="virtual",
-        diameter=None,
-        center=None,
-        source_ref=ctx,
-    )
-_build_hierarchy diventa:
-pythondef _build_hierarchy(self):
-    proxies = []
-    for ctx in self.result._virtual_shapes:
-        proxies.append(virtual_to_proxy(ctx))
-    for pline in self.all_plines:
-        p = entity_to_proxy(pline)
-        if p: proxies.append(p)
-    for circle in self.all_circles:
-        p = entity_to_proxy(circle)
-        if p: proxies.append(p)
-    # ... splines
-    
-    # da qui in poi: zero .dxf.*, solo ShapeProxy
+DXF adapter → produce List[ShapeProxy] già pronti
+core._collect_proxies → riceve List[ShapeProxy], non sa niente di ezdxf
     _build_topology(self, proxies)
 
 
@@ -133,6 +87,24 @@ Il pattern if entity.dxftype() == "ARC" sparso in 150 posti è fragile e non sca
 Però questa è una terza cosa grossa — separata da ShapeProxy e da ForgeAdapter. E si collega direttamente al discorso di prima: se l'obiettivo è essere format-agnostici, allora il dispatcher per tipo entità è esattamente il problema che ForgeAdapter risolve a livello architetturale. Quando hai DxfAdapter come classe, il dispatcher per tipo diventa un metodo interno all'adapter — e fuori non esiste più.
 2. ForgeAdapter / DxfAdapter        ← elimina il dispatcher sparso
 3. entity_length, entity_to_proxy   ← diventano metodi di DxfAdapter
+
+
+Step 1 — core/adapter_base.py
+Classe astratta ForgeAdapter con to_edges(), to_proxies(), source_layer(ref). Zero import DXF. È solo il contratto — non rompe niente.
+Step 2 — adapters/dxf/adapter.py
+DxfAdapter(ForgeAdapter) con msp in init. to_edges() = tutto ciò che fa oggi edges_from_msp(). to_proxies() = circles, plines chiuse, splines chiuse. Il dispatcher if entity.dxftype() sparso nel codice confluisce qui e sparisce dal resto.
+Step 3 — HealStep refactor
+Riceve adapter: ForgeAdapter invece di msp. Init fa self.edges = adapter.to_edges() e self.proxies = adapter.to_proxies(). Spariscono self.msp, self.all_lines, self.all_circles, ecc.
+Step 4 — _collect_proxies / _build_topology
+Il core riceve List[ShapeProxy] già pronti dall'adapter. _build_topology(self, proxies) — zero ezdxf dentro.
+Step 5 — BendingLine core puro
+Campi: geometry, length, angle_deg, part_label, source_ref. _make_bending_line si sposta in adapters/dxf/bending_adapter.py come bending_line_from_dxf().
+Step 6 — ClassifiedEntity core puro
+Il campo entity diventa source_ref. detect.py smette di leggere entity.dxf.* direttamente.
+Step 7 — load() generico
+load_dxf() diventa load(path) con dispatch per formato. DxfAdapter istanziato dentro il loader DXF.
+Step 7b — source_layer rinominato source_context
+
 
 ### Analisi
 
