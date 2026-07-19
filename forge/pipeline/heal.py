@@ -45,7 +45,7 @@ class HealStep:
         self.ignore_layers   = {l.lower() for l in (ignore_layers or [])}
         self.special_layer_names = {k.lower() for k in (special_layers or {})}
 
-        self.node_decimals = max(round(-np.log10(tolerance * 2)), 1)
+        self.node_decimals = self.adapter.node_decimals
         self.result        = ForgeResult(source_file=source_file)
 
         if special_layers:
@@ -56,8 +56,6 @@ class HealStep:
         self.classified_virtual_ids = set()
         self.entities_in_loops      = set()
 
-        # self.edges   = adapter.to_edges()
-        # self.proxies = adapter.to_proxies()
         self.proxies = []
 
         self.all_lines      = []
