@@ -8,14 +8,12 @@ from .detect import detect
 from .write import write, split, DEFAULT_MIN_PART_AREA
 from .inject import inject
 from ..model.result import ForgeResult
-import numpy as np
 from ..adapters.dxf.adapter import DxfAdapter
 
 
 def heal(msp, tolerance=0.05, ignore_layers=None, label="",
          source_file="", explode_inserts=False, special_layers=None) -> ForgeResult:
-    node_decimals = max(round(-np.log10(tolerance * 2)), 1)
-    adapter = DxfAdapter(msp, node_decimals=node_decimals,
+    adapter = DxfAdapter(msp, tolerance=tolerance,
                          ignore_layers={l.lower() for l in (ignore_layers or [])})
     return HealStep(adapter, msp, tolerance, label=label, source_file=source_file,
                     explode_inserts=explode_inserts, ignore_layers=ignore_layers,
