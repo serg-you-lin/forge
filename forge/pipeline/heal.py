@@ -67,8 +67,6 @@ class HealStep:
         self.open_splines   = []
 
     def run(self):
-        from ..adapters.dxf.sanitize import sanitize
-        sanitize(self.msp, flatten_z_flag=self.flatten_z)
         self._handle_inserts()
         self._load()
         if not self.result.is_valid:
@@ -105,11 +103,12 @@ class HealStep:
         if removed > 0:
             self.result.warnings.append(f"Rimosse {removed} entità duplicate dal msp.")
 
-        self.all_lines   = list(self.msp.query("LINE"))
-        self.all_arcs    = list(self.msp.query("ARC"))
-        self.all_plines  = list(self.msp.query("LWPOLYLINE POLYLINE"))
-        self.all_circles = list(self.msp.query("CIRCLE"))
-        self.all_splines = list(self.msp.query("SPLINE"))
+        entities         = self.adapter.load_entity_lists()
+        self.all_lines   = entities["lines"]
+        self.all_arcs    = entities["arcs"]
+        self.all_plines  = entities["plines"]
+        self.all_circles = entities["circles"]
+        self.all_splines = entities["splines"]
 
         if not any([self.all_lines, self.all_arcs, self.all_plines,
                     self.all_circles, self.all_splines]):

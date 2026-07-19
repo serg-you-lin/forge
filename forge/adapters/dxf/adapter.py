@@ -112,3 +112,12 @@ class DxfAdapter(ForgeAdapter):
             return ref.dxf.layer if ref.dxf.hasattr("layer") else ""
         except AttributeError:
             return ""
+        
+    def load_entity_lists(self) -> dict:
+        return {
+            "lines":   list(self.msp.query("LINE")),
+            "arcs":    list(self.msp.query("ARC")),
+            "plines":  list(self.msp.query("LWPOLYLINE POLYLINE")),
+            "circles": list(self.msp.query("CIRCLE")),
+            "splines": list(self.msp.query("SPLINE")),
+        }
