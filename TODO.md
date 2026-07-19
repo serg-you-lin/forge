@@ -32,6 +32,16 @@ creare una fingerprint geometrica per validare na forge part.
 ### Cornice
 Capire dove deve lavorare perhcè potrebbe essere parte del plugin per i draft
 
+### Refactoring ForgeSession
+load_dxf(path)  →  ForgeSession   # contiene adapter DXF internamente
+load_svg(path)  →  ForgeSession   # contiene adapter SVG internamente
+load_pdf(path)  →  ForgeSession   # contiene adapter PDF internamente
+
+ForgeSession.heal()    →  ForgeResult   # core puro, zero formato
+ForgeSession.save_dxf(path)            # l'adapter DXF sa come scrivere
+ForgeSession.save_svg(path)            # genera SVG da ForgeResult
+
+
 ### Refactoring hierarchy
 DXF adapter → produce List[ShapeProxy] già pronti
 core._collect_proxies → riceve List[ShapeProxy], non sa niente di ezdxf
@@ -88,14 +98,6 @@ Però questa è una terza cosa grossa — separata da ShapeProxy e da ForgeAdapt
 2. ForgeAdapter / DxfAdapter        ← elimina il dispatcher sparso
 3. entity_length, entity_to_proxy   ← diventano metodi di DxfAdapter
 
-
-load_dxf → (DxfAdapter, msp), load_pdf → (PdfAdapter, None)
-heal(adapter, context, ...) — rimuove DxfAdapter hardcoded
-HealStep — le msp.query() spariscono dentro DxfAdapter
-
-Il punto 3 è il refactor pesante che dicevi tu.
-
-Step 7b — origin rinominato source_context
 
 
 
