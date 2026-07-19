@@ -126,12 +126,12 @@ def _loop_to_contour(loop, layer: str, color: int) -> Optional[DxfWriteContext]:
     has_spline = any(isinstance(p, SplineSeg) for p in primitives)
     pts_with_bulge = [] if has_spline else _build_pts_with_bulge(primitives)
 
-    source_layer = _extract_source_layer(loop)
+    origin = _extract_origin(loop)
     source_ref   = {"loop": loop, "pts_with_bulge": pts_with_bulge}
 
     contour = Contour.from_primitives(
         primitives=primitives,
-        source_layer=source_layer,
+        origin=origin,
         source_ref=source_ref,
     )
     if contour is None:
@@ -157,14 +157,14 @@ def _build_pts_with_bulge(primitives: list) -> list:
     return pts
 
 
-def _extract_source_layer(loop: list) -> str:
+def _extract_origin(loop: list) -> str:
     if not loop:
         return ""
-    source_layers = {
+    origins = {
         e.layer for e, _ in loop
         if hasattr(e, "layer") and e.layer and e.layer != "0"
     }
-    return source_layers.pop() if len(source_layers) == 1 else ""
+    return origins.pop() if len(origins) == 1 else ""
 
 
 # ---------------------------------------------------------------------------

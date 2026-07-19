@@ -55,7 +55,7 @@ class ForgeAdapter(ABC):
         ...
     
     @abstractmethod
-    def source_layer(self, ref: Any) -> str:
+    def origin(self, ref: Any) -> str:
         """Estrae il layer dall'oggetto originale."""
         ...
 E DxfAdapter diventa:
@@ -95,7 +95,7 @@ HealStep — le msp.query() spariscono dentro DxfAdapter
 
 Il punto 3 è il refactor pesante che dicevi tu.
 
-Step 7b — source_layer rinominato source_context
+Step 7b — origin rinominato source_context
 
 
 

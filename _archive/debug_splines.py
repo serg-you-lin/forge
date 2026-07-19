@@ -49,7 +49,7 @@ print()
 print("=== INNERS ===")
 for i, part in enumerate(result.parts):
     for inner in part.inners:
-        print(f"  part[{i}] inner source_layer={inner.source_layer!r} entity_type={inner.entity.dxftype() if inner.entity else None}")
+        print(f"  part[{i}] inner origin={inner.origin!r} entity_type={inner.entity.dxftype() if inner.entity else None}")
 
 print()
 print("=== TRASH ===")

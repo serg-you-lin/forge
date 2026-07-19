@@ -56,7 +56,7 @@ class Hole:
     source:         str   = ""
 
     role:          str   = ""
-    source_layer:   str   = ""
+    origin:   str   = ""
     source_ref:     Any   = None
 
     outer_diameter: Optional[float] = None   # solo countersink

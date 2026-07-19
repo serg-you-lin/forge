@@ -269,7 +269,7 @@ def _fallback_polygonize(self):
             if not poly.is_valid:
                 poly = poly.buffer(0)
             pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
-            contour = Contour(polygon=poly, segments=[], source_layer="", source_ref=None)
+            contour = Contour(polygon=poly, segments=[], origin="", source_ref=None)
             ctx = DxfWriteContext(
                 contour=contour,
                 pts_with_bulge=pts,
@@ -284,7 +284,7 @@ def _fallback_polygonize(self):
                 contour_i = Contour(
                     polygon=Polygon(interior),
                     segments=[],
-                    source_layer="",
+                    origin="",
                     source_ref=None,
                 )
                 ctx_i = DxfWriteContext(

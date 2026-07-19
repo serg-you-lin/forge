@@ -154,7 +154,7 @@ def _detect_special_layers(
     # --- Hole sui part: promozione diretta da layer speciale ---
     for part in result.parts:
         for hole in part.holes:
-            check_layer = hole.source_layer.lower()
+            check_layer = hole.origin.lower()
             work_type   = layer_to_work.get(check_layer)
             if work_type is None:
                 continue
@@ -168,14 +168,14 @@ def _detect_special_layers(
         # --- contorni inner non-foro su layer speciale ---
         remaining = []
         for inner in part.inners:
-            check_layer = inner.source_layer.lower()
+            check_layer = inner.origin.lower()
             work_type   = layer_to_work.get(check_layer)
             if work_type is None:
                 remaining.append(inner)
                 continue
             data = _extract_data(inner.source_ref, work_type) if inner.source_ref is not None else {
                 "length": round(inner.polygon.exterior.length, 4),
-                "layer":  inner.source_layer,
+                "layer":  inner.origin,
             }
             ce = ClassifiedEntity(
                 source_ref=inner.source_ref,
