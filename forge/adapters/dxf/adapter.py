@@ -121,3 +121,21 @@ class DxfAdapter(ForgeAdapter):
             "circles": list(self.msp.query("CIRCLE")),
             "splines": list(self.msp.query("SPLINE")),
         }
+    
+    def collect_proxies(self, open_splines: list, virtual_shapes: list) -> list[ShapeProxy]:
+        from .proxy_adapter import entity_to_proxy, contour_to_proxy
+        from .geometry_adapter import _spline_is_closed
+
+        open_spline_ids = {id(s) for s in open_splines}
+        proxies = []
+        for entity in self.msp:
+            proxy = entity_to_proxy(entity)
+            if proxy is None:
+                continue
+            entity_type = entity.dxftype()
+            if entity_type == "SPLINE" and id(entity) in open_spline_ids:
+                continue
+            proxies.append(proxy)
+
+        virtual = [contour_to_proxy(ctx) for ctx in virtual_shapes]
+        return virtual + proxies
