@@ -17,13 +17,13 @@ from ...adapters.dxf.proxy_adapter import contour_to_proxy
 # ---------------------------------------------------------------------------
 
 
-def _collect_proxies(self) -> list[ShapeProxy]:
-    virtual = [contour_to_proxy(ctx) for ctx in self.result._virtual_shapes]
-    open_spline_ids = {id(s) for s in self.open_splines}
-    filtered = [p for p in self.proxies if not (
-        p.shape_type == "spline" and id(p.source_ref) in open_spline_ids
-    )]
-    return virtual + filtered
+# def _collect_proxies(self) -> list[ShapeProxy]:
+#     virtual = [contour_to_proxy(ctx) for ctx in self.result._virtual_shapes]
+#     open_spline_ids = {id(s) for s in self.open_splines}
+#     filtered = [p for p in self.proxies if not (
+#         p.shape_type == "spline" and id(p.source_ref) in open_spline_ids
+#     )]
+#     return virtual + filtered
 
 # ---------------------------------------------------------------------------
 # Classificazione proxy — agnostica, zero accessi a source_ref
@@ -78,7 +78,7 @@ def _make_hole(proxy: ShapeProxy, geometric_hint: str = "",
     )
 
 def _make_inner(proxy: ShapeProxy) -> ForgeContour:
-    is_virtual = proxy.shape_type == "virtual"
+    is_virtual = proxy.is_virtual
     return ForgeContour(
         polygon=proxy.polygon,
         role="inner",
@@ -124,14 +124,14 @@ def _process_children(children: list, holes: list, inners: list,
 
             _register(child_proxy, classified_virtual_ids, classified_entity_ids)
 
-            if child_proxy.shape_type == "virtual":
+            if child_proxy.is_virtual:
                 child_proxy.source_ref.layer = LAYER_INNER
                 child_proxy.source_ref.color = color_for_layer(LAYER_INNER)
 
 
 def _register(proxy: ShapeProxy, classified_virtual_ids: set,
               classified_entity_ids: set):
-    if proxy.shape_type == "virtual":
+    if proxy.is_virtual:
         classified_virtual_ids.add(id(proxy.source_ref))
     else:
         classified_entity_ids.add(id(proxy.source_ref))
@@ -151,7 +151,8 @@ def _collect_entity_ids(father_proxy: ShapeProxy, children: list) -> set:
 # ---------------------------------------------------------------------------
 
 def _build_hierarchy(self):
-    proxies = _collect_proxies(self)
+    # proxies = _collect_proxies(self)
+    proxies = self.adapter.collect_proxies(self.open_splines, self.result._virtual_shapes)
               
     if not proxies:
         self.result.errors.append("Nessuna geometria chiusa trovata dopo healing.")
@@ -166,19 +167,12 @@ def _build_hierarchy(self):
         outer = ForgeContour(
             polygon=father_proxy.polygon,
             role="outer",
-            source_ref=father_proxy.source_ref if father_proxy.shape_type != "virtual" else None,
+            source_ref=father_proxy.source_ref if not father_proxy.is_virtual else None,
         )
-        # # contorno esterno
-        # outer = ForgeContour(
-        #     polygon=father_proxy.polygon,
-        #     is_inner=False,
-        #     layer=LAYER_OUTER,
-        #     source_ref=father_proxy.source_ref if father_proxy.shape_type != "virtual" else None,
-        # )
 
         _register(father_proxy, self.classified_virtual_ids, self.classified_entity_ids)
 
-        if father_proxy.shape_type == "virtual":
+        if father_proxy.is_virtual:
             father_proxy.source_ref.layer = LAYER_OUTER
             father_proxy.source_ref.color = color_for_layer(LAYER_OUTER)
 
@@ -210,13 +204,13 @@ def _build_hierarchy(self):
         )
 
         # mappa vs → part per write() e split()
-        if father_proxy.shape_type == "virtual":
+        if father_proxy.is_virtual:
             self.result._vs_to_part[id(father_proxy.source_ref)] = part
         for child_proxy, grandchildren in children:
-            if child_proxy.shape_type == "virtual":
+            if child_proxy.is_virtual:
                 self.result._vs_to_part[id(child_proxy.source_ref)] = part
             for gc_proxy, _ in grandchildren:
-                if gc_proxy.shape_type == "virtual":
+                if gc_proxy.is_virtual:
                     self.result._vs_to_part[id(gc_proxy.source_ref)] = part
 
         self.result.parts.append(part)
