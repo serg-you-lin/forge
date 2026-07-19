@@ -72,7 +72,7 @@ dxf-forge/
 │     DxfWriteContext
 │     _loop_to_contour, parse_loop
 │     _parse_line, _parse_arc, _parse_arc_discretized, _parse_spline
-│     _build_pts_with_bulge, _extract_source_layer
+│     _build_pts_with_bulge, _extract_origin
 │     _write_virtual_shape
 
 ├── proxy_adapter.py             (nuovo)

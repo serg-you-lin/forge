@@ -21,7 +21,7 @@ def entity_to_proxy(entity) -> Optional[ShapeProxy]:
     if entity_type == "CIRCLE":
         return ShapeProxy(
             polygon=poly,
-            source_layer=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
+            origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
             shape_type="circle",
             source_ref=entity,
             diameter=entity.dxf.radius * 2,
@@ -35,7 +35,7 @@ def entity_to_proxy(entity) -> Optional[ShapeProxy]:
     if entity_type in ("LWPOLYLINE", "POLYLINE"):
         return ShapeProxy(
             polygon=poly,
-            source_layer=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
+            origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
             shape_type="polyline",
             source_ref=entity,
         )
@@ -43,7 +43,7 @@ def entity_to_proxy(entity) -> Optional[ShapeProxy]:
     if entity_type == "SPLINE":
         return ShapeProxy(
             polygon=poly,
-            source_layer=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
+            origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
             shape_type="spline",
             source_ref=entity,
         )
@@ -51,7 +51,7 @@ def entity_to_proxy(entity) -> Optional[ShapeProxy]:
     if entity_type == "ELLIPSE":
         return ShapeProxy(
             polygon=poly,
-            source_layer=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
+            origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
             shape_type="ellipse",
             source_ref=entity,
         )
@@ -68,7 +68,7 @@ def contour_to_proxy(ctx: DxfWriteContext) -> ShapeProxy:
     """
     return ShapeProxy(
         polygon=ctx.contour.polygon,
-        source_layer=ctx.contour.source_layer,
+        origin=ctx.contour.origin,
         shape_type="virtual",
         source_ref=ctx,
     )

@@ -40,12 +40,12 @@ class Contour:
 
     polygon:      rappresentazione shapely — usata per containment e area
     segments:     primitive geometriche pure che compongono il contorno
-    source_layer: layer sorgente (stringa vuota se non determinabile)
+    origin: layer sorgente (stringa vuota se non determinabile)
     source_ref:   dato opaco per tracciabilità — il core non lo tocca
     """
     polygon:      Polygon
     segments:     List[LineSeg | ArcSeg | SplineSeg | DiscretizedArcSeg] = field(default_factory=list)
-    source_layer: str           = ""
+    origin: str           = ""
     source_ref:   Optional[Any] = None
 
     @property
@@ -56,18 +56,18 @@ class Contour:
     def from_primitives(
         cls,
         primitives:   List,
-        source_layer: str  = "",
+        origin: str  = "",
         source_ref:   Any  = None,
     ) -> Optional["Contour"]:
 
         has_spline = any(isinstance(p, SplineSeg) for p in primitives)
 
         if has_spline:
-            return cls._from_spline_primitives(primitives, source_layer, source_ref)
-        return cls._from_line_arc_primitives(primitives, source_layer, source_ref)
+            return cls._from_spline_primitives(primitives, origin, source_ref)
+        return cls._from_line_arc_primitives(primitives, origin, source_ref)
 
     @classmethod
-    def _from_line_arc_primitives(cls, primitives, source_layer, source_ref):
+    def _from_line_arc_primitives(cls, primitives, origin, source_ref):
         pts_with_bulge = []
 
         for prim in primitives:
@@ -84,12 +84,12 @@ class Contour:
         return cls(
             polygon=poly,
             segments=primitives,
-            source_layer=source_layer,
+            origin=origin,
             source_ref=source_ref,
         )
 
     @classmethod
-    def _from_spline_primitives(cls, primitives, source_layer, source_ref):
+    def _from_spline_primitives(cls, primitives, origin, source_ref):
         poly_pts = []
 
         for prim in primitives:
@@ -107,7 +107,7 @@ class Contour:
         return cls(
             polygon=poly,
             segments=primitives,
-            source_layer=source_layer,
+            origin=origin,
             source_ref=source_ref,
         )
 

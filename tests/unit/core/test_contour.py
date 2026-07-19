@@ -49,7 +49,7 @@ class TestFromPrimitivesLines(unittest.TestCase):
     def setUp(self):
         self.contour = Contour.from_primitives(
             primitives=self._square_primitives(100.0),
-            source_layer='outer',
+            origin='outer',
         )
 
     def test_001_restituisce_contour(self):
@@ -65,8 +65,8 @@ class TestFromPrimitivesLines(unittest.TestCase):
     def test_004_area_corretta(self):
         self.assertAlmostEqual(self.contour.polygon.area, 10000.0, delta=1.0)
 
-    def test_005_source_layer(self):
-        self.assertEqual(self.contour.source_layer, 'outer')
+    def test_005_origin(self):
+        self.assertEqual(self.contour.origin, 'outer')
 
     def test_006_segments_popolati(self):
         self.assertEqual(len(self.contour.segments), 4)
@@ -98,7 +98,7 @@ class TestFromPrimitivesSpline(unittest.TestCase):
     def setUp(self):
         self.contour = Contour.from_primitives(
             primitives=self._spline_loop_primitives(),
-            source_layer='outer',
+            origin='outer',
         )
 
     def test_001_restituisce_contour(self):
@@ -133,7 +133,7 @@ class TestFromPrimitivesDiscretizedArc(unittest.TestCase):
         ]
         self.contour = Contour.from_primitives(
             primitives=primitives,
-            source_layer='inner',
+            origin='inner',
         )
 
     def test_001_has_spline_true(self):

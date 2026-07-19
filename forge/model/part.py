@@ -22,7 +22,7 @@ class ForgeContour:
     source_ref:   Any = None
     area:         float   = field(init=False)
     bbox:         Tuple[float, float, float, float] = field(init=False)
-    source_layer: str     = ""
+    origin: str     = ""
     vs_id: Optional[int] = None
 
     def __post_init__(self):

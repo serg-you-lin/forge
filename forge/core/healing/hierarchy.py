@@ -71,7 +71,7 @@ def _make_hole(proxy: ShapeProxy, geometric_hint: str = "",
         hole_type=HOLE_TYPE_UNKNOWN,
         geometric_hint=geometric_hint,
         role=role,
-        source_layer=proxy.source_layer,
+        origin=proxy.origin,
         source_ref=proxy.source_ref,
         outer_diameter=outer_proxy.diameter if outer_proxy else None,
         outer_source_ref=outer_proxy.source_ref if outer_proxy else None,
@@ -83,7 +83,7 @@ def _make_inner(proxy: ShapeProxy) -> ForgeContour:
         polygon=proxy.polygon,
         role="inner",
         source_ref=proxy.source_ref if not is_virtual else None,
-        source_layer=proxy.source_layer,
+        origin=proxy.origin,
         vs_id=id(proxy.source_ref) if is_virtual else None,
     )
 
