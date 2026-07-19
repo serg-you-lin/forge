@@ -13,7 +13,7 @@ class ShapeProxy:
 
     Campi:
         polygon      : Polygon shapely — forma chiusa già calcolata
-        source_layer : layer di origine (stringa vuota se non disponibile)
+        origin : layer di origine (stringa vuota se non disponibile)
         shape_type   : categoria della forma — "circle", "polyline",
                        "spline", "virtual"
         diameter     : diametro in unità documento — solo per cerchi,
@@ -23,7 +23,7 @@ class ShapeProxy:
                        mai None — serve per traceability e writeback
     """
     polygon:      Polygon
-    source_layer: str
+    origin: str
     shape_type:   str                        # "circle" | "polyline" | "spline" | "virtual"
     source_ref:   Any
     diameter:     Optional[float]       = None
