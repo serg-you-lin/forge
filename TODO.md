@@ -89,20 +89,12 @@ Però questa è una terza cosa grossa — separata da ShapeProxy e da ForgeAdapt
 3. entity_length, entity_to_proxy   ← diventano metodi di DxfAdapter
 
 
-Step 1 — core/adapter_base.py
-Classe astratta ForgeAdapter con to_edges(), to_proxies(), source_layer(ref). Zero import DXF. È solo il contratto — non rompe niente.
-Step 2 — adapters/dxf/adapter.py
-DxfAdapter(ForgeAdapter) con msp in init. to_edges() = tutto ciò che fa oggi edges_from_msp(). to_proxies() = circles, plines chiuse, splines chiuse. Il dispatcher if entity.dxftype() sparso nel codice confluisce qui e sparisce dal resto.
-Step 3 — HealStep refactor
-Riceve adapter: ForgeAdapter invece di msp. Init fa self.edges = adapter.to_edges() e self.proxies = adapter.to_proxies(). Spariscono self.msp, self.all_lines, self.all_circles, ecc.
-Step 4 — _collect_proxies / _build_topology
-Il core riceve List[ShapeProxy] già pronti dall'adapter. _build_topology(self, proxies) — zero ezdxf dentro.
-Step 5 — BendingLine core puro
-Campi: geometry, length, angle_deg, part_label, source_ref. _make_bending_line si sposta in adapters/dxf/bending_adapter.py come bending_line_from_dxf().
-Step 6 — ClassifiedEntity core puro
-Il campo entity diventa source_ref. detect.py smette di leggere entity.dxf.* direttamente.
-Step 7 — load() generico
-load_dxf() diventa load(path) con dispatch per formato. DxfAdapter istanziato dentro il loader DXF.
+load_dxf → (DxfAdapter, msp), load_pdf → (PdfAdapter, None)
+heal(adapter, context, ...) — rimuove DxfAdapter hardcoded
+HealStep — le msp.query() spariscono dentro DxfAdapter
+
+Il punto 3 è il refactor pesante che dicevi tu.
+
 Step 7b — source_layer rinominato source_context
 
 

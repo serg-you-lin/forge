@@ -1,3 +1,6 @@
+# forge/core/adapter_base.py
+
+import numpy as np
 from abc import ABC, abstractmethod
 from typing import Any, List
 from ..model.edge import Edge
@@ -5,6 +8,10 @@ from ..model.shape_proxy import ShapeProxy
 
 
 class ForgeAdapter(ABC):
+
+    def __init__(self, tolerance: float = 0.05):
+        self.tolerance = tolerance
+        self.node_decimals = max(round(-np.log10(tolerance * 2)), 1)
 
     @abstractmethod
     def to_edges(self) -> List["Edge"]:
