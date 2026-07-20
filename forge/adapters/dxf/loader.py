@@ -12,7 +12,7 @@ import os
 import ezdxf
 from ezdxf.addons import odafc
 from .copy_adapter import copy_entity
-from .sanitize import sanitize
+from .sanitize import sanitize, _explode_inserts
 
 ODA_PATH = os.environ.get(
     "ODA_PATH"
@@ -117,6 +117,7 @@ def _upgrade_to_r2010(doc) -> object:
 def load_dxf(
     path: str,
     upgrade: bool = False,
+    explode_inserts: bool = False,
     flatten_z_flag: bool = True,
     verbose: bool = False,
 ) -> tuple:
@@ -128,11 +129,13 @@ def load_dxf(
         2. readfile
         3. audit (stampa solo se ci sono errori)
         4. upgrade R2010 se necessario o richiesto
-        5. sanitize (normalize_ocs + flatten_z)
+        5. explode INSERT se richiesto
+        6. sanitize (normalize_ocs + flatten_z)
 
     Args:
         path:           percorso del file .dxf o .dwg
         upgrade:        se True, forza upgrade a R2010
+        explode_inserts: se True, esplode INSERT in entità primitive
         flatten_z_flag: passa flatten_z a sanitize()
         verbose:        se True, stampa dettaglio entità in sanitize
 
@@ -141,7 +144,8 @@ def load_dxf(
 
     # TODO: logging audit su file
     """
-    if path.lower().endswith('.dwg'):
+    # if path.lower().endswith('.dwg'):
+    if str(path).lower().endswith('.dwg'):
         doc = _read_dwg(path)
     else:
         doc = ezdxf.readfile(path)
@@ -156,6 +160,22 @@ def load_dxf(
         doc = _upgrade_to_r2010(doc)
 
     msp = doc.modelspace()
+
+    inserts_found = list(msp.query("INSERT"))
+    if inserts_found:
+        if explode_inserts:
+            n = _explode_inserts(msp)
+            if n:
+                print(f"[loader] {n} INSERT esplosi.")
+        else:
+            print(f"[loader] Trovati {len(inserts_found)} INSERT non esplosi — usa explode_inserts=True in load_dxf() per includerli.")
+
     sanitize(msp, flatten_z_flag=flatten_z_flag, verbose=verbose)
 
     return doc, msp
+
+
+
+
+
+
