@@ -83,10 +83,6 @@ class HealStep:
 
 
     def _load(self):
-        removed = _deduplicate_entities(self.msp, tolerance=self.tolerance)
-        if removed > 0:
-            self.result.warnings.append(f"Rimosse {removed} entità duplicate dal msp.")
-
         entities         = self.adapter.load_entity_lists()
         self.all_lines   = entities["lines"]
         self.all_arcs    = entities["arcs"]
