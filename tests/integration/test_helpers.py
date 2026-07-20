@@ -61,18 +61,15 @@ def run_pipeline(
             reloaded_result
     """
 
-    # if interpreter is None:
-    #     interpreter = GeometricInterpreter()
-
     path = load(dxf_name)
 
-    doc = ezdxf.readfile(path)
-    msp = doc.modelspace()
+    # doc = ezdxf.readfile(path)
+    # msp = doc.modelspace()
+    doc, msp = forge.load_dxf(path, explode_inserts=True)
 
     result = forge.heal(
         msp,
         tolerance=tolerance,
-        explode_inserts=True,
         label=Path(dxf_name).stem,
         source_file=dxf_name,
         special_layers=special_layers or {},
@@ -110,13 +107,11 @@ def run_pipeline(
 
         doc.saveas(tmp.name)
 
-        reloaded_doc = ezdxf.readfile(tmp.name)
-        reloaded_msp = reloaded_doc.modelspace()
+        reloaded_doc, reloaded_msp = forge.load_dxf(tmp.name, explode_inserts=True)
 
         reloaded_result = forge.heal(
             reloaded_msp,
             tolerance=tolerance,
-            explode_inserts=True,
             label=f"{Path(dxf_name).stem}_reloaded",
             source_file=tmp.name,
         )
