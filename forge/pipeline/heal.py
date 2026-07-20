@@ -112,8 +112,9 @@ class HealStep:
             fixed = apply_gap_fixes(fixes, self.msp)
 
             if fixed:
-                self.all_lines = list(self.msp.query("LINE"))
-                self.all_arcs  = list(self.msp.query("ARC"))
+                entities = self.adapter.load_entity_lists()
+                self.all_lines = entities["lines"]
+                self.all_arcs  = entities["arcs"]
                 graph_pre      = None
 
         if self.open_splines:

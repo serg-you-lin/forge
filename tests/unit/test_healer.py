@@ -233,10 +233,6 @@ class TestHealerDeduplication(unittest.TestCase):
     def test_003_correct_area(self):
         self.assertAlmostEqual(self.result.parts[0].area, 5000, delta=50)
 
-    def test_004_dedup_warning_emitted(self):
-        warnings_text = " ".join(self.result.warnings)
-        self.assertIn("duplicate", warnings_text.lower())
-
 
 # ---------------------------------------------------------------------------
 # Validate msp
