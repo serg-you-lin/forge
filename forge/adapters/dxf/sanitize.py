@@ -200,14 +200,9 @@ def delete_entities(refs: List[Any], msp) -> None:
         msp.delete_entity(entity)
 
 
-def deduplicate(msp, tolerance: float = 0.01) -> int:
+def deduplicate(msp) -> int:
     """
     Shortcut: estrae chiavi, trova duplicati, li elimina.
-
-    Il parametro tolerance è mantenuto per compatibilità con il
-    chiamante attuale (heal.py) ma non è usato nella chiave —
-    l'arrotondamento fisso a 2 decimali è la soglia di dedup.
-    Da rivedere se serve una dedup tolerance-driven.
 
     Restituisce il numero di entità eliminate.
     """

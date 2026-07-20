@@ -12,7 +12,7 @@ import os
 import ezdxf
 from ezdxf.addons import odafc
 from .copy_adapter import copy_entity
-from .sanitize import sanitize, _explode_inserts
+from .sanitize import sanitize, _explode_inserts, deduplicate
 
 ODA_PATH = os.environ.get(
     "ODA_PATH"
@@ -170,6 +170,9 @@ def load_dxf(
         else:
             print(f"[loader] Trovati {len(inserts_found)} INSERT non esplosi — usa explode_inserts=True in load_dxf() per includerli.")
 
+    removed = deduplicate(msp)
+    if removed > 0:
+        print(f"Rimosse {removed} entità duplicate dal msp.")
     sanitize(msp, flatten_z_flag=flatten_z_flag, verbose=verbose)
 
     return doc, msp
