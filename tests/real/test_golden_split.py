@@ -87,16 +87,23 @@ class _SplitContext:
         self._tolerance   = tolerance
         self._tmpdir      = None
 
+    # def __enter__(self) -> Path:
+    #     self._tmpdir = tempfile.TemporaryDirectory()
+    #     output_folder = Path(self._tmpdir.name)
+
+    #     doc = ezdxf.readfile(self._parent_path)
+    #     if doc.dxfversion < "AC1015":
+    #         doc = forge.upgrade_to_r2010(doc)
+    #     msp = doc.modelspace()
+
+    #     result = forge.heal(msp, tolerance=self._tolerance, explode_inserts=True)
     def __enter__(self) -> Path:
         self._tmpdir = tempfile.TemporaryDirectory()
         output_folder = Path(self._tmpdir.name)
 
-        doc = ezdxf.readfile(self._parent_path)
-        if doc.dxfversion < "AC1015":
-            doc = forge.upgrade_to_r2010(doc)
-        msp = doc.modelspace()
+        doc, msp = forge.load_dxf(self._parent_path, explode_inserts=True)
 
-        result = forge.heal(msp, tolerance=self._tolerance, explode_inserts=True)
+        result = forge.heal(msp, tolerance=self._tolerance)
 
         if result.is_valid and result.parts:
             forge.detect(result, msp)
@@ -120,12 +127,12 @@ def _process_child(child_path: Path, tolerance: float):
     Riprocessa un DXF figlio (singola parte attesa) con heal → detect → write.
     Restituisce il result, oppure None se non valido.
     """
-    doc = ezdxf.readfile(child_path)
-    if doc.dxfversion < "AC1015":
-        doc = forge.upgrade_to_r2010(doc)
-    msp = doc.modelspace()
-
-    result = forge.heal(msp, tolerance=tolerance, explode_inserts=True)
+    # doc = ezdxf.readfile(child_path)
+    # if doc.dxfversion < "AC1015":
+    #     doc = forge.upgrade_to_r2010(doc)
+    # msp = doc.modelspace()
+    doc, msp = forge.load_dxf(child_path, explode_inserts=True)
+    result = forge.heal(msp, tolerance=tolerance)
 
     for idx, p in enumerate(result.parts):
         print(f"  [CHILD] part{idx} outer.source_ref={type(p.outer.source_ref).__name__} area={p.area:.4f}")
@@ -272,20 +279,6 @@ def _make_split_test(golden_path: Path):
                 msg=f"{label}: inners_layers {actual_layers} != attesi {golden['inners_layers']}",
             )
 
-        # # --- Layer ---
-        # if "outer_layer" in golden:
-        #     self.assertEqual(
-        #         part.outer.layer,
-        #         golden["outer_layer"],
-        #         msg=f"{label}: outer_layer '{part.outer.layer}' != atteso '{golden['outer_layer']}'",
-        #     )
-
-        # if "inners_layers" in golden:
-        #     self.assertEqual(
-        #         [h.layer for h in all_inners],
-        #         golden["inners_layers"],
-        #         msg=f"{label}: inners_layers {[h.layer for h in all_inners]} != attesi {golden['inners_layers']}",
-        #     )
 
         # --- Custom ---
         if "custom" in golden:

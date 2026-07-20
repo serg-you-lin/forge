@@ -210,7 +210,7 @@ class TestWritebackDeduplication(unittest.TestCase):
     def setUp(self):
         doc = load("rect_lines_duplicated.dxf")
         self.msp = doc.modelspace()
-        result = forge.heal(self.msp, explode_inserts=False)
+        result = forge.heal(self.msp)
         forge.write(self.msp, result)
 
     def test_001_single_outer_lwpolyline(self):

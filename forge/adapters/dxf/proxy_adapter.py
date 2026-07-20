@@ -27,22 +27,10 @@ def entity_to_proxy(entity) -> Optional[ShapeProxy]:
             center=(entity.dxf.center.x, entity.dxf.center.y),
         )
 
-    # if entity_type == "CIRCLE":
-    #     return ShapeProxy(
-    #         polygon=poly,
-    #         origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
-    #         shape_type="circle",
-    #         source_ref=entity,
-    #         diameter=entity.dxf.radius * 2,
-    #         center=(entity.dxf.center.x, entity.dxf.center.y),
-    #     )
-
-
     # Explicit type matching instead of substring matching.
     # During refactoring, the previous `"PLINE" in entity_type` check behaved
     # unexpectedly for LWPOLYLINE even though entity_type was a normal str.
     # Keep this explicit to avoid relying on substring detection.
-
     if entity_type in ("LWPOLYLINE", "POLYLINE"):
         return ShapeProxy(
             polygon=poly,
@@ -63,30 +51,6 @@ def entity_to_proxy(entity) -> Optional[ShapeProxy]:
             origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
             source_ref=entity,
         )
-
-    # if entity_type in ("LWPOLYLINE", "POLYLINE"):
-    #     return ShapeProxy(
-    #         polygon=poly,
-    #         origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
-    #         shape_type="polyline",
-    #         source_ref=entity,
-    #     )
-
-    # if entity_type == "SPLINE":
-    #     return ShapeProxy(
-    #         polygon=poly,
-    #         origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
-    #         shape_type="spline",
-    #         source_ref=entity,
-    #     )
-    
-    # if entity_type == "ELLIPSE":
-    #     return ShapeProxy(
-    #         polygon=poly,
-    #         origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
-    #         shape_type="ellipse",
-    #         source_ref=entity,
-    #     )
 
     return None
 

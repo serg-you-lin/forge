@@ -70,12 +70,12 @@ def _make_golden_test(golden_path: Path):
         doc, msp = forge.load_dxf(
             str(dxf_path),
             upgrade=True,
+            explode_inserts=True,
         )
 
         result = forge.heal(
             msp,
             tolerance=tolerance,
-            explode_inserts=True,
             special_layers=special_layers,
         )
 

@@ -30,8 +30,6 @@ class HealStep:
         tolerance,
         label="",
         source_file="",
-        explode_inserts=False,
-        flatten_z: bool = True,
         ignore_layers=None,
         special_layers=None,
     ):
@@ -40,8 +38,6 @@ class HealStep:
         self.tolerance       = tolerance
         self.label           = label
         self.source_file     = source_file
-        self.explode_inserts = explode_inserts
-        self.flatten_z       = flatten_z
         self.ignore_layers   = {l.lower() for l in (ignore_layers or [])}
         self.special_layer_names = {k.lower() for k in (special_layers or {})}
 
@@ -67,7 +63,6 @@ class HealStep:
         self.open_splines   = []
 
     def run(self):
-        self._handle_inserts()
         self._load()
         if not self.result.is_valid:
             return self.result
@@ -86,17 +81,6 @@ class HealStep:
             edges = [e for e in edges if id(e.source_ref) not in exclude_ids]
         return build_node_graph(edges)
 
-    def _handle_inserts(self):
-        inserts_found = list(self.msp.query("INSERT"))
-        if inserts_found:
-            if self.explode_inserts:
-                n = _explode_inserts(self.msp)
-                self.result.warnings.append(f"{n} INSERT esplosi prima dell'healing.")
-            else:
-                self.result.warnings.append(
-                    f"Trovati {len(inserts_found)} INSERT (blocchi) non esplosi — "
-                    f"usa explode_inserts=True in heal() per includerli."
-                )
 
     def _load(self):
         removed = _deduplicate_entities(self.msp, tolerance=self.tolerance)

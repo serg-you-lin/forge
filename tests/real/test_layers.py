@@ -32,15 +32,15 @@ SPECIAL_LAYERS = {
 
 def _run_pipeline(dxf_path: Path):
     """Esegue heal → detect → write e restituisce (doc, msp, result)."""
-    doc = ezdxf.readfile(dxf_path)
-    if doc.dxfversion < "AC1015":
-        doc = forge.upgrade_to_r2010(doc)
-    msp = doc.modelspace()
+    # doc = ezdxf.readfile(dxf_path)
+    # if doc.dxfversion < "AC1015":
+    #     doc = forge.upgrade_to_r2010(doc)
+    # msp = doc.modelspace()
 
+    doc, msp = forge.load_dxf(dxf_path, explode_inserts=True)
     result = forge.heal(
         msp,
         tolerance=1,
-        explode_inserts=True,
         special_layers=SPECIAL_LAYERS,
         label=dxf_path.stem,
         source_file=dxf_path.name,
@@ -177,8 +177,9 @@ class TestLayerSplit(unittest.TestCase):
         """Nei file figli le entità forge devono avere color=256."""
         forge_layer_names = {name.upper() for name in ALL_FORGE_LAYERS}
         for path in self.generated:
-            doc_out  = ezdxf.readfile(path)
-            msp_out  = doc_out.modelspace()
+            # doc_out  = ezdxf.readfile(path)
+            # msp_out  = doc_out.modelspace()
+            doc_out, msp_out = forge.load_dxf(path, explode_inserts=True)
             violazioni = []
             for entity in msp_out:
                 if not entity.dxf.hasattr("layer"):
@@ -210,14 +211,14 @@ class TestLineetteBastarde(unittest.TestCase):
         cls.dxf_path = EXAMPLES_DIR / "6200012964_lineette_bastarde.dxf"
         if not cls.dxf_path.exists():
             raise unittest.SkipTest(f"File non trovato: {cls.dxf_path}")
-        doc = ezdxf.readfile(cls.dxf_path)
-        if doc.dxfversion < "AC1015":
-            doc = forge.upgrade_to_r2010(doc)
-        cls.msp = doc.modelspace()
+        # doc = ezdxf.readfile(cls.dxf_path)
+        # if doc.dxfversion < "AC1015":
+        #     doc = forge.upgrade_to_r2010(doc)
+        # cls.msp = doc.modelspace()
+        doc, cls.msp = forge.load_dxf(cls.dxf_path, explode_inserts=True)
         cls.result = forge.heal(
             cls.msp,
             tolerance=1,
-            explode_inserts=True,
             label=cls.dxf_path.stem,
             source_file=cls.dxf_path.name,
         )
@@ -277,15 +278,11 @@ class TestGambaTavoloSplit(unittest.TestCase):
         cls.dxf_path = EXAMPLES_DIR / "gamba_tavolo.dxf"
         if not cls.dxf_path.exists():
             raise unittest.SkipTest(f"File non trovato: {cls.dxf_path}")
-        doc = ezdxf.readfile(cls.dxf_path)
-        if doc.dxfversion < "AC1015":
-            doc = forge.upgrade_to_r2010(doc)
-        cls.msp = doc.modelspace()
+        doc, cls.msp = forge.load_dxf(cls.dxf_path, explode_inserts=True)
         cls.output_dir = tempfile.mkdtemp()
         cls.result = forge.split_to_files(
             cls.msp,
             output_folder=cls.output_dir,
-            explode_inserts=True,
             label=cls.dxf_path.stem,
             source_file=cls.dxf_path.name,
             include_annotations=True,
@@ -301,8 +298,7 @@ class TestGambaTavoloSplit(unittest.TestCase):
         """Ogni figlio deve avere almeno una LWPOLYLINE su OuterContour."""
         from forge.rules.layers import LAYER_OUTER
         for path in self.generated:
-            doc_out = ezdxf.readfile(path)
-            msp_out = doc_out.modelspace()
+            doc_out, msp_out = forge.load_dxf(path, explode_inserts=True)
             outer_entities = [
                 e for e in msp_out
                 if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_OUTER
@@ -318,8 +314,7 @@ class TestGambaTavoloSplit(unittest.TestCase):
         """Nessun figlio deve avere LWPOLYLINE su layer non-forge come contorno esterno."""
         forge_layer_names = {name.upper() for name in ALL_FORGE_LAYERS}
         for path in self.generated:
-            doc_out = ezdxf.readfile(path)
-            msp_out = doc_out.modelspace()
+            doc_out, msp_out = forge.load_dxf(path, explode_inserts=True)
             spuri = [
                 e for e in msp_out
                 if e.dxftype() == "LWPOLYLINE"

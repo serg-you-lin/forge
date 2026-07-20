@@ -34,8 +34,9 @@ import snapmark as sm
 
 
 # ← CAMBIA QUI
-input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ProTest\intricato_doppio.dxf"
+input_dxf  = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC\6200012810 Sviluppo.dxf"
 output_dir = os.path.join(os.path.dirname(input_dxf), os.path.splitext(os.path.basename(input_dxf))[0])
+folder_name = os.path.basename(os.path.dirname(input_dxf))
 
 customer = 'ARC02'
 drawing  = os.path.basename(os.path.dirname(input_dxf))
@@ -57,6 +58,13 @@ MATERIAL_MAP = {
     "aisi304": "I304",
 }
 
+if re.fullmatch(r'ARC\.\d{5}', folder_name):
+    drawing = folder_name
+elif folder_name.isdigit():
+    drawing = f"ARC.{folder_name.zfill(5)}"
+else:
+    drawing = "ARC.00000"
+    
 def sanitize_filename(name: str) -> str:
     name = name.strip()
     name = re.sub(r'[\\/:"*?<>|\n\r\t]', '_', name)
@@ -123,11 +131,13 @@ def make_data_injector(doc):
 # Apertura
 # ---------------------------------------------------------------------------
 
-print(f"Apertura: {input_dxf}")
-doc = ezdxf.readfile(input_dxf)
-if doc.dxfversion < 'AC1015':
-    doc = forge.upgrade_to_r2010(doc)
-msp = doc.modelspace()
+# print(f"Apertura: {input_dxf}")
+# doc = ezdxf.readfile(input_dxf)
+# if doc.dxfversion < 'AC1015':
+#     doc = forge.upgrade_to_r2010(doc)
+# msp = doc.modelspace()
+
+doc, msp = forge.load_dxf(input_dxf, explode_inserts=True, flatten_z_flag=True, verbose=False)
 
 # ---------------------------------------------------------------------------
 # Validazione
@@ -154,7 +164,6 @@ print(f"\n--- HEAL ---")
 result = forge.heal(
     msp,
     tolerance=.2,
-    explode_inserts=True,
     label=label,
     source_file=input_dxf,
 )

@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/intricato_doppio.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ARC - Copia\ARC.6200012814 Sviluppo\6200012814 Sviluppo.dxf"
 
 tolerance = .02
 
@@ -40,7 +40,7 @@ output_json = os.path.join(base_dir, f"{base_name}_healed.json")
 print(f"Apertura: {input_dxf}")
 print(f"Tolleranza: {tolerance}")
 
-doc, msp = forge.load_dxf(input_dxf)
+doc, msp = forge.load_dxf(input_dxf, explode_inserts=True, flatten_z_flag=True, verbose=False)
 
 # inspector = DxfInspector(summary=False, lines=True, arcs=False,
 #                          polylines=True, circles=False, splines=True, graph=False)
@@ -66,7 +66,6 @@ if not check.errors:
 result = forge.heal(
     msp,
     tolerance=tolerance,
-    explode_inserts=True,
     special_layers=special_layers,
     label=base_name,
     source_file=file_name,
