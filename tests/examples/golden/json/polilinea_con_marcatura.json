@@ -8,68 +8,68 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 1987.9278,
       "outer_wkt": "POLYGON ((963.9754577171208 30.00000000000011, 963.9754577171208 1.137e-13, 0.0115416666666732 0, 0.0115416666666748 30, 963.9754577171208 30.00000000000011))",
-      "outer_layer": "OuterContour",
+      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_layers": [],
+      "holes_origin": [],
       "inners_count": 0,
       "inners_wkt": [],
-      "inners_layers": [],
+      "inners_origin": [],
       "custom": {
         "engrave_entities": [
           {
             "length": 8.4,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 8.4,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 8.4,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 8.4,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 14.7,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.9698,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 4.2,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.9698,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 14.7,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           }
         ],
         "total_engrave_length": 73.1396

@@ -1,8 +1,9 @@
 
+
 """
-workflow/detect.py
----------------------
-Step semantico post-heal: rileva il significato delle entità geometriche.
+pipeline/detect.py
+------------------
+Step semantico post-heal: rileva il significato delle forme geometriche.
 
 Posizione nella pipeline:
     heal()      → geometria pura — crea Hole(hole_type=UNKNOWN, geometric_hint=...)
@@ -10,8 +11,8 @@ Posizione nella pipeline:
     inject()    → serializzazione dati CAM
 
 Responsabilità di detect() sui fori:
-    1. Special layers (certezza 1.0)
-       Hole su layer noto → hole_type promosso immediatamente.
+    1. Labeled shapes (certezza 1.0)
+       Forma con origin mappata in label_map → work_type promosso immediatamente.
        Priorità assoluta su hint geometrico e inferenza.
 
     2. Hint geometrico da heal() (certezza < 1.0)
@@ -22,11 +23,13 @@ Responsabilità di detect() sui fori:
 NON è responsabilità di detect():
     - costruire loop o topologia               → heal()
     - aprire o salvare file                    → il chiamante
-    - scrivere layer/colore nel DXF            → write()
+    - scrivere layer/colore nel documento      → write()
     - serializzare metriche nel JSON           → inject()
 
-Nota su special_layers:
-    special_layers viene passato a heal() e salvato in result.special_layers.
+Nota su label_map:
+    label_map è una dict {origin: work_type} — in DXF origin è il layer,
+    in SVG sarà il colore o la classe CSS.
+    Viene passato a heal() e salvato in result.label_map.
     detect() lo legge da lì — non va passato di nuovo.
 """
 
@@ -48,21 +51,14 @@ from ..model import (
     HOLE_TYPE_THREADED,
     HOLE_TYPE_UNKNOWN,
 )
+from ..model.shape_proxy import ShapeProxy
 from ..adapters.dxf.hole_detector import (
     is_threaded_hole,
-    is_threaded_arc,
-    is_countersink_outer,
 )
+from ..adapters.dxf.bending_adapter import bending_line_from_proxy
+from ..rules.layers import VALID_WORK_TYPES
 
-from ..adapters.dxf.geometry_adapter import (
-    entity_length,
-    get_representative_point,
-    entity_midpoint,
-)
-
-from ..rules.layers import WORK_TYPE_TO_LAYER, VALID_WORK_TYPES
-
-# Work type → hole_type: mappa per special_layers sui fori
+# work_type → hole_type per le forme foro con label esplicita
 _WORK_TYPE_TO_HOLE_TYPE = {
     "countersink":   HOLE_TYPE_COUNTERSINK,
     "threaded_hole": HOLE_TYPE_THREADED,
@@ -75,87 +71,91 @@ _WORK_TYPE_TO_HOLE_TYPE = {
 
 def detect(
     result:            ForgeResult,
-    msp,
     bending_tolerance: float = 1.0,
 ) -> None:
     """
     Rileva la semantica geometrica e popola part.bending_lines e part.custom.
 
-    Legge special_layers da result.special_layers, popolato da heal().
+    Legge label_map da result.label_map, popolato da heal().
     Idempotente per design.
 
     Args:
         result:            ForgeResult prodotto da heal()
-        msp:               modelspace ezdxf — stesso oggetto passato a heal()
         bending_tolerance: tolleranza mm per rilevamento linee di piega
     """
-    sl = result.special_layers or {}
+    label_map = result.label_map or {}
 
-    if sl:
-        unknown = {v.lower() for v in sl.values()} - VALID_WORK_TYPES
+    if label_map:
+        unknown = {v.lower() for v in label_map.values()} - VALID_WORK_TYPES
         if unknown:
             result.warnings.append(
-                f"detect(): work_type sconosciuti in special_layers: {unknown}. "
+                f"detect(): work_type sconosciuti in label_map: {unknown}. "
                 f"Valori validi: {VALID_WORK_TYPES}"
             )
 
-    all_arcs = list(msp.query("ARC"))
+    # all_arcs = [
+    #     proxy.source_ref
+    #     for proxy in result.trash_entities
+    #     if proxy.shape_type == "arc"
+    # ] + [
+    #     hole.source_ref
+    #     for part in result.parts
+    #     for hole in part.holes
+    #     if hole.source_ref is not None
+    # ]
 
-    if sl:
-        _detect_special_layers(result, msp, sl)
+    if label_map:
+        _detect_labeled(result, label_map)
 
-    _detect_bending_lines(result, bending_tolerance=bending_tolerance)
+    _detect_bending(result, bending_tolerance=bending_tolerance)
 
-    _detect_holes(result, all_arcs)
+    _detect_holes(result)
 
 
 # ---------------------------------------------------------------------------
-# Step 1 — special layers (certezza 1.0)
+# Step 1 — labeled shapes (certezza 1.0)
 # ---------------------------------------------------------------------------
-# TODO: step 7b — rinominare in source_context
-def _detect_special_layers(
-    result:         ForgeResult,
-    msp,
-    special_layers: dict,
+
+def _detect_labeled(
+    result:    ForgeResult,
+    label_map: dict,
 ) -> None:
     """
-    Classifica entità trash e Hole su layer speciali noti.
+    Classifica le forme in trash_entities e i Hole con origin mappata in label_map.
 
     Per i Hole: promuove hole_type direttamente.
-    Per le entità trash (bending, engrave, ecc.): crea ClassifiedEntity.
+    Per le forme libere (bending, engrave, ecc.): crea ClassifiedEntity.
     """
-    layer_to_work  = {k.lower(): v.lower() for k, v in special_layers.items()}
+    origin_to_work = {k.lower(): v.lower() for k, v in label_map.items()}
     classified_ids = set()
 
-    # --- entità trash (bending, engrave, marking, ecc.) ---
-    for entity in result.trash_entities:
-        if not entity.dxf.hasattr("layer"):
+    # --- forme libere (bending, engrave, marking, ecc.) ---
+    for proxy in result.trash_entities:
+        if proxy.origin == "":
             continue
-        layer     = entity.dxf.layer.lower()
-        work_type = layer_to_work.get(layer)
+        work_type = origin_to_work.get(proxy.origin.lower())
         if work_type is None:
             continue
-        data = _extract_data(entity, work_type)
+        data = _extract_data(proxy, work_type)
         ce   = ClassifiedEntity(
-            source_ref=entity,
+            source_ref=proxy.source_ref,
             work_type=work_type,
             confidence=1.0,
-            source="special_layers",
+            source="labeled",
             data=data,
         )
         result.classified_entities.append(ce)
         _assign_to_part(ce, result)
-        classified_ids.add(id(entity))
+        classified_ids.add(id(proxy))
 
     result.trash_entities = [
-        e for e in result.trash_entities if id(e) not in classified_ids
+        p for p in result.trash_entities if id(p) not in classified_ids
     ]
 
-    # --- Hole sui part: promozione diretta da layer speciale ---
+    # --- Hole sui part: promozione diretta da label ---
     for part in result.parts:
         for hole in part.holes:
-            check_layer = hole.origin.lower()
-            work_type   = layer_to_work.get(check_layer)
+            work_type = origin_to_work.get(hole.origin.lower())
             if work_type is None:
                 continue
             hole_type = _WORK_TYPE_TO_HOLE_TYPE.get(work_type)
@@ -163,25 +163,22 @@ def _detect_special_layers(
                 continue
             hole.hole_type  = hole_type
             hole.confidence = 1.0
-            hole.source     = "special_layers"
+            hole.source     = "labeled"
 
-        # --- contorni inner non-foro su layer speciale ---
+        # --- contorni inner su origin labeled → ClassifiedEntity ---
         remaining = []
         for inner in part.inners:
-            check_layer = inner.origin.lower()
-            work_type   = layer_to_work.get(check_layer)
+            work_type = origin_to_work.get(inner.origin.lower())
             if work_type is None:
                 remaining.append(inner)
                 continue
-            data = _extract_data(inner.source_ref, work_type) if inner.source_ref is not None else {
-                "length": round(inner.polygon.exterior.length, 4),
-                "layer":  inner.origin,
-            }
+            # data = _extract_data_from_source(inner.source_ref, inner.origin, work_type)
+            data = _extract_data_from_source(inner.source_ref, inner.origin, work_type, polygon=inner.polygon)
             ce = ClassifiedEntity(
                 source_ref=inner.source_ref,
                 work_type=work_type,
                 confidence=1.0,
-                source="special_layers",
+                source="labeled",
                 data=data,
                 polygon=inner.polygon,
             )
@@ -196,18 +193,19 @@ def _detect_special_layers(
 # Step 2 — bending geometrico
 # ---------------------------------------------------------------------------
 
-def _detect_bending_lines(result: ForgeResult, bending_tolerance: float = 1.0) -> None:
+def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None:
     """
     Individua LINE interne all'outer di ogni part e popola part.bending_lines.
     """
     classified_ids = {id(ce.source_ref) for ce in result.classified_entities}
 
-    for entity in result.trash_entities:
-        if entity.dxftype() != "LINE":
+    for proxy in result.trash_entities:
+        if proxy.shape_type != "line":
             continue
-        if id(entity) in classified_ids:
+        if id(proxy.source_ref) in classified_ids:
             continue
 
+        entity = proxy.source_ref
         s = Point(entity.dxf.start.x, entity.dxf.start.y)
         e = Point(entity.dxf.end.x,   entity.dxf.end.y)
 
@@ -223,7 +221,7 @@ def _detect_bending_lines(result: ForgeResult, bending_tolerance: float = 1.0) -
                     (entity.dxf.start.y + entity.dxf.end.y) / 2,
                 )
                 if outer.contains(midpoint):
-                    part.bending_lines.append(_make_bending_line(entity, part.label))
+                    part.bending_lines.append(bending_line_from_proxy(proxy, part.label))
                     break
 
 
@@ -231,13 +229,19 @@ def _detect_bending_lines(result: ForgeResult, bending_tolerance: float = 1.0) -
 # Step 3 — promozione fori da geometric_hint
 # ---------------------------------------------------------------------------
 
-def _detect_holes(result: ForgeResult, all_arcs: list) -> None:
+def _detect_holes(result: ForgeResult) -> None:
     for part in result.parts:
         for hole in part.holes:
-            if hole.source == "special_layers":
+            if hole.source == "labeled":
                 continue
             if hole.hole_type != HOLE_TYPE_UNKNOWN:
                 continue
+
+            threaded = is_threaded_hole(
+                center=hole.center,
+                radius=hole.diameter / 2,
+                all_arcs=result.all_arcs,
+            )
 
             if hole.geometric_hint == "countersink":
                 hole.hole_type  = HOLE_TYPE_COUNTERSINK
@@ -251,7 +255,7 @@ def _detect_holes(result: ForgeResult, all_arcs: list) -> None:
                 hole.source     = "geometric"
                 continue
 
-            if hole.source_ref is not None and is_threaded_hole(hole.source_ref, all_arcs):
+            if hole.source_ref is not None and threaded:
                 hole.hole_type  = HOLE_TYPE_THREADED
                 hole.confidence = 0.80
                 hole.source     = "geometric"
@@ -266,7 +270,7 @@ def _detect_holes(result: ForgeResult, all_arcs: list) -> None:
 # ---------------------------------------------------------------------------
 
 def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
-    probe = _entity_probe_point(ce)
+    probe = _probe_point(ce)
     if probe is None:
         return
 
@@ -277,14 +281,16 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
             continue
 
         if work_type == "bending" and ce.source_ref is not None:
-            part.bending_lines.append(_make_bending_line(ce.source_ref, part.label))
+            # source_ref è un'entità LINE — bending_line_from_proxy richiede proxy;
+            # qui abbiamo già il source_ref direttamente, usiamo il costruttore interno
+            part.bending_lines.append(_bending_line_from_source(ce.source_ref, part.label))
             part.entity_ids.add(id(ce.source_ref))
 
         _write_custom(ce, part)
         return
 
     result.warnings.append(
-        f"detect(): entità {ce.work_type} non contenuta in nessun part "
+        f"detect(): forma {ce.work_type} non contenuta in nessun part "
         f"(source={ce.source}). Registrata in classified_entities."
     )
 
@@ -295,9 +301,7 @@ def _write_custom(ce: ClassifiedEntity, part: ForgePart) -> None:
         "engrave": "engrave_entities",
         "marking": "marking_entities",
     }
-
-    work_type = ce.work_type.lower()
-    key       = key_map.get(work_type, f"{work_type}_entities")
+    key = key_map.get(ce.work_type.lower(), f"{ce.work_type.lower()}_entities")
 
     if key not in part.custom:
         part.custom[key] = []
@@ -313,53 +317,8 @@ def _write_custom(ce: ClassifiedEntity, part: ForgePart) -> None:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_bending_line(entity, part_label: str) -> BendingLine:
-    """Costruisce una BendingLine da una entità LINE ezdxf."""
-    geom = LineString([
-        (entity.dxf.start.x, entity.dxf.start.y),
-        (entity.dxf.end.x,   entity.dxf.end.y),
-    ])
-    return BendingLine(
-        source_ref=entity,
-        geometry=geom,
-        length=geom.length,
-        angle_deg=math.degrees(math.atan2(
-            entity.dxf.end.y - entity.dxf.start.y,
-            entity.dxf.end.x - entity.dxf.start.x,
-        )) % 180,
-        part_label=part_label,
-    )
-
-
-def _extract_data(entity, work_type: str) -> dict:
-    work_type = work_type.lower()
-
-    if work_type == "bending" and entity is not None and entity.dxftype() == "LINE":
-        start = (entity.dxf.start.x, entity.dxf.start.y)
-        end   = (entity.dxf.end.x,   entity.dxf.end.y)
-        geom  = LineString([start, end])
-        dx    = end[0] - start[0]
-        dy    = end[1] - start[1]
-        return {
-            "start":     start,
-            "end":       end,
-            "length":    round(geom.length, 4),
-            "angle_deg": round(math.degrees(math.atan2(dy, dx)) % 180, 4),
-            "layer":     entity.dxf.layer,
-        }
-
-    if work_type in ("engrave", "marking"):
-        return {
-            "length": round(_entity_length(entity), 4) if entity is not None and _entity_length(entity) else None,
-            "layer":  entity.dxf.layer if entity is not None and entity.dxf.hasattr("layer") else "",
-        }
-
-    return {
-        "layer": entity.dxf.layer if entity is not None and entity.dxf.hasattr("layer") else "",
-    }
-
-
-def _entity_probe_point(ce: ClassifiedEntity) -> Optional[Point]:
+def _probe_point(ce: ClassifiedEntity) -> Optional[Point]:
+    """Punto rappresentativo della ClassifiedEntity per il containment check."""
     if ce.source_ref is None:
         if ce.polygon is not None:
             return ce.polygon.centroid
@@ -386,18 +345,89 @@ def _entity_probe_point(ce: ClassifiedEntity) -> Optional[Point]:
     return None
 
 
-def _entity_length(entity) -> Optional[float]:
+def _extract_data(proxy: ShapeProxy, work_type: str) -> dict:
+    """Estrae dati serializzabili da un proxy per ClassifiedEntity.data."""
+    work_type = work_type.lower()
+
+    if work_type == "bending" and proxy.shape_type == "line":
+        entity = proxy.source_ref
+        start  = (entity.dxf.start.x, entity.dxf.start.y)
+        end    = (entity.dxf.end.x,   entity.dxf.end.y)
+        geom   = LineString([start, end])
+        dx     = end[0] - start[0]
+        dy     = end[1] - start[1]
+        return {
+            "start":     start,
+            "end":       end,
+            "length":    round(geom.length, 4),
+            "angle_deg": round(math.degrees(math.atan2(dy, dx)) % 180, 4),
+            "origin":    proxy.origin,
+        }
+
+    if work_type in ("engrave", "marking"):
+        return {
+            "length": round(_shape_length(proxy.source_ref), 4) if proxy.source_ref is not None else None,
+            "origin": proxy.origin,
+        }
+
+    return {"origin": proxy.origin}
+
+
+def _extract_data_from_source(source_ref, origin: str, work_type: str, polygon=None) -> dict:
+    work_type = work_type.lower()
+    if work_type in ("engrave", "marking"):
+        length = None
+        if source_ref is not None:
+            length = _shape_length(source_ref)
+        elif polygon is not None:
+            length = round(polygon.exterior.length, 4)  # ← fallback virtual
+        return {
+            "length": round(length, 4) if length is not None else None,
+            "origin": origin,
+        }
+    return {"origin": origin}
+
+
+
+def _shape_length(source_ref) -> Optional[float]:
+    """Lunghezza approssimata di una forma da source_ref opaco."""
+    if source_ref is None:
+        return None
     try:
-        dtype = entity.dxftype()
+        dtype = source_ref.dxftype()
+        # print(f"DEBUG _shape_length: {dtype}")
         if dtype == "LINE":
-            dx = entity.dxf.end.x - entity.dxf.start.x
-            dy = entity.dxf.end.y - entity.dxf.start.y
+            dx = source_ref.dxf.end.x - source_ref.dxf.start.x
+            dy = source_ref.dxf.end.y - source_ref.dxf.start.y
             return math.sqrt(dx * dx + dy * dy)
         if dtype == "ARC":
-            start_a = math.radians(entity.dxf.start_angle)
-            end_a   = math.radians(entity.dxf.end_angle)
+            start_a = math.radians(source_ref.dxf.start_angle)
+            end_a   = math.radians(source_ref.dxf.end_angle)
             delta   = (end_a - start_a) % (2 * math.pi)
-            return entity.dxf.radius * delta
+            return source_ref.dxf.radius * delta
     except Exception:
         pass
     return None
+
+
+def _bending_line_from_source(source_ref, part_label: str) -> BendingLine:
+    """
+    Costruisce BendingLine direttamente da source_ref LINE.
+    Usato quando _assign_to_part riceve una ClassifiedEntity già estratta
+    (non un proxy grezzo).
+    """
+    entity = source_ref
+    geom   = LineString([
+        (entity.dxf.start.x, entity.dxf.start.y),
+        (entity.dxf.end.x,   entity.dxf.end.y),
+    ])
+    return BendingLine(
+        source_ref=entity,
+        geometry=geom,
+        length=geom.length,
+        angle_deg=math.degrees(math.atan2(
+            entity.dxf.end.y - entity.dxf.start.y,
+            entity.dxf.end.x - entity.dxf.start.x,
+        )) % 180,
+        part_label=part_label,
+    )

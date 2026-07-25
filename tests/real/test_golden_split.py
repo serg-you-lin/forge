@@ -106,7 +106,7 @@ class _SplitContext:
         result = forge.heal(msp, tolerance=self._tolerance)
 
         if result.is_valid and result.parts:
-            forge.detect(result, msp)
+            forge.detect(result)
             forge.write(msp, result)
             forge.split(msp, result, output_folder=str(output_folder), namer=lambda i, part: f"{part.label}_P{i + 1:03d}",)
 
@@ -140,7 +140,7 @@ def _process_child(child_path: Path, tolerance: float):
     if not result.is_valid or not result.parts:
         return None
 
-    forge.detect(result, msp)
+    forge.detect(result)
     forge.write(msp, result)
 
     for idx, p in enumerate(result.parts):

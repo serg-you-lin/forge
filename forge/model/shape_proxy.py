@@ -24,8 +24,8 @@ class ShapeProxy:
     """
     polygon:      Polygon
     origin: str
-    # shape_type:   str                        # "circle" | "polyline" | "spline" | "virtual"
     source_ref:   Any
+    shape_type:   str = ""   # "circle" | "polyline" | "spline" | "ellipse" | "line" | "arc" | "virtual"
     is_virtual:   bool                        = False
     diameter:     Optional[float]       = None
     center:       Optional[Tuple[float, float]] = None

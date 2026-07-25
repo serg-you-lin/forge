@@ -49,13 +49,12 @@ def load(name):
 # ---------------------------------------------------------------------------
 
 
-def _heal_and_inject(dxf_name, special_layers=None, data_injector=None, interpreter=None):
+def _heal_and_inject(dxf_name, label_map=None, data_injector=None, interpreter=None):
     doc = load(dxf_name)
     msp = doc.modelspace()
-    result = forge.heal(msp, special_layers=special_layers or {},)
+    result = forge.heal(msp, label_map=label_map or {},)
     forge.detect(
-        result,
-        msp,
+        result
     )
     forge.write(msp, result)
     forge.inject(msp, result, data_injector=data_injector)
@@ -86,7 +85,7 @@ class TestInjectBendingLines(unittest.TestCase):
     def setUp(self):
         _, self.result = _heal_and_inject(
             "rect_with_special_layers.dxf",
-            special_layers={"BEND": "bending", "MARK": "engrave"},
+            label_map={"BEND": "bending", "MARK": "engrave"},
         )
 
     def test_001_bending_lines_present_in_custom(self):
@@ -114,7 +113,7 @@ class TestInjectEngraveLength(unittest.TestCase):
     def setUp(self):
         _, self.result = _heal_and_inject(
             "rect_with_special_layers.dxf",
-            special_layers={"BEND": "bending", "MARK": "engrave"},
+            label_map={"BEND": "bending", "MARK": "engrave"},
         )
 
     def test_001_total_engrave_length_present(self):
@@ -171,7 +170,7 @@ class TestInjectThreadedHoles(unittest.TestCase):
     def setUp(self):
         _, self.result = _heal_and_inject(
             "rect_with_threaded_holes.dxf",
-            special_layers={"THREADED": "threaded_hole"},
+            label_map={"THREADED": "threaded_hole"},
         )
 
     def test_001_threaded_holes_count_present(self):
@@ -198,10 +197,10 @@ class TestInjectDataInjector(unittest.TestCase):
         self.msp = self.doc.modelspace()
         self.result = forge.heal(
             self.msp,
-            special_layers={"BEND": "bending", "MARK": "engrave"},
+            label_map={"BEND": "bending", "MARK": "engrave"},
         )
         self.result = forge.heal(self.msp)
-        forge.detect(self.result, self.msp)
+        forge.detect(self.result)
         forge.write(self.msp, self.result)
 
     def test_001_data_injector_viene_chiamato(self):
@@ -284,7 +283,7 @@ class TestInjectMultiPart(unittest.TestCase):
     def setUp(self):
         _, self.result = _heal_and_inject(
             "two_rects_with_bend.dxf",
-            special_layers={"BEND": "bending"},
+            label_map={"BEND": "bending"},
         )
 
     def test_001_two_parts_found(self):

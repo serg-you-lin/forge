@@ -8,16 +8,16 @@
       "inner_perimeter_mm": 180.0,
       "total_perimeter_mm": 680.0,
       "outer_wkt": "POLYGON ((0 0, 150 0, 150 100, 0 100, 0 0))",
-      "outer_layer": "OuterContour",
+      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_layers": [],
+      "holes_origin": [],
       "inners_count": 1,
       "inners_wkt": [
         "POLYGON ((50 30, 100 30, 100 70, 50 70, 50 30))"
       ],
-      "inners_layers": [
-        "InnerContour"
+      "inners_origin": [
+        "0"
       ],
       "custom": {}
     }

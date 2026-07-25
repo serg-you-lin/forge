@@ -155,12 +155,11 @@ class TestPipelineDetectIdempotency(unittest.TestCase):
 
         forge.heal(
             msp,
-            special_layers={"BEND": "bending"},
+            label_map={"BEND": "bending"},
         )
 
         forge.detect(
-            result,
-            msp,
+            result
         )
 
         after = len(result.parts[0].custom.get("bending_lines", []))

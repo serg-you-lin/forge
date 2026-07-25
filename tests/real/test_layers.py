@@ -41,11 +41,11 @@ def _run_pipeline(dxf_path: Path):
     result = forge.heal(
         msp,
         tolerance=1,
-        special_layers=SPECIAL_LAYERS,
+        label_map=SPECIAL_LAYERS,
         label=dxf_path.stem,
         source_file=dxf_path.name,
     )
-    forge.detect(result, msp, bending_tolerance=0.2)
+    forge.detect(result, bending_tolerance=0.2)
     forge.write(msp, result)
 
     return doc, msp, result
@@ -211,10 +211,7 @@ class TestLineetteBastarde(unittest.TestCase):
         cls.dxf_path = EXAMPLES_DIR / "6200012964_lineette_bastarde.dxf"
         if not cls.dxf_path.exists():
             raise unittest.SkipTest(f"File non trovato: {cls.dxf_path}")
-        # doc = ezdxf.readfile(cls.dxf_path)
-        # if doc.dxfversion < "AC1015":
-        #     doc = forge.upgrade_to_r2010(doc)
-        # cls.msp = doc.modelspace()
+
         doc, cls.msp = forge.load_dxf(cls.dxf_path, explode_inserts=True)
         cls.result = forge.heal(
             cls.msp,
@@ -222,16 +219,12 @@ class TestLineetteBastarde(unittest.TestCase):
             label=cls.dxf_path.stem,
             source_file=cls.dxf_path.name,
         )
-        forge.detect(cls.result, cls.msp)
+        forge.detect(cls.result)
         forge.write(cls.msp, cls.result)
 
     def test_un_solo_part(self):
         self.assertEqual(self.result.part_count, 1, "Atteso 1 part")
 
-    # def test_outer_su_layer_corretto(self):
-    #     from forge.rules.layers import LAYER_OUTER
-    #     part = self.result.parts[0]
-    #     self.assertEqual(part.outer.layer, LAYER_OUTER)
     def test_outer_su_layer_corretto(self):
         from forge.rules.layers import LAYER_OUTER, ROLE_TO_LAYER
         part = self.result.parts[0]

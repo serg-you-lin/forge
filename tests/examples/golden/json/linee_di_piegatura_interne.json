@@ -8,13 +8,13 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 4264.3513,
       "outer_wkt": "POLYGON ((1268.727743496067 1508.201094284523, 1279.636684755145 934.0462911751533, 2832.151272362881 934.0462911751533, 2832.151272362881 1508.201094284523, 1268.727743496067 1508.201094284523))",
-      "outer_layer": "OuterContour",
+      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_layers": [],
+      "holes_origin": [],
       "inners_count": 0,
       "inners_wkt": [],
-      "inners_layers": [],
+      "inners_origin": [],
       "custom": {
         "bending_lines": 3
       }

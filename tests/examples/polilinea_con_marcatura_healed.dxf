@@ -493,7 +493,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461193.5196064813
+2461247.813576389
   9
 $TDUCREATE
  40
@@ -501,7 +501,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461193.5196064813
+2461247.813576389
   9
 $TDUUPDATE
  40
@@ -553,7 +553,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-100
+108
   9
 $SURFTAB1
  70
@@ -937,7 +937,7 @@ $FINGERPRINTGUID
   9
 $VERSIONGUID
   2
-{9F4882C3-DB53-40DB-8D98-E2E7FBAD8DA4}
+{94AE3DD6-2828-4FDF-97B7-2D96748560EA}
   9
 $EXTNAMES
 290
@@ -1699,7 +1699,7 @@ LAYER
 100
 AcDbSymbolTable
  70
-5
+14
   0
 LAYER
   5
@@ -1833,6 +1833,222 @@ F
 348
 0
   0
+LAYER
+  5
+FF
+330
+2
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+OuterContour
+ 70
+0
+ 62
+3
+  6
+Continuous
+370
+-3
+390
+F
+347
+21
+  0
+LAYER
+  5
+100
+330
+2
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+InnerContour
+ 70
+0
+ 62
+2
+  6
+Continuous
+370
+-3
+390
+F
+347
+21
+  0
+LAYER
+  5
+101
+330
+2
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Hole
+ 70
+0
+ 62
+6
+  6
+Continuous
+370
+-3
+390
+F
+347
+21
+  0
+LAYER
+  5
+102
+330
+2
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Bending
+ 70
+0
+ 62
+11
+  6
+Continuous
+370
+-3
+390
+F
+347
+21
+  0
+LAYER
+  5
+103
+330
+2
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Engrave
+ 70
+0
+ 62
+9
+  6
+Continuous
+370
+-3
+390
+F
+347
+21
+  0
+LAYER
+  5
+104
+330
+2
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Marking
+ 70
+0
+ 62
+8
+  6
+Continuous
+370
+-3
+390
+F
+347
+21
+  0
+LAYER
+  5
+105
+330
+2
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Countersink
+ 70
+0
+ 62
+5
+  6
+Continuous
+370
+-3
+390
+F
+347
+21
+  0
+LAYER
+  5
+106
+330
+2
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+ThreadHole
+ 70
+0
+ 62
+4
+  6
+Continuous
+370
+-3
+390
+F
+347
+21
+  0
+LAYER
+  5
+107
+330
+2
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Trash
+ 70
+0
+ 62
+1
+  6
+Continuous
+370
+-3
+390
+F
+347
+21
+  0
 ENDTAB
   0
 TABLE
@@ -1955,7 +2171,7 @@ APPID
 100
 AcDbSymbolTable
  70
-7
+6
   0
 APPID
   5
@@ -2038,20 +2254,6 @@ AcDbSymbolTableRecord
 AcDbRegAppTableRecord
   2
 ACAD_NAV_VCDISPLAY
- 70
-0
-  0
-APPID
-  5
-FF
-330
-9
-100
-AcDbSymbolTableRecord
-100
-AcDbRegAppTableRecord
-  2
-FORGE
  70
 0
   0
@@ -2580,8 +2782,6 @@ AcDbEntity
 OuterContour
   6
 Continuous
- 62
-3
 100
 AcDbPolyline
  90
@@ -2604,10 +2804,6 @@ AcDbPolyline
 0.0115416666666748
  20
 30.0
-1001
-FORGE
-1000
-{"label": "polilinea_con_marcatura", "source_file": "polilinea_con_marcatura.dxf", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 0, "countersink_count": 0, "threaded_holes_count": 0, "total_engrave_length_mm": 73.1396, "area_mm2": 28918.9175, "holes_count": 0, "inner_contours_count": 0, "outer_perimeter_mm": 1987.9278, "inner_perimeter_mm": 0, "total_perimeter_mm": 1987.9278, "bbox": {"minx": 0.0115, "miny": 0.0, "maxx": 963.9755, "maxy": 30.0}}
   0
 LINE
   5
@@ -2618,8 +2814,6 @@ F5
 AcDbEntity
   8
 Engrave
- 62
-9
 100
 AcDbLine
  10
@@ -2644,8 +2838,6 @@ F6
 AcDbEntity
   8
 Engrave
- 62
-9
 100
 AcDbLine
  10
@@ -2670,8 +2862,6 @@ F8
 AcDbEntity
   8
 Engrave
- 62
-9
 100
 AcDbLine
  10
@@ -2696,8 +2886,6 @@ F9
 AcDbEntity
   8
 Engrave
- 62
-9
 100
 AcDbLine
  10
@@ -2722,8 +2910,6 @@ FA
 AcDbEntity
   8
 Engrave
- 62
-9
 100
 AcDbLine
  10
@@ -2748,8 +2934,6 @@ FB
 AcDbEntity
   8
 Engrave
- 62
-9
 100
 AcDbLine
  10
@@ -2774,8 +2958,6 @@ FC
 AcDbEntity
   8
 Engrave
- 62
-9
 100
 AcDbLine
  10
@@ -2800,8 +2982,6 @@ FD
 AcDbEntity
   8
 Engrave
- 62
-9
 100
 AcDbLine
  10
@@ -2826,8 +3006,6 @@ FE
 AcDbEntity
   8
 Engrave
- 62
-9
 100
 AcDbLine
  10
@@ -13061,7 +13239,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-06-01T10:28:14.618567+00:00
+1.4.3 @ 2026-07-25T17:31:33.646311+00:00
   0
 DICTIONARY
   5

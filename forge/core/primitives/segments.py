@@ -45,3 +45,12 @@ class DiscretizedArcSeg:
     nell'adapter — core non ricalcola nulla.
     """
     points: List[Tuple[float, float]]
+
+
+@dataclass
+class CircularArcSeg:
+    """Arco standalone in WCS, definito da centro, raggio e angoli."""
+    center:      Tuple[float, float]
+    radius:      float
+    start_angle: float
+    end_angle:   float

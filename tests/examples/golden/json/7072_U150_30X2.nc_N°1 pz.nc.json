@@ -8,13 +8,13 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 1549.996,
       "outer_wkt": "POLYGON ((624.9979999999996 200, 0 200, 0 50, 624.9979999999996 50, 624.9979999999996 200))",
-      "outer_layer": "OuterContour",
+      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_layers": [],
+      "holes_origin": [],
       "inners_count": 0,
       "inners_wkt": [],
-      "inners_layers": [],
+      "inners_origin": [],
       "custom": {}
     },
     {
@@ -23,13 +23,13 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 1549.996,
       "outer_wkt": "POLYGON ((0 420, 624.9979999999996 420, 624.9979999999996 270, 0 270, 0 420))",
-      "outer_layer": "OuterContour",
+      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_layers": [],
+      "holes_origin": [],
       "inners_count": 0,
       "inners_wkt": [],
-      "inners_layers": [],
+      "inners_origin": [],
       "custom": {}
     },
     {
@@ -38,152 +38,152 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 1309.996,
       "outer_wkt": "POLYGON ((0 29.99999999999989, 624.9979999999996 30, 624.9979999999996 0, 0 1.137e-13, 0 29.99999999999989))",
-      "outer_layer": "OuterContour",
+      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_layers": [],
+      "holes_origin": [],
       "inners_count": 0,
       "inners_wkt": [],
-      "inners_layers": [],
+      "inners_origin": [],
       "custom": {
         "engrave_entities": [
           {
             "length": 21.36,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 10.0,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 17.0,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.1213,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 5.5,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.1213,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 17.0,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.1213,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 5.5,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.1213,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 19.0066,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 21.36,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 10.0,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 8.5,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.1213,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 7.0,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.1213,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 7.0,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.1213,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 7.0,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 2.1213,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 8.5,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           },
           {
             "length": 53.4853,
-            "layer": "MARK",
+            "origin": "MARK",
             "confidence": 1.0,
-            "source": "special_layers"
+            "source": "labeled"
           }
         ],
         "total_engrave_length": 235.1823
@@ -195,13 +195,13 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 1309.996,
       "outer_wkt": "POLYGON ((624.9979999999996 250, 0 249.9999999999999, 0 220.0000000000001, 624.9979999999996 220, 624.9979999999996 250))",
-      "outer_layer": "OuterContour",
+      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_layers": [],
+      "holes_origin": [],
       "inners_count": 0,
       "inners_wkt": [],
-      "inners_layers": [],
+      "inners_origin": [],
       "custom": {}
     }
   ]

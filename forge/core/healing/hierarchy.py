@@ -152,7 +152,9 @@ def _collect_entity_ids(father_proxy: ShapeProxy, children: list) -> set:
 
 def _build_hierarchy(self):
     # proxies = _collect_proxies(self)
-    proxies = self.adapter.collect_proxies(self.open_splines, self.result._virtual_shapes)
+    # proxies = self.adapter.collect_proxies(self.open_splines, self.result._virtual_shapes)
+    self._all_proxies = self.adapter.collect_proxies(self.open_splines, self.result._virtual_shapes)
+    proxies = [p for p in self._all_proxies if p.polygon is not None]
               
     if not proxies:
         self.result.errors.append("Nessuna geometria chiusa trovata dopo healing.")
@@ -222,15 +224,29 @@ def _build_hierarchy(self):
 
 def _build_trash(self):
     self.result.trash_entities += [
-        e for e in self.msp
-        if id(e) not in self.classified_entity_ids
-        and id(e) not in self.classified_virtual_ids
-        and e.dxf.hasattr("layer")
-        and e.dxf.layer.upper() not in STRUCTURAL_LAYERS
+        proxy for proxy in self._all_proxies
+        if id(proxy.source_ref) not in self.classified_entity_ids
+        and id(proxy.source_ref) not in self.classified_virtual_ids
+        and proxy.origin != ""
+        and proxy.origin.upper() not in STRUCTURAL_LAYERS
         and (
-            id(e) not in self.entities_in_loops
-            or e.dxf.layer.lower() in self.special_layer_names
+            id(proxy.source_ref) not in self.entities_in_loops
+            or proxy.origin.lower() in self.special_layer_names
         )
     ]
-
     self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
+    
+# def _build_trash(self):
+#     self.result.trash_entities += [
+#         e for e in self.msp
+#         if id(e) not in self.classified_entity_ids
+#         and id(e) not in self.classified_virtual_ids
+#         and e.dxf.hasattr("layer")
+#         and e.dxf.layer.upper() not in STRUCTURAL_LAYERS
+#         and (
+#             id(e) not in self.entities_in_loops
+#             or e.dxf.layer.lower() in self.special_layer_names
+#         )
+#     ]
+
+#     self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)

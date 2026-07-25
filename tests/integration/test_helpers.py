@@ -63,8 +63,6 @@ def run_pipeline(
 
     path = load(dxf_name)
 
-    # doc = ezdxf.readfile(path)
-    # msp = doc.modelspace()
     doc, msp = forge.load_dxf(path, explode_inserts=True)
 
     result = forge.heal(
@@ -72,13 +70,12 @@ def run_pipeline(
         tolerance=tolerance,
         label=Path(dxf_name).stem,
         source_file=dxf_name,
-        special_layers=special_layers or {},
+        label_map=special_layers or {},
     )
 
     if do_detect:
         forge.detect(
-            result,
-            msp,
+            result
         )
 
     if do_inject:

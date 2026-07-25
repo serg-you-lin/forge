@@ -45,7 +45,7 @@ class HealStep:
         self.result        = ForgeResult(source_file=source_file)
 
         if special_layers:
-            self.result.special_layers = special_layers
+            self.result.label_map = special_layers
 
         self.candidate_bending_ids  = set()
         self.classified_entity_ids  = set()
@@ -68,6 +68,7 @@ class HealStep:
             return self.result
         self._preprocess()
         self.proxies = self.adapter.to_proxies()
+        self.result.all_arcs = self.adapter.to_circular_arcs()
         self._find_bending_candidates()
         self._find_loops()
         self._reintegrate_bending()

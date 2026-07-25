@@ -283,7 +283,7 @@ def _remove_superseded_line_arc(msp, result: ForgeResult) -> None:
     Usa result._entities_in_loops_ids — fonte di verità immutabile prodotta
     da heal(). Non dipende da trash_entities o classified_entities.
     """
-    special_layer_names = {k.lower() for k in result.special_layers} if result.special_layers else set()
+    special_layer_names = {k.lower() for k in result.label_map} if result.label_map else set()
     to_delete = [
         e for e in list(msp)
         if e.dxftype() in ("LINE", "ARC")
@@ -324,9 +324,9 @@ def _build_special_map(result: ForgeResult) -> dict:
     """
     Costruisce un indice layer_name → work_type da result.special_layers.
     """
-    if not result.special_layers:
+    if not result.label_map:
         return {}
-    return {k.lower(): v.lower() for k, v in result.special_layers.items()}
+    return {k.lower(): v.lower() for k, v in result.label_map.items()}
 
             
 def _setup_layers(doc) -> None:

@@ -120,7 +120,7 @@ def _make_test(dxf_path):
         loop_nodes, has_loops = _find_loop_nodes(msp)
 
         result = forge.heal(msp)
-        forge.detect(result, msp)
+        forge.detect(result)
         forge.write(msp, result)
         forge.inject(msp, result)
 
