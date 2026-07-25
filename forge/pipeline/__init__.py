@@ -12,19 +12,19 @@ from ..adapters.dxf.adapter import DxfAdapter
 
 
 def heal(msp, tolerance=0.05, ignore_layers=None, label="",
-         source_file="", special_layers=None) -> ForgeResult:
+         source_file="", label_map=None) -> ForgeResult:
     adapter = DxfAdapter(msp, tolerance=tolerance,
                          ignore_layers={l.lower() for l in (ignore_layers or [])})
     return HealStep(adapter, msp, tolerance, label=label, source_file=source_file,
                     ignore_layers=ignore_layers,
-                    special_layers=special_layers).run()
+                    special_layers=label_map).run()
 
 def split_to_files(msp, output_folder, label="", source_file="",
-                   tolerance=0.05, special_layers=None,
+                   tolerance=0.05, label_map=None,
                    namer=None, keep_trash=False, include_annotations=True,
                    min_area=DEFAULT_MIN_PART_AREA) -> ForgeResult:
     result = heal(msp, tolerance=tolerance,
-                  label=label, source_file=source_file, special_layers=special_layers)
+                  label=label, source_file=source_file, label_map=label_map)
 
     if not result.is_valid or not result.parts:
         return result

@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"LOCAL_DRAWING.dxf"
+input_dxf = r"tests/examples/polilinea_con_marcatura.dxf"
 
 tolerance = .02
 
@@ -66,12 +66,12 @@ if not check.errors:
 result = forge.heal(
     msp,
     tolerance=tolerance,
-    special_layers=special_layers,
+    label_map=special_layers,
     label=base_name,
     source_file=file_name,
 )
 
-forge.detect(result, msp, bending_tolerance=0.2)
+forge.detect(result, bending_tolerance=0.2)
 forge.write(msp, result)
 forge.inject(msp, result)
 

@@ -14,7 +14,7 @@ class ForgeResult:
     È quello che forge.heal() restituisce al chiamante.
 
     Campi:
-        special_layers         : dict {nome_layer: tipo_lavorazione} passato a detect().
+        label_map         : dict {nome_layer: tipo_lavorazione} passato a detect().
                                  Salvato qui da detect() — inject() e write()
                                  lo leggono senza che il chiamante lo ripassi.
                                  Non serializzato in to_dict(): è configurazione di sessione.
@@ -33,7 +33,8 @@ class ForgeResult:
     errors:              List[str]              = field(default_factory=list)
     trash_entities:      List[Any]              = field(default_factory=list)
     classified_entities: List[ClassifiedEntity] = field(default_factory=list)
-    special_layers:      dict                   = field(default_factory=dict)
+    label_map:           dict                   = field(default_factory=dict)
+    all_arcs: List[Any] = field(default_factory=list)
     _virtual_shapes:        List[Any]        = field(default_factory=list)
     _entities_in_loops_ids: Set[int]         = field(default_factory=set)
     _vs_to_part:            dict             = field(default_factory=dict)   # id(VS) → ForgePart

@@ -14,7 +14,7 @@ Per ogni DXF è possibile affiancare un file di configurazione opzionale:
 
 Formato config (tutti i campi sono opzionali):
     {
-        "special_layers": {"MARK": "engrave", "Bend": "bending"},
+        "label_map": {"MARK": "engrave", "Bend": "bending"},
         "tolerance": 0.5
     }
 
@@ -34,14 +34,14 @@ import ezdxf
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-import dxf_forge as forge
+import forge
 
 EXAMPLES_DIR      = project_root / "tests" / "examples"
 GOLDEN_DXF_DIR    = EXAMPLES_DIR / "golden"
 GOLDEN_JSON_DIR   = EXAMPLES_DIR / "golden" / "json"
 DEFAULT_TOLERANCE = 0.5
 
-GLOBAL_SPECIAL_LAYERS = {
+GLOBAL_LABEL_MAP = {
     "MARK":      "engrave",
     "Signature": "engrave",
 }
@@ -85,25 +85,20 @@ def generate(force: bool = False, only: str = None):
             continue
 
         try:
-            config         = _load_config(dxf_path)
-            tolerance      = config.get("tolerance", DEFAULT_TOLERANCE)
-            special_layers = {**GLOBAL_SPECIAL_LAYERS, **config.get("special_layers", {})}
+            config    = _load_config(dxf_path)
+            tolerance = config.get("tolerance", DEFAULT_TOLERANCE)
+            label_map = {**GLOBAL_LABEL_MAP, **config.get("label_map", {})}
 
-            doc = ezdxf.readfile(dxf_path)
-            if doc.dxfversion < "AC1015":
-                doc = forge.upgrade_to_r2010(doc)
-            msp = doc.modelspace()
+
+            doc, msp = forge.load_dxf(dxf_path, explode_inserts=True, flatten_z_flag=True, verbose=False)
 
             result = forge.heal(
                 msp,
                 tolerance=tolerance,
-                special_layers=special_layers,
+                label_map=label_map,
             )
 
-            forge.detect(
-                result,
-                msp,
-            )
+            forge.detect(result)
 
             forge.inject(msp, result)
 
@@ -137,15 +132,15 @@ def generate(force: bool = False, only: str = None):
                         4,
                     ),
                     "outer_wkt":    part.outer.polygon.wkt,
-                    "outer_layer":  part.outer.layer,
+                    "outer_origin": part.outer.origin,
                     # holes
                     "holes_count":  len(holes),
                     "holes_wkt":    [h.polygon.wkt for h in holes],
-                    "holes_layers": [h.layer for h in holes],
+                    "holes_origin": [h.origin for h in holes],
                     # inners
                     "inners_count":  len(inners),
                     "inners_wkt":    [i.polygon.wkt for i in inners],
-                    "inners_layers": [i.layer for i in inners],
+                    "inners_origin": [i.origin for i in inners],
                     # custom — include tutto quello che inject() ha prodotto
                     "custom": dict(part.custom),
                 }
