@@ -126,7 +126,7 @@ class TestWritebackCountersink(unittest.TestCase):
         doc = load("rect_with_countersink.dxf")
         self.msp = doc.modelspace()
         result = forge.heal(self.msp)
-        forge.detect(result, self.msp)
+        forge.detect(result)
         forge.write(self.msp, result)
 
     def test_001_countersink_on_correct_layer(self):
@@ -149,10 +149,9 @@ class TestWritebackSpecialLayers(unittest.TestCase):
     def setUp(self):
         doc = load("rect_with_special_layers.dxf")
         self.msp = doc.modelspace()
-        self.result = forge.heal(self.msp, special_layers={"BEND": "bending", "MARK": "engrave"})
+        self.result = forge.heal(self.msp, label_map={"BEND": "bending", "MARK": "engrave"})
         forge.detect(
-            self.result,
-            self.msp,
+            self.result
         )
         forge.write(self.msp, self.result)
 

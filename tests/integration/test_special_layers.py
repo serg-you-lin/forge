@@ -45,7 +45,7 @@ def _run_pipeline(
     result = forge.heal(
         msp,
         tolerance=tolerance,
-        special_layers=special_layers,
+        label_map=special_layers,
     )
 
     forge.detect(

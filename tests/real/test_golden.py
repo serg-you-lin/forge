@@ -12,28 +12,26 @@ import json
 import sys
 from pathlib import Path
 
-import ezdxf
 from shapely import wkt as shapely_wkt
 
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.rules.layers import ROLE_TO_LAYER, LAYER_OUTER, LAYER_INNER, LAYER_HOLE
-EXAMPLES_DIR      = project_root / "tests" / "examples"
-GOLDEN_DXF_DIR    = EXAMPLES_DIR / "golden"
-GOLDEN_JSON_DIR   = EXAMPLES_DIR / "golden" / "json"
+
+EXAMPLES_DIR   = project_root / "tests" / "examples"
+GOLDEN_DXF_DIR = EXAMPLES_DIR / "golden"
+GOLDEN_JSON_DIR = EXAMPLES_DIR / "golden" / "json"
 DEFAULT_TOLERANCE = 0.5
 
 TOL_AREA      = 0.1
 TOL_PERIMETER = 0.5
 TOL_SHAPE     = 1.0
 
-GLOBAL_SPECIAL_LAYERS = {
+GLOBAL_LABEL_MAP = {
     "MARK":      "engrave",
     "Signature": "engrave",
 }
-
 
 
 def _load_config(dxf_path: Path) -> dict:
@@ -51,35 +49,26 @@ def _load_golden_files():
 
 def _make_golden_test(golden_path: Path):
     def test_method(self):
-        golden = json.loads(golden_path.read_text(encoding="utf-8"))
-
+        golden   = json.loads(golden_path.read_text(encoding="utf-8"))
         dxf_name = golden["source_file"]
         dxf_path = GOLDEN_DXF_DIR / dxf_name
 
         if not dxf_path.exists():
             self.skipTest(f"DXF non trovato: {dxf_path}")
 
-        config         = _load_config(dxf_path)
-        tolerance      = config.get("tolerance", DEFAULT_TOLERANCE)
-        special_layers = {
-            **GLOBAL_SPECIAL_LAYERS,
-            **config.get("special_layers", {})
-        }
+        config    = _load_config(dxf_path)
+        tolerance = config.get("tolerance", DEFAULT_TOLERANCE)
+        label_map = {**GLOBAL_LABEL_MAP, **config.get("label_map", {})}
 
-        # ✔ entry point unico moderno
         doc, msp = forge.load_dxf(
             str(dxf_path),
             upgrade=True,
             explode_inserts=True,
+            flatten_z_flag=True,
         )
 
-        result = forge.heal(
-            msp,
-            tolerance=tolerance,
-            special_layers=special_layers,
-        )
-
-        forge.detect(result, msp)
+        result = forge.heal(msp, tolerance=tolerance, label_map=label_map)
+        forge.detect(result)
         forge.inject(msp, result)
 
         # --- part count ---
@@ -123,11 +112,11 @@ def _make_golden_test(golden_path: Path):
                 msg=f"{label} — inner_perimeter_mm",
             )
 
-            # --- outer layer ---
+            # --- outer origin ---
             self.assertEqual(
-                ROLE_TO_LAYER.get(part.outer.role),
-                exp["outer_layer"],
-                msg=f"{label} — outer_layer",
+                part.outer.origin,
+                exp["outer_origin"],
+                msg=f"{label} — outer_origin",
             )
 
             # --- outer shape ---
@@ -142,10 +131,9 @@ def _make_golden_test(golden_path: Path):
                 msg=f"{label} — holes_count",
             )
             self.assertEqual(
-                # [h.layer for h in holes],
-                [ROLE_TO_LAYER.get(h.role, LAYER_HOLE) for h in holes],
-                exp["holes_layers"],
-                msg=f"{label} — holes_layers",
+                [h.origin for h in holes],
+                exp["holes_origin"],
+                msg=f"{label} — holes_origin",
             )
             for j, (hole, exp_wkt) in enumerate(zip(holes, exp["holes_wkt"])):
                 expected_hole = shapely_wkt.loads(exp_wkt)
@@ -159,17 +147,18 @@ def _make_golden_test(golden_path: Path):
                 msg=f"{label} — inners_count",
             )
             self.assertEqual(
-                # [i.layer for i in inners],
-                [ROLE_TO_LAYER.get(i.role, LAYER_INNER) for i in inners],
-                exp["inners_layers"],
-                msg=f"{label} — inners_layers",
+                [i.origin for i in inners],
+                exp["inners_origin"],
+                msg=f"{label} — inners_origin",
             )
             for j, (inner, exp_wkt) in enumerate(zip(inners, exp["inners_wkt"])):
                 expected_inner = shapely_wkt.loads(exp_wkt)
                 diff = inner.polygon.symmetric_difference(expected_inner).area
                 self.assertLess(diff, TOL_SHAPE, msg=f"{label} — inner[{j}] shape")
 
-            # --- custom (features) ---
+            # --- custom ---
+            print(f"DEBUG {label} custom attuale: {part.custom}")
+            print(f"DEBUG {label} custom golden:  {exp.get('custom', {})}")
             for key, expected_val in exp.get("custom", {}).items():
                 actual_val = part.custom.get(key)
                 if isinstance(expected_val, float):
