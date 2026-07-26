@@ -46,8 +46,8 @@ def entity_to_closed(entity) -> Optional[ClosedShape]:
 
 def contour_to_closed(ctx: DxfWriteContext) -> ClosedShape:
     return ClosedShape(
-        polygon=ctx.contour.polygon,
-        origin=ctx.contour.origin,
+        polygon=ctx.polygon,
+        origin=ctx.origin,
         source_ref=ctx,
         is_virtual=True,
         shape_type="virtual",

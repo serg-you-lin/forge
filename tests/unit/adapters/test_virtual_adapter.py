@@ -13,7 +13,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from forge.core.primitives import LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg
-from forge.core.primitives.contour import Contour
 from forge.model import Edge
 from forge.adapters.dxf.virtual_adapter import (
     parse_loop, _loop_to_contour, DxfWriteContext,
@@ -178,13 +177,13 @@ class TestLoopToVirtualShape(unittest.TestCase):
         ctx = _loop_to_contour(make_square_loop(100.0), 'outer', 1)
         self.assertIsInstance(ctx, DxfWriteContext)
 
-    def test_002_ctx_ha_vs_virtual_shape(self):
+    def test_002_ctx_ha_area_corretta(self):
         ctx = _loop_to_contour(make_square_loop(100.0), 'outer', 1)
-        self.assertIsInstance(ctx.contour, Contour)
+        self.assertAlmostEqual(ctx.polygon.area, 10000.0, delta=1.0)
 
     def test_003_loop_line_has_spline_false(self):
         ctx = _loop_to_contour(make_square_loop(100.0), 'outer', 1)
-        self.assertFalse(ctx.contour.has_spline)
+        self.assertFalse(ctx.has_spline)
 
     def test_004_ctx_ha_pts_with_bulge(self):
         ctx = _loop_to_contour(make_square_loop(100.0), 'outer', 1)
@@ -206,7 +205,7 @@ class TestLoopToVirtualShape(unittest.TestCase):
         with patch('forge.adapters.dxf.virtual_adapter.spline_to_points',
                    side_effect=lambda e: e._mock_points):
             ctx = _loop_to_contour(loop, 'outer', 1)
-        self.assertTrue(ctx.contour.has_spline)
+        self.assertTrue(ctx.has_spline)
 
     def test_007_loop_spline_pts_with_bulge_vuoto(self):
         spline = make_spline_entity([(0,0),(0,50),(0,100)])
