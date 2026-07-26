@@ -19,7 +19,7 @@ dxf-forge/
 │   │   ├── hole.py                # Hole
 │   │   ├── edge.py                # Edge
 │   │   ├── result.py              # ForgeResult
-│   │   ├── shape_proxy.py         # ShapeProxy
+│   │   ├── shape.py         # OpenShape, ClosedShape
 │   │   └── classified.py              
 │   │
 │   ├── pipeline/                  # Le fasi orchestrate

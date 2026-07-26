@@ -4,7 +4,7 @@ inject.py
 Inietta dati nei ForgePart di un ForgeResult già prodotto da heal().
 
 Responsabilità:
-    - Calcola metriche per special_layers (bending_lines, engrave_length)
+    - Calcola metriche per label_map (bending_lines, engrave_length)
       cercando sulle entità già routate da heal() sui layer forge corretti.
     - Estrae testi dal msp e li passa al data_injector del chiamante.
     - Popola part.custom con i risultati.
@@ -20,8 +20,8 @@ Contratto:
 
 Flusso tipico:
 
-    result = forge.heal(msp, ...)
-    forge.detect(result, msp, special_layers={"Bend": "bending"})
+    result = forge.heal(msp, label_map={"Bend": "bending"})
+    forge.detect(result)
     forge.inject(msp, result)
     forge.save_json(result, ...)
 """

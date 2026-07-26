@@ -49,8 +49,7 @@ def _run_pipeline(
     )
 
     forge.detect(
-        result,
-        msp,     
+        result,     
     )
 
     forge.write(msp, result)
