@@ -57,7 +57,7 @@ def _heal_and_inject(dxf_name, label_map=None, data_injector=None, interpreter=N
         result
     )
     forge.write(msp, result)
-    forge.inject(msp, result, data_injector=data_injector)
+    forge.inject(result, data_injector=data_injector)
     return msp, result
 
 # ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ class TestInjectEmptyResult(unittest.TestCase):
         msp = doc.modelspace()
         result = forge.heal(msp)
         # non deve esplodere
-        forge.inject(msp, result)
+        forge.inject(result)
         self.assertEqual(result.parts, [])
 
 
@@ -206,7 +206,7 @@ class TestInjectDataInjector(unittest.TestCase):
     def test_001_data_injector_viene_chiamato(self):
         """Il data_injector deve essere chiamato e il risultato finire in custom."""
         forge.inject(
-            self.msp, self.result,
+            self.result,
             data_injector=lambda part, testi: {"materiale": "acciaio"},
         )
         self.assertEqual(self.result.parts[0].custom["materiale"], "acciaio")
@@ -217,13 +217,13 @@ class TestInjectDataInjector(unittest.TestCase):
         def spy(part, testi):
             received["testi"] = testi
             return {}
-        forge.inject(self.msp, self.result, data_injector=spy)
+        forge.inject(self.result, data_injector=spy)
         self.assertIn("testi", received)
         self.assertIsInstance(received["testi"], list)
 
     def test_003_data_injector_none_non_crasha(self):
         """Senza data_injector non devono esserci eccezioni."""
-        forge.inject(self.msp, self.result, data_injector=None)
+        forge.inject(self.result, data_injector=None)
         # nessuna eccezione = test passa
 
     def test_004_data_injector_eccezione_produce_warning(self):
@@ -231,14 +231,14 @@ class TestInjectDataInjector(unittest.TestCase):
         def bad_injector(part, testi):
             raise ValueError("errore simulato")
 
-        forge.inject(self.msp, self.result, data_injector=bad_injector)
+        forge.inject(self.result, data_injector=bad_injector)
         warnings_text = " ".join(self.result.warnings)
         self.assertIn("data_injector", warnings_text)
 
     def test_005_data_injector_restituisce_none_non_crasha(self):
         """Se il data_injector restituisce None, inject() non deve crashare."""
         forge.inject(
-            self.msp, self.result,
+            self.result,
             data_injector=lambda part, testi: None,
         )
         # nessuna eccezione = test passa
@@ -246,7 +246,7 @@ class TestInjectDataInjector(unittest.TestCase):
     def test_006_data_injector_merge_con_forge_metrics(self):
         """I dati del data_injector si sommano alle metriche forge in custom."""
         forge.inject(
-            self.msp, self.result,
+            self.result,
             data_injector=lambda part, testi: {"spessore": 3.0},
         )
         custom = self.result.parts[0].custom

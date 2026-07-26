@@ -16,6 +16,7 @@ import re
 import json
 from forge.io.text_utils import clean_mtext
 from forge.io.exporter import build_metadata
+from forge.io.text_utils import extract_forge_texts
 from pathlib import Path
 import sys
 
@@ -176,15 +177,15 @@ if not result.is_valid or not result.parts:
     print("Healing fallito, interrompo.")
     exit(1)
 
-print(f"trash count: {len(result.trash_entities)}")
-for e in result.trash_entities:
-    print(f"  {e.dxftype()} layer={e.dxf.layer}")
+# print(f"trash count: {len(result.trash_entities)}")
+# for e in result.trash_entities:
+#     print(f"  {e.dxftype()} layer={e.dxf.layer}")
 
 print(f"\n--- DETECT ---")
-forge.detect(result, msp)
+forge.detect(result)
 
-print(f"\n--- INJECT ---")
-forge.inject(msp, result, data_injector=make_data_injector(doc))
+texts = extract_forge_texts(msp)
+forge.inject(result, data_injector=make_data_injector(doc), texts=texts)
 
 # ---------------------------------------------------------------------------
 # Snapmark — configurato una volta sola

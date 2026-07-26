@@ -55,7 +55,7 @@ def _run_pipeline(
     forge.write(msp, result)
 
     if inject:
-        forge.inject(msp, result)
+        forge.inject(result)
 
     return result
 

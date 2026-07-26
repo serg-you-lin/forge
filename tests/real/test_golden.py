@@ -69,7 +69,7 @@ def _make_golden_test(golden_path: Path):
 
         result = forge.heal(msp, tolerance=tolerance, label_map=label_map)
         forge.detect(result)
-        forge.inject(msp, result)
+        forge.inject(result)
 
         # --- part count ---
         self.assertEqual(

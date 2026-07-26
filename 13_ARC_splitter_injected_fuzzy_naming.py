@@ -16,6 +16,7 @@ import re
 import json
 from forge.io.text_utils import clean_mtext
 from forge.io.exporter import build_metadata
+from forge.io.text_utils import extract_forge_texts
 import sys
 
 sys.path.insert(
@@ -175,7 +176,8 @@ print(f"\n--- DETECT ---")
 forge.detect(result, msp)
 
 print(f"\n--- INJECT ---")
-forge.inject(msp, result, data_injector=make_data_injector(doc))
+texts = extract_forge_texts(msp)
+forge.inject(result, data_injector=make_data_injector(doc), texts=texts)
 
 # ---------------------------------------------------------------------------
 # Snapmark — configurato una volta sola
