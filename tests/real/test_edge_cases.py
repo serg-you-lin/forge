@@ -122,7 +122,7 @@ def _make_test(dxf_path):
         result = forge.heal(msp)
         forge.detect(result)
         forge.write(msp, result)
-        forge.inject(msp, result)
+        forge.inject(result)
 
         self.assertIsNotNone(result)
 

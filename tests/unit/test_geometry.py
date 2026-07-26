@@ -1,7 +1,7 @@
 """
 test_geometry.py
 ----------------
-Test unitari per le funzioni pure di dxf_forge.core.geometry.
+Test unitari per le funzioni pure di forge.core.geometry.
 
 Copre:
   - is_threaded_arc      : riconosce archi a 270° (filettatura)
@@ -12,10 +12,6 @@ in core/geometry.py
 
 Versione MOCK (senza ezdxf), coerente con test_virtual.py.
 
-Lancia con:
-    python -m pytest tests/unit/test_geometry.py -v
-    oppure
-    python -m unittest tests/unit/test_geometry.py -v
 """
 
 import unittest
@@ -27,31 +23,11 @@ import sys
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import ezdxf
 from forge.core.primitives.segments import CircularArcSeg
 from forge.adapters.dxf.hole_detector import is_threaded_hole, is_countersink_outer
 from forge.core.geometry import are_collinear, group_collinear_lines
+from shapely.geometry import LineString
 
-
-# ---------------------------------------------------------------------------
-# Helpers — costruiscono entità ezdxf sintetiche senza file su disco
-# ---------------------------------------------------------------------------
-
-def _make_arc(cx, cy, radius, start_angle, end_angle):
-    doc = ezdxf.new()
-    msp = doc.modelspace()
-    return msp.add_arc(
-        center=(cx, cy),
-        radius=radius,
-        start_angle=start_angle,
-        end_angle=end_angle,
-    )
-
-
-def _make_circle(cx, cy, radius):
-    doc = ezdxf.new()
-    msp = doc.modelspace()
-    return msp.add_circle(center=(cx, cy), radius=radius)
 
 
 # ---------------------------------------------------------------------------
@@ -166,20 +142,12 @@ class TestIsCountersinkOuter(unittest.TestCase):
 # Helper — LINE mock ezdxf-like
 # ---------------------------------------------------------------------------
 
-def make_line(x1, y1, x2, y2):
+def make_line(x1, y1, x2, y2) -> LineString:
     """
-    Crea una LINE mock compatibile con geometry.py
-    (stesso pattern usato nei test virtuali)
+    Crea una LineString shapely — compatibile con le funzioni
+    core/geometry.py dopo la rimozione della dipendenza ezdxf.
     """
-    entity = MagicMock()
-    entity.dxftype.return_value = "LINE"
-
-    entity.dxf.start.x = x1
-    entity.dxf.start.y = y1
-    entity.dxf.end.x   = x2
-    entity.dxf.end.y   = y2
-
-    return entity
+    return LineString([(x1, y1), (x2, y2)])
 
 
 # ---------------------------------------------------------------------------
