@@ -221,13 +221,6 @@ class OpenShape:
 1. Riscrivere `_detect_bending` usando `OpenShape.pts`
 2. Eliminare `_probe_point`, `_shape_length`
 3. Semplificare `_extract_data`
-4. 
-Eliminare source_ref da tutto il percorso OpenShape → ClassifiedEntity → detect.
-Se serve la tracciabilità, sostituirlo con un identificatore neutro (shape_id, origin_id, ecc.), non con l'entità DXF.
-Verificare che in core/ e pipeline/ non esistano più:
-entity.dxf
-dxftype()
-import da adapters.dxf
 4. Test verdi
 
 **Sessione C — eliminate Contour**
@@ -240,6 +233,13 @@ import da adapters.dxf
 1. Rimuovere `msp` dalla firma di `inject()`
 2. Riscrivere `_inject_bending` usando `BendingLine.geometry` (già shapely)
 3. Riscrivere `_extract_texts_for_part` senza `get_representative_point(source_ref)`
+4. Eliminare `source_ref` da `ClassifiedEntity` — sostituire con identificatore neutro (shape_id, origin_id, ???)
+5. Test verdi
+
+**Sessione E — role**
+1. Eliminare `origin` dal core
+2. `DxfAdapter` traduce `label_map` in `role` su `ClosedShape`/`OpenShape` prima di passarle al core
+3. `detect.py` legge solo `role` — zero lookup su layer DXF
 4. Test verdi
 
 ---

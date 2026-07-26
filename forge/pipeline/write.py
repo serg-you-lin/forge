@@ -251,18 +251,6 @@ def split(
 # Helpers interni
 # ---------------------------------------------------------------------------
 
-# def _assign_structural_layers(msp, result: ForgeResult) -> None:
-#     """ Assegna i layer strutturali e imposta il colore a BYLAYER (256). """
-#     for part in result.parts:
-#         for contour in [part.outer] + part.inners:
-#             if contour.source_ref is not None:
-#                 contour.source_ref.dxf.layer = contour.layer
-#                 contour.source_ref.dxf.color = 256  # BYLAYER
-
-#         for hole in part.holes:
-#             if hole.source_ref is not None:
-#                 hole.source_ref.dxf.layer = hole.layer
-#                 hole.source_ref.dxf.color = 256  # BYLAYER
 def _assign_structural_layers(msp, result: ForgeResult) -> None:
     for part in result.parts:
         for contour in [part.outer] + part.inners:

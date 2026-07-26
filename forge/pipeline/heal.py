@@ -214,7 +214,7 @@ class HealStep:
 from ..core.topology.loops import _collect_loops, _reintegrate_bending 
 from ..core.healing.hierarchy  import _build_hierarchy, _build_trash        
 from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext  
-from ..core.primitives.contour import Contour                                  
+# from ..core.primitives.contour import Contour                                  
 from ..rules.layers import LAYER_OUTER, LAYER_INNER, COLOR_OUTER, COLOR_INNER  
 from shapely.geometry import Polygon                                            
 
@@ -247,35 +247,61 @@ def _fallback_polygonize(self):
         self.result._entities_in_loops_ids = self.entities_in_loops
 
         for poly in polygons:
-            if not poly.is_valid:
-                poly = poly.buffer(0)
-            pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
-            contour = Contour(polygon=poly, segments=[], origin="", source_ref=None)
-            ctx = DxfWriteContext(
-                contour=contour,
-                pts_with_bulge=pts,
-                loop=[],
-                layer=LAYER_OUTER,
-                color=COLOR_OUTER,
-            )
-            self.result._virtual_shapes.append(ctx)
+                    if not poly.is_valid:
+                        poly = poly.buffer(0)
+                    pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
+                    ctx = DxfWriteContext(
+                        polygon=poly,
+                        has_spline=False,
+                        pts_with_bulge=pts,
+                        loop=[],
+                        layer=LAYER_OUTER,
+                        color=COLOR_OUTER,
+                    )
+                    self.result._virtual_shapes.append(ctx)
 
-            for interior in poly.interiors:
-                pts_i   = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
-                contour_i = Contour(
-                    polygon=Polygon(interior),
-                    segments=[],
-                    origin="",
-                    source_ref=None,
-                )
-                ctx_i = DxfWriteContext(
-                    contour=contour_i,
-                    pts_with_bulge=pts_i,
-                    loop=[],
-                    layer=LAYER_INNER,
-                    color=COLOR_INNER,
-                )
-                self.result._virtual_shapes.append(ctx_i)
+                    for interior in poly.interiors:
+                        pts_i = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
+                        ctx_i = DxfWriteContext(
+                            polygon=Polygon(interior),
+                            has_spline=False,
+                            pts_with_bulge=pts_i,
+                            loop=[],
+                            layer=LAYER_INNER,
+                            color=COLOR_INNER,
+                        )
+                        self.result._virtual_shapes.append(ctx_i)
+
+        # for poly in polygons:
+        #     if not poly.is_valid:
+        #         poly = poly.buffer(0)
+        #     pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
+        #     contour = Contour(polygon=poly, segments=[], origin="", source_ref=None)
+        #     ctx = DxfWriteContext(
+        #         contour=contour,
+        #         pts_with_bulge=pts,
+        #         loop=[],
+        #         layer=LAYER_OUTER,
+        #         color=COLOR_OUTER,
+        #     )
+        #     self.result._virtual_shapes.append(ctx)
+
+        #     for interior in poly.interiors:
+        #         pts_i   = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
+        #         contour_i = Contour(
+        #             polygon=Polygon(interior),
+        #             segments=[],
+        #             origin="",
+        #             source_ref=None,
+        #         )
+        #         ctx_i = DxfWriteContext(
+        #             contour=contour_i,
+        #             pts_with_bulge=pts_i,
+        #             loop=[],
+        #             layer=LAYER_INNER,
+        #             color=COLOR_INNER,
+        #         )
+        #         self.result._virtual_shapes.append(ctx_i)
     else:
         self.result.warnings.append(
             "LINE/ARC non formano loop chiusi — "
