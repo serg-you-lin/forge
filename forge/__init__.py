@@ -1,5 +1,5 @@
 """
-dxf-forge
+forge
 ---------
 DXF geometry preprocessor for manufacturing pipelines.
 
@@ -7,7 +7,7 @@ API pubblica — tutto quello che serve è qui.
 Non devi importare i moduli interni direttamente.
 
 Workflow consigliato (file singolo):
-    import dxf_forge as forge
+    import forge
 
     doc, msp = forge.load_dxf("pezzo.dxf")
 
@@ -17,7 +17,7 @@ Workflow consigliato (file singolo):
         exit()
 
     result = forge.heal(msp, label="pezzo", source_file="pezzo.dxf")
-    forge.detect(result, msp)
+    forge.detect(result)
     forge.write(msp, result)
     forge.inject(msp, result)
     doc.saveas("pezzo_healed.dxf")
@@ -53,7 +53,7 @@ from .io.exporter         import (
 from .model         import ForgeResult, ForgePart, ForgeContour
 from .io.text_utils       import extract_texts_from_msp
 
-__version__ = "0.3.0"
+__version__ = "0.5.0"
 
 __all__ = [
     # Apertura file

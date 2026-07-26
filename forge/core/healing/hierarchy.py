@@ -1,7 +1,7 @@
 from typing import Optional
 from shapely.geometry import Polygon
 
-from ...model.shape_proxy import ShapeProxy
+from ...model.shape import ClosedShape
 from ...model.part import ForgePart, ForgeContour
 from ...model.hole import Hole, HOLE_TYPE_UNKNOWN
 from ...rules.layers import (
@@ -9,32 +9,18 @@ from ...rules.layers import (
     color_for_layer,
     HOLE_DIAMETER_THRESHOLD, STRUCTURAL_LAYERS,
 )
-from ...adapters.dxf.proxy_adapter import contour_to_proxy
 
-
-# ---------------------------------------------------------------------------
-# Costruzione lista proxy — unico punto che conosce DxfWriteContext e ezdxf
-# ---------------------------------------------------------------------------
-
-
-# def _collect_proxies(self) -> list[ShapeProxy]:
-#     virtual = [contour_to_proxy(ctx) for ctx in self.result._virtual_shapes]
-#     open_spline_ids = {id(s) for s in self.open_splines}
-#     filtered = [p for p in self.proxies if not (
-#         p.shape_type == "spline" and id(p.source_ref) in open_spline_ids
-#     )]
-#     return virtual + filtered
 
 # ---------------------------------------------------------------------------
 # Classificazione proxy — agnostica, zero accessi a source_ref
 # ---------------------------------------------------------------------------
 
-def _place(proxy: ShapeProxy, nodes: list) -> bool:
+def _place(proxy: ClosedShape, nodes: list) -> bool:
     """
     Inserisce proxy nell'albero di contenimento ricorsivo.
     Restituisce True se è stato piazzato dentro un nodo esistente.
 
-    Ogni nodo è [ShapeProxy, children: list].
+    Ogni nodo è [ClosedShape, children: list].
     """
     for node in nodes:
         if node[0].polygon.contains(proxy.polygon):
@@ -44,7 +30,7 @@ def _place(proxy: ShapeProxy, nodes: list) -> bool:
     return False
 
 
-def _build_tree(proxies: list[ShapeProxy]) -> list:
+def _build_tree(proxies: list[ClosedShape]) -> list:
     """
     Costruisce l'albero di contenimento padre/figlio.
     Ordina per area decrescente — i padri prima dei figli.
@@ -58,11 +44,11 @@ def _build_tree(proxies: list[ShapeProxy]) -> list:
 
 
 # ---------------------------------------------------------------------------
-# Costruzione semantica — legge solo ShapeProxy, zero .dxf.*
+# Costruzione semantica — legge solo ClosedShape, zero .dxf.*
 # ---------------------------------------------------------------------------
 
-def _make_hole(proxy: ShapeProxy, geometric_hint: str = "",
-               outer_proxy: Optional[ShapeProxy] = None) -> Hole:
+def _make_hole(proxy: ClosedShape, geometric_hint: str = "",
+               outer_proxy: Optional[ClosedShape] = None) -> Hole:
     role = "hole" if proxy.diameter < HOLE_DIAMETER_THRESHOLD else "inner"
     return Hole(
         polygon=proxy.polygon,
@@ -77,7 +63,7 @@ def _make_hole(proxy: ShapeProxy, geometric_hint: str = "",
         outer_source_ref=outer_proxy.source_ref if outer_proxy else None,
     )
 
-def _make_inner(proxy: ShapeProxy) -> ForgeContour:
+def _make_inner(proxy: ClosedShape) -> ForgeContour:
     is_virtual = proxy.is_virtual
     return ForgeContour(
         polygon=proxy.polygon,
@@ -129,7 +115,7 @@ def _process_children(children: list, holes: list, inners: list,
                 child_proxy.source_ref.color = color_for_layer(LAYER_INNER)
 
 
-def _register(proxy: ShapeProxy, classified_virtual_ids: set,
+def _register(proxy: ClosedShape, classified_virtual_ids: set,
               classified_entity_ids: set):
     if proxy.is_virtual:
         classified_virtual_ids.add(id(proxy.source_ref))
@@ -137,7 +123,7 @@ def _register(proxy: ShapeProxy, classified_virtual_ids: set,
         classified_entity_ids.add(id(proxy.source_ref))
 
 
-def _collect_entity_ids(father_proxy: ShapeProxy, children: list) -> set:
+def _collect_entity_ids(father_proxy: ClosedShape, children: list) -> set:
     ids = {id(father_proxy.source_ref)}
     for child_proxy, grandchildren in children:
         ids.add(id(child_proxy.source_ref))
@@ -151,10 +137,9 @@ def _collect_entity_ids(father_proxy: ShapeProxy, children: list) -> set:
 # ---------------------------------------------------------------------------
 
 def _build_hierarchy(self):
-    # proxies = _collect_proxies(self)
-    # proxies = self.adapter.collect_proxies(self.open_splines, self.result._virtual_shapes)
-    self._all_proxies = self.adapter.collect_proxies(self.open_splines, self.result._virtual_shapes)
-    proxies = [p for p in self._all_proxies if p.polygon is not None]
+    self._all_proxies = self.adapter.collect_closed(self.open_splines, self.result._virtual_shapes)
+    self._all_proxies += self.adapter.to_open()
+    proxies = [p for p in self._all_proxies if hasattr(p, 'polygon') and p.polygon is not None]
               
     if not proxies:
         self.result.errors.append("Nessuna geometria chiusa trovata dopo healing.")
@@ -235,18 +220,3 @@ def _build_trash(self):
         )
     ]
     self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
-    
-# def _build_trash(self):
-#     self.result.trash_entities += [
-#         e for e in self.msp
-#         if id(e) not in self.classified_entity_ids
-#         and id(e) not in self.classified_virtual_ids
-#         and e.dxf.hasattr("layer")
-#         and e.dxf.layer.upper() not in STRUCTURAL_LAYERS
-#         and (
-#             id(e) not in self.entities_in_loops
-#             or e.dxf.layer.lower() in self.special_layer_names
-#         )
-#     ]
-
-#     self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)

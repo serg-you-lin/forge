@@ -100,64 +100,6 @@ Però questa è una terza cosa grossa — separata da ShapeProxy e da ForgeAdapt
 
 
 
-###  Prossimo blocco — settimana prossima
-
-Obiettivo
-
-Rimuovere self.msp da HealStep completamente.
-Due punti di contatto rimasti: _build_trash e _preprocess.
-
-
-Step 1 — trash_entities diventa List[ShapeProxy]
-
-Problema:
-_build_trash itera self.msp e mette entità ezdxf grezze in result.trash_entities.
-detect.py le consuma aspettandosi .dxf.layer, .dxftype(), .dxf.start ecc.
-
-Soluzione (blocco unico — non si fa a metà):
-
-
-collect_proxies() in DxfAdapter restituisce tutte le entità come proxy,
-non solo quelle chiuse. Le entità aperte/non classificabili escono con is_virtual=False
-e polygon=None.
-_build_trash filtra su quella lista invece di iterare msp:
-
-esclude gli id già in classified_entity_ids / classified_virtual_ids
-esclude le entità in loop (salvo special layers)
-esclude i STRUCTURAL_LAYERS
-mette i proxy rimanenti in result.trash_entities
-
-
-
-detect.py legge proxy.origin invece di entity.dxf.layer.
-proxy.origin è già l'astrazione giusta — in SVG sarà il colore, in DXF è il layer.
-detect() smette di ricevere msp — firma diventa:
-
-
-python   def detect(result: ForgeResult, bending_tolerance: float = 1.0) -> None:
-
-File toccati: adapter.py, hierarchy.py, detect.py, tutti i test che usano trash_entities.
-
-Risultato finale
-
-self.msp sparisce da HealStep
-result.trash_entities è List[ShapeProxy] — zero ezdxf
-detect() non riceve msp
-Il documento "Refactoring Adapters" è completato
-
-
-Attenzione
-
-detect.py è il file più compromesso — usa .dxf.* ovunque.
-Censire tutti i punti prima di toccare qualcosa:
-
-
-entity.dxf.hasattr("layer") → proxy.origin != ""
-entity.dxftype() → proxy.shape_type o duck typing su proxy
-entity.dxf.start, entity.dxf.end → dentro source_ref opaco, letto solo da helpers DXF
-_make_bending_line(entity, ...) → diventa bending_line_from_proxy(proxy, ...)
-
-
 
 ### Analisi
 

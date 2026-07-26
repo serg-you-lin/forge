@@ -1,7 +1,7 @@
 """
 adapters/dxf/bending_adapter.py
 --------------------------------
-Costruzione di BendingLine da ShapeProxy con source_ref LINE ezdxf.
+Costruzione di BendingLine da OpenShape con source_ref LINE ezdxf.
 
 Unico punto del progetto che conosce la struttura interna di un'entità
 LINE ezdxf per produrre una BendingLine core.
@@ -11,16 +11,16 @@ import math
 
 from shapely.geometry import LineString
 
-from ...model.shape_proxy import ShapeProxy
+from ...model.shape import OpenShape
 from ...model import BendingLine
 
 
-def bending_line_from_proxy(proxy: ShapeProxy, part_label: str) -> BendingLine:
+def bending_line_from_proxy(proxy: OpenShape, part_label: str) -> BendingLine:
     """
     Costruisce una BendingLine da un proxy con shape_type == "line".
 
     Args:
-        proxy:      ShapeProxy con source_ref entità LINE ezdxf
+        proxy:      OpenShape con source_ref entità LINE ezdxf
         part_label: label del ForgePart contenitore
     """
     entity = proxy.source_ref

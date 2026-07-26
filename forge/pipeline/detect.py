@@ -51,7 +51,7 @@ from ..model import (
     HOLE_TYPE_THREADED,
     HOLE_TYPE_UNKNOWN,
 )
-from ..model.shape_proxy import ShapeProxy
+from ..model.shape import OpenShape
 from ..adapters.dxf.hole_detector import (
     is_threaded_hole,
 )
@@ -92,17 +92,6 @@ def detect(
                 f"detect(): work_type sconosciuti in label_map: {unknown}. "
                 f"Valori validi: {VALID_WORK_TYPES}"
             )
-
-    # all_arcs = [
-    #     proxy.source_ref
-    #     for proxy in result.trash_entities
-    #     if proxy.shape_type == "arc"
-    # ] + [
-    #     hole.source_ref
-    #     for part in result.parts
-    #     for hole in part.holes
-    #     if hole.source_ref is not None
-    # ]
 
     if label_map:
         _detect_labeled(result, label_map)
@@ -345,7 +334,7 @@ def _probe_point(ce: ClassifiedEntity) -> Optional[Point]:
     return None
 
 
-def _extract_data(proxy: ShapeProxy, work_type: str) -> dict:
+def _extract_data(proxy: OpenShape, work_type: str) -> dict:
     """Estrae dati serializzabili da un proxy per ClassifiedEntity.data."""
     work_type = work_type.lower()
 

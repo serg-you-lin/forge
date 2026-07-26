@@ -67,7 +67,7 @@ class HealStep:
         if not self.result.is_valid:
             return self.result
         self._preprocess()
-        self.proxies = self.adapter.to_proxies()
+        self.proxies = self.adapter.to_closed()
         self.result.all_arcs = self.adapter.to_circular_arcs()
         self._find_bending_candidates()
         self._find_loops()

@@ -1,22 +1,16 @@
-
-
 # forge/adapters/dxf/adapter.py
 
 from typing import Any, List, Optional
 
 from ...core.adapter_base import ForgeAdapter
 from ...model.edge import Edge
-from ...model.shape_proxy import ShapeProxy
+from ...model.shape import ClosedShape, OpenShape
 from ...core.primitives.segments import CircularArcSeg
 from .graph_adapter import edges_from_msp
-from .proxy_adapter import entity_to_proxy
+from .closed_adapter import entity_to_closed, contour_to_closed
 
 
 class DxfAdapter(ForgeAdapter):
-    """
-    Adapter DXF → core.
-    Unico punto del progetto che conosce ezdxf e produce tipi core.
-    """
 
     def __init__(
         self,
@@ -42,13 +36,21 @@ class DxfAdapter(ForgeAdapter):
             self.ignore_layers,
         )
 
-    def to_proxies(self) -> List[ShapeProxy]:
-        proxies = []
+    def to_closed(self) -> List[ClosedShape]:
+        shapes = []
         for entity in self.msp:
-            proxy = entity_to_proxy(entity)
-            if proxy is not None:
-                proxies.append(proxy)
-        return proxies
+            shape = entity_to_closed(entity)   # rinomineremo dopo
+            if shape is not None:
+                shapes.append(shape)
+        return shapes
+
+    def to_open(self) -> List[OpenShape]:
+        shapes = []
+        for entity in self.msp:
+            shape = self._open_entity_to_shape(entity)
+            if shape is not None:
+                shapes.append(shape)
+        return shapes
 
     def source_context(self, ref: Any) -> str:
         if isinstance(ref, str):
@@ -57,7 +59,11 @@ class DxfAdapter(ForgeAdapter):
             return ref.dxf.layer if ref.dxf.hasattr("layer") else ""
         except AttributeError:
             return ""
-        
+
+    # ------------------------------------------------------------------
+    # Metodi specifici DXF
+    # ------------------------------------------------------------------
+
     def load_entity_lists(self) -> dict:
         return {
             "lines":   list(self.msp.query("LINE")),
@@ -66,60 +72,60 @@ class DxfAdapter(ForgeAdapter):
             "circles": list(self.msp.query("CIRCLE")),
             "splines": list(self.msp.query("SPLINE")),
         }
-    
-    def _open_entity_to_proxy(self, entity) -> Optional[ShapeProxy]:
-        """Proxy minimale per entità aperte (LINE, ARC) — polygon=None."""
+
+    def _open_entity_to_shape(self, entity) -> Optional[OpenShape]:
+        """Converte LINE e ARC in OpenShape — pts e length calcolati qui."""
         dtype = entity.dxftype()
-        if dtype not in ("LINE", "ARC"):
-            return None
-        return ShapeProxy(
-            polygon=None,
-            origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
-            source_ref=entity,
-            shape_type=dtype.lower(),   # "line" | "arc"
-        )
-    # def collect_proxies(self, open_splines: list, virtual_shapes: list) -> list[ShapeProxy]:
-    #     from .proxy_adapter import entity_to_proxy, contour_to_proxy
-    #     from .geometry_adapter import _spline_is_closed
+        if dtype == "LINE":
+            start = (entity.dxf.start.x, entity.dxf.start.y)
+            end   = (entity.dxf.end.x,   entity.dxf.end.y)
+            pts    = [start, end]
+            length = entity.dxf.start.distance(entity.dxf.end)
+            return OpenShape(
+                pts=pts, length=length,
+                origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
+                source_ref=entity, shape_type="line",
+            )
+        if dtype == "ARC":
+            import math
+            cx, cy = entity.dxf.center.x, entity.dxf.center.y
+            r      = entity.dxf.radius
+            a0     = math.radians(entity.dxf.start_angle)
+            a1     = math.radians(entity.dxf.end_angle)
+            pts    = [
+                (cx + r * math.cos(a0), cy + r * math.sin(a0)),
+                (cx + r * math.cos(a1), cy + r * math.sin(a1)),
+            ]
+            span   = (a1 - a0) % (2 * math.pi)
+            length = r * span
+            return OpenShape(
+                pts=pts, length=length,
+                origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
+                source_ref=entity, shape_type="arc",
+                center=(cx, cy), diameter=r * 2,
+            )
+        return None
 
-    #     open_spline_ids = {id(s) for s in open_splines}
-    #     proxies = []
-    #     for entity in self.msp:
-    #         proxy = entity_to_proxy(entity)
-    #         if proxy is None:
-    #             continue
-    #         entity_type = entity.dxftype()
-    #         if entity_type == "SPLINE" and id(entity) in open_spline_ids:
-    #             continue
-    #         proxies.append(proxy)
-
-    #     virtual = [contour_to_proxy(ctx) for ctx in virtual_shapes]
-    #     return virtual + proxies
-
-    def collect_proxies(self, open_splines: list, virtual_shapes: list) -> list[ShapeProxy]:
-        from .proxy_adapter import entity_to_proxy, contour_to_proxy
+    def collect_closed(self, open_splines: list, virtual_shapes: list) -> list[ClosedShape]:
+        """
+        Raccoglie tutte le ClosedShape: entità chiuse da msp + virtual dal core.
+        Esclude le spline aperte (già finite in to_open via il chiamante).
+        """
 
         open_spline_ids = {id(s) for s in open_splines}
-        proxies = []
+        shapes = []
         for entity in self.msp:
-            proxy = entity_to_proxy(entity)
-            if proxy is not None:
-                # entità chiusa riconosciuta
-                if entity.dxftype() == "SPLINE" and id(entity) in open_spline_ids:
-                    continue
-                proxies.append(proxy)
-            else:
-                # entità aperta — proxy minimale per _build_trash
-                open_proxy = self._open_entity_to_proxy(entity)
-                if open_proxy is not None:
-                    proxies.append(open_proxy)
+            shape = entity_to_closed(entity)
+            if shape is None:
+                continue
+            if entity.dxftype() == "SPLINE" and id(entity) in open_spline_ids:
+                continue
+            shapes.append(shape)
 
-        virtual = [contour_to_proxy(ctx) for ctx in virtual_shapes]
-        return virtual + proxies
-    
+        virtual = [contour_to_closed(ctx) for ctx in virtual_shapes]
+        return virtual + shapes
 
     def to_circular_arcs(self) -> list[CircularArcSeg]:
-        from ...core.primitives.segments import CircularArcSeg
         result = []
         for entity in self.msp:
             if entity.dxftype() != "ARC":
