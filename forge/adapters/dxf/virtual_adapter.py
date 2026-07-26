@@ -1,24 +1,28 @@
 
+
 """
 adapters/dxf/virtual_adapter.py
 --------------------------------
-Traduce loop ezdxf in Contour (core) + DxfWriteContext (dati DXF-specifici).
+Traduce loop ezdxf in DxfWriteContext (dati DXF-specifici).
 
 DxfWriteContext è l'unico oggetto che circola in _virtual_shapes:
-    - contour   → geometria pura, usata da hierarchy.py per containment
+    - polygon    → geometria pura, usata da hierarchy.py per containment
+    - has_spline → flag per il write-back
     - pts_with_bulge, loop → dati DXF per il write-back
     - layer, color → metadati DXF assegnati da hierarchy.py
 
-Unico punto che tocca ezdxf per tutto ciò che riguarda Contour.
+Unico punto che tocca ezdxf per tutto ciò che riguarda le forme chiuse.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Any
+from typing import Optional, List
+
+from shapely.geometry import Polygon
 
 from ...core.primitives import LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg
-from ...core.primitives.contour import Contour
+from ...core.primitives.polygon_builder import build_polygon
 from ...core.geometry import num_segments_for_bulge
 from .geometry_adapter import arc_to_bulge, arc_to_linestrings, spline_to_points
 
@@ -30,15 +34,18 @@ from .geometry_adapter import arc_to_bulge, arc_to_linestrings, spline_to_points
 @dataclass
 class DxfWriteContext:
     """
-    Wrapper DXF attorno a un Contour.
+    Contesto DXF per il write-back di una forma chiusa.
 
-    contour:        geometria pura — usata da hierarchy per containment
+    polygon:        geometria pura — usata da hierarchy per containment
+    has_spline:     True se il contorno contiene spline
     pts_with_bulge: ricostruzione fedele degli archi per LWPOLYLINE
     loop:           entità ezdxf originali — tracciabilità e swap id()
     layer:          layer DXF finale (OUTER/INNER) — assegnato da hierarchy
     color:          colore DXF finale — assegnato da hierarchy
     """
-    contour:        Contour
+    polygon:        Polygon
+    has_spline:     bool = False
+    origin: str = ""
     pts_with_bulge: list = field(default_factory=list)
     loop:           list = field(default_factory=list)
     layer:          str  = ""
@@ -123,22 +130,17 @@ def _parse_spline(entity, rev) -> SplineSeg:
 def _loop_to_contour(loop, layer: str, color: int) -> Optional[DxfWriteContext]:
     primitives = parse_loop(loop)
 
-    has_spline = any(isinstance(p, SplineSeg) for p in primitives)
+    has_spline     = any(isinstance(p, SplineSeg) for p in primitives)
     pts_with_bulge = [] if has_spline else _build_pts_with_bulge(primitives)
 
-    origin = _extract_origin(loop)
-    source_ref   = {"loop": loop, "pts_with_bulge": pts_with_bulge}
-
-    contour = Contour.from_primitives(
-        primitives=primitives,
-        origin=origin,
-        source_ref=source_ref,
-    )
-    if contour is None:
+    polygon = build_polygon(primitives)
+    if polygon is None:
         return None
 
     return DxfWriteContext(
-        contour=contour,
+        polygon=polygon,
+        has_spline=has_spline,
+        origin=_extract_origin(loop),
         pts_with_bulge=pts_with_bulge,
         loop=loop,
         layer=layer,
@@ -147,7 +149,6 @@ def _loop_to_contour(loop, layer: str, color: int) -> Optional[DxfWriteContext]:
 
 
 def _build_pts_with_bulge(primitives: list) -> list:
-    """Costruisce la lista pts_with_bulge dai primitivi line/arc."""
     pts = []
     for prim in primitives:
         if isinstance(prim, LineSeg):
@@ -168,15 +169,15 @@ def _extract_origin(loop: list) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Write-back — unico punto che tocca ezdxf per Contour
+# Write-back — unico punto che tocca ezdxf per le forme chiuse
 # ---------------------------------------------------------------------------
 
 def _write_virtual_shape(msp, ctx: DxfWriteContext):
-    """Scrive il Contour su msp come LWPOLYLINE usando i dati DXF del contesto."""
-    if ctx.contour.has_spline:
+    """Scrive il DxfWriteContext su msp come LWPOLYLINE."""
+    if ctx.has_spline:
         pts = [
             (x, y, 0.0, 0.0, 0.0)
-            for x, y in list(ctx.contour.polygon.exterior.coords)[:-1]
+            for x, y in list(ctx.polygon.exterior.coords)[:-1]
         ]
         return msp.add_lwpolyline(
             pts,

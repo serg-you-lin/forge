@@ -1,8 +1,7 @@
 from .segments import LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg
-from .contour import Contour, _build_polygon, _discretize_pts_with_bulge
+from .polygon_builder import build_polygon
 
 __all__ = [
     "LineSeg", "ArcSeg", "SplineSeg", "DiscretizedArcSeg",
-    "Contour",
-    "_build_polygon", "_discretize_pts_with_bulge",
+    "build_polygon",
 ]
