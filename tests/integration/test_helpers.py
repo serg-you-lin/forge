@@ -79,7 +79,7 @@ def run_pipeline(
         )
 
     if do_inject:
-        forge.inject(msp, result)
+        forge.inject(result)
 
     if do_write:
         forge.write(msp, result)

@@ -8,6 +8,49 @@ Non gestisce INSERT — assumere che siano già stati esplosi.
 
 
 from ezdxf.tools.text import plain_mtext
+from shapely.geometry import Point
+from ..model.text import ForgeText
+from ..adapters.dxf.geometry_adapter import get_representative_point
+
+ANNOTATION_TYPES = {'TEXT', 'MTEXT', 'DIMENSION', 'LEADER', 'MULTILEADER'}
+
+def extract_forge_texts(msp) -> list[ForgeText]:
+    """
+    Estrae i testi dal msp come ForgeText — contenuto + posizione shapely.
+    Prodotto dall'adapter DXF, consumato da inject().
+    """
+    result = []
+    for e in msp:
+        if e.dxftype() not in ANNOTATION_TYPES:
+            continue
+        pt = get_representative_point(e)
+        if pt is None:
+            continue
+        content = _extract_content(e)
+        if not content:
+            continue
+        result.append(ForgeText(
+            content=content,
+            position=pt,
+            source_ref=e,
+        ))
+    return result
+
+
+def _extract_content(e) -> str:
+    """Estrae e pulisce il testo da una entità DXF."""
+    t = e.dxftype()
+    if t == 'TEXT':
+        return e.dxf.get('text', '').strip()
+    elif t == 'MTEXT':
+        return clean_mtext(e.text)
+    elif t == 'MULTILEADER':
+        raw = handle_mleader(e)
+        return clean_mtext(raw) if raw else ''
+    elif t == 'DIMENSION':
+        txt = e.dxf.get('text', '')
+        return txt if txt and txt != '<>' else ''
+    return ''
 
 def extract_texts(msp, doc):
     texts = []
@@ -29,31 +72,10 @@ def extract_texts(msp, doc):
 
         # MULTILEADER
         elif t == "MULTILEADER":
-            # print("\n--- DEBUG MULTILEADER ---")
-            # print("TYPE:", type(e))
-
-            # try:
-            #     print("context:", type(e.context))
-            #     print("context.mtext:", type(e.context.mtext))
-            #     print("context.mtext VALUE:", e.context.mtext)
-            # except Exception as ex:
-            #     print("context error:", ex)
-
             txt = handle_mleader(e)
-
-            # print("EXTRACTED:", txt, "| TYPE:", type(txt))
 
             if txt:
                 texts.append(clean_mtext(txt))
-
-        # # INSERT (blocchi)
-        # elif t == "INSERT":
-        #     try:
-        #         block = doc.blocks.get(e.dxf.name)
-        #         for sub in block:
-        #             handle_entity(sub)
-        #     except:
-        #         pass
 
         elif t == "ATTRIB":
             txt = e.dxf.text.strip()
