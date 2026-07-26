@@ -221,6 +221,13 @@ class OpenShape:
 1. Riscrivere `_detect_bending` usando `OpenShape.pts`
 2. Eliminare `_probe_point`, `_shape_length`
 3. Semplificare `_extract_data`
+4. 
+Eliminare source_ref da tutto il percorso OpenShape → ClassifiedEntity → detect.
+Se serve la tracciabilità, sostituirlo con un identificatore neutro (shape_id, origin_id, ecc.), non con l'entità DXF.
+Verificare che in core/ e pipeline/ non esistano più:
+entity.dxf
+dxftype()
+import da adapters.dxf
 4. Test verdi
 
 **Sessione C — eliminate Contour**

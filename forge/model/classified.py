@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
+from typing import Any, Optional, Tuple
 from abc import ABC, abstractmethod
 from shapely.geometry import Polygon
 
@@ -23,7 +23,8 @@ class ClassifiedEntity:
     confidence: float
     source:     str
     data:       dict = field(default_factory=dict)
-    polygon:    Any  = None  # Polygon shapely — solo per VirtualShape (entity=None)
+    polygon:    Any  = None  
+    representative_point: Optional[Tuple[float, float]] = None
 
 
 class BaseInterpreter(ABC):
