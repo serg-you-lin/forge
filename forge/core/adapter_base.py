@@ -4,7 +4,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import Any, List
 from ..model.edge import Edge
-from ..model.shape_proxy import ShapeProxy
+from ..model.shape import ClosedShape, OpenShape
 
 
 class ForgeAdapter(ABC):
@@ -14,20 +14,20 @@ class ForgeAdapter(ABC):
         self.node_decimals = max(round(-np.log10(tolerance * 2)), 1)
 
     @abstractmethod
-    def to_edges(self) -> List["Edge"]:
+    def to_edges(self) -> List[Edge]:
         """Produce gli archi per il grafo topologico."""
         ...
 
     @abstractmethod
-    def to_proxies(self) -> List["ShapeProxy"]:
-        """Produce le forme chiuse pre-esistenti (cerchi, polyline chiuse, spline chiuse)."""
+    def to_closed(self) -> List[ClosedShape]:
+        """Produce le forme chiuse (cerchi, polyline chiuse, spline chiuse, virtual)."""
+        ...
+
+    @abstractmethod
+    def to_open(self) -> List[OpenShape]:
+        """Produce le tracce aperte (LINE, ARC, spline aperte)."""
         ...
 
     @abstractmethod
     def source_context(self, ref: Any) -> str:
-        """
-        Estrae il contesto semantico di origine dall'oggetto originale.
-        Per DXF: entity.dxf.layer
-        Per SVG: stroke-color, group id, ecc.
-        """
         ...
