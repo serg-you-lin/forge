@@ -51,12 +51,25 @@ class Engraving:
     # closed
     polygon:    Optional[Polygon]             = None
 
+    def source_layer(self) -> str: 
+        """ Restituisce il layer dell'entità sorgente, se disponibile. 
+        Per entità DXF ezdxf: self.source_ref.dxf.layer 
+        Non fallisce se la sorgente non è una entità DXF. """ 
+        try: 
+            return self.source_ref.dxf.layer 
+        except Exception: 
+            return ""
+
     def to_dict(self) -> dict:
         d: dict = {
             "closed":     self.closed,
             "length":     round(self.length, 4),
             "part_label": self.part_label,
         }
+        layer = self.source_layer() 
+        if layer: 
+            d["origin"] = layer
+            
         if not self.closed and self.pts:
             d["start"] = self.pts[0]
             d["end"]   = self.pts[-1]

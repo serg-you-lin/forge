@@ -21,7 +21,6 @@ class ForgeContour:
         role       : ruolo semantico — tradotto da DxfAdapter, letto da detect()
         source_ref : entità originale opaca — per traceability e writeback
         vs_id      : id del VirtualShape sorgente, se generato dal core
-        origin     : DEPRECATO — layer DXF di provenienza; non leggere in detect()
     """
     polygon:    Polygon
     role:       ContourRole  = ContourRole.UNKNOWN
@@ -30,12 +29,27 @@ class ForgeContour:
     bbox:       Tuple[float, float, float, float] = field(init=False)
     vs_id:      Optional[int] = None
 
-    # DEPRECATO: tenuto per compat durante refactor — non aggiungere nuovi usi
-    origin: str = ""
-
     def __post_init__(self):
         self.area = self.polygon.area
         self.bbox = self.polygon.bounds
+
+    def source_layer(self) -> str:
+        """Restituisce il layer DXF della sorgente, se disponibile."""
+        try:
+            return self.source_ref.dxf.layer
+        except Exception:
+            return ""
+
+    def to_dict(self) -> dict:
+        """Per golden file / debug — non per logica di business."""
+        d = {
+            "role": self.role,
+            "area": round(self.area, 4),
+        }
+        layer = self.source_layer()
+        if layer:
+            d["origin"] = layer
+        return d
 
 
 @dataclass

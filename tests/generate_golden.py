@@ -100,7 +100,7 @@ def generate(force: bool = False, only: str = None):
 
             forge.detect(result)
 
-            forge.inject(msp, result)
+            forge.inject(result)
 
             if not result.is_valid:
                 print(f"  SKIP (non valido): {dxf_path.name} — {result.errors}")
@@ -118,6 +118,7 @@ def generate(force: bool = False, only: str = None):
                 inners = sorted(part.inners, key=lambda x: x.area, reverse=True)
 
                 part_golden = {
+                    # — geometria base —
                     "area_mm2":           round(part.area, 4),
                     "outer_perimeter_mm": round(part.outer.polygon.exterior.length, 4),
                     "inner_perimeter_mm": round(
@@ -131,17 +132,26 @@ def generate(force: bool = False, only: str = None):
                         sum(i.polygon.exterior.length for i in inners),
                         4,
                     ),
-                    "outer_wkt":    part.outer.polygon.wkt,
-                    "outer_origin": part.outer.origin,
-                    # holes
-                    "holes_count":  len(holes),
-                    "holes_wkt":    [h.polygon.wkt for h in holes],
-                    "holes_origin": [h.origin for h in holes],
-                    # inners
-                    "inners_count":  len(inners),
-                    "inners_wkt":    [i.polygon.wkt for i in inners],
-                    "inners_origin": [i.origin for i in inners],
-                    # custom — include tutto quello che inject() ha prodotto
+                    # — contorno esterno —
+                    "outer_wkt": part.outer.polygon.wkt,
+                    # — fori —
+                    "holes_count": len(holes),
+                    "holes_wkt":   [h.polygon.wkt for h in holes],
+                    "holes":       [h.to_dict() for h in holes],
+                    # — contorni interni (non fori) —
+                    "inners_count": len(inners),
+                    "inners_wkt":   [i.polygon.wkt for i in inners],
+                    "inners":       [i.to_dict() for i in inners],
+                    # — pieghe —
+                    "bending_lines_count": len(part.bending_lines),
+                    "bending_lines":       [bl.to_dict() for bl in part.bending_lines],
+                    # — incisioni —
+                    "total_engrave_length": round(
+                        sum(e.length for e in part.engrave_lines), 4
+                    ),
+                    "engrave_lines_count": len(part.engrave_lines),
+                    "engrave_lines":       [e.to_dict() for e in part.engrave_lines],
+                    # — custom — rimane per compatibilità, ora sempre {} —
                     "custom": dict(part.custom),
                 }
                 golden["parts"].append(part_golden)

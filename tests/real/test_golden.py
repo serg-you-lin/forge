@@ -19,25 +19,28 @@ sys.path.insert(0, str(project_root))
 
 import forge
 
-EXAMPLES_DIR   = project_root / "tests" / "examples"
+
+EXAMPLES_DIR = project_root / "tests" / "examples"
 GOLDEN_DXF_DIR = EXAMPLES_DIR / "golden"
-GOLDEN_JSON_DIR = EXAMPLES_DIR / "golden" / "json"
+GOLDEN_JSON_DIR = GOLDEN_DXF_DIR / "json"
+
 DEFAULT_TOLERANCE = 0.5
 
-TOL_AREA      = 0.1
+TOL_AREA = 0.1
 TOL_PERIMETER = 0.5
-TOL_SHAPE     = 1.0
+TOL_SHAPE = 1.0
+
 
 GLOBAL_LABEL_MAP = {
-    "MARK":      "engrave",
+    "MARK": "engrave",
     "Signature": "engrave",
 }
 
 
-def _load_config(dxf_path: Path) -> dict:
-    config_path = EXAMPLES_DIR / "config" / f"{dxf_path.stem}.json"
-    if config_path.exists():
-        return json.loads(config_path.read_text(encoding="utf-8"))
+def _load_config(dxf_path):
+    path = EXAMPLES_DIR / "config" / f"{dxf_path.stem}.json"
+    if path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
     return {}
 
 
@@ -47,27 +50,33 @@ def _load_golden_files():
     return sorted(GOLDEN_JSON_DIR.glob("*.json"))
 
 
-def _make_golden_test(golden_path: Path):
-    def test_method(self):
-        golden   = json.loads(golden_path.read_text(encoding="utf-8"))
-        dxf_name = golden["source_file"]
-        dxf_path = GOLDEN_DXF_DIR / dxf_name
+def _make_test(path):
+
+    def test(self):
+
+        golden = json.loads(path.read_text(encoding="utf-8"))
+        dxf_path = GOLDEN_DXF_DIR / golden["source_file"]
 
         if not dxf_path.exists():
-            self.skipTest(f"DXF non trovato: {dxf_path}")
+            self.skipTest(str(dxf_path))
 
-        config    = _load_config(dxf_path)
-        tolerance = config.get("tolerance", DEFAULT_TOLERANCE)
-        label_map = {**GLOBAL_LABEL_MAP, **config.get("label_map", {})}
+        config = _load_config(dxf_path)
+        label_map = {
+            **GLOBAL_LABEL_MAP,
+            **config.get("label_map", {})
+        }
 
-        doc, msp = forge.load_dxf(
-            str(dxf_path),
-            upgrade=True,
-            explode_inserts=True,
-            flatten_z_flag=True,
+        result = forge.heal(
+            forge.load_dxf(
+                str(dxf_path),
+                upgrade=True,
+                explode_inserts=True,
+                flatten_z_flag=True,
+            )[1],
+            tolerance=config.get("tolerance", DEFAULT_TOLERANCE),
+            label_map=label_map,
         )
 
-        result = forge.heal(msp, tolerance=tolerance, label_map=label_map)
         forge.detect(result)
         forge.inject(result)
 
@@ -75,28 +84,30 @@ def _make_golden_test(golden_path: Path):
         self.assertEqual(
             result.part_count,
             golden["part_count"],
-            msg=f"{dxf_name} — part_count",
         )
 
-        for i, (part, exp) in enumerate(zip(result.parts, golden["parts"])):
-            label  = f"{dxf_name} parte {i+1}"
-            holes  = sorted(part.holes,  key=lambda x: x.area, reverse=True)
+        for idx, (part, expected) in enumerate(
+            zip(result.parts, golden["parts"])
+        ):
+            label = f"{golden['source_file']} parte {idx+1}"
+
+            holes = sorted(part.holes, key=lambda x: x.area, reverse=True)
             inners = sorted(part.inners, key=lambda x: x.area, reverse=True)
 
             # --- area ---
             self.assertAlmostEqual(
                 round(part.area, 4),
-                exp["area_mm2"],
+                expected["area_mm2"],
                 delta=TOL_AREA,
-                msg=f"{label} — area_mm2",
+                msg=f"{label} area",
             )
 
             # --- perimetro outer ---
             self.assertAlmostEqual(
                 round(part.outer.polygon.exterior.length, 4),
-                exp["outer_perimeter_mm"],
+                expected["outer_perimeter_mm"],
                 delta=TOL_PERIMETER,
-                msg=f"{label} — outer_perimeter_mm",
+                msg=f"{label} outer perimeter",
             )
 
             # --- perimetro inner totale ---
@@ -107,93 +118,226 @@ def _make_golden_test(golden_path: Path):
             )
             self.assertAlmostEqual(
                 actual_inner_p,
-                exp["inner_perimeter_mm"],
+                expected["inner_perimeter_mm"],
                 delta=TOL_PERIMETER,
-                msg=f"{label} — inner_perimeter_mm",
+                msg=f"{label} inner perimeter",
             )
 
-            # --- outer origin ---
-            self.assertEqual(
-                part.outer.origin,
-                exp["outer_origin"],
-                msg=f"{label} — outer_origin",
+            # --- total perimeter ---
+            actual_total_p = round(
+                part.outer.polygon.exterior.length +
+                sum(h.polygon.exterior.length for h in holes) +
+                sum(i.polygon.exterior.length for i in inners),
+                4,
+            )
+            self.assertAlmostEqual(
+                actual_total_p,
+                expected["total_perimeter_mm"],
+                delta=TOL_PERIMETER,
+                msg=f"{label} total perimeter",
             )
 
             # --- outer shape ---
-            expected_outer = shapely_wkt.loads(exp["outer_wkt"])
-            diff = part.outer.polygon.symmetric_difference(expected_outer).area
-            self.assertLess(diff, TOL_SHAPE, msg=f"{label} — outer shape")
+            outer = shapely_wkt.loads(expected["outer_wkt"])
+            self.assertLess(
+                part.outer.polygon.symmetric_difference(outer).area,
+                TOL_SHAPE,
+                msg=f"{label} outer shape",
+            )
 
             # --- holes ---
             self.assertEqual(
                 len(holes),
-                exp["holes_count"],
-                msg=f"{label} — holes_count",
+                expected["holes_count"],
+                msg=f"{label} holes count",
             )
-            self.assertEqual(
-                [h.origin for h in holes],
-                exp["holes_origin"],
-                msg=f"{label} — holes_origin",
-            )
-            for j, (hole, exp_wkt) in enumerate(zip(holes, exp["holes_wkt"])):
+
+            for j, (hole, exp_wkt) in enumerate(zip(holes, expected["holes_wkt"])):
                 expected_hole = shapely_wkt.loads(exp_wkt)
-                diff = hole.polygon.symmetric_difference(expected_hole).area
-                self.assertLess(diff, TOL_SHAPE, msg=f"{label} — hole[{j}] shape")
+                self.assertLess(
+                    hole.polygon.symmetric_difference(expected_hole).area,
+                    TOL_SHAPE,
+                    msg=f"{label} hole[{j}] shape",
+                )
+
+            # --- holes to_dict ---
+            if "holes" in expected:
+                for j, (hole, exp_hole_dict) in enumerate(
+                    zip(holes, expected["holes"])
+                ):
+                    actual_dict = hole.to_dict()
+                    for key in ["hole_type", "diameter", "role", "confidence", "source"]:
+                        if key in exp_hole_dict:
+                            if isinstance(exp_hole_dict[key], float):
+                                self.assertAlmostEqual(
+                                    actual_dict[key],
+                                    exp_hole_dict[key],
+                                    delta=0.01,
+                                    msg=f"{label} hole[{j}].{key}",
+                                )
+                            else:
+                                self.assertEqual(
+                                    actual_dict[key],
+                                    exp_hole_dict[key],
+                                    msg=f"{label} hole[{j}].{key}",
+                                )
+                    if "center" in exp_hole_dict:
+                        for k, (act, exp) in enumerate(
+                            zip(actual_dict["center"], exp_hole_dict["center"])
+                        ):
+                            self.assertAlmostEqual(
+                                act, exp, delta=0.01,
+                                msg=f"{label} hole[{j}].center[{k}]",
+                            )
+                    if "origin" in exp_hole_dict:
+                        self.assertEqual(
+                            actual_dict.get("origin", ""),
+                            exp_hole_dict["origin"],
+                            msg=f"{label} hole[{j}].origin",
+                        )
+                    if "outer_diameter" in exp_hole_dict:
+                        self.assertAlmostEqual(
+                            actual_dict.get("outer_diameter", 0),
+                            exp_hole_dict["outer_diameter"],
+                            delta=0.01,
+                            msg=f"{label} hole[{j}].outer_diameter",
+                        )
 
             # --- inners ---
             self.assertEqual(
                 len(inners),
-                exp["inners_count"],
-                msg=f"{label} — inners_count",
+                expected["inners_count"],
+                msg=f"{label} inners count",
             )
-            self.assertEqual(
-                [i.origin for i in inners],
-                exp["inners_origin"],
-                msg=f"{label} — inners_origin",
-            )
-            for j, (inner, exp_wkt) in enumerate(zip(inners, exp["inners_wkt"])):
+
+            for j, (inner, exp_wkt) in enumerate(zip(inners, expected["inners_wkt"])):
                 expected_inner = shapely_wkt.loads(exp_wkt)
-                diff = inner.polygon.symmetric_difference(expected_inner).area
-                self.assertLess(diff, TOL_SHAPE, msg=f"{label} — inner[{j}] shape")
+                self.assertLess(
+                    inner.polygon.symmetric_difference(expected_inner).area,
+                    TOL_SHAPE,
+                    msg=f"{label} inner[{j}] shape",
+                )
+
+            # --- inners to_dict ---
+            if "inners" in expected:
+                for j, (inner, exp_inner_dict) in enumerate(
+                    zip(inners, expected["inners"])
+                ):
+                    actual_dict = inner.to_dict()
+                    self.assertEqual(
+                        actual_dict["role"],
+                        exp_inner_dict["role"],
+                        msg=f"{label} inner[{j}].role",
+                    )
+                    self.assertAlmostEqual(
+                        actual_dict["area"],
+                        exp_inner_dict["area"],
+                        delta=TOL_AREA,
+                        msg=f"{label} inner[{j}].area",
+                    )
+                    if "origin" in exp_inner_dict:
+                        self.assertEqual(
+                            actual_dict.get("origin", ""),
+                            exp_inner_dict["origin"],
+                            msg=f"{label} inner[{j}].origin",
+                        )
+
+            # --- bending lines ---
+            if "bending_lines" in expected:
+                self.assertEqual(
+                    len(part.bending_lines),
+                    expected.get("bending_lines_count", 0),
+                    msg=f"{label} bending_lines count",
+                )
+                for j, (bl, exp_bl) in enumerate(
+                    zip(part.bending_lines, expected["bending_lines"])
+                ):
+                    actual_dict = bl.to_dict()
+                    for key in ["length", "angle_deg"]:
+                        if key in exp_bl:
+                            self.assertAlmostEqual(
+                                actual_dict[key],
+                                exp_bl[key],
+                                delta=0.01,
+                                msg=f"{label} bending[{j}].{key}",
+                            )
+                    if "origin" in exp_bl:
+                        self.assertEqual(
+                            actual_dict.get("origin", ""),
+                            exp_bl["origin"],
+                            msg=f"{label} bending[{j}].origin",
+                        )
+
+            # --- engrave lines ---
+            if "engrave_lines" in expected:
+                self.assertAlmostEqual(
+                    round(sum(e.length for e in part.engrave_lines), 4),
+                    expected.get("total_engrave_length", 0),
+                    delta=TOL_PERIMETER,
+                    msg=f"{label} total_engrave_length",
+                )
+                self.assertEqual(
+                    len(part.engrave_lines),
+                    expected.get("engrave_lines_count", 0),
+                    msg=f"{label} engrave_lines count",
+                )
+                for j, (eng, exp_eng) in enumerate(
+                    zip(part.engrave_lines, expected["engrave_lines"])
+                ):
+                    actual_dict = eng.to_dict()
+                    for key in ["closed", "length"]:
+                        if key in exp_eng:
+                            if isinstance(exp_eng[key], float):
+                                self.assertAlmostEqual(
+                                    actual_dict[key],
+                                    exp_eng[key],
+                                    delta=0.01,
+                                    msg=f"{label} engrave[{j}].{key}",
+                                )
+                            else:
+                                self.assertEqual(
+                                    actual_dict[key],
+                                    exp_eng[key],
+                                    msg=f"{label} engrave[{j}].{key}",
+                                )
+                    if "origin" in exp_eng:
+                        self.assertEqual(
+                            actual_dict.get("origin", ""),
+                            exp_eng["origin"],
+                            msg=f"{label} engrave[{j}].origin",
+                        )
 
             # --- custom ---
-            for key, expected_val in exp.get("custom", {}).items():
-                actual_val = part.custom.get(key)
-                if isinstance(expected_val, float):
-                    self.assertAlmostEqual(
-                        actual_val,
-                        expected_val,
-                        delta=TOL_PERIMETER,
-                        msg=f"{label} — custom[{key!r}]",
-                    )
-                else:
-                    self.assertEqual(
-                        actual_val,
-                        expected_val,
-                        msg=f"{label} — custom[{key!r}]",
-                    )
+            for key, value in expected.get("custom", {}).items():
+                self.assertEqual(
+                    part.custom.get(key),
+                    value,
+                    msg=f"{label} custom {key}",
+                )
 
-    test_method.__name__ = f"test_{golden_path.stem}"
-    test_method.__doc__  = f"Golden: {golden_path.name}"
-    return test_method
+    test.__name__ = f"test_{path.stem}"
+    return test
 
 
 class TestGolden(unittest.TestCase):
     pass
 
 
-for _golden_path in _load_golden_files():
-    setattr(TestGolden, f"test_{_golden_path.stem}", _make_golden_test(_golden_path))
+for golden in _load_golden_files():
+    setattr(
+        TestGolden,
+        f"test_{golden.stem}",
+        _make_test(golden),
+    )
 
 
 class TestGoldenSetup(unittest.TestCase):
 
-    def test_001_golden_dir_exists(self):
-        self.assertTrue(GOLDEN_JSON_DIR.exists(), f"Golden JSON dir non trovata: {GOLDEN_JSON_DIR}")
+    def test_directory_exists(self):
+        self.assertTrue(GOLDEN_JSON_DIR.exists())
 
-    def test_002_golden_not_empty(self):
-        files = list(GOLDEN_JSON_DIR.glob("*.json")) if GOLDEN_JSON_DIR.exists() else []
-        self.assertGreater(len(files), 0, "Nessun golden JSON trovato")
+    def test_has_files(self):
+        self.assertGreater(len(_load_golden_files()), 0)
 
 
 if __name__ == "__main__":
