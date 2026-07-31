@@ -30,29 +30,46 @@ class Edge:
 
 
 @dataclass
+@dataclass
 class BendingLine:
     """
-    Rappresenta una linea di piega .
+    Rappresenta una linea di piega.
 
     Attributi:
         geometry    : LineString shapely — la geometria canonica
         length      : lunghezza in mm
         angle_deg   : angolo rispetto all'asse X (0–180°)
         part_label  : label del ForgePart a cui è assegnata
-        source_ref  : riferimento all'entità originale (LINE) — opaco, usato dall'adapter
+        source_ref  : riferimento all'entità originale — usato per traceability
     """
     geometry:   LineString
     length:     float
     angle_deg:  float
     part_label: str = ""
-    source_ref: Optional[Any] = None  
+    source_ref: Optional[Any] = None
+
+    def source_layer(self) -> str:
+        """
+        Restituisce il layer dell'entità sorgente, se disponibile.
+        """
+        try:
+            return self.source_ref.dxf.layer
+        except Exception:
+            return ""
 
     def to_dict(self) -> dict:
         coords = list(self.geometry.coords)
-        return {
+
+        d = {
             "start":      coords[0],
             "end":        coords[-1],
             "length":     round(self.length, 4),
             "angle_deg":  round(self.angle_deg, 4),
             "part_label": self.part_label,
         }
+
+        layer = self.source_layer()
+        if layer:
+            d["origin"] = layer
+
+        return d

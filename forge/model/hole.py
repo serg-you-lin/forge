@@ -73,6 +73,15 @@ class Hole:
     def bbox(self) -> Tuple[float, float, float, float]:
         return self.polygon.bounds
 
+    def source_layer(self) -> str:
+        """
+        Restituisce il layer DXF della sorgente, se disponibile.
+        """
+        try:
+            return self.source_ref.dxf.layer
+        except Exception:
+            return ""
+    
     def to_dict(self) -> dict:
         d = {
             "hole_type":  self.hole_type,
@@ -82,6 +91,9 @@ class Hole:
             "confidence": round(self.confidence, 4),
             "source":     self.source,
         }
+        layer = self.source_layer()
+        if layer:
+            d["origin"] = layer
         if self.outer_diameter is not None:
             d["outer_diameter"] = round(self.outer_diameter, 4)
         return d
