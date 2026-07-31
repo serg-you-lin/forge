@@ -12,3 +12,4 @@ from .classified import ClassifiedEntity, BaseInterpreter
 from .part import ForgeContour, ForgePart
 from .result import ForgeResult
 from .shape import ClosedShape, OpenShape
+from .engraving import Engraving

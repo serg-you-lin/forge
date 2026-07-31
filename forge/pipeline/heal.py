@@ -299,8 +299,6 @@ def _classify_and_build(self, loops, graph):
         if ctx is not None:
             self.result._virtual_shapes.append(ctx)
     for loop in inner_loops:
-        first_edge = loop[0][0]
-        print(f"DEBUG edge type={type(first_edge)}, attrs={dir(first_edge)}")
         ctx = _loop_to_contour(loop, LAYER_INNER, COLOR_INNER)
         if ctx is not None:
             self.result._virtual_shapes.append(ctx)
