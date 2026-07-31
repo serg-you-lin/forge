@@ -1,4 +1,3 @@
-
 """
 pipeline/detect.py
 ------------------
@@ -11,7 +10,8 @@ Posizione nella pipeline:
 
 Responsabilità di detect() sui fori:
     1. Labeled shapes (certezza 1.0)
-       Forma con origin mappata in label_map → work_type promosso immediatamente.
+       Forma con role != UNKNOWN → work_type promosso immediatamente.
+       Il role è già stato tradotto dal DxfAdapter — detect non sa nulla di layer.
        Priorità assoluta su hint geometrico e inferenza.
 
     2. Hint geometrico da heal() (certezza < 1.0)
@@ -24,12 +24,7 @@ NON è responsabilità di detect():
     - aprire o salvare file                    → il chiamante
     - scrivere layer/colore nel documento      → write()
     - serializzare metriche nel JSON           → inject()
-
-Nota su label_map:
-    label_map è una dict {origin: work_type} — in DXF origin è il layer,
-    in SVG sarà il colore o la classe CSS.
-    Viene passato a heal() e salvato in result.label_map.
-    detect() lo legge da lì — non va passato di nuovo.
+    - tradurre layer DXF in semantica          → DxfAdapter
 """
 
 from __future__ import annotations
@@ -50,18 +45,18 @@ from ..model import (
     HOLE_TYPE_THREADED,
     HOLE_TYPE_UNKNOWN,
 )
+from ..model.role import ContourRole
 from ..model.shape import OpenShape
-from ..adapters.dxf.hole_detector import (
-    is_threaded_hole,
-)
+from ..adapters.dxf.hole_detector import is_threaded_hole
 from ..adapters.dxf.bending_adapter import bending_line_from_proxy
-from ..rules.layers import VALID_WORK_TYPES
+from ..rules.thresholds import STRUCTURAL_ROLES
 
-# work_type → hole_type per le forme foro con label esplicita
-_WORK_TYPE_TO_HOLE_TYPE = {
-    "countersink":   HOLE_TYPE_COUNTERSINK,
-    "threaded_hole": HOLE_TYPE_THREADED,
+# ContourRole → hole_type per le forme foro con role esplicito
+_ROLE_TO_HOLE_TYPE = {
+    ContourRole.COUNTERSINK:   HOLE_TYPE_COUNTERSINK,
+    ContourRole.THREADED_HOLE: HOLE_TYPE_THREADED,
 }
+
 
 
 # ---------------------------------------------------------------------------
@@ -75,55 +70,40 @@ def detect(
     """
     Rileva la semantica geometrica e popola part.bending_lines e part.custom.
 
-    Legge label_map da result.label_map, popolato da heal().
+    Le shape in result hanno già role tradotto dal DxfAdapter.
+    detect() non legge label_map né origin — lavora solo su ContourRole.
     Idempotente per design.
 
     Args:
         result:            ForgeResult prodotto da heal()
         bending_tolerance: tolleranza mm per rilevamento linee di piega
     """
-    label_map = result.label_map or {}
-
-    if label_map:
-        unknown = {v.lower() for v in label_map.values()} - VALID_WORK_TYPES
-        if unknown:
-            result.warnings.append(
-                f"detect(): work_type sconosciuti in label_map: {unknown}. "
-                f"Valori validi: {VALID_WORK_TYPES}"
-            )
-
-    if label_map:
-        _detect_labeled(result, label_map)
-
+    _detect_labeled(result)
     _detect_bending(result, bending_tolerance=bending_tolerance)
-
     _detect_holes(result)
+    
 
 
 # ---------------------------------------------------------------------------
 # Step 1 — labeled shapes (certezza 1.0)
 # ---------------------------------------------------------------------------
 
-def _detect_labeled(
-    result:    ForgeResult,
-    label_map: dict,
-) -> None:
+def _detect_labeled(result: ForgeResult) -> None:
     """
-    Classifica le forme in trash_entities e i Hole con origin mappata in label_map.
+    Classifica le forme con role != UNKNOWN.
 
     Per i Hole: promuove hole_type direttamente.
     Per le forme libere (bending, engrave, ecc.): crea ClassifiedEntity.
     """
-    origin_to_work = {k.lower(): v.lower() for k, v in label_map.items()}
     classified_ids = set()
 
-    # --- forme libere (bending, engrave, marking, ecc.) ---
     for proxy in result.trash_entities:
-        if proxy.origin == "":
+        if proxy.role == ContourRole.ENGRAVE:
+            print(f"DEBUG _detect_labeled: trovato ENGRAVE, shape_type={proxy.shape_type}")
+            print(f"DEBUG parts: {len(result.parts)}, trash: {len(result.trash_entities)}")
+        if proxy.role == ContourRole.UNKNOWN:
             continue
-        work_type = origin_to_work.get(proxy.origin.lower())
-        if work_type is None:
-            continue
+        work_type = proxy.role.value
         data = _extract_data(proxy, work_type)
         rep  = data.pop("representative_point", None)
         ce   = ClassifiedEntity(
@@ -142,27 +122,25 @@ def _detect_labeled(
         p for p in result.trash_entities if id(p) not in classified_ids
     ]
 
-    # --- Hole sui part: promozione diretta da label ---
     for part in result.parts:
         for hole in part.holes:
-            work_type = origin_to_work.get(hole.origin.lower())
-            if work_type is None:
-                continue
-            hole_type = _WORK_TYPE_TO_HOLE_TYPE.get(work_type)
+            hole_type = _ROLE_TO_HOLE_TYPE.get(hole.role)
             if hole_type is None:
                 continue
             hole.hole_type  = hole_type
             hole.confidence = 1.0
             hole.source     = "labeled"
 
-        # --- contorni inner su origin labeled → ClassifiedEntity ---
         remaining = []
+        print(" role:", [(i.role, i.polygon.area) for i in part.inners])
         for inner in part.inners:
-            work_type = origin_to_work.get(inner.origin.lower())
-            if work_type is None:
+            if inner.role == ContourRole.UNKNOWN or inner.role in STRUCTURAL_ROLES:
                 remaining.append(inner)
                 continue
-            data = _extract_data_from_source(inner.source_ref, inner.origin, work_type, polygon=inner.polygon)
+            work_type = inner.role.value
+            data = _extract_data_from_source(
+                inner.source_ref, work_type, polygon=inner.polygon
+            )
             rep  = data.pop("representative_point", None)
             ce = ClassifiedEntity(
                 source_ref=inner.source_ref,
@@ -177,6 +155,7 @@ def _detect_labeled(
             if inner.vs_id is not None:
                 result._suppressed_vs_ids.add(inner.vs_id)
             _assign_to_part(ce, result)
+        print(f"DEBUG inners prima: {[i.role for i in part.inners]}, remaining: {[i.role for i in remaining]}")
         part.inners = remaining
 
 
@@ -188,7 +167,7 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
     """
     Individua LINE interne all'outer di ogni part e popola part.bending_lines.
 
-    Usa OpenShape.pts e OpenShape.length — zero accessi a source_ref.
+    Usa OpenShape.pts e OpenShape.length — zero accessi a source_ref o layer.
     """
     classified_ids = {id(ce.source_ref) for ce in result.classified_entities}
 
@@ -265,9 +244,12 @@ def _detect_holes(result: ForgeResult) -> None:
 
 def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
     probe = _probe_point(ce)
+    print(f"DEBUG _assign_to_part: work_type={ce.work_type}, probe={probe}")
     if probe is None:
         return
-
+    print(f"DEBUG parts in assign: {len(result.parts)}")
+    for part in result.parts:
+        print(f"DEBUG outer area={part.outer.polygon.area}, contains={part.outer.polygon.contains(probe)}")
     work_type = ce.work_type.lower()
 
     for part in result.parts:
@@ -275,7 +257,9 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
             continue
 
         if work_type == "bending":
-            part.bending_lines.append(_bending_line_from_data(ce.data, ce.source_ref, part.label))
+            part.bending_lines.append(
+                _bending_line_from_data(ce.data, ce.source_ref, part.label)
+            )
             if ce.source_ref is not None:
                 part.entity_ids.add(id(ce.source_ref))
 
@@ -311,13 +295,6 @@ def _write_custom(ce: ClassifiedEntity, part: ForgePart) -> None:
 # ---------------------------------------------------------------------------
 
 def _probe_point(ce: ClassifiedEntity) -> Optional[Point]:
-    """
-    Punto rappresentativo della ClassifiedEntity per il containment check.
-
-    Legge ce.data["representative_point"] — calcolato da _extract_data
-    e _extract_data_from_source al momento della costruzione della CE.
-    Fallback su ce.polygon.centroid per VirtualShape senza coordinate esplicite.
-    """
     if ce.representative_point is not None:
         return Point(ce.representative_point)
     if ce.polygon is not None:
@@ -328,9 +305,7 @@ def _probe_point(ce: ClassifiedEntity) -> Optional[Point]:
 def _extract_data(proxy: OpenShape, work_type: str) -> dict:
     """
     Estrae dati serializzabili da un OpenShape per ClassifiedEntity.data.
-
-    Aggiunge sempre "representative_point" — usato da _probe_point per il
-    containment check senza accedere a source_ref.
+    Nessun riferimento a origin o layer — tutto da campi geometrici.
     """
     work_type = work_type.lower()
     pts = proxy.pts
@@ -353,29 +328,24 @@ def _extract_data(proxy: OpenShape, work_type: str) -> dict:
             "end":                  end,
             "length":               round(proxy.length, 4),
             "angle_deg":            round(math.degrees(math.atan2(dy, dx)) % 180, 4),
-            "origin":               proxy.origin,
             "representative_point": rep,
         }
 
     if work_type in ("engrave", "marking"):
         return {
             "length":               round(proxy.length, 4),
-            "origin":               proxy.origin,
             "representative_point": rep,
         }
 
     return {
-        "origin":               proxy.origin,
         "representative_point": rep,
     }
 
 
-def _extract_data_from_source(source_ref, origin: str, work_type: str, polygon=None) -> dict:
+def _extract_data_from_source(source_ref, work_type: str, polygon=None) -> dict:
     """
     Estrae dati da source_ref opaco o polygon shapely.
-
-    Aggiunge "representative_point" — calcolato dal polygon se disponibile,
-    altrimenti None (containment check non eseguibile).
+    origin rimosso — non è dato del core.
     """
     work_type = work_type.lower()
 
@@ -390,23 +360,15 @@ def _extract_data_from_source(source_ref, origin: str, work_type: str, polygon=N
             length = round(polygon.exterior.length, 4)
         return {
             "length":               length,
-            "origin":               origin,
             "representative_point": rep,
         }
 
     return {
-        "origin":               origin,
         "representative_point": rep,
     }
 
 
 def _bending_line_from_data(data: dict, source_ref, part_label: str) -> BendingLine:
-    """
-    Costruisce BendingLine dai dati già estratti in _extract_data.
-
-    Nessun accesso a source_ref — start, end, length, angle_deg sono in data.
-    source_ref viene passato solo per traceability (BendingLine.source_ref).
-    """
     start = data["start"]
     end   = data["end"]
     return BendingLine(

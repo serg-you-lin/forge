@@ -14,7 +14,8 @@ from ..adapters.dxf.adapter import DxfAdapter
 def heal(msp, tolerance=0.05, ignore_layers=None, label="",
          source_file="", label_map=None) -> ForgeResult:
     adapter = DxfAdapter(msp, tolerance=tolerance,
-                         ignore_layers={l.lower() for l in (ignore_layers or [])})
+                     ignore_layers={l.lower() for l in (ignore_layers or [])},
+                     label_map=label_map)
     return HealStep(adapter, msp, tolerance, label=label, source_file=source_file,
                     ignore_layers=ignore_layers,
                     special_layers=label_map).run()

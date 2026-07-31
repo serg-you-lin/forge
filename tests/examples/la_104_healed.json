@@ -3,8 +3,8 @@
   "is_valid": true,
   "part_count": 1,
   "warnings": [
-    "Rimosse 1 entità duplicate dal msp.",
-    "1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching)."
+    "1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).",
+    "Geometria ambigua: 1 nodi con più di 2 connessioni. Il risultato potrebbe essere impreciso."
   ],
   "errors": [],
   "parts": [
@@ -17,13 +17,13 @@
       "bending_lines": 0,
       "countersink_count": 0,
       "threaded_holes_count": 0,
-      "total_engrave_length_mm": 0.0,
-      "area_mm2": 19113.9849,
+      "total_engrave_length_mm": 63.9723,
+      "area_mm2": 19167.3791,
       "holes_count": 2,
-      "inner_contours_count": 1,
+      "inner_contours_count": 0,
       "outer_perimeter_mm": 550.6102,
-      "inner_perimeter_mm": 30.3796,
-      "total_perimeter_mm": 580.9898,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 550.6102,
       "bbox": {
         "minx": 0.0,
         "miny": 0.0,

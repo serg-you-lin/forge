@@ -4,12 +4,8 @@ from pathlib import Path
 import sys
 
 import forge
-from forge.rules.layers import (
-    LAYER_HOLE,
-    LAYER_INNER,
-    HOLE_DIAMETER_THRESHOLD,
-)
-
+from forge.adapters.dxf.layers import LAYER_HOLE, LAYER_INNER
+from forge.rules.thresholds import HOLE_DIAMETER_THRESHOLD
 from forge.model import (
     HOLE_TYPE_PLAIN,
     HOLE_TYPE_COUNTERSINK,
@@ -93,7 +89,7 @@ class TestDetectCountersink(unittest.TestCase):
 
         self.result = forge.heal(self.msp)
         forge.detect(self.result, self.msp)
-
+        
     def test_001_countersink_detected(self):
         holes = self.result.parts[0].holes
 

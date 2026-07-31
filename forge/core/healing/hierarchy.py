@@ -4,11 +4,9 @@ from shapely.geometry import Polygon
 from ...model.shape import ClosedShape
 from ...model.part import ForgePart, ForgeContour
 from ...model.hole import Hole, HOLE_TYPE_UNKNOWN
-from ...rules.layers import (
-    LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
-    color_for_layer,
-    HOLE_DIAMETER_THRESHOLD, STRUCTURAL_LAYERS,
-)
+from ...model.role import ContourRole
+from ...rules.thresholds import HOLE_DIAMETER_THRESHOLD
+from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER, color_for_layer
 
 
 # ---------------------------------------------------------------------------
@@ -19,8 +17,6 @@ def _place(proxy: ClosedShape, nodes: list) -> bool:
     """
     Inserisce proxy nell'albero di contenimento ricorsivo.
     Restituisce True se è stato piazzato dentro un nodo esistente.
-
-    Ogni nodo è [ClosedShape, children: list].
     """
     for node in nodes:
         if node[0].polygon.contains(proxy.polygon):
@@ -49,7 +45,13 @@ def _build_tree(proxies: list[ClosedShape]) -> list:
 
 def _make_hole(proxy: ClosedShape, geometric_hint: str = "",
                outer_proxy: Optional[ClosedShape] = None) -> Hole:
-    role = "hole" if proxy.diameter < HOLE_DIAMETER_THRESHOLD else "inner"
+    # Il role qui è strutturale (hole vs inner per soglia diametro) —
+    # non viene da label_map ma dalla geometria. HOLE e INNER sono entrambi
+    # valori di ContourRole, non stringhe libere.
+    # role = ContourRole.HOLE if proxy.diameter < HOLE_DIAMETER_THRESHOLD else ContourRole.INNER
+    role = proxy.role if proxy.role != ContourRole.UNKNOWN else (
+        ContourRole.HOLE if proxy.diameter < HOLE_DIAMETER_THRESHOLD else ContourRole.INNER
+    )
     return Hole(
         polygon=proxy.polygon,
         diameter=proxy.diameter,
@@ -57,25 +59,42 @@ def _make_hole(proxy: ClosedShape, geometric_hint: str = "",
         hole_type=HOLE_TYPE_UNKNOWN,
         geometric_hint=geometric_hint,
         role=role,
-        origin=proxy.origin,
         source_ref=proxy.source_ref,
         outer_diameter=outer_proxy.diameter if outer_proxy else None,
         outer_source_ref=outer_proxy.source_ref if outer_proxy else None,
     )
 
-def _make_inner(proxy: ClosedShape) -> ForgeContour:
+
+# def _make_inner(proxy: ClosedShape) -> ForgeContour:
+#     is_virtual = proxy.is_virtual
+#     print("DEBUG _make_inner role:", ContourRole.INNER)
+#     return ForgeContour(
+#         polygon=proxy.polygon,
+#         role=ContourRole.INNER,
+#         source_ref=proxy.source_ref if not is_virtual else None,
+#         vs_id=id(proxy.source_ref) if is_virtual else None,
+#     )
+    
+def _make_inner(proxy: ClosedShape, parent_role: ContourRole = ContourRole.UNKNOWN) -> ForgeContour:
     is_virtual = proxy.is_virtual
+    role = proxy.role if proxy.role not in (ContourRole.UNKNOWN, ContourRole.INNER) else \
+           parent_role if parent_role not in (ContourRole.UNKNOWN, ContourRole.INNER) else \
+           ContourRole.INNER
+    print(f"DEBUG _make_inner: proxy.role={proxy.role}, parent_role={parent_role}, role finale={role}")
+    print(f"DEBUG source_ref type={type(proxy.source_ref)}, attrs={[a for a in dir(proxy.source_ref) if not a.startswith('__')]}")
     return ForgeContour(
         polygon=proxy.polygon,
-        role="inner",
+        role=role,
         source_ref=proxy.source_ref if not is_virtual else None,
-        origin=proxy.origin,
         vs_id=id(proxy.source_ref) if is_virtual else None,
     )
 
 
+# def _process_children(children: list, holes: list, inners: list,
+#                        classified_virtual_ids: set, classified_entity_ids: set):
 def _process_children(children: list, holes: list, inners: list,
-                       classified_virtual_ids: set, classified_entity_ids: set):
+                      classified_virtual_ids: set, classified_entity_ids: set,
+                      parent_role: ContourRole = ContourRole.UNKNOWN):
     """
     Classifica i figli di un padre in holes e inners.
     Gestisce anche i nipoti (countersink: cerchio esterno con cerchio interno).
@@ -97,7 +116,9 @@ def _process_children(children: list, holes: list, inners: list,
                         outer_proxy=child_proxy,
                     ))
                 else:
-                    inners.append(_make_inner(gc_proxy))
+                    # inners.append(_make_inner(gc_proxy))
+                    inners.append(_make_inner(gc_proxy, parent_role=parent_role))
+                    print(f"DEBUG inner aggiunto: role={inners[-1].role}, vs_id={inners[-1].vs_id}")
 
                 _register(gc_proxy, classified_virtual_ids, classified_entity_ids)
 
@@ -106,13 +127,21 @@ def _process_children(children: list, holes: list, inners: list,
             if child_proxy.diameter is not None:
                 holes.append(_make_hole(child_proxy))
             else:
-                inners.append(_make_inner(child_proxy))
+                print(f"DEBUG _make_inner proxy.role={child_proxy.role}, is_virtual={child_proxy.is_virtual}, shape_type={child_proxy.shape_type}")
+                # inners.append(_make_inner(child_proxy))
+                inners.append(_make_inner(child_proxy, parent_role=parent_role))
 
             _register(child_proxy, classified_virtual_ids, classified_entity_ids)
 
+            # if child_proxy.is_virtual:
+            #     child_proxy.source_ref.layer = LAYER_INNER
+            #     child_proxy.source_ref.color = color_for_layer(LAYER_INNER)
+
             if child_proxy.is_virtual:
-                child_proxy.source_ref.layer = LAYER_INNER
-                child_proxy.source_ref.color = color_for_layer(LAYER_INNER)
+                from ...adapters.dxf.layers import ROLE_TO_LAYER
+                assigned_layer = ROLE_TO_LAYER.get(inners[-1].role, LAYER_INNER)
+                child_proxy.source_ref.layer = assigned_layer
+                child_proxy.source_ref.color = color_for_layer(assigned_layer)
 
 
 def _register(proxy: ClosedShape, classified_virtual_ids: set,
@@ -140,7 +169,7 @@ def _build_hierarchy(self):
     self._all_proxies = self.adapter.collect_closed(self.open_splines, self.result._virtual_shapes)
     self._all_proxies += self.adapter.to_open()
     proxies = [p for p in self._all_proxies if hasattr(p, 'polygon') and p.polygon is not None]
-              
+
     if not proxies:
         self.result.errors.append("Nessuna geometria chiusa trovata dopo healing.")
         self.result.is_valid = False
@@ -153,7 +182,7 @@ def _build_hierarchy(self):
 
         outer = ForgeContour(
             polygon=father_proxy.polygon,
-            role="outer",
+            role=ContourRole.OUTER,
             source_ref=father_proxy.source_ref if not father_proxy.is_virtual else None,
         )
 
@@ -165,9 +194,14 @@ def _build_hierarchy(self):
 
         holes  = []
         inners = []
+        # _process_children(
+        #     children, holes, inners,
+        #     self.classified_virtual_ids, self.classified_entity_ids,
+        # )
         _process_children(
             children, holes, inners,
             self.classified_virtual_ids, self.classified_entity_ids,
+            parent_role=father_proxy.role,
         )
 
         entity_ids = _collect_entity_ids(father_proxy, children)
@@ -207,16 +241,68 @@ def _build_hierarchy(self):
 # Trash — entità non classificate che non appartengono a nessun part
 # ---------------------------------------------------------------------------
 
+# def _build_trash(self):
+#     """
+#     Raccoglie le shape non classificate in nessun part.
+
+#     Criteri di inclusione nel trash (tutti devono valere):
+#     - non già classificata come entità o virtual
+#     - role != UNKNOWN  →  l'adapter ha riconosciuto qualcosa (bending, engrave…)
+#     - non un loop già chiuso (entities_in_loops), a meno che non sia
+#       esplicitamente labeled (role != UNKNOWN)
+#     """
+#     self.result.trash_entities += [
+#         proxy for proxy in self._all_proxies
+#         if id(proxy.source_ref) not in self.classified_entity_ids
+#         and id(proxy.source_ref) not in self.classified_virtual_ids
+#         and proxy.role != ContourRole.UNKNOWN
+#         and (
+#             id(proxy.source_ref) not in self.entities_in_loops
+#             or proxy.role != ContourRole.UNKNOWN
+#         )
+#     ]
+#     self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
+
+
+# def _build_trash(self):
+#     """
+#     Raccoglie le shape non classificate in nessun part.
+
+#     Criteri di inclusione nel trash (tutti devono valere):
+#     - non già classificata come entità o virtual
+#     - role != UNKNOWN  →  l'adapter ha riconosciuto qualcosa (bending, engrave…)
+#     - non un loop già chiuso (entities_in_loops), a meno che non sia
+#       esplicitamente labeled (role != UNKNOWN)
+#     """
+#     self.result.trash_entities += [
+#         proxy for proxy in self._all_proxies
+#         if id(proxy.source_ref) not in self.classified_entity_ids
+#         and id(proxy.source_ref) not in self.classified_virtual_ids
+#         and proxy.role not in (ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE)
+#         and id(proxy.source_ref) not in self.entities_in_loops
+#     ]
+#     self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
+
+
+
+
 def _build_trash(self):
+    # Ruoli che NON vanno in trash (sono già classificati o strutturali)
+    EXCLUDED_ROLES = {
+        ContourRole.OUTER, 
+        ContourRole.INNER, 
+        ContourRole.HOLE,
+        ContourRole.ENGRAVE,
+        ContourRole.BENDING,
+        ContourRole.COUNTERSINK,
+        ContourRole.THREADED_HOLE,
+        ContourRole.MARKING,
+    }
+    
     self.result.trash_entities += [
         proxy for proxy in self._all_proxies
         if id(proxy.source_ref) not in self.classified_entity_ids
         and id(proxy.source_ref) not in self.classified_virtual_ids
-        and proxy.origin != ""
-        and proxy.origin.upper() not in STRUCTURAL_LAYERS
-        and (
-            id(proxy.source_ref) not in self.entities_in_loops
-            or proxy.origin.lower() in self.special_layer_names
-        )
+        and proxy.role not in EXCLUDED_ROLES
+        and id(proxy.source_ref) not in self.entities_in_loops
     ]
-    self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)

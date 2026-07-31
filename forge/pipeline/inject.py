@@ -31,12 +31,10 @@ from typing import Callable, Optional
 from ..model.text import ForgeText
 from ..core.geometry import group_collinear_lines
 from ..io.text_utils import extract_texts_from_msp
-from ..rules.layers import (
+from ..adapters.dxf.layers import (
     LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING, LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
 )
 from ..model import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED, HOLE_TYPE_PLAIN
-
-# ANNOTATION_TYPES = {'TEXT', 'MTEXT', 'DIMENSION', 'LEADER', 'MULTILEADER'}
 
 # Mappa work_type → layer forge dove heal() ha già spostato le entità
 WORK_TYPE_TO_FORGE_LAYER = {
@@ -128,7 +126,6 @@ def _inject_holes(part) -> None:
             threaded_hole_count += 1
         elif hole.hole_type == HOLE_TYPE_PLAIN:
             plain_hole_count += 1
-        # UNKNOWN: detect() non chiamato — non contiamo, non è una diagnosi
 
     if countersink_count:
         part.custom["countersink_count"]   = countersink_count
@@ -176,18 +173,6 @@ def _inject_classified(part, classified_entities, outer_poly) -> None:
     if total_marking:
         part.custom["total_marking_length"] = round(total_marking, 4)
 
-
-# def _extract_texts_for_part(msp, outer_poly) -> list:
-#     """
-#     Estrae i testi dal msp che ricadono dentro l'outer_poly del part.
-#     """
-#     candidates = [
-#         e for e in msp
-#         if e.dxftype() in ANNOTATION_TYPES
-#         and (pt := get_representative_point(e)) is not None
-#         and outer_poly.covers(pt)
-#     ]
-#     return extract_texts_from_msp(candidates)
 
 def _filter_texts_for_part(texts: list[ForgeText], outer_poly) -> list[str]:
     """

@@ -36,7 +36,6 @@ Workflow multi-pezzo:
 from .adapters.dxf.loader import load_dxf
 from .adapters.pdf.loader import load_pdf
 from .pipeline            import heal, split_to_files
-from .rules.layers import LAYER_OUTER, LAYER_HOLE
 from .pipeline.inject   import inject
 from .pipeline.write  import write, split
 from .pipeline.detect  import detect
@@ -53,7 +52,7 @@ from .io.exporter         import (
 from .model         import ForgeResult, ForgePart, ForgeContour
 from .io.text_utils       import extract_texts_from_msp
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 __all__ = [
     # Apertura file
@@ -84,7 +83,4 @@ __all__ = [
     "ForgeResult",
     "ForgePart",
     "ForgeContour",
-    # Costanti layer
-    "LAYER_OUTER",
-    "LAYER_HOLE",
 ]
