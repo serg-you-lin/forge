@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/polilinea_con_marcatura.dxf"
+input_dxf = r"tests/examples/la_104.DXF"
 
 tolerance = .02
 
@@ -73,7 +73,7 @@ result = forge.heal(
 
 forge.detect(result, bending_tolerance=0.2)
 forge.write(msp, result)
-forge.inject(msp, result)
+forge.inject(result)
 
 # ---------------------------------------------------------------------------
 # Report

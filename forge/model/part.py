@@ -1,29 +1,36 @@
 from dataclasses import dataclass, field
 from typing import Any, List, Set, Tuple, Optional
 from shapely.geometry import Polygon
+
 from .hole import Hole
 from .edge import BendingLine
+from .role import ContourRole
+
 
 @dataclass
 class ForgeContour:
     """
     Un singolo contorno geometrico: esterno o contorno interno NON foro.
 
-    I fori usano la classe Hole — ForgeContour è per contorni strutturali
+    I fori usano Hole — ForgeContour è per contorni strutturali
     (profili interni complessi, tasche, ecc.) che non sono fori circolari.
 
     Campi:
-        entity : entità ezdxf originale — riferimento in memoria, può essere None.
-                 Usato da detect() per accedere alla geometria ezdxf senza
-                 rileggere il msp. Non serializzato: id() non ha senso su disco.
+        polygon    : poligono Shapely del contorno
+        role       : ruolo semantico — tradotto da DxfAdapter, letto da detect()
+        source_ref : entità originale opaca — per traceability e writeback
+        vs_id      : id del VirtualShape sorgente, se generato dal core
+        origin     : DEPRECATO — layer DXF di provenienza; non leggere in detect()
     """
-    polygon:      Polygon
-    role:         str     = ""
-    source_ref:   Any = None
-    area:         float   = field(init=False)
-    bbox:         Tuple[float, float, float, float] = field(init=False)
-    origin: str     = ""
-    vs_id: Optional[int] = None
+    polygon:    Polygon
+    role:       ContourRole  = ContourRole.UNKNOWN
+    source_ref: Any          = None
+    area:       float        = field(init=False)
+    bbox:       Tuple[float, float, float, float] = field(init=False)
+    vs_id:      Optional[int] = None
+
+    # DEPRECATO: tenuto per compat durante refactor — non aggiungere nuovi usi
+    origin: str = ""
 
     def __post_init__(self):
         self.area = self.polygon.area
@@ -35,27 +42,12 @@ class ForgePart:
     """
     Un pezzo completo: contorno esterno + fori + contorni interni + metadati.
 
-    È l'unità di lavoro di dxf-forge.
-
-    Campi:
-        outer          : contorno esterno
-        holes          : fori — istanze di Hole, gestite da heal() e detect()
-        inners         : contorni interni NON foro (tasche complesse, ecc.)
-        label          : nome del file o del layer
-        source_file    : percorso del DXF originale
-        custom         : metadati lavorazione — scritti da detect() e inject()
-        entity_ids     : id() di tutte le entità ezdxf appartenenti a questo part,
-                         popolato da heal() durante la costruzione della gerarchia.
-                         Dopo write(), viene aggiornato con gli id() delle LWPOLYLINE
-                         materializzate dai VirtualShape (swap VS → LWPOLYLINE).
-                         Usato da split() per copiare le entità corrette senza
-                         ricalcolare l'appartenenza geometrica.
-                         Non serializzato: id() non ha senso su disco.
+    È l'unità di lavoro di forge.
     """
     outer:          ForgeContour
     holes:          List[Hole]         = field(default_factory=list)
     inners:         List[ForgeContour] = field(default_factory=list)
-    bending_lines:  List[BendingLine] = field(default_factory=list)
+    bending_lines:  List[BendingLine]  = field(default_factory=list)
     label:          str                = ""
     source_file:    str                = ""
     custom:         dict               = field(default_factory=dict)
@@ -63,7 +55,6 @@ class ForgePart:
 
     @property
     def polygon_with_holes(self) -> Polygon:
-        """Restituisce il Polygon Shapely completo con i fori."""
         all_inners = (
             [h.polygon for h in self.holes]
             + [i.polygon for i in self.inners]
@@ -81,7 +72,6 @@ class ForgePart:
 
     @property
     def area(self) -> float:
-        """Area netta: outer meno fori meno contorni interni."""
         return (
             self.outer.area
             - sum(h.area for h in self.holes)
@@ -89,11 +79,6 @@ class ForgePart:
         )
 
     def to_dict(self) -> dict:
-        """
-        Esporta il pezzo come dizionario — fonte di verità per JSON, XDATA, MES, ERP.
-
-        GeometryHints e entity_ids non sono serializzati: sono id() in memoria.
-        """
         return {
             "label":                self.label,
             "source_file":          self.source_file,

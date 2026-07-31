@@ -1,5 +1,3 @@
-
-
 """
 core/geometry.py
 ----------------
@@ -42,49 +40,6 @@ def num_segments_for_bulge(bulge: float) -> int:
 # Collinearità e distanze — usate da healer e injector
 # ---------------------------------------------------------------------------
 
-# def _line_direction(line) -> Tuple[float, float]:
-#     """
-#     Vettore direzione normalizzato di una LINE, orientato canonicamente
-#     (dx >= 0; se dx==0 allora dy > 0).
-#     Due segmenti paralleli opposti hanno lo stesso vettore.
-#     """
-#     dx = line.dxf.end.x - line.dxf.start.x
-#     dy = line.dxf.end.y - line.dxf.start.y
-#     length = (dx**2 + dy**2) ** 0.5
-#     if length == 0:
-#         return (0.0, 0.0)
-#     dx, dy = dx / length, dy / length
-#     if dx < 0 or (dx == 0 and dy < 0):
-#         dx, dy = -dx, -dy
-#     return (dx, dy)
-
-
-# def _point_to_line_distance(px: float, py: float, line) -> float:
-#     """Distanza di un punto dalla retta infinita definita da line."""
-#     ax, ay = line.dxf.start.x, line.dxf.start.y
-#     bx, by = line.dxf.end.x,   line.dxf.end.y
-#     dx, dy = bx - ax, by - ay
-#     length = (dx**2 + dy**2) ** 0.5
-#     if length == 0:
-#         return ((px - ax)**2 + (py - ay)**2) ** 0.5
-#     cross = abs(dx * (ay - py) - dy * (ax - px))
-#     return cross / length
-
-
-# def are_collinear(line_a, line_b, tolerance: float = 0.1) -> bool:
-#     """
-#     Restituisce True se due LINE giacciono sulla stessa retta infinita.
-#     Criteri: stessa direzione + distanza punto-retta entro tolleranza (mm).
-#     """
-#     dir_a = _line_direction(line_a)
-#     dir_b = _line_direction(line_b)
-#     cross = abs(dir_a[0] * dir_b[1] - dir_a[1] * dir_b[0])
-#     if cross > 1e-6:
-#         return False
-#     dist = _point_to_line_distance(
-#         line_b.dxf.start.x, line_b.dxf.start.y, line_a
-#     )
-#     return dist <= tolerance
 def _line_direction(line: 'LineString') -> Tuple[float, float]:
     """
     Vettore direzione normalizzato di una LineString, orientato canonicamente

@@ -39,16 +39,22 @@ from ..model import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TY
 from ..adapters.dxf.copy_adapter import copy_entity
 from ..adapters.dxf.geometry_adapter import get_representative_point
 from ..adapters.dxf.virtual_adapter import _write_virtual_shape
-from ..rules.layers import (
+
+from ..adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
-    COLOR_OUTER, COLOR_INNER, COLOR_HOLE,
-    STRUCTURAL_LAYERS, WORK_LAYERS,
-    TRASH_LAYER, COLOR_TRASH,
+    TRASH_LAYER,
     WORK_TYPE_TO_LAYER,
-    HOLE_DIAMETER_THRESHOLD,
     ALL_FORGE_LAYERS,
+    ROLE_TO_LAYER,       # ← non più definito localmente
     color_for_layer,
 )
+from ..rules.palette import COLOR_OUTER, COLOR_INNER, COLOR_HOLE, COLOR_TRASH
+
+# STRUCTURAL_LAYERS → sostituisci con:
+_STRUCTURAL_LAYER_NAMES = {LAYER_OUTER.upper(), LAYER_INNER.upper(), LAYER_HOLE.upper()}
+
+# WORK_LAYERS → se usi solo il check, sostituisci con:
+_WORK_LAYER_NAMES = set(n.upper() for n, _ in WORK_TYPE_TO_LAYER.values())
 
 _HOLE_TYPE_TO_WORK_TYPE = {
     HOLE_TYPE_COUNTERSINK: "countersink",
@@ -70,33 +76,28 @@ def write(
     result:     ForgeResult,
     keep_trash: bool = True,
 ) -> None:
-    """
-    Materializza il ForgeResult sul msp originale.
+    entity_to_work = _build_work_index(result)
+    special_map    = _build_special_map(result)
 
-    Deve essere chiamato DOPO heal() — e opzionalmente dopo detect()
-    se si vogliono anche i layer di lavorazione.
-
-    Fase 1 — strutturale (sempre):
-        - scrive i Contour come LWPOLYLINE nel msp
-        - aggiorna part.entity_ids: swap id(ctx) → id(LWPOLYLINE) per i non-spline
-        - assegna layer/colori strutturali (outer, inner, hole) alle entità reali
-        - rimuove le LINE/ARC originali sostituite dai Contour
-
-    Fase 2 — lavorazioni (solo se detect() è stato chiamato):
-        - assegna layer lavorazioni (bending, countersink, engrave...)
-          leggendo geometry_hints e Hole.hole_type da result
-    """
     for ctx in result._virtual_shapes:
         if id(ctx) in result._suppressed_vs_ids:
             continue
+
         lwpoly = _write_virtual_shape(msp, ctx)
         if lwpoly is not None:
             part = result._vs_to_part.get(id(ctx))
             if part is not None:
                 part.entity_ids.discard(id(ctx))
                 part.entity_ids.add(id(lwpoly))
+                for contour in [part.outer] + part.inners:
+                    if contour.vs_id == id(ctx):
+                        layer = ROLE_TO_LAYER.get(contour.role, LAYER_INNER)
+                        lwpoly.dxf.layer = layer
+                        lwpoly.dxf.color = 256
+                        if contour.role not in (ContourRole.OUTER, ContourRole.INNER, ContourRole.UNKNOWN):
+                            entity_to_work[id(lwpoly)] = contour.role.value.lower()
+                        break
         else:
-            # has_spline=True: le entità originali restano nel msp
             part = result._vs_to_part.get(id(ctx))
             if part is not None:
                 part.entity_ids.discard(id(ctx))
@@ -105,9 +106,6 @@ def write(
 
     _remove_superseded_line_arc(msp, result)
     _assign_structural_layers(msp, result)
-
-    entity_to_work = _build_work_index(result)
-    special_map    = _build_special_map(result)
 
     _setup_layers(msp.doc)
 
@@ -125,7 +123,7 @@ def write(
             )
             entity.dxf.layer = target_layer
             entity.dxf.color = 256
-        elif layer.upper() in STRUCTURAL_LAYERS:
+        elif layer.upper() in _STRUCTURAL_LAYER_NAMES:
             entity.dxf.color = 256
             continue
         elif keep_trash:
@@ -134,7 +132,87 @@ def write(
         else:
             msp.delete_entity(entity)
 
+# def write(
+#     msp,
+#     result:     ForgeResult,
+#     keep_trash: bool = True,
+# ) -> None:
+#     """
+#     Materializza il ForgeResult sul msp originale.
 
+#     Deve essere chiamato DOPO heal() — e opzionalmente dopo detect()
+#     se si vogliono anche i layer di lavorazione.
+
+#     Fase 1 — strutturale (sempre):
+#         - scrive i Contour come LWPOLYLINE nel msp
+#         - aggiorna part.entity_ids: swap id(ctx) → id(LWPOLYLINE) per i non-spline
+#         - assegna layer/colori strutturali (outer, inner, hole) alle entità reali
+#         - rimuove le LINE/ARC originali sostituite dai Contour
+
+#     Fase 2 — lavorazioni (solo se detect() è stato chiamato):
+#         - assegna layer lavorazioni (bending, countersink, engrave...)
+#           leggendo geometry_hints e Hole.hole_type da result
+#     """
+    
+#     for ctx in result._virtual_shapes:
+#         if id(ctx) in result._suppressed_vs_ids:
+#             continue
+
+#         lwpoly = _write_virtual_shape(msp, ctx)
+#         if lwpoly is not None:
+#             part = result._vs_to_part.get(id(ctx))
+#             if part is not None:
+#                 part.entity_ids.discard(id(ctx))
+#                 part.entity_ids.add(id(lwpoly))
+#                 # propaga il role del ForgeContour sulla LWPOLYLINE
+#                 for contour in [part.outer] + part.inners:
+#                     if contour.vs_id == id(ctx):
+#                         layer = ROLE_TO_LAYER.get(contour.role, LAYER_INNER)
+#                         lwpoly.dxf.layer = layer
+#                         lwpoly.dxf.color = 256
+#                         print(f"DEBUG vs check: contour.vs_id={contour.vs_id}, id(ctx)={id(ctx)}, role={contour.role}")
+#                         break
+#         else:
+#             # has_spline=True: le entità originali restano nel msp
+#             part = result._vs_to_part.get(id(ctx))
+#             if part is not None:
+#                 part.entity_ids.discard(id(ctx))
+#                 for entity, _ in ctx.loop:
+#                     part.entity_ids.add(id(entity))
+
+#     _remove_superseded_line_arc(msp, result)
+#     _assign_structural_layers(msp, result)
+
+#     entity_to_work = _build_work_index(result)
+#     special_map    = _build_special_map(result)
+
+#     _setup_layers(msp.doc)
+
+#     for entity in list(msp):
+#         print(f"DEBUG write loop: id={id(entity)}, layer={entity.dxf.layer}, in_work={id(entity) in entity_to_work}, in_special={entity.dxf.layer.lower() in special_map}")
+#         if not entity.dxf.hasattr("layer"):
+#             continue
+
+#         entity_id = id(entity)
+#         layer     = entity.dxf.layer
+#         work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
+
+#         if work_type is not None:
+#             target_layer, _ = WORK_TYPE_TO_LAYER.get(
+#                 work_type, (TRASH_LAYER, COLOR_TRASH)
+#             )
+#             entity.dxf.layer = target_layer
+#             entity.dxf.color = 256
+#         elif layer.upper() in _STRUCTURAL_LAYER_NAMES:
+#             entity.dxf.color = 256
+#             continue
+#         elif keep_trash:
+#             entity.dxf.layer = TRASH_LAYER
+#             entity.dxf.color = 256
+#         else:
+#             msp.delete_entity(entity)
+
+    
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
 DEFAULT_MIN_PART_AREA = 50.0  # mm²
 
@@ -161,15 +239,12 @@ def split(
     entity_to_structural = {}
     for p in result.parts:
         if p.outer.source_ref is not None:
-            # entity_to_structural[id(p.outer.source_ref)] = p.outer.layer
             entity_to_structural[id(p.outer.source_ref)] = ROLE_TO_LAYER.get(p.outer.role, LAYER_OUTER)
         for inner in p.inners:
             if inner.source_ref is not None:
-                # entity_to_structural[id(inner.source_ref)] = inner.layer
                 entity_to_structural[id(inner.source_ref)] = ROLE_TO_LAYER.get(inner.role, LAYER_INNER)
         for hole in p.holes:
             if hole.source_ref is not None:
-                # entity_to_structural[id(hole.source_ref)] = hole.layer
                 entity_to_structural[id(hole.source_ref)] = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
 
     generated = []
@@ -231,7 +306,7 @@ def split(
                 target_layer, _ = WORK_TYPE_TO_LAYER.get(work_type, (TRASH_LAYER, COLOR_TRASH))
                 new_entity.dxf.layer = target_layer
                 new_entity.dxf.color = 256
-            elif layer.upper() in STRUCTURAL_LAYERS or layer.upper() in WORK_LAYERS:
+            elif layer.upper() in _STRUCTURAL_LAYER_NAMES or layer.upper() in _WORK_LAYER_NAMES:
                 new_entity.dxf.color = 256
             elif keep_trash:
                 new_entity.dxf.layer = TRASH_LAYER
@@ -254,6 +329,7 @@ def split(
 def _assign_structural_layers(msp, result: ForgeResult) -> None:
     for part in result.parts:
         for contour in [part.outer] + part.inners:
+            print(f"DEBUG assign: role={contour.role}, source_ref={contour.source_ref is not None}, vs_id={contour.vs_id}")
             if contour.source_ref is not None:
                 contour.source_ref.dxf.layer = ROLE_TO_LAYER.get(contour.role, LAYER_OUTER)
                 contour.source_ref.dxf.color = 256
@@ -283,16 +359,15 @@ def _remove_superseded_line_arc(msp, result: ForgeResult) -> None:
         msp.delete_entity(e)
 
 
-def _build_work_index(result: ForgeResult) -> dict:
-    """
-    Costruisce un indice id(entity) → work_type da:
-        - part.holes con hole_type classificato da detect()
-        - part.bending_lines (linee di piega)
 
-    I fori plain non entrano nell'indice — rimangono su LAYER_HOLE.
-    I fori unknown (detect() non chiamato) non entrano — nessuna diagnosi.
-    """
+def _build_work_index(result: ForgeResult) -> dict:
     index = {}
+    
+    # entità classificate da detect() (engrave, marking, ecc.)
+    for ce in result.classified_entities:
+        if ce.source_ref is not None:
+            index[id(ce.source_ref)] = ce.work_type.lower()
+
     for part in result.parts:
         for hole in part.holes:
             if hole.hole_type == HOLE_TYPE_COUNTERSINK and hole.outer_source_ref is not None:
@@ -309,12 +384,7 @@ def _build_work_index(result: ForgeResult) -> dict:
 
 
 def _build_special_map(result: ForgeResult) -> dict:
-    """
-    Costruisce un indice layer_name → work_type da result.special_layers.
-    """
-    if not result.label_map:
-        return {}
-    return {k.lower(): v.lower() for k, v in result.label_map.items()}
+    return {}   # label_map non esiste più nel core — l'adapter ha già tradotto in role
 
             
 def _setup_layers(doc) -> None:
