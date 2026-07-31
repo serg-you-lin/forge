@@ -22,11 +22,11 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.rules.layers import (
+from forge.adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     LAYER_COUNTERSINK, LAYER_BENDING, LAYER_ENGRAVE,
-    COLOR_OUTER, COLOR_INNER, COLOR_HOLE, COLOR_TRASH,
 )
+from forge.rules.palette import COLOR_OUTER, COLOR_INNER, COLOR_HOLE, COLOR_TRASH
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 

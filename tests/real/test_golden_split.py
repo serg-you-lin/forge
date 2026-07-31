@@ -38,7 +38,14 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.rules.layers import ROLE_TO_LAYER, LAYER_INNER, LAYER_OUTER, LAYER_HOLE
+# from forge.rules.layers import ROLE_TO_LAYER, LAYER_INNER, LAYER_OUTER, LAYER_HOLE
+from forge.adapters.dxf.layers import (
+    ROLE_TO_LAYER,
+    LAYER_INNER,
+    LAYER_OUTER,
+    LAYER_HOLE,
+)
+
 
 MULTIPLI_DIR = project_root / "tests" / "examples" / "golden_multipli"
 GOLDEN_DIR   = MULTIPLI_DIR / "golden"
@@ -87,16 +94,6 @@ class _SplitContext:
         self._tolerance   = tolerance
         self._tmpdir      = None
 
-    # def __enter__(self) -> Path:
-    #     self._tmpdir = tempfile.TemporaryDirectory()
-    #     output_folder = Path(self._tmpdir.name)
-
-    #     doc = ezdxf.readfile(self._parent_path)
-    #     if doc.dxfversion < "AC1015":
-    #         doc = forge.upgrade_to_r2010(doc)
-    #     msp = doc.modelspace()
-
-    #     result = forge.heal(msp, tolerance=self._tolerance, explode_inserts=True)
     def __enter__(self) -> Path:
         self._tmpdir = tempfile.TemporaryDirectory()
         output_folder = Path(self._tmpdir.name)
@@ -127,10 +124,6 @@ def _process_child(child_path: Path, tolerance: float):
     Riprocessa un DXF figlio (singola parte attesa) con heal → detect → write.
     Restituisce il result, oppure None se non valido.
     """
-    # doc = ezdxf.readfile(child_path)
-    # if doc.dxfversion < "AC1015":
-    #     doc = forge.upgrade_to_r2010(doc)
-    # msp = doc.modelspace()
     doc, msp = forge.load_dxf(child_path, explode_inserts=True)
     result = forge.heal(msp, tolerance=tolerance)
 

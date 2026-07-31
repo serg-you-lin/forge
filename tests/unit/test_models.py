@@ -31,6 +31,7 @@ from forge.model import (
     HOLE_TYPE_THREADED,
 )
 
+from forge.model.role import ContourRole
 
 # ---------------------------------------------------------------------------
 # Fake entity minimale — isola i test da ezdxf
@@ -65,7 +66,7 @@ class TestForgeContour(unittest.TestCase):
         """role default è stringa vuota."""
         poly = Polygon([(0,0), (10,0), (10,10), (0,10)])
         contour = ForgeContour(polygon=poly)
-        self.assertEqual(contour.role, "")
+        self.assertEqual(contour.role, ContourRole.UNKNOWN)
 
     def test_004_role_inner(self):
         """role inner assegnato correttamente."""

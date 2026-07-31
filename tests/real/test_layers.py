@@ -1,3 +1,4 @@
+
 """
 test_layers.py
 --------------
@@ -7,8 +8,10 @@ nella tabella layer del documento, e che ogni entità abbia color=256 (BYLAYER).
 File di test: tests/examples/Multifeature.dxf
 """
 
-import unittest
+import os
 import sys
+import tempfile
+import unittest
 from pathlib import Path
 
 import ezdxf
@@ -17,10 +20,12 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.rules.layers import ALL_FORGE_LAYERS, TRASH_LAYER
+from forge.adapters.dxf.layers import ALL_FORGE_LAYERS, TRASH_LAYER
+from forge.adapters.dxf.layers import LAYER_OUTER, ROLE_TO_LAYER, LAYER_BENDING
+from forge.model.role import ContourRole
 
-EXAMPLES_DIR   = project_root / "tests" / "examples"
-MULTIFEATURE   = EXAMPLES_DIR / "Multifeature.dxf"
+EXAMPLES_DIR = project_root / "tests" / "examples"
+MULTIFEATURE = EXAMPLES_DIR / "Multifeature.dxf"
 
 SPECIAL_LAYERS = {
     "MARK":      "engrave",
@@ -30,12 +35,8 @@ SPECIAL_LAYERS = {
 }
 
 
-def _run_pipeline(dxf_path: Path):
+def _run_pipeline(dxf_path: Path) -> tuple:
     """Esegue heal → detect → write e restituisce (doc, msp, result)."""
-    # doc = ezdxf.readfile(dxf_path)
-    # if doc.dxfversion < "AC1015":
-    #     doc = forge.upgrade_to_r2010(doc)
-    # msp = doc.modelspace()
 
     doc, msp = forge.load_dxf(dxf_path, explode_inserts=True)
     result = forge.heal(
@@ -76,6 +77,7 @@ class TestLayerTable(unittest.TestCase):
             with self.subTest(layer=name):
                 if name not in self.doc.layers:
                     self.skipTest(f"Layer '{name}' assente — coperto da test_tutti_i_layer_forge_presenti")
+                
                 actual_color = self.doc.layers.get(name).color
                 self.assertEqual(
                     actual_color,
@@ -103,13 +105,13 @@ class TestEntitaBylayer(unittest.TestCase):
         for entity in self.msp:
             if not entity.dxf.hasattr("layer"):
                 continue
+            
             if entity.dxf.layer.upper() not in self.forge_layer_names:
                 continue
+            
             color = entity.dxf.color if entity.dxf.hasattr("color") else 256
             if color != 256:
-                violazioni.append(
-                    f"{entity.dxftype()} su '{entity.dxf.layer}' ha color={color}"
-                )
+                violazioni.append(f"{entity.dxftype()} su '{entity.dxf.layer}' ha color={color}")
 
         self.assertEqual(
             violazioni,
@@ -119,7 +121,6 @@ class TestEntitaBylayer(unittest.TestCase):
 
     def test_outer_contour_su_layer_corretto(self):
         """Il contorno esterno di ogni part deve essere su OuterContour."""
-        from forge.rules.layers import LAYER_OUTER, ROLE_TO_LAYER
         for i, part in enumerate(self.result.parts):
             with self.subTest(part=i):
                 self.assertEqual(
@@ -129,9 +130,8 @@ class TestEntitaBylayer(unittest.TestCase):
                 )
 
     def test_holes_su_layer_corretto(self):
-        """I fori devono essere su Hole o InnerContour (mai su layer non-forge)."""
-        from forge.rules.layers import ROLE_TO_LAYER
-        role_fori_validi = {"hole", "inner"}
+        """I fori devono avere un role foro-compatibile (hole, inner, threaded_hole, countersink)."""
+        role_fori_validi = {ContourRole.HOLE, ContourRole.INNER, ContourRole.THREADED_HOLE, ContourRole.COUNTERSINK}
         for i, part in enumerate(self.result.parts):
             for j, hole in enumerate(part.holes):
                 with self.subTest(part=i, hole=j):
@@ -149,7 +149,7 @@ class TestLayerSplit(unittest.TestCase):
     def setUpClass(cls):
         if not MULTIFEATURE.exists():
             raise unittest.SkipTest(f"File non trovato: {MULTIFEATURE}")
-        import tempfile, os
+        
         cls.doc, cls.msp, cls.result = _run_pipeline(MULTIFEATURE)
         cls.output_dir = tempfile.mkdtemp()
         cls.generated = forge.split(cls.msp, cls.result, cls.output_dir)
@@ -162,9 +162,10 @@ class TestLayerSplit(unittest.TestCase):
         for path in self.generated:
             doc_out = ezdxf.readfile(path)
             for name, expected_color in ALL_FORGE_LAYERS.items():
-                # un figlio potrebbe non avere tutti i layer se quella feature non c'è
+                # Un figlio potrebbe non avere tutti i layer se quella feature non c'è
                 if name not in doc_out.layers:
                     continue
+                
                 with self.subTest(file=Path(path).name, layer=name):
                     actual_color = doc_out.layers.get(name).color
                     self.assertEqual(
@@ -177,20 +178,19 @@ class TestLayerSplit(unittest.TestCase):
         """Nei file figli le entità forge devono avere color=256."""
         forge_layer_names = {name.upper() for name in ALL_FORGE_LAYERS}
         for path in self.generated:
-            # doc_out  = ezdxf.readfile(path)
-            # msp_out  = doc_out.modelspace()
             doc_out, msp_out = forge.load_dxf(path, explode_inserts=True)
             violazioni = []
+            
             for entity in msp_out:
                 if not entity.dxf.hasattr("layer"):
                     continue
                 if entity.dxf.layer.upper() not in forge_layer_names:
                     continue
+                
                 color = entity.dxf.color if entity.dxf.hasattr("color") else 256
                 if color != 256:
-                    violazioni.append(
-                        f"{entity.dxftype()} su '{entity.dxf.layer}' ha color={color}"
-                    )
+                    violazioni.append(f"{entity.dxftype()} su '{entity.dxf.layer}' ha color={color}")
+            
             with self.subTest(file=Path(path).name):
                 self.assertEqual(
                     violazioni,
@@ -226,25 +226,22 @@ class TestLineetteBastarde(unittest.TestCase):
         self.assertEqual(self.result.part_count, 1, "Atteso 1 part")
 
     def test_outer_su_layer_corretto(self):
-        from forge.rules.layers import LAYER_OUTER, ROLE_TO_LAYER
         part = self.result.parts[0]
         self.assertEqual(ROLE_TO_LAYER.get(part.outer.role), LAYER_OUTER)
 
     def test_due_entita_su_bending(self):
-        from forge.rules.layers import LAYER_BENDING
         bending = [e for e in self.msp if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_BENDING]
         self.assertEqual(len(bending), 2, f"Attese 2 entità su Bending, trovate {len(bending)}")
 
     def test_quattro_entita_su_trash(self):
-        from forge.rules.layers import TRASH_LAYER
         trash = [e for e in self.msp if e.dxf.hasattr("layer") and e.dxf.layer == TRASH_LAYER]
         self.assertEqual(len(trash), 4, f"Attese 4 entità su Trash, trovate {len(trash)}")
 
     def test_nessuna_line_su_bending(self):
         """Nessuna LINE deve finire su Bending se non è una BendingLine riconosciuta."""
-        from forge.rules.layers import LAYER_BENDING
         part = self.result.parts[0]
         bend_ids = {id(bl.source_ref) for bl in part.bending_lines}
+        
         linee_bastarde = [
             e for e in self.msp
             if e.dxftype() == "LINE"
@@ -252,6 +249,7 @@ class TestLineetteBastarde(unittest.TestCase):
             and e.dxf.layer == LAYER_BENDING
             and id(e) not in bend_ids
         ]
+        
         self.assertEqual(
             linee_bastarde,
             [],
@@ -267,10 +265,10 @@ class TestGambaTavoloSplit(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import tempfile
         cls.dxf_path = EXAMPLES_DIR / "gamba_tavolo.dxf"
         if not cls.dxf_path.exists():
             raise unittest.SkipTest(f"File non trovato: {cls.dxf_path}")
+        
         doc, cls.msp = forge.load_dxf(cls.dxf_path, explode_inserts=True)
         cls.output_dir = tempfile.mkdtemp()
         cls.result = forge.split_to_files(
@@ -280,16 +278,13 @@ class TestGambaTavoloSplit(unittest.TestCase):
             source_file=cls.dxf_path.name,
             include_annotations=True,
         )
-        cls.generated = [
-            str(p) for p in Path(cls.output_dir).glob("*.dxf")
-        ]
+        cls.generated = [str(p) for p in Path(cls.output_dir).glob("*.dxf")]
 
     def test_quattro_figli_generati(self):
         self.assertEqual(len(self.generated), 4, f"Attesi 4 file figli, trovati {len(self.generated)}")
 
     def test_tutti_i_figli_hanno_outer_su_layer_corretto(self):
         """Ogni figlio deve avere almeno una LWPOLYLINE su OuterContour."""
-        from forge.rules.layers import LAYER_OUTER
         for path in self.generated:
             doc_out, msp_out = forge.load_dxf(path, explode_inserts=True)
             outer_entities = [
@@ -318,8 +313,7 @@ class TestGambaTavoloSplit(unittest.TestCase):
                 self.assertEqual(
                     spuri,
                     [],
-                    msg=f"{Path(path).name}: LWPOLYLINE su layer non-forge: "
-                        + ", ".join(e.dxf.layer for e in spuri),
+                    msg=f"{Path(path).name}: LWPOLYLINE su layer non-forge: " + ", ".join(e.dxf.layer for e in spuri),
                 )
 
 

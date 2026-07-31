@@ -1,13 +1,40 @@
 # forge/adapters/dxf/adapter.py
 
-from typing import Any, List, Optional
+import math
+from typing import Any, Dict, List, Optional
 
 from ...core.adapter_base import ForgeAdapter
 from ...model.edge import Edge
+from ...model.role import ContourRole
 from ...model.shape import ClosedShape, OpenShape
 from ...core.primitives.segments import CircularArcSeg
 from .graph_adapter import edges_from_msp
 from .closed_adapter import entity_to_closed, contour_to_closed
+
+# Mappa work_type stringa → ContourRole
+# Unica fonte di verità per la traduzione label_map → role in ambito DXF.
+_WORK_TYPE_TO_ROLE: Dict[str, ContourRole] = {
+    "outer":        ContourRole.OUTER,
+    "hole":         ContourRole.HOLE,
+    "bending":      ContourRole.BEND,   # alias comune nei file DXF
+    "frame":        ContourRole.FRAME,
+    "inner":        ContourRole.INNER,
+    "countersink":   ContourRole.COUNTERSINK,    
+    "threaded_hole": ContourRole.THREADED_HOLE,    
+    "engrave": ContourRole.ENGRAVE,
+    "marking": ContourRole.MARKING,
+}
+
+
+def _layer_to_role(layer: str, label_map: Dict[str, str]) -> ContourRole:
+    """
+    Traduce un layer DXF in ContourRole tramite label_map.
+
+    label_map: {layer_name: work_type}  es. {"TAGLIO": "outer", "FORI": "hole"}
+    Se il layer non è mappato → UNKNOWN.
+    """
+    work_type = label_map.get(layer, label_map.get(layer.lower(), ""))
+    return _WORK_TYPE_TO_ROLE.get(work_type.lower(), ContourRole.UNKNOWN)
 
 
 class DxfAdapter(ForgeAdapter):
@@ -18,11 +45,14 @@ class DxfAdapter(ForgeAdapter):
         tolerance: float = 0.05,
         exclude_ids: Optional[set] = None,
         ignore_layers: Optional[set] = None,
+        label_map: Optional[Dict[str, str]] = None,
     ):
         super().__init__(tolerance)
         self.msp           = msp
         self.exclude_ids   = exclude_ids or set()
         self.ignore_layers = ignore_layers or set()
+        # label_map è configurazione dell'adapter — non esce mai verso il core
+        self._label_map    = {k.lower(): v for k, v in (label_map or {}).items()}
 
     # ------------------------------------------------------------------
     # ForgeAdapter contract
@@ -39,9 +69,13 @@ class DxfAdapter(ForgeAdapter):
     def to_closed(self) -> List[ClosedShape]:
         shapes = []
         for entity in self.msp:
-            shape = entity_to_closed(entity)   # rinomineremo dopo
+            layer = entity.dxf.layer if entity.dxf.hasattr("layer") else ""
+            role  = _layer_to_role(layer, self._label_map)
+            print("DEBUG layer:", layer, "→ role:", role)
+            shape = entity_to_closed(entity, role=role)
             if shape is not None:
                 shapes.append(shape)
+        print("DEBUG to_closed roles:", [s.role for s in shapes])
         return shapes
 
     def to_open(self) -> List[OpenShape]:
@@ -74,20 +108,29 @@ class DxfAdapter(ForgeAdapter):
         }
 
     def _open_entity_to_shape(self, entity) -> Optional[OpenShape]:
-        """Converte LINE e ARC in OpenShape — pts e length calcolati qui."""
+        """
+        Converte LINE e ARC in OpenShape.
+
+        Il role viene tradotto da label_map qui — detect.py non toccherà
+        mai origin né farà lookup sul layer.
+        """
         dtype = entity.dxftype()
+        layer = entity.dxf.layer if entity.dxf.hasattr("layer") else ""
+        role  = _layer_to_role(layer, self._label_map)
+        if "mark" in layer.lower():
+            print(f"DEBUG _open_entity_to_shape: dtype={dtype}, layer='{layer}', role={role}")
+
         if dtype == "LINE":
-            start = (entity.dxf.start.x, entity.dxf.start.y)
-            end   = (entity.dxf.end.x,   entity.dxf.end.y)
+            start  = (entity.dxf.start.x, entity.dxf.start.y)
+            end    = (entity.dxf.end.x,   entity.dxf.end.y)
             pts    = [start, end]
             length = entity.dxf.start.distance(entity.dxf.end)
             return OpenShape(
                 pts=pts, length=length,
-                origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
-                source_ref=entity, shape_type="line",
+                source_ref=entity, role=role, shape_type="line",
             )
+
         if dtype == "ARC":
-            import math
             cx, cy = entity.dxf.center.x, entity.dxf.center.y
             r      = entity.dxf.radius
             a0     = math.radians(entity.dxf.start_angle)
@@ -100,29 +143,39 @@ class DxfAdapter(ForgeAdapter):
             length = r * span
             return OpenShape(
                 pts=pts, length=length,
-                origin=entity.dxf.layer if entity.dxf.hasattr("layer") else "",
-                source_ref=entity, shape_type="arc",
+                source_ref=entity, role=role, shape_type="arc",
                 center=(cx, cy), diameter=r * 2,
             )
+
         return None
 
     def collect_closed(self, open_splines: list, virtual_shapes: list) -> list[ClosedShape]:
         """
         Raccoglie tutte le ClosedShape: entità chiuse da msp + virtual dal core.
-        Esclude le spline aperte (già finite in to_open via il chiamante).
+
+        Ogni shape esce già con role tradotto da label_map — il core non
+        vedrà mai layer DXF.
         """
 
         open_spline_ids = {id(s) for s in open_splines}
         shapes = []
+
         for entity in self.msp:
-            shape = entity_to_closed(entity)
+            layer = entity.dxf.layer if entity.dxf.hasattr("layer") else ""
+            role  = _layer_to_role(layer, self._label_map)
+            shape = entity_to_closed(entity, role=role)
             if shape is None:
                 continue
             if entity.dxftype() == "SPLINE" and id(entity) in open_spline_ids:
                 continue
             shapes.append(shape)
 
-        virtual = [contour_to_closed(ctx) for ctx in virtual_shapes]
+        # virtual = [contour_to_closed(ctx) for ctx in virtual_shapes]
+        virtual = []
+        for ctx in virtual_shapes:
+            loop_layer = ctx.loop[0][0].source_ref.dxf.layer if ctx.loop and ctx.loop[0][0].source_ref is not None else ""
+            role = _layer_to_role(loop_layer, self._label_map)
+            virtual.append(contour_to_closed(ctx, role=role))
         return virtual + shapes
 
     def to_circular_arcs(self) -> list[CircularArcSeg]:

@@ -35,7 +35,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.rules.layers import LAYER_BENDING, LAYER_ENGRAVE
+from forge.adapters.dxf.layers import LAYER_BENDING, LAYER_ENGRAVE
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
@@ -199,7 +199,6 @@ class TestInjectDataInjector(unittest.TestCase):
             self.msp,
             label_map={"BEND": "bending", "MARK": "engrave"},
         )
-        self.result = forge.heal(self.msp)
         forge.detect(self.result)
         forge.write(self.msp, self.result)
 
