@@ -71,11 +71,10 @@ class DxfAdapter(ForgeAdapter):
         for entity in self.msp:
             layer = entity.dxf.layer if entity.dxf.hasattr("layer") else ""
             role  = _layer_to_role(layer, self._label_map)
-            print("DEBUG layer:", layer, "→ role:", role)
             shape = entity_to_closed(entity, role=role)
             if shape is not None:
                 shapes.append(shape)
-        print("DEBUG to_closed roles:", [s.role for s in shapes])
+        
         return shapes
 
     def to_open(self) -> List[OpenShape]:
@@ -117,8 +116,6 @@ class DxfAdapter(ForgeAdapter):
         dtype = entity.dxftype()
         layer = entity.dxf.layer if entity.dxf.hasattr("layer") else ""
         role  = _layer_to_role(layer, self._label_map)
-        if "mark" in layer.lower():
-            print(f"DEBUG _open_entity_to_shape: dtype={dtype}, layer='{layer}', role={role}")
 
         if dtype == "LINE":
             start  = (entity.dxf.start.x, entity.dxf.start.y)

@@ -15,65 +15,8 @@
       "inners_count": 0,
       "inners_wkt": [],
       "inners_origin": [],
-      "custom": {
-        "engrave_entities": [
-          {
-            "length": 8.4,
-            "origin": "MARK",
-            "confidence": 1.0,
-            "source": "labeled"
-          },
-          {
-            "length": 8.4,
-            "origin": "MARK",
-            "confidence": 1.0,
-            "source": "labeled"
-          },
-          {
-            "length": 8.4,
-            "origin": "MARK",
-            "confidence": 1.0,
-            "source": "labeled"
-          },
-          {
-            "length": 8.4,
-            "origin": "MARK",
-            "confidence": 1.0,
-            "source": "labeled"
-          },
-          {
-            "length": 14.7,
-            "origin": "MARK",
-            "confidence": 1.0,
-            "source": "labeled"
-          },
-          {
-            "length": 2.9698,
-            "origin": "MARK",
-            "confidence": 1.0,
-            "source": "labeled"
-          },
-          {
-            "length": 4.2,
-            "origin": "MARK",
-            "confidence": 1.0,
-            "source": "labeled"
-          },
-          {
-            "length": 2.9698,
-            "origin": "MARK",
-            "confidence": 1.0,
-            "source": "labeled"
-          },
-          {
-            "length": 14.7,
-            "origin": "MARK",
-            "confidence": 1.0,
-            "source": "labeled"
-          }
-        ],
-        "total_engrave_length": 73.1396
-      }
+      "custom": {},
+       "total_engrave_length": 73.1396
     }
   ]
 }

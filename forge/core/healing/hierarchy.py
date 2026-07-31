@@ -65,23 +65,12 @@ def _make_hole(proxy: ClosedShape, geometric_hint: str = "",
     )
 
 
-# def _make_inner(proxy: ClosedShape) -> ForgeContour:
-#     is_virtual = proxy.is_virtual
-#     print("DEBUG _make_inner role:", ContourRole.INNER)
-#     return ForgeContour(
-#         polygon=proxy.polygon,
-#         role=ContourRole.INNER,
-#         source_ref=proxy.source_ref if not is_virtual else None,
-#         vs_id=id(proxy.source_ref) if is_virtual else None,
-#     )
     
 def _make_inner(proxy: ClosedShape, parent_role: ContourRole = ContourRole.UNKNOWN) -> ForgeContour:
     is_virtual = proxy.is_virtual
     role = proxy.role if proxy.role not in (ContourRole.UNKNOWN, ContourRole.INNER) else \
            parent_role if parent_role not in (ContourRole.UNKNOWN, ContourRole.INNER) else \
            ContourRole.INNER
-    print(f"DEBUG _make_inner: proxy.role={proxy.role}, parent_role={parent_role}, role finale={role}")
-    print(f"DEBUG source_ref type={type(proxy.source_ref)}, attrs={[a for a in dir(proxy.source_ref) if not a.startswith('__')]}")
     return ForgeContour(
         polygon=proxy.polygon,
         role=role,
@@ -90,8 +79,6 @@ def _make_inner(proxy: ClosedShape, parent_role: ContourRole = ContourRole.UNKNO
     )
 
 
-# def _process_children(children: list, holes: list, inners: list,
-#                        classified_virtual_ids: set, classified_entity_ids: set):
 def _process_children(children: list, holes: list, inners: list,
                       classified_virtual_ids: set, classified_entity_ids: set,
                       parent_role: ContourRole = ContourRole.UNKNOWN):
@@ -116,9 +103,8 @@ def _process_children(children: list, holes: list, inners: list,
                         outer_proxy=child_proxy,
                     ))
                 else:
-                    # inners.append(_make_inner(gc_proxy))
                     inners.append(_make_inner(gc_proxy, parent_role=parent_role))
-                    print(f"DEBUG inner aggiunto: role={inners[-1].role}, vs_id={inners[-1].vs_id}")
+                    
 
                 _register(gc_proxy, classified_virtual_ids, classified_entity_ids)
 
@@ -127,15 +113,10 @@ def _process_children(children: list, holes: list, inners: list,
             if child_proxy.diameter is not None:
                 holes.append(_make_hole(child_proxy))
             else:
-                print(f"DEBUG _make_inner proxy.role={child_proxy.role}, is_virtual={child_proxy.is_virtual}, shape_type={child_proxy.shape_type}")
-                # inners.append(_make_inner(child_proxy))
                 inners.append(_make_inner(child_proxy, parent_role=parent_role))
 
             _register(child_proxy, classified_virtual_ids, classified_entity_ids)
 
-            # if child_proxy.is_virtual:
-            #     child_proxy.source_ref.layer = LAYER_INNER
-            #     child_proxy.source_ref.color = color_for_layer(LAYER_INNER)
 
             if child_proxy.is_virtual:
                 from ...adapters.dxf.layers import ROLE_TO_LAYER
@@ -287,22 +268,20 @@ def _build_hierarchy(self):
 
 
 def _build_trash(self):
-    # Ruoli che NON vanno in trash (sono già classificati o strutturali)
-    EXCLUDED_ROLES = {
-        ContourRole.OUTER, 
-        ContourRole.INNER, 
+    STRUCTURAL_ROLES = {
+        ContourRole.OUTER,
+        ContourRole.INNER,
         ContourRole.HOLE,
-        ContourRole.ENGRAVE,
-        ContourRole.BENDING,
-        ContourRole.COUNTERSINK,
-        ContourRole.THREADED_HOLE,
-        ContourRole.MARKING,
     }
-    
+
     self.result.trash_entities += [
         proxy for proxy in self._all_proxies
         if id(proxy.source_ref) not in self.classified_entity_ids
         and id(proxy.source_ref) not in self.classified_virtual_ids
-        and proxy.role not in EXCLUDED_ROLES
-        and id(proxy.source_ref) not in self.entities_in_loops
+        and proxy.role not in STRUCTURAL_ROLES
+        and (
+            proxy.role != ContourRole.UNKNOWN
+            or id(proxy.source_ref) not in self.entities_in_loops
+        )
     ]
+    self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)

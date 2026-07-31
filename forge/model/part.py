@@ -4,6 +4,7 @@ from shapely.geometry import Polygon
 
 from .hole import Hole
 from .edge import BendingLine
+from .engraving import Engraving
 from .role import ContourRole
 
 
@@ -48,6 +49,7 @@ class ForgePart:
     holes:          List[Hole]         = field(default_factory=list)
     inners:         List[ForgeContour] = field(default_factory=list)
     bending_lines:  List[BendingLine]  = field(default_factory=list)
+    engrave_lines:  List[Engraving]    = field(default_factory=list)
     label:          str                = ""
     source_file:    str                = ""
     custom:         dict               = field(default_factory=dict)

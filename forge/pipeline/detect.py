@@ -1,30 +1,5 @@
 """
 pipeline/detect.py
-------------------
-Step semantico post-heal: rileva il significato delle forme geometriche.
-
-Posizione nella pipeline:
-    heal()      → geometria pura — crea Hole(hole_type=UNKNOWN, geometric_hint=...)
-    detect()    → semantica — promuove Hole.hole_type al tipo definitivo
-    inject()    → serializzazione dati CAM
-
-Responsabilità di detect() sui fori:
-    1. Labeled shapes (certezza 1.0)
-       Forma con role != UNKNOWN → work_type promosso immediatamente.
-       Il role è già stato tradotto dal DxfAdapter — detect non sa nulla di layer.
-       Priorità assoluta su hint geometrico e inferenza.
-
-    2. Hint geometrico da heal() (certezza < 1.0)
-       heal() ha già identificato la struttura: Hole.geometric_hint != ""
-       detect() legge l'hint e promuove senza ricalcolare la geometria.
-       Confidenza: countersink 0.85, threaded 0.80.
-
-NON è responsabilità di detect():
-    - costruire loop o topologia               → heal()
-    - aprire o salvare file                    → il chiamante
-    - scrivere layer/colore nel documento      → write()
-    - serializzare metriche nel JSON           → inject()
-    - tradurre layer DXF in semantica          → DxfAdapter
 """
 
 from __future__ import annotations
@@ -32,7 +7,7 @@ from __future__ import annotations
 import math
 from typing import Optional
 
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
 
 from ..model import (
     ForgeResult,
@@ -46,17 +21,16 @@ from ..model import (
     HOLE_TYPE_UNKNOWN,
 )
 from ..model.role import ContourRole
-from ..model.shape import OpenShape
+from ..model.shape import OpenShape, ClosedShape
+from ..model.engraving import Engraving
 from ..adapters.dxf.hole_detector import is_threaded_hole
 from ..adapters.dxf.bending_adapter import bending_line_from_proxy
 from ..rules.thresholds import STRUCTURAL_ROLES
 
-# ContourRole → hole_type per le forme foro con role esplicito
 _ROLE_TO_HOLE_TYPE = {
     ContourRole.COUNTERSINK:   HOLE_TYPE_COUNTERSINK,
     ContourRole.THREADED_HOLE: HOLE_TYPE_THREADED,
 }
-
 
 
 # ---------------------------------------------------------------------------
@@ -67,21 +41,9 @@ def detect(
     result:            ForgeResult,
     bending_tolerance: float = 1.0,
 ) -> None:
-    """
-    Rileva la semantica geometrica e popola part.bending_lines e part.custom.
-
-    Le shape in result hanno già role tradotto dal DxfAdapter.
-    detect() non legge label_map né origin — lavora solo su ContourRole.
-    Idempotente per design.
-
-    Args:
-        result:            ForgeResult prodotto da heal()
-        bending_tolerance: tolleranza mm per rilevamento linee di piega
-    """
     _detect_labeled(result)
     _detect_bending(result, bending_tolerance=bending_tolerance)
     _detect_holes(result)
-    
 
 
 # ---------------------------------------------------------------------------
@@ -89,20 +51,17 @@ def detect(
 # ---------------------------------------------------------------------------
 
 def _detect_labeled(result: ForgeResult) -> None:
-    """
-    Classifica le forme con role != UNKNOWN.
-
-    Per i Hole: promuove hole_type direttamente.
-    Per le forme libere (bending, engrave, ecc.): crea ClassifiedEntity.
-    """
     classified_ids = set()
 
     for proxy in result.trash_entities:
-        if proxy.role == ContourRole.ENGRAVE:
-            print(f"DEBUG _detect_labeled: trovato ENGRAVE, shape_type={proxy.shape_type}")
-            print(f"DEBUG parts: {len(result.parts)}, trash: {len(result.trash_entities)}")
         if proxy.role == ContourRole.UNKNOWN:
             continue
+
+        if proxy.role == ContourRole.ENGRAVE:
+            _handle_engrave_open(proxy, result)
+            classified_ids.add(id(proxy))
+            continue
+
         work_type = proxy.role.value
         data = _extract_data(proxy, work_type)
         rep  = data.pop("representative_point", None)
@@ -132,11 +91,17 @@ def _detect_labeled(result: ForgeResult) -> None:
             hole.source     = "labeled"
 
         remaining = []
-        print(" role:", [(i.role, i.polygon.area) for i in part.inners])
         for inner in part.inners:
             if inner.role == ContourRole.UNKNOWN or inner.role in STRUCTURAL_ROLES:
                 remaining.append(inner)
                 continue
+
+            if inner.role == ContourRole.ENGRAVE:
+                _handle_engrave_closed(inner, part)
+                if inner.vs_id is not None:
+                    result._suppressed_vs_ids.add(inner.vs_id)
+                continue
+
             work_type = inner.role.value
             data = _extract_data_from_source(
                 inner.source_ref, work_type, polygon=inner.polygon
@@ -155,7 +120,6 @@ def _detect_labeled(result: ForgeResult) -> None:
             if inner.vs_id is not None:
                 result._suppressed_vs_ids.add(inner.vs_id)
             _assign_to_part(ce, result)
-        print(f"DEBUG inners prima: {[i.role for i in part.inners]}, remaining: {[i.role for i in remaining]}")
         part.inners = remaining
 
 
@@ -164,11 +128,6 @@ def _detect_labeled(result: ForgeResult) -> None:
 # ---------------------------------------------------------------------------
 
 def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None:
-    """
-    Individua LINE interne all'outer di ogni part e popola part.bending_lines.
-
-    Usa OpenShape.pts e OpenShape.length — zero accessi a source_ref o layer.
-    """
     classified_ids = {id(ce.source_ref) for ce in result.classified_entities}
 
     for proxy in result.trash_entities:
@@ -239,17 +198,60 @@ def _detect_holes(result: ForgeResult) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Engrave handlers
+# ---------------------------------------------------------------------------
+
+def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> None:
+    """Proxy da trash_entities — traccia aperta."""
+    if len(proxy.pts) >= 2:
+        rep = (
+            sum(p[0] for p in proxy.pts) / len(proxy.pts),
+            sum(p[1] for p in proxy.pts) / len(proxy.pts),
+        )
+    else:
+        rep = proxy.pts[0] if proxy.pts else None
+
+    engraving = Engraving(
+        closed=False,
+        length=round(proxy.length, 4),
+        source_ref=proxy.source_ref,
+        pts=list(proxy.pts),
+        geometry=LineString(proxy.pts) if len(proxy.pts) >= 2 else None,
+    )
+
+    probe = Point(rep) if rep else None
+    for part in result.parts:
+        if probe and part.outer.polygon.contains(probe):
+            engraving.part_label = part.label
+            part.engrave_lines.append(engraving)
+            return
+
+    result.warnings.append(
+        f"detect(): engrave open non contenuto in nessun part (source_ref={proxy.source_ref})"
+    )
+
+
+def _handle_engrave_closed(inner, part: ForgePart) -> None:
+    """Inner da part.inners — contorno chiuso."""
+    engraving = Engraving(
+        closed=True,
+        length=round(inner.polygon.exterior.length, 4),
+        part_label=part.label,
+        source_ref=inner.source_ref,
+        polygon=inner.polygon,
+    )
+    part.engrave_lines.append(engraving)
+
+
+# ---------------------------------------------------------------------------
 # Assegnazione al part contenitore
 # ---------------------------------------------------------------------------
 
 def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
     probe = _probe_point(ce)
-    print(f"DEBUG _assign_to_part: work_type={ce.work_type}, probe={probe}")
     if probe is None:
         return
-    print(f"DEBUG parts in assign: {len(result.parts)}")
-    for part in result.parts:
-        print(f"DEBUG outer area={part.outer.polygon.area}, contains={part.outer.polygon.contains(probe)}")
+
     work_type = ce.work_type.lower()
 
     for part in result.parts:
@@ -275,7 +277,6 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
 def _write_custom(ce: ClassifiedEntity, part: ForgePart) -> None:
     key_map = {
         "bending": "bending_lines",
-        "engrave": "engrave_entities",
         "marking": "marking_entities",
     }
     key = key_map.get(ce.work_type.lower(), f"{ce.work_type.lower()}_entities")
@@ -303,10 +304,6 @@ def _probe_point(ce: ClassifiedEntity) -> Optional[Point]:
 
 
 def _extract_data(proxy: OpenShape, work_type: str) -> dict:
-    """
-    Estrae dati serializzabili da un OpenShape per ClassifiedEntity.data.
-    Nessun riferimento a origin o layer — tutto da campi geometrici.
-    """
     work_type = work_type.lower()
     pts = proxy.pts
 
@@ -331,7 +328,7 @@ def _extract_data(proxy: OpenShape, work_type: str) -> dict:
             "representative_point": rep,
         }
 
-    if work_type in ("engrave", "marking"):
+    if work_type == "marking":
         return {
             "length":               round(proxy.length, 4),
             "representative_point": rep,
@@ -343,10 +340,6 @@ def _extract_data(proxy: OpenShape, work_type: str) -> dict:
 
 
 def _extract_data_from_source(source_ref, work_type: str, polygon=None) -> dict:
-    """
-    Estrae dati da source_ref opaco o polygon shapely.
-    origin rimosso — non è dato del core.
-    """
     work_type = work_type.lower()
 
     rep = None
@@ -354,7 +347,7 @@ def _extract_data_from_source(source_ref, work_type: str, polygon=None) -> dict:
         c   = polygon.centroid
         rep = (c.x, c.y)
 
-    if work_type in ("engrave", "marking"):
+    if work_type == "marking":
         length = None
         if polygon is not None:
             length = round(polygon.exterior.length, 4)

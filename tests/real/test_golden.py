@@ -157,8 +157,6 @@ def _make_golden_test(golden_path: Path):
                 self.assertLess(diff, TOL_SHAPE, msg=f"{label} — inner[{j}] shape")
 
             # --- custom ---
-            print(f"DEBUG {label} custom attuale: {part.custom}")
-            print(f"DEBUG {label} custom golden:  {exp.get('custom', {})}")
             for key, expected_val in exp.get("custom", {}).items():
                 actual_val = part.custom.get(key)
                 if isinstance(expected_val, float):
