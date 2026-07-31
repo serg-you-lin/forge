@@ -93,8 +93,6 @@ def inject(
 
         # Engrave, marking — fonte di verità: classified_entities
         _inject_classified(part, result.classified_entities, outer_poly)
-        # if result.classified_entities:
-        #     _inject_classified(part, result.classified_entities, outer_poly)
 
         # Data injector esterno (codice, spessore, materiale, ecc.)
         if data_injector is not None:
@@ -146,33 +144,6 @@ def _inject_bending(part, tolerance: float) -> None:
     geometries = [bl.geometry for bl in part.bending_lines]
     groups = group_collinear_lines(geometries, tolerance=tolerance)
     part.custom["bending_lines"] = len(groups)
-    
-
-# def _inject_classified(part, classified_entities, outer_poly) -> None:
-#     total_engrave = 0.0
-#     total_marking = 0.0
-
-#     for ce in classified_entities:
-#         if ce.representative_point is not None:
-#             pt = Point(ce.representative_point)
-#         elif ce.polygon is not None and not ce.polygon.is_empty:
-#             pt = ce.polygon.centroid
-#         else:
-#             continue
- 
-#         if pt is None or not outer_poly.covers(pt):
-#             continue
-
-#         wt = ce.work_type.lower()
-#         if wt == "engrave":
-#             total_engrave += ce.data.get("length") or 0.0
-#         elif wt == "marking":
-#             total_marking += ce.data.get("length") or 0.0
-
-#     if total_engrave:
-#         part.custom["total_engrave_length"] = round(total_engrave, 4)
-#     if total_marking:
-#         part.custom["total_marking_length"] = round(total_marking, 4)
 
 
 def _inject_classified(part, classified_entities, outer_poly) -> None:

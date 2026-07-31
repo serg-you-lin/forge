@@ -1,0 +1,208 @@
+{
+  "source_file": "7072_U150_30X2.nc_N°1 pz.nc.dxf",
+  "part_count": 4,
+  "parts": [
+    {
+      "area_mm2": 93749.7,
+      "outer_perimeter_mm": 1549.996,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 1549.996,
+      "outer_wkt": "POLYGON ((624.9979999999996 200, 0 200, 0 50, 624.9979999999996 50, 624.9979999999996 200))",
+      "outer_origin": "",
+      "holes_count": 0,
+      "holes_wkt": [],
+      "holes_origin": [],
+      "inners_count": 0,
+      "inners_wkt": [],
+      "inners_origin": [],
+      "custom": {}
+    },
+    {
+      "area_mm2": 93749.7,
+      "outer_perimeter_mm": 1549.996,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 1549.996,
+      "outer_wkt": "POLYGON ((0 420, 624.9979999999996 420, 624.9979999999996 270, 0 270, 0 420))",
+      "outer_origin": "",
+      "holes_count": 0,
+      "holes_wkt": [],
+      "holes_origin": [],
+      "inners_count": 0,
+      "inners_wkt": [],
+      "inners_origin": [],
+      "custom": {}
+    },
+    {
+      "area_mm2": 18749.94,
+      "outer_perimeter_mm": 1309.996,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 1309.996,
+      "outer_wkt": "POLYGON ((0 29.99999999999989, 624.9979999999996 30, 624.9979999999996 0, 0 1.137e-13, 0 29.99999999999989))",
+      "outer_origin": "",
+      "holes_count": 0,
+      "holes_wkt": [],
+      "holes_origin": [],
+      "inners_count": 0,
+      "inners_wkt": [],
+      "inners_origin": [],
+      "custom": {
+        "engrave_entities": [
+          {
+            "length": 21.36,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 10.0,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 17.0,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 2.1213,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 5.5,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 2.1213,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 17.0,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 2.1213,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 5.5,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 2.1213,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 19.0066,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 21.36,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 10.0,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 8.5,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 2.1213,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 7.0,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 2.1213,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 7.0,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 2.1213,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 7.0,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 2.1213,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 8.5,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          },
+          {
+            "length": 53.4853,
+            "origin": "MARK",
+            "confidence": 1.0,
+            "source": "labeled"
+          }
+        ],
+        "total_engrave_length": 235.1823
+      }
+    },
+    {
+      "area_mm2": 18749.94,
+      "outer_perimeter_mm": 1309.996,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 1309.996,
+      "outer_wkt": "POLYGON ((624.9979999999996 250, 0 249.9999999999999, 0 220.0000000000001, 624.9979999999996 220, 624.9979999999996 250))",
+      "outer_origin": "",
+      "holes_count": 0,
+      "holes_wkt": [],
+      "holes_origin": [],
+      "inners_count": 0,
+      "inners_wkt": [],
+      "inners_origin": [],
+      "custom": {}
+    }
+  ]
+}

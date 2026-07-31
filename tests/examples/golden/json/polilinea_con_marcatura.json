@@ -8,15 +8,147 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 1987.9278,
       "outer_wkt": "POLYGON ((963.9754577171208 30.00000000000011, 963.9754577171208 1.137e-13, 0.0115416666666732 0, 0.0115416666666748 30, 963.9754577171208 30.00000000000011))",
-      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_origin": [],
+      "holes": [],
       "inners_count": 0,
       "inners_wkt": [],
-      "inners_origin": [],
-      "custom": {},
-       "total_engrave_length": 73.1396
+      "inners": [],
+      "bending_lines_count": 0,
+      "bending_lines": [],
+      "total_engrave_length": 73.1396,
+      "engrave_lines_count": 9,
+      "engrave_lines": [
+        {
+          "closed": false,
+          "length": 8.4,
+          "part_label": "",
+          "origin": "MARK",
+          "start": [
+            469.3934996385544,
+            1.0
+          ],
+          "end": [
+            469.3934996385544,
+            9.40000003555957
+          ]
+        },
+        {
+          "closed": false,
+          "length": 8.4,
+          "part_label": "",
+          "origin": "MARK",
+          "start": [
+            469.3934996385544,
+            9.40000003555957
+          ],
+          "end": [
+            477.79349967411395,
+            9.40000003555957
+          ]
+        },
+        {
+          "closed": false,
+          "length": 8.4,
+          "part_label": "",
+          "origin": "MARK",
+          "start": [
+            469.3934996385544,
+            9.40000003555957
+          ],
+          "end": [
+            469.3934996385544,
+            17.80000007111914
+          ]
+        },
+        {
+          "closed": false,
+          "length": 8.4,
+          "part_label": "",
+          "origin": "MARK",
+          "start": [
+            469.3934996385544,
+            17.80000007111914
+          ],
+          "end": [
+            477.79349967411395,
+            17.80000007111914
+          ]
+        },
+        {
+          "closed": false,
+          "length": 14.7,
+          "part_label": "",
+          "origin": "MARK",
+          "start": [
+            486.1934997096735,
+            17.80000007111914
+          ],
+          "end": [
+            486.1934997096735,
+            3.1000000088898925
+          ]
+        },
+        {
+          "closed": false,
+          "length": 2.9698,
+          "part_label": "",
+          "origin": "MARK",
+          "start": [
+            486.1934997096735,
+            3.1000000088898925
+          ],
+          "end": [
+            488.2934997185634,
+            1.0
+          ]
+        },
+        {
+          "closed": false,
+          "length": 4.2,
+          "part_label": "",
+          "origin": "MARK",
+          "start": [
+            488.2934997185634,
+            1.0
+          ],
+          "end": [
+            492.4934997363432,
+            1.0
+          ]
+        },
+        {
+          "closed": false,
+          "length": 2.9698,
+          "part_label": "",
+          "origin": "MARK",
+          "start": [
+            492.4934997363432,
+            1.0
+          ],
+          "end": [
+            494.5934997452331,
+            3.1000000088898925
+          ]
+        },
+        {
+          "closed": false,
+          "length": 14.7,
+          "part_label": "",
+          "origin": "MARK",
+          "start": [
+            494.5934997452331,
+            3.1000000088898925
+          ],
+          "end": [
+            494.5934997452331,
+            17.80000007111914
+          ]
+        }
+      ],
+      "custom": {
+        "total_engrave_length": 73.1396
+      }
     }
   ]
 }

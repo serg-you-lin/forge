@@ -1,0 +1,21 @@
+{
+  "source_file": "rect_overlap.dxf",
+  "part_count": 1,
+  "parts": [
+    {
+      "area_mm2": 5000.0,
+      "outer_perimeter_mm": 300.0,
+      "inner_perimeter_mm": 0,
+      "total_perimeter_mm": 300.0,
+      "outer_wkt": "POLYGON ((0 0, 100 0, 100 50, -1.4210854715202004e-14 50, 0 0))",
+      "outer_origin": "",
+      "holes_count": 0,
+      "holes_wkt": [],
+      "holes_origin": [],
+      "inners_count": 0,
+      "inners_wkt": [],
+      "inners_origin": [],
+      "custom": {}
+    }
+  ]
+}

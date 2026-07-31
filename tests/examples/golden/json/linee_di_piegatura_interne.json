@@ -8,13 +8,60 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 4264.3513,
       "outer_wkt": "POLYGON ((1268.727743496067 1508.201094284523, 1279.636684755145 934.0462911751533, 2832.151272362881 934.0462911751533, 2832.151272362881 1508.201094284523, 1268.727743496067 1508.201094284523))",
-      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_origin": [],
+      "holes": [],
       "inners_count": 0,
       "inners_wkt": [],
-      "inners_origin": [],
+      "inners": [],
+      "bending_lines_count": 3,
+      "bending_lines": [
+        {
+          "start": [
+            1268.727743496067,
+            1508.201094284523
+          ],
+          "end": [
+            1724.737636229365,
+            934.0462911751533
+          ],
+          "length": 733.2113,
+          "angle_deg": 128.4576,
+          "part_label": "",
+          "origin": "0"
+        },
+        {
+          "start": [
+            1724.737636229365,
+            934.0462911751533
+          ],
+          "end": [
+            2250.089281074438,
+            1508.201094284523
+          ],
+          "length": 778.234,
+          "angle_deg": 47.5415,
+          "part_label": "",
+          "origin": "0"
+        },
+        {
+          "start": [
+            2250.089281074438,
+            1508.201094284523
+          ],
+          "end": [
+            2832.151272362881,
+            934.0462911751533
+          ],
+          "length": 817.5879,
+          "angle_deg": 135.3918,
+          "part_label": "",
+          "origin": "0"
+        }
+      ],
+      "total_engrave_length": 0,
+      "engrave_lines_count": 0,
+      "engrave_lines": [],
       "custom": {
         "bending_lines": 3
       }

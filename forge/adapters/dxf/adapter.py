@@ -16,7 +16,7 @@ from .closed_adapter import entity_to_closed, contour_to_closed
 _WORK_TYPE_TO_ROLE: Dict[str, ContourRole] = {
     "outer":        ContourRole.OUTER,
     "hole":         ContourRole.HOLE,
-    "bending":      ContourRole.BEND,   # alias comune nei file DXF
+    "bending":      ContourRole.BEND,   
     "frame":        ContourRole.FRAME,
     "inner":        ContourRole.INNER,
     "countersink":   ContourRole.COUNTERSINK,    

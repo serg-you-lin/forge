@@ -175,10 +175,7 @@ def _build_hierarchy(self):
 
         holes  = []
         inners = []
-        # _process_children(
-        #     children, holes, inners,
-        #     self.classified_virtual_ids, self.classified_entity_ids,
-        # )
+
         _process_children(
             children, holes, inners,
             self.classified_virtual_ids, self.classified_entity_ids,
@@ -221,51 +218,6 @@ def _build_hierarchy(self):
 # ---------------------------------------------------------------------------
 # Trash — entità non classificate che non appartengono a nessun part
 # ---------------------------------------------------------------------------
-
-# def _build_trash(self):
-#     """
-#     Raccoglie le shape non classificate in nessun part.
-
-#     Criteri di inclusione nel trash (tutti devono valere):
-#     - non già classificata come entità o virtual
-#     - role != UNKNOWN  →  l'adapter ha riconosciuto qualcosa (bending, engrave…)
-#     - non un loop già chiuso (entities_in_loops), a meno che non sia
-#       esplicitamente labeled (role != UNKNOWN)
-#     """
-#     self.result.trash_entities += [
-#         proxy for proxy in self._all_proxies
-#         if id(proxy.source_ref) not in self.classified_entity_ids
-#         and id(proxy.source_ref) not in self.classified_virtual_ids
-#         and proxy.role != ContourRole.UNKNOWN
-#         and (
-#             id(proxy.source_ref) not in self.entities_in_loops
-#             or proxy.role != ContourRole.UNKNOWN
-#         )
-#     ]
-#     self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
-
-
-# def _build_trash(self):
-#     """
-#     Raccoglie le shape non classificate in nessun part.
-
-#     Criteri di inclusione nel trash (tutti devono valere):
-#     - non già classificata come entità o virtual
-#     - role != UNKNOWN  →  l'adapter ha riconosciuto qualcosa (bending, engrave…)
-#     - non un loop già chiuso (entities_in_loops), a meno che non sia
-#       esplicitamente labeled (role != UNKNOWN)
-#     """
-#     self.result.trash_entities += [
-#         proxy for proxy in self._all_proxies
-#         if id(proxy.source_ref) not in self.classified_entity_ids
-#         and id(proxy.source_ref) not in self.classified_virtual_ids
-#         and proxy.role not in (ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE)
-#         and id(proxy.source_ref) not in self.entities_in_loops
-#     ]
-#     self.result.parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
-
-
-
 
 def _build_trash(self):
     STRUCTURAL_ROLES = {

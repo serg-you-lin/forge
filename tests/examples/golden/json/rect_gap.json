@@ -8,13 +8,17 @@
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 300.0,
       "outer_wkt": "POLYGON ((0 0, 100 0, 100 50.00000000000001, 1.4210854715202004e-14 50, 0 0))",
-      "outer_origin": "",
       "holes_count": 0,
       "holes_wkt": [],
-      "holes_origin": [],
+      "holes": [],
       "inners_count": 0,
       "inners_wkt": [],
-      "inners_origin": [],
+      "inners": [],
+      "bending_lines_count": 0,
+      "bending_lines": [],
+      "total_engrave_length": 0,
+      "engrave_lines_count": 0,
+      "engrave_lines": [],
       "custom": {}
     }
   ]
