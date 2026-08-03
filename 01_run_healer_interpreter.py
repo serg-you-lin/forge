@@ -13,12 +13,13 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/la_104.DXF"
+input_dxf = r"tests/examples/FU.dxf"
 
-tolerance = .02
+tolerance = .2
 
 special_layers = {
     "MARK"      : "engrave",
+    "Signature"      : "engrave",
     "Filettati" : "threaded_hole",
     "Svasati"   : "countersink",
     "Piega"     : "bending",
