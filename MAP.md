@@ -1,252 +1,262 @@
-# forge — mappa architetturale
-> Documento di riferimento per sessioni di refactoring.
-> Risponde a tre domande: quali tipi esistono, come viaggia un dato, cosa si elimina.
+# Forge — Piano refactoring pipeline
+> Ultimo aggiornamento: 2026-08-02
 
 ---
 
-## 1. Il problema attuale in una frase
+## Obiettivo
 
-Lo stesso concetto — "forma geometrica" — è rappresentato da tipi diversi
-in punti diversi della codebase, e nessuno di essi è autosufficiente:
-chi ne ha bisogno va a leggere `source_ref` come se fosse ezdxf.
-
----
-
-## 2. I tipi che esistono oggi e cosa fanno davvero
-
-### `core/primitives/segments.py`
-Segmenti geometrici puri. Zero dipendenze esterne.
-
-| Tipo | Dati | Scopo reale |
-|---|---|---|
-| `LineSeg` | start, end | segmento rettilineo |
-| `ArcSeg` | center, radius, start_angle, end_angle, clockwise | arco |
-| `SplineSeg` | control_points, knots, degree | spline |
-| `DiscretizedArcSeg` | pts | arco approssimato a punti |
-| `CircularArcSeg` | center, radius, start_angle, end_angle | arco circolare (usato da hole_detector) |
-
-**Questi tipi fanno una cosa sola e la fanno bene. Non toccarli.**
+Rompere `HealStep` in stadi indipendenti con interfacce tipizzate.
+Ogni stadio riceve un input, produce un output, è testabile da solo.
+La pipeline (`ForgePipeline` / `ForgeSession.heal()`) è solo un orchestratore.
 
 ---
 
-### `core/primitives/contour.py` — DUPLICATO
-`Contour` costruisce un `Polygon` shapely da una lista di primitive.
-Non ha `source_ref`, non ha `origin`. È un passaggio intermedio
-che esiste come classe ma dovrebbe essere una funzione.
+## Principi invarianti (non discuterli di nuovo)
 
-**→ Da eliminare come tipo pubblico. La logica di costruzione del
-poligono è geometria pura — va in `core/primitives/contour.py`
-come funzione `build_polygon(primitives) -> Polygon`.
-L'adapter la chiama, ma non la possiede.**
-
----
-
-### `model/shape_proxy.py` — SOVRACCARICO
-`ShapeProxy` nasce per le forme chiuse della hierarchy, ma viene usato
-anche per forme aperte (linee, archi, bending). I due casi non hanno
-niente in comune tranne `origin` e `source_ref`.
-
-**Campi attuali:**
-```
-polygon      → ha senso solo per forme chiuse
-origin       → comune a tutti
-source_ref   → comune a tutti (opaco, per write-back)
-shape_type   → "circle"|"polyline"|"spline"|"line"|"arc"|"virtual"
-is_virtual   → flag ad hoc
-diameter     → solo per cerchi
-center       → solo per cerchi
-```
-
-**Il problema:** per le forme aperte (`shape_type = "line"`, `"arc"`)
-non ci sono dati geometrici — solo `source_ref`. Quindi `detect.py`
-chiama `source_ref.dxftype()`, `source_ref.dxf.start`, ecc.
-Questo è il punto esatto dove rientra la dipendenza DXF nel core.
-
-**→ Vedere sezione 4: cosa fare.**
+- Nessun import ezdxf fuori da `adapters/dxf/`
+- `source_ref: Optional[Any]` su tutti gli oggetti core — opaco al core
+- `role: ContourRole` è il canale semantico interno — non i layer DXF
+- `layer` DXF: entra come stringa dall'adapter, esce come stringa dall'adapter
+- Un tipo per concetto (`ClosedShape` ≠ `OpenShape`)
+- `msp` non esce mai dall'API pubblica
 
 ---
 
-### `model/part.py` — `ForgeContour`
-Forma chiusa con `polygon` e `source_ref`, usata dentro `ForgePart`
-come `part.outer` e `part.inners`.
-
-**→ È la rappresentazione finale di una forma chiusa dopo la hierarchy.
-Diversa da `ShapeProxy` per scopo (non è input della hierarchy, è output).
-Il nome è giusto. Va tenuta.**
-
----
-
-### `model/edge.py` — `Edge` e `BendingLine`
-
-`Edge` è l'input del grafo topologico — porta un segmento grezzo
-con `source_ref` opaco. Non è una forma, è un arco del grafo.
-
-`BendingLine` è output semantico di `detect()` — porta geometria
-shapely, `angle_deg`, `part_label`, `source_ref`. Non è una forma,
-è un risultato classificato.
-
-**→ Entrambi corretti. Nessuna sovrapposizione con gli altri tipi.**
-
----
-
-### `model/classified.py` — `ClassifiedEntity`
-Output di `detect()` per forme non-hole (engrave, marking, bending
-libero). Porta `work_type`, `confidence`, `source`, `data`, `source_ref`.
-
-**→ Corretto. Ma `_probe_point` in `detect.py` accede a `source_ref`
-come ezdxf per ricavare un punto rappresentativo — questo va risolto
-(vedi sezione 4).**
-
----
-
-## 3. Come viaggia una forma chiusa nella pipeline
+## Stadi della pipeline — interfacce target
 
 ```
-entità (e.g. un DXF)
-    │
-    │  adapter DXF — unico punto che tocca ezdxf
-    ▼
-ShapeProxy
-    polygon:    Polygon shapely    ← costruito dall'adapter
-    origin:     str                ← layer DXF tradotto
-    source_ref: entità ezdxf       ← opaco da qui in poi
-    shape_type: "circle" ecc.
-    │
-    │  HealStep — hierarchy, topology, loop detection
-    ▼
-ForgeContour  (part.outer, part.inners[])
-    polygon:    Polygon shapely
-    source_ref: opaco
-    │
-    │  detect() — semantica
-    ▼
-Hole / BendingLine / ClassifiedEntity
-    │
-    │  inject() — metriche CAM
-    │  write()  — write-back DXF via source_ref
-    ▼
-output (DXF healato, JSON, split)
-```
+Adapter.prepare()
+    input:  sorgente (path o documento — dipende dall'adapter)
+    output: list[Edge], list[Fix]
 
-**Il contratto:** da `ShapeProxy` in poi, nessuno sa che il formato
-è DXF. `source_ref` è opaco. Chi viola questo contratto introduce
-una dipendenza DXF nel core.
+    Note: legge le primitive, costruisce Edge con source_ref opaco.
+    Niente gap solving qui.
+
+GapSolver.compute()
+    input:  list[Edge]
+    output: list[Fix]
+
+    Note: algoritmo puro nel core. Trova endpoint liberi, calcola
+    MoveEndpoint e AddSegment. Zero formato, zero side effect. Le spline dxf sono le uniche entità che restano identiche in tutto e per tutto all'originale, a parte layer e colore. il gap viene risolto con edge nuovi o prolungendo gli edge esistenti.
+
+TopologyBuilder
+    input:  list[Edge], list[Fix]
+    output: Graph
+
+BendingDetector
+    input:  Graph, list[Edge]
+    output: set[int]
+
+LoopFinder
+    input:  Graph, exclude_ids: set[int]
+    output: list[Loop]
+
+LoopClassifier
+    input:  list[Loop]
+    output: outer: list[Loop], inner: list[Loop]
+
+ContourBuilder
+    input:  outer: list[Loop], inner: list[Loop]
+    output: list[ClosedShape]
+
+HierarchyBuilder
+    input:  list[ClosedShape]
+    output: list[ForgePart]
+
+DxfWriter.apply()
+    input:  list[ForgePart], list[Fix], doc
+    output: documento scritto
+```
 
 ---
 
-## 4. Il problema aperto: forme aperte in `ShapeProxy`
+## Tipi core da tipizzare
 
-`trash_entities: List[ShapeProxy]` contiene anche forme aperte
-(linee, archi) che non hanno `polygon`. Per queste forme, `detect.py`
-accede a `source_ref` come ezdxf — violazione del contratto.
+### `Graph` (oggi è `dict`)
+```python
+# forge/core/topology/graph.py
 
-**Soluzione: due tipi distinti.**
+@dataclass
+class GraphNode:
+    point: Tuple[float, float]
+    connections: list[tuple[Edge, Tuple[float, float]]]
+
+Graph = dict[Tuple[float, float], list[tuple[Edge, Tuple[float, float]]]]
+# oppure, se vogliamo interrogabile:
+@dataclass
+class Graph:
+    nodes: dict[Tuple[float, float], list[tuple[Edge, Tuple[float, float]]]]
+
+    def neighbors(self, node) -> list: ...
+    def degree(self, node) -> int: ...
+    def branching_nodes(self) -> list: ...
+    def pruned(self) -> 'Graph': ...        # prune_dead_ends
+```
+
+### `Loop`
+```python
+# forge/core/topology/loops.py
+Loop = list[tuple[Edge, bool]]   # (edge, reversed)
+# già usato così — solo dargli un alias esplicito
+```
+
+---
+
+
+## Step successivi (da fare in ordine)
+
+### Step 1 — `Graph` tipizzato
+
+**Obiettivo:** `build_node_graph()` restituisce `Graph` dataclass invece di `dict`.
+
+**File da toccare:**
+- `forge/core/topology/graph.py` — aggiungere dataclass `Graph`, aggiornare `build_node_graph()`
+- `forge/core/topology/loops.py` — aggiornare `find_closed_loops()`, `_prune_dead_ends()`, `check_loop_ambiguity()`
+- `forge/pipeline/heal.py` — `_build_graph()` restituisce `Graph`
+- `forge/adapters/dxf/gap_adapter.py` — `extract_free_endpoints()` riceve `Graph`
+
+**Test da scrivere prima di toccare codice:**
+```python
+def test_graph_degree():
+    # 3 edge a triangolo → ogni nodo ha degree 2
+def test_graph_branching_nodes():
+    # nodo con 3 connessioni → appare in branching_nodes()
+def test_graph_pruned_removes_dead_ends():
+    # catena aperta → nodi degree-1 rimossi
+```
+
+---
+
+### Step 2 — `BendingDetector` come classe indipendente
+
+**Obiettivo:** estrarre `_find_bending_candidates()` da `HealStep`.
+
+**Interfaccia target:**
+```python
+class BendingDetector:
+    def detect(self, graph: Graph, edges: list[Edge]) -> set[int]:
+        ...
+```
+
+**File da toccare:**
+- nuovo `forge/core/healing/bending_detector.py`
+- `forge/pipeline/heal.py` — `_find_bending_candidates()` diventa `BendingDetector().detect()`
+
+**Test da scrivere prima:**
+```python
+def test_bending_detector_trova_linea_interna():
+    # grafo con linea che connette due nodi branching interni
+    # → id della linea in output
+def test_bending_detector_ignora_linea_sul_bordo():
+    # linea sul convex hull → non è bending
+```
+
+---
+
+### Step 3 — `LoopFinder` come classe indipendente
+
+**Obiettivo:** `find_closed_loops()` + `_deduplicate_loops()` diventano `LoopFinder`.
+
+**Interfaccia target:**
+```python
+class LoopFinder:
+    def find(self, graph: Graph, exclude_ids: set[int] = None) -> list[Loop]:
+        ...
+```
+
+**File da toccare:**
+- `forge/core/topology/loops.py` — wrappare in classe
+- `forge/pipeline/heal.py` — `_find_loops()` usa `LoopFinder`
+
+**Test da scrivere prima:**
+```python
+def test_loop_finder_triangolo():
+    # 3 edge triangolo → 1 loop
+def test_loop_finder_esclude_bending():
+    # triangolo + linea bending → esclude la linea, trova 1 loop
+def test_loop_finder_deduplica():
+    # stesso loop trovato da due nodi di partenza → 1 solo risultato
+```
+
+---
+
+### Step 4 — `HierarchyBuilder` come classe indipendente
+
+**Obiettivo:** `_build_hierarchy()` e `_build_trash()` diventano `HierarchyBuilder`.
+
+**Interfaccia target:**
+```python
+class HierarchyBuilder:
+    def build(self, proxies: list[ClosedShape]) -> tuple[list[ForgePart], list[ClosedShape]]:
+        # restituisce (parts, trash)
+        ...
+```
+
+**File da toccare:**
+- `forge/core/healing/hierarchy.py` — wrappare in classe, eliminare monkey-patch su HealStep
+- `forge/pipeline/heal.py` — `_build_hierarchy()` + `_build_trash()` usano `HierarchyBuilder`
+
+**Test da scrivere prima:**
+```python
+def test_hierarchy_outer_con_hole():
+    # proxy outer + proxy piccolo interno → 1 part con 1 hole
+def test_hierarchy_countersink():
+    # proxy outer + proxy medio + proxy piccolo annidato → outer + countersink
+def test_hierarchy_trash():
+    # proxy con role UNKNOWN non in loop → finisce in trash
+```
+
+---
+
+### Step 5 — `ForgePipeline` come orchestratore esplicito
+
+**Obiettivo:** `HealStep.run()` diventa `ForgePipeline.heal()` che chiama gli stadi in sequenza.
+
+**Struttura target:**
+```python
+class ForgePipeline:
+    def heal(self, adapter: ForgeAdapter, tolerance, ...) -> ForgeResult:
+        edges   = adapter.to_edges()
+        fixes   = GapSolver(tolerance).compute(edges)
+        graph   = TopologyBuilder().build(edges, fixes)
+        bending = BendingDetector().detect(graph, edges)
+        loops   = LoopFinder().find(graph, exclude_ids=bending)
+        outer, inner = LoopClassifier().classify(loops)
+        proxies = ContourBuilder().build(outer + inner)
+        proxies += adapter.to_closed()
+        parts, trash = HierarchyBuilder().build(proxies)
+        return ForgeResult(parts=parts, trash=trash, fixes=fixes, ...)
+        
+
+**File da toccare:**
+- nuovo `forge/pipeline/forge_pipeline.py`
+- `forge/pipeline/heal.py` — `HealStep` diventa wrapper di compatibilità o viene eliminato
+
+---
+
+## Regressioni note / bug aperti
+
+| Issue | File | Note |
+|-------|------|-------|
+| `test_quattro_entita_su_trash` fallisce | `core/healing/hierarchy.py` | 6 entità su Trash invece di 4; regressione di `_build_trash` che ora filtra su `role != UNKNOWN` invece di `origin` |
+| `to_proxies()` gira prima di `sanitize()` | `pipeline/heal.py` | Si risolve a Step 7/11 quando sanitize esce da HealStep |
+| Monkey-patch `HealStep` da `loops.py` e `hierarchy.py` | `pipeline/heal.py` | Eliminato a Step 11 |
+
+---
+
+## API pubblica target (non cambiare)
 
 ```python
-# model/shape.py  ← file nuovo, sostituisce shape_proxy.py
-
-@dataclass
-class ClosedShape:
-    """
-    Forma chiusa pronta per la hierarchy.
-    Prodotta dall'adapter, consumata da HealStep.
-    """
-    polygon:    Polygon
-    origin:     str
-    source_ref: Any
-    shape_type: str          # "circle" | "polyline" | "spline" | "virtual"
-    diameter:   Optional[float] = None
-    center:     Optional[Tuple[float, float]] = None
-
-
-@dataclass
-class OpenShape:
-    """
-    Forma aperta (linea, arco, spline aperta).
-    Prodotta dall'adapter, consumata da detect().
-    Porta i dati geometrici necessari — zero accesso a source_ref nel core.
-    """
-    shape_type:  str                              # "line" | "arc" | "spline"
-    origin:      str
-    source_ref:  Any                              # opaco, per write-back
-    pts:         Tuple[Tuple[float, float], ...]  # start/end per line, center per arc
-    length:      float
+session = forge.load_dxf("part.dxf", explode_inserts=True)
+result  = session.heal(tolerance=0.02, label_map=label_map)
+session.detect(result)
+session.save_dxf("part_healed.dxf")
 ```
 
-**Conseguenze:**
-- `trash_entities` diventa `List[OpenShape]`
-- `detect.py` legge `shape.pts` e `shape.length` — zero `dxftype()`
-- `_probe_point` scompare — il punto rappresentativo è `pts[0]`
-  o la media di `pts`
-- `_shape_length` scompare — è già in `length`
-- L'adapter DXF popola `pts` e `length` una volta sola
-
 ---
 
-## 5. Cosa eliminare
+## Come usare questo documento in sessione
 
-| Tipo / file | Azione | Motivo |
-|---|---|---|
-| `core/primitives/contour.py` — `Contour` | eliminare come classe | passaggio intermedio, sostituito da `build_polygon()` in `core/primitives/polygon_builder.py` |
-| `model/shape_proxy.py` — `ShapeProxy` | rinominare + sdoppiare | `ClosedShape` per forme chiuse, `OpenShape` per forme aperte |
-| `pipeline/detect.py` — `_probe_point` | eliminare | sostituito da `OpenShape.pts` |
-| `pipeline/detect.py` — `_shape_length` | eliminare | sostituito da `OpenShape.length` |
-| `pipeline/detect.py` — `_extract_data` (parte bending) | semplificare | legge da `OpenShape.pts` invece di `source_ref` |
-
----
-
-## 6. Cosa NON toccare
-
-- `core/primitives/segments.py` — corretto, stabile
-- `model/edge.py` — `Edge` e `BendingLine` corretti
-- `model/part.py` — `ForgeContour` e `ForgePart` corretti
-- `model/hole.py` — `Hole` corretto
-- `model/classified.py` — `ClassifiedEntity` corretto (solo `_probe_point` da correggere)
-- `core/topology/` — grafo e loop corretti
-- `core/healing/` — hierarchy e gap solver corretti
-- `rules/layers.py` — corretto
-
----
-
-## 7. Ordine di esecuzione (prossime sessioni)
-
-**Sessione A — modello**
-1. Creare `model/shape.py` con `ClosedShape` e `OpenShape`
-2. Eliminare `model/shape_proxy.py`
-3. Aggiornare `core/adapter_base.py` — `to_proxies()` → `to_closed()` + `to_open()`
-4. Aggiornare `adapters/dxf/adapter.py` — popola `pts` e `length` su `OpenShape`
-5. Test verdi
-
-**Sessione B — detect**
-1. Riscrivere `_detect_bending` usando `OpenShape.pts`
-2. Eliminare `_probe_point`, `_shape_length`
-3. Semplificare `_extract_data`
-4. Test verdi
-
-**Sessione C — eliminate Contour**
-1. Creare `core/primitives/polygon_builder.py` con `build_polygon(primitives) -> Polygon`
-2. Sostituire tutti gli usi di `Contour` con la funzione
-3. Eliminare `core/primitives/contour.py`
-4. Test verdi
-
-**Sessione D — inject**
-1. Rimuovere `msp` dalla firma di `inject()`
-2. Riscrivere `_inject_bending` usando `BendingLine.geometry` (già shapely)
-3. Riscrivere `_extract_texts_for_part` senza `get_representative_point(source_ref)`
-4. Eliminare `source_ref` da `ClassifiedEntity` — sostituire con identificatore neutro (shape_id, origin_id, ???)
-5. Test verdi
-
-**Sessione E — role**
-1. Eliminare `origin` dal core
-2. `DxfAdapter` traduce `label_map` in `role` su `ClosedShape`/`OpenShape` prima di passarle al core
-3. `detect.py` legge solo `role` — zero lookup su layer DXF
-4. Test verdi
-
----
-
-## 8. Invarianti da non violare mai
-
-1. **Nessun import ezdxf fuori da `adapters/dxf/`** — mai in `core/`, `model/`, `pipeline/`
-2. **`source_ref` è opaco** — chi lo riceve non chiama `.dxftype()`, `.dxf.*`, niente
-3. **Un tipo per concetto** — forme chiuse: `ClosedShape`; forme aperte: `OpenShape`; segmenti: `*Seg`; risultato classificato: `ClassifiedEntity` / `Hole` / `BendingLine`
-4. **L'adapter è l'unico che sa del formato** — tutto ciò che serve al core deve essere estratto e tradotto lì
+1. Incollalo all'inizio della sessione
+2. Dimmi quale step vuoi fare
+3. Partiamo dalle interfacce / test, poi spostiamo il codice

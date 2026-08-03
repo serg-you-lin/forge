@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from forge.adapters.dxf import sanitize
@@ -16,7 +15,7 @@ from ..adapters.dxf.sanitize import deduplicate as _deduplicate_entities
 from ..core.geometry import spline_endpoints
 from ..core.geometry import round_point
 from ..adapters.dxf.gap_adapter import extract_free_endpoints, apply_gap_fixes
-from ..adapters.dxf.sanitize import _explode_inserts 
+from ..adapters.dxf.sanitize import _explode_inserts
 
 class HealStep:
     def __init__(
@@ -71,13 +70,12 @@ class HealStep:
         self._build_hierarchy()
         self._build_trash()
         return self.result
-    
+
     def _build_graph(self, exclude_ids=None):
         edges = self.adapter.to_edges()
         if exclude_ids:
             edges = [e for e in edges if id(e.source_ref) not in exclude_ids]
         return build_node_graph(edges)
-
 
     def _load(self):
         entities         = self.adapter.load_entity_lists()
@@ -131,73 +129,33 @@ class HealStep:
                     )
                     break
 
-
     def _find_bending_candidates(self):
         if not (self.all_lines or self.all_arcs):
             return
 
-        graph_full      = self._build_graph()
-        branching_nodes = {
-            node for node, neighbors in graph_full.items() if len(neighbors) > 2
-        }
+        from ..core.healing.bending_detector import BendingDetector
+        graph_full = self._build_graph()
+        edges      = self.adapter.to_edges()
 
-        if not branching_nodes:
-            return
-
-        for line in self.all_lines:
-            s = round_point((line.dxf.start.x, line.dxf.start.y), self.node_decimals)
-            e = round_point((line.dxf.end.x,   line.dxf.end.y),   self.node_decimals)
-            if s in branching_nodes and e in branching_nodes:
-                self.candidate_bending_ids.add(id(line))
-
-        if not self.candidate_bending_ids:
-            return
-
-        from shapely.geometry import MultiPoint, LineString as SLS
-        hull = MultiPoint(list(graph_full.keys())).convex_hull
-
-        confirmed_bending_ids = set()
-        for line in self.all_lines:
-            if id(line) not in self.candidate_bending_ids:
-                continue
-
-            test_graph = self._build_graph(exclude_ids={id(line)})
-            if not test_graph:
-                continue
-            start = next(iter(test_graph))
-            visited = {start}
-            queue = [start]
-            while queue:
-                node = queue.pop()
-                for _, neighbor in test_graph[node]:
-                    if neighbor not in visited:
-                        visited.add(neighbor)
-                        queue.append(neighbor)
-            is_bridge = len(visited) < len(test_graph)
-
-            line_geom   = SLS([(line.dxf.start.x, line.dxf.start.y),
-                            (line.dxf.end.x,   line.dxf.end.y)])
-            is_interior = hull.boundary.distance(line_geom.centroid) > self.tolerance
-
-            if is_interior:
-                confirmed_bending_ids.add(id(line))
-
-        self.candidate_bending_ids = confirmed_bending_ids
+        self.candidate_bending_ids = BendingDetector(self.tolerance).detect(graph_full, edges)
 
         if self.candidate_bending_ids:
             self.result.warnings.append(
                 f"{len(self.candidate_bending_ids)} LINE candidate come bending "
                 f"escluse dal grafo (entrambi gli endpoint su nodi di branching)."
             )
-            self.all_lines = [l for l in self.all_lines if id(l) not in self.candidate_bending_ids]
-
+            self.all_lines = [
+                l for l in self.all_lines
+                if id(l) not in self.candidate_bending_ids
+            ]
 
     def _find_loops(self):
         if not (self.all_lines or self.all_arcs or self.open_splines):
             return
 
+        from ..core.topology.loop_finder import LoopFinder
         graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
-        loops = self._collect_loops(graph)
+        loops = LoopFinder().find(graph, exclude_ids=self.candidate_bending_ids)
 
         if not loops:
             self._fallback_polygonize()
@@ -205,16 +163,18 @@ class HealStep:
 
         self._classify_and_build(loops, graph)
 
-    
-
-
+    def _reintegrate_bending(self):
+        all_lines_full = list(self.msp.query("LINE"))
+        self.all_lines = self.all_lines + [
+            l for l in all_lines_full if id(l) in self.candidate_bending_ids
+        ]
 # metodi estratti in moduli separati
-from ..core.topology.loops import _collect_loops, _reintegrate_bending 
-from ..core.healing.hierarchy  import _build_hierarchy, _build_trash        
-from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext                                   
+from ..core.topology.loop_finder import LoopFinder, classify_loops, check_loop_ambiguity
+from ..core.healing.hierarchy  import _build_hierarchy, _build_trash
+from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext
 from ..adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
 from ..rules.palette import COLOR_OUTER, COLOR_INNER
-from shapely.geometry import Polygon                                            
+from shapely.geometry import Polygon
 
 
 def _fallback_polygonize(self):
@@ -245,30 +205,30 @@ def _fallback_polygonize(self):
         self.result._entities_in_loops_ids = self.entities_in_loops
 
         for poly in polygons:
-                    if not poly.is_valid:
-                        poly = poly.buffer(0)
-                    pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
-                    ctx = DxfWriteContext(
-                        polygon=poly,
-                        has_spline=False,
-                        pts_with_bulge=pts,
-                        loop=[],
-                        layer=LAYER_OUTER,
-                        color=COLOR_OUTER,
-                    )
-                    self.result._virtual_shapes.append(ctx)
+            if not poly.is_valid:
+                poly = poly.buffer(0)
+            pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
+            ctx = DxfWriteContext(
+                polygon=poly,
+                has_spline=False,
+                pts_with_bulge=pts,
+                loop=[],
+                layer=LAYER_OUTER,
+                color=COLOR_OUTER,
+            )
+            self.result._virtual_shapes.append(ctx)
 
-                    for interior in poly.interiors:
-                        pts_i = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
-                        ctx_i = DxfWriteContext(
-                            polygon=Polygon(interior),
-                            has_spline=False,
-                            pts_with_bulge=pts_i,
-                            loop=[],
-                            layer=LAYER_INNER,
-                            color=COLOR_INNER,
-                        )
-                        self.result._virtual_shapes.append(ctx_i)
+            for interior in poly.interiors:
+                pts_i = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
+                ctx_i = DxfWriteContext(
+                    polygon=Polygon(interior),
+                    has_spline=False,
+                    pts_with_bulge=pts_i,
+                    loop=[],
+                    layer=LAYER_INNER,
+                    color=COLOR_INNER,
+                )
+                self.result._virtual_shapes.append(ctx_i)
 
     else:
         self.result.warnings.append(
@@ -278,7 +238,7 @@ def _fallback_polygonize(self):
 
 
 def _classify_and_build(self, loops, graph):
-    from ..core.topology.loops import classify_loops, check_loop_ambiguity
+    from ..core.topology.loop_finder import classify_loops, check_loop_ambiguity
 
     branching_check = check_loop_ambiguity(loops, graph)
     if branching_check:
@@ -288,7 +248,7 @@ def _classify_and_build(self, loops, graph):
         )
 
     outer_loops, inner_loops = classify_loops(loops)
-        
+
     self.entities_in_loops = {
         id(edge.source_ref) for loop in (outer_loops + inner_loops) for edge, _ in loop
     }
@@ -304,8 +264,8 @@ def _classify_and_build(self, loops, graph):
             self.result._virtual_shapes.append(ctx)
 
 
-HealStep._collect_loops       = _collect_loops
-HealStep._reintegrate_bending = _reintegrate_bending
+
+
 HealStep._fallback_polygonize = _fallback_polygonize
 HealStep._classify_and_build  = _classify_and_build
 HealStep._build_hierarchy     = _build_hierarchy
