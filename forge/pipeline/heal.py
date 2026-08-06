@@ -14,7 +14,7 @@ from ..adapters.dxf.geometry_adapter import (
 from ..adapters.dxf.sanitize import deduplicate as _deduplicate_entities
 from ..core.geometry import spline_endpoints
 from ..core.geometry import round_point
-from ..adapters.dxf.gap_adapter import extract_free_endpoints, apply_gap_fixes
+# from ..adapters.dxf.gap_adapter import extract_free_endpoints, apply_gap_fixes
 from ..adapters.dxf.sanitize import _explode_inserts
 
 class HealStep:
@@ -99,12 +99,12 @@ class HealStep:
             return
 
         graph_pre = self._build_graph()
-        endpoints = extract_free_endpoints(graph_pre, self.msp, self.node_decimals)
+        endpoints = self.adapter.extract_free_endpoints(graph_pre)
 
         if endpoints:
             from ..core.healing.gap_solver import compute_gap_fixes
             fixes = compute_gap_fixes(endpoints, self.tolerance)
-            fixed = apply_gap_fixes(fixes, self.msp)
+            fixed = self.adapter.apply_gap_fixes(fixes)
 
             if fixed:
                 entities = self.adapter.load_entity_lists()
