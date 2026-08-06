@@ -24,7 +24,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from forge.core.primitives.segments import CircularArcSeg
-from forge.core.topology.classify.hole_detector import is_threaded_hole, is_countersink_outer
+from forge.core.classification.hole_detector import is_threaded_hole, is_countersink_outer
 from forge.core.geometry import are_collinear, group_collinear_lines
 from shapely.geometry import LineString
 
