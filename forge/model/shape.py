@@ -45,8 +45,6 @@ class ClosedShape:
     is_virtual: bool                          = False
     diameter:   Optional[float]               = None
     center:     Optional[Tuple[float, float]] = None
-    # DEPRECATO: tenuto per compat durante refactor — non aggiungere nuovi usi
-    origin:     str                           = ""
 
 
 @dataclass
@@ -71,5 +69,3 @@ class OpenShape:
     shape_type: str                           = ""
     diameter:   Optional[float]               = None
     center:     Optional[Tuple[float, float]] = None
-    # DEPRECATO: tenuto per compat durante refactor — non aggiungere nuovi usi
-    origin:     str                           = ""

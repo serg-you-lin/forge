@@ -23,7 +23,7 @@ from ..model import (
 from ..model.role import ContourRole
 from ..model.shape import OpenShape, ClosedShape
 from ..model.engraving import Engraving
-from ..adapters.dxf.hole_detector import is_threaded_hole
+from ..core.topology.classify.hole_detector import is_threaded_hole
 from ..adapters.dxf.bending_adapter import bending_line_from_proxy
 from ..rules.thresholds import STRUCTURAL_ROLES
 

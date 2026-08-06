@@ -260,3 +260,61 @@ session.save_dxf("part_healed.dxf")
 1. Incollalo all'inizio della sessione
 2. Dimmi quale step vuoi fare
 3. Partiamo dalle interfacce / test, poi spostiamo il codice
+
+
+
+
+
+
+
+
+
+ is_virtual serve per una cosa sola: distinguere "ho un'entità DXF originale" da "ho solo un poligono ricostruito", perché l'exporter DXF deve comportarsi diversamente nei due casi.
+
+Il problema vero che vedo: vs_id e classified_virtual_ids sono due meccanismi paralleli per tracciare la stessa cosa. E _vs_to_part è una mappa separata che esiste solo perché le VS non hanno un id(source_ref) stabile come le entità reali.
+
+Questo è il casino. Non il concetto di VS — quello è legittimo. È la tracciabilità che è implementata in due modi diversi.
+
+Ho capito giusto o no?
+
+può essre, ma io allora farei che tutto è vs. anzi, a quel punto non ha senso averlo nel nome, rendiamola una ClosedShape e tanti saluti, no?
+
+Sì. Ha senso.
+
+ClosedShape è sempre una forma chiusa. Punto. Il fatto che venga da un'entità DXF originale o da un loop ricostruito è un dettaglio del source_ref — non un tipo diverso.
+
+source_ref = entità ezdxf    → l'exporter la scrive direttamente
+source_ref = loop grezzo     → l'exporter ricostruisce la LWPOLYLINE
+source_ref = None            → l'exporter usa polygon.exterior.coords
+
+is_virtual sparisce. vs_id sparisce. classified_virtual_ids sparisce — c'è solo classified_entity_ids che diventa classified_shape_ids o simile, basato su id(shape) direttamente invece che id(shape.source_ref).
+
+_vs_to_part sparisce — la mappa diventa id(shape) → part, uguale per tutti.
+
+Il codice si semplifica perché togli tutti i doppi binari.
+
+Ci sono due casi:
+
+La shape deriva da un'entità originale (ad esempio una SPLINE, LWPOLYLINE, CIRCLE, ecc.).
+L'export deve riutilizzare l'entità originale, modificando solo ciò che serve (layer, colore, ecc.).
+Non deve ricostruirla da un poligono.
+Così una spline rimane la stessa identica spline, con gli stessi punti di controllo, stessi knot, stessi pesi, stessa parametrizzazione. Nessuna approssimazione.
+La shape non ha un'entità originale (ad esempio è nata dalla ricostruzione di un loop aperto).
+In questo caso non hai scelta: l'export deve creare una nuova entità (tipicamente una LWPOLYLINE o altro formato appropriato).
+
+Questa distinzione, secondo me, è esattamente il ruolo di source_ref.
+
+class ClosedShape:
+    polygon: Polygon
+    source_ref: DXFGraphic | None
+
+L'exporter fa qualcosa del genere:
+
+if shape.source_ref is not None:
+    # copia l'entità originale
+else:
+    # ricostruisci dal poligono
+
+Non c'è bisogno di is_virtual. Ti interessa solo sapere: ho ancora l'entità originale oppure no?
+
+Questo ha anche un vantaggio enorme: Forge può continuare a ragionare in termini di geometria (Polygon), mentre l'exporter, quando possibile, preserva al 100% la geometria CAD originale. Una SPLINE resta una SPLINE, un ARC resta un ARC, una LWPOLYLINE con i suoi bulge resta la stessa LWPOLYLINE. Solo le forme che non esistevano nel file di partenza vengono ricostruite.

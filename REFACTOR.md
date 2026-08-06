@@ -29,6 +29,13 @@ dxf-forge/
 │   │   └── split.py
 │   │   └── inject.py
 │   │
+│   ├── rules/                  # Regole di Forge
+│   │   ├── metadata_schema.py
+│   │   ├── palette.py
+│   │   ├── thresholds.py
+│   │   └── validator.py
+│   │   └── inject.py
+│   │
 │   └── tools/                     # Tools sul modello (futuri)
 │       ├── validator.py
 │       ├── hasher.py              # fingerprint geometrica
