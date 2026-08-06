@@ -1,6 +1,6 @@
 
 """
-core/geometry/hole_detector.py
+core/classification/hole_detector.py
 -------------------------------
 Rileva fori filettati e svasature da primitive geometriche pure.
 
