@@ -30,7 +30,6 @@ class Edge:
 
 
 @dataclass
-@dataclass
 class BendingLine:
     """
     Rappresenta una linea di piega.

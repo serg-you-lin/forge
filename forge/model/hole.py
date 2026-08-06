@@ -62,9 +62,6 @@ class Hole:
     outer_source_ref: Any             = None
     is_hole:          bool            = True
 
-    # DEPRECATO: tenuto per compat durante refactor — non aggiungere nuovi usi
-    origin: str = ""
-
     @property
     def area(self) -> float:
         return self.polygon.area
