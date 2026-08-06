@@ -24,7 +24,6 @@ from ..model.role import ContourRole
 from ..model.shape import OpenShape, ClosedShape
 from ..model.engraving import Engraving
 from ..core.topology.classify.hole_detector import is_threaded_hole
-from ..adapters.dxf.bending_adapter import bending_line_from_proxy
 from ..rules.thresholds import STRUCTURAL_ROLES
 
 _ROLE_TO_HOLE_TYPE = {
@@ -153,7 +152,17 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                     (proxy.pts[0][1] + proxy.pts[-1][1]) / 2,
                 )
                 if outer.contains(midpoint):
-                    part.bending_lines.append(bending_line_from_proxy(proxy, part.label))
+                    geom = LineString([proxy.pts[0], proxy.pts[-1]])
+                    part.bending_lines.append(BendingLine(
+                        source_ref=proxy.source_ref,
+                        geometry=geom,
+                        length=proxy.length,
+                        angle_deg=math.degrees(math.atan2(
+                            proxy.pts[-1][1] - proxy.pts[0][1],
+                            proxy.pts[-1][0] - proxy.pts[0][0],
+                        )) % 180,
+                        part_label=part.label,
+                    ))
                     break
 
 
