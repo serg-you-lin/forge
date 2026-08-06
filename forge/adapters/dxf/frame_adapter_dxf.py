@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import ezdxf
 
-from ...core.frame_detector import (
+from ...core.classify.frame_detector import (
     RawPoint,
     RawSegment,
     FrameDetectionResult,

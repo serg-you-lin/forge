@@ -3,7 +3,7 @@
 import unittest
 from shapely.geometry import LineString
 from forge.core.topology.graph import build_node_graph
-from forge.core.healing.bending_detector import BendingDetector
+from forge.core.topology.bending_detector import BendingDetector
 from forge.model.edge import Edge
 
 

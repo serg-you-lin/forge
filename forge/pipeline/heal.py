@@ -133,7 +133,7 @@ class HealStep:
         if not (self.all_lines or self.all_arcs):
             return
 
-        from ..core.healing.bending_detector import BendingDetector
+        from ..core.topology.bending_detector import BendingDetector
         graph_full = self._build_graph()
         edges      = self.adapter.to_edges()
 
