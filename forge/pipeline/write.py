@@ -62,12 +62,6 @@ _HOLE_TYPE_TO_WORK_TYPE = {
     HOLE_TYPE_THREADED:    "threaded_hole",
 }
 
-ROLE_TO_LAYER = {
-    "outer": LAYER_OUTER,
-    "inner": LAYER_INNER,
-    "hole":  LAYER_HOLE,
-}
-
 # ---------------------------------------------------------------------------
 # API pubblica
 # ---------------------------------------------------------------------------
@@ -84,12 +78,24 @@ def write(
         if id(ctx) in result._suppressed_vs_ids:
             continue
 
+        # Le primitive chiuse durevoli (CIRCLE, POLYLINE/LWPOLYLINE/SPLINE)
+        # sono già presenti nel documento nella loro entità sorgente e devono
+        # rimanere tali. Non le riscriviamo come LWPOLYLINE: altrimenti si
+        # genera una copia di fallback con layer di default InnerContour/Hole
+        # che non rispetta la classificazione finale.
+        if len(ctx.loop) == 1:
+            edge, _ = ctx.loop[0]
+            source_ref = getattr(edge, "source_ref", None)
+            if source_ref is not None and source_ref.dxftype() not in ("LINE", "ARC"):
+                continue
+
         lwpoly = _write_virtual_shape(msp, ctx)
         if lwpoly is not None:
             part = result._vs_to_part.get(id(ctx))
             if part is not None:
                 part.entity_ids.discard(id(ctx))
                 part.entity_ids.add(id(lwpoly))
+                matched = False
                 for contour in [part.outer] + part.inners:
                     if contour.vs_id == id(ctx):
                         layer = ROLE_TO_LAYER.get(contour.role, LAYER_INNER)
@@ -97,7 +103,20 @@ def write(
                         lwpoly.dxf.color = 256
                         if contour.role not in (ContourRole.OUTER, ContourRole.INNER, ContourRole.UNKNOWN):
                             entity_to_work[id(lwpoly)] = contour.role.value.lower()
+                        matched = True
                         break
+                if not matched:
+                    for hole in part.holes:
+                        if hole.vs_id == id(ctx):
+                            hole.source_ref = lwpoly
+                            layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
+                            lwpoly.dxf.layer = layer
+                            lwpoly.dxf.color = 256
+                            if hole.hole_type == HOLE_TYPE_COUNTERSINK:
+                                entity_to_work[id(lwpoly)] = "countersink"
+                            elif hole.hole_type == HOLE_TYPE_THREADED:
+                                entity_to_work[id(lwpoly)] = "threaded_hole"
+                            break
         else:
             part = result._vs_to_part.get(id(ctx))
             if part is not None:
@@ -132,6 +151,9 @@ def write(
             entity.dxf.color = 256
         else:
             msp.delete_entity(entity)
+
+    for part in result.parts:
+        _materialize_derived_bending_lines(msp, part)
 
     
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
@@ -189,10 +211,15 @@ def split(
         msp_out = doc_out.modelspace()
 
         vs_swap = _write_virtual_shapes_to_msp(msp_out, result, part)
+        vs_passthrough_structural = _collect_vs_passthrough_structural(result, part)
 
         effective_ids = set()
         for eid in part.entity_ids:
-            effective_ids.add(vs_swap.get(eid, eid))
+            swapped = vs_swap.get(eid, eid)
+            if isinstance(swapped, list):
+                effective_ids.update(swapped)
+            else:
+                effective_ids.add(swapped)
 
         for entity in msp:
             if not entity.dxf.hasattr("layer"):
@@ -219,7 +246,10 @@ def split(
             layer     = entity.dxf.layer
             work_type = entity_to_work.get(entity_id) or special_map.get(layer.lower())
 
-            structural_layer = entity_to_structural.get(entity_id)
+            structural_layer = (
+                entity_to_structural.get(entity_id)
+                or vs_passthrough_structural.get(entity_id)
+            )
             if structural_layer is not None:
                 new_entity.dxf.layer = structural_layer
                 new_entity.dxf.color = 256
@@ -232,6 +262,8 @@ def split(
             elif keep_trash:
                 new_entity.dxf.layer = TRASH_LAYER
                 new_entity.dxf.color = 256
+
+        _materialize_derived_bending_lines(msp_out, part)
 
         if on_part is not None:
             on_part(part, doc_out, out_path)
@@ -250,27 +282,35 @@ def split(
 def _assign_structural_layers(msp, result: ForgeResult) -> None:
     for part in result.parts:
         for contour in [part.outer] + part.inners:
-            if contour.source_ref is not None:
-                contour.source_ref.dxf.layer = ROLE_TO_LAYER.get(contour.role, LAYER_OUTER)
-                contour.source_ref.dxf.color = 256
+            ref = contour.source_ref
+            if ref is not None and getattr(ref, "is_alive", True):
+                ref.dxf.layer = ROLE_TO_LAYER.get(contour.role, LAYER_OUTER)
+                ref.dxf.color = 256
 
         for hole in part.holes:
-            if hole.source_ref is not None:
-                hole.source_ref.dxf.layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
-                hole.source_ref.dxf.color = 256
+            ref = hole.source_ref
+            if ref is not None and getattr(ref, "is_alive", True):
+                ref.dxf.layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
+                ref.dxf.color = 256
 
 
 def _remove_superseded_line_arc(msp, result: ForgeResult) -> None:
     """
-    Rimuove dal msp le LINE e ARC originali assorbite da un loop in heal().
+    Rimuove dal msp solo le LINE e ARC originali assorbite da un loop in heal().
+
+    Le primitive chiuse durevoli (CIRCLE, POLYLINE/LWPOLYLINE chiusa, SPLINE)
+    devono invece rimanere sul documento come entità originali e poi ricevere
+    il layer strutturale corretto in _assign_structural_layers().
 
     Usa result._entities_in_loops_ids — fonte di verità immutabile prodotta
     da heal(). Non dipende da trash_entities o classified_entities.
     """
     special_layer_names = {k.lower() for k in result.label_map} if result.label_map else set()
+    superseded_types = ("LINE", "ARC")
+
     to_delete = [
         e for e in list(msp)
-        if e.dxftype() in ("LINE", "ARC")
+        if e.dxftype() in superseded_types
         and id(e) in result._entities_in_loops_ids
         and (not e.dxf.hasattr("layer") or e.dxf.layer.lower() not in special_layer_names)
     ]
@@ -296,9 +336,14 @@ def _build_work_index(result: ForgeResult) -> dict:
                 index[id(hole.source_ref)] = "threaded_hole"
 
         for bl in part.bending_lines:
-            eid = id(bl.source_ref)
-            index[eid] = "bending"
-            part.entity_ids.add(eid)
+            if (
+                bl.source_ref is not None
+                and hasattr(bl.source_ref, "dxftype")
+                and bl.source_ref.dxftype() == "LINE"
+            ):
+                eid = id(bl.source_ref)
+                index[eid] = "bending"
+                part.entity_ids.add(eid)
 
         for eng in part.engrave_lines:
             if eng.source_ref is not None:
@@ -340,7 +385,7 @@ def _write_virtual_shapes_to_msp(msp_out, result: ForgeResult, part: ForgePart) 
     Materializza i VirtualShape del part corrente nel msp_out figlio.
     
     Non tocca result né part.entity_ids — restituisce uno swap dict
-    id(VS) → id(lwpoly) che split() usa localmente per filtrare le entità.
+    id(VS) → id(lwpoly) oppure id(VS) → list[id(entity)] per passthrough.
     """
     vs_swap = {}  # id(VS) → id(lwpoly) locale al figlio
     
@@ -349,13 +394,54 @@ def _write_virtual_shapes_to_msp(msp_out, result: ForgeResult, part: ForgePart) 
             continue
         if id(vs) in result._suppressed_vs_ids:
             continue
+        if id(vs) not in part.entity_ids:
+            # Già materializzato da write() sul documento sorgente: write()
+            # ha rimpiazzato id(vs) con id(lwpoly) in part.entity_ids, che
+            # verrà copiato nel figlio dal loop principale di split() —
+            # non ri-materializzare qui, altrimenti si duplica l'entità.
+            continue
         
         lwpoly = _write_virtual_shape(msp_out, vs)
         if lwpoly is not None:
             vs_swap[id(vs)] = id(lwpoly)
         else:
-            # has_spline=True: registra le entità originali
-            for entity, _ in vs.loop:
-                vs_swap[id(vs)] = id(entity)  # placeholder
+            # has_spline=True: registra tutte le entità originali del loop.
+            vs_swap[id(vs)] = [id(entity) for entity, _ in vs.loop]
     
     return vs_swap
+
+
+def _materialize_derived_bending_lines(msp_out, part: ForgePart) -> None:
+    """Scrive bending line derivate da edge non-LINE come primitive Forge."""
+    layer_name, _ = WORK_TYPE_TO_LAYER.get("bending", (TRASH_LAYER, COLOR_TRASH))
+    seen = set()
+    for bl in part.bending_lines:
+        src = bl.source_ref
+        if src is not None and hasattr(src, "dxftype") and src.dxftype() == "LINE":
+            continue
+        coords = list(bl.geometry.coords) if bl.geometry is not None else []
+        if len(coords) < 2:
+            continue
+        start = coords[0]
+        end = coords[-1]
+        key = (round(start[0], 6), round(start[1], 6), round(end[0], 6), round(end[1], 6))
+        if key in seen:
+            continue
+        seen.add(key)
+        msp_out.add_line(start, end, dxfattribs={"layer": layer_name, "color": 256})
+
+
+def _collect_vs_passthrough_structural(result: ForgeResult, part: ForgePart) -> dict:
+    """Mappa id(entità originale) -> layer strutturale per VS con spline."""
+    mapping = {}
+    for vs in result._virtual_shapes:
+        if result._vs_to_part.get(id(vs)) is not part:
+            continue
+        if id(vs) in result._suppressed_vs_ids:
+            continue
+        if not getattr(vs, "has_spline", False):
+            continue
+        target_layer = vs.layer if getattr(vs, "layer", "") else LAYER_OUTER
+        for entity, _ in vs.loop:
+            mapping[id(entity)] = target_layer
+    return mapping

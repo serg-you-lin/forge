@@ -45,6 +45,8 @@ class Hole:
         outer_source_ref: entità esterna opaca — solo countersink
         is_hole         : sempre True — compatibilità con codice che itera inners
         origin          : DEPRECATO — layer DXF di provenienza; non leggere in detect()
+        vs_id           : id del VirtualShape sorgente, se generato dal core
+                          (loop di più entità fuse in un'unica LWPOLYLINE)
     """
     polygon:        Polygon
     diameter:       float
@@ -57,6 +59,8 @@ class Hole:
 
     role:           ContourRole  = ContourRole.UNKNOWN
     source_ref:     Any          = None
+    vs_id:          Optional[int] = None
+    origin:         str          = ""
 
     outer_diameter:   Optional[float] = None
     outer_source_ref: Any             = None
@@ -73,11 +77,15 @@ class Hole:
     def source_layer(self) -> str:
         """
         Restituisce il layer DXF della sorgente, se disponibile.
+
+        Per fori virtuali (loop di più entità fuse), source_ref è None
+        per costruzione — self.origin porta il layer catturato da heal()
+        prima che il riferimento venisse azzerato.
         """
         try:
             return self.source_ref.dxf.layer
         except Exception:
-            return ""
+            return self.origin
     
     def to_dict(self) -> dict:
         d = {

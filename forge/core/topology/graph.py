@@ -1,4 +1,3 @@
-
 # forge/core/topology/graph.py
 
 """
@@ -12,8 +11,9 @@ Tutta la geometria viene letta da edge.geometry (LineString shapely).
 Tipi pubblici:
     Graph              — grafo tipizzato con metodi di interrogazione
     build_node_graph   — costruisce Graph da list[Edge]
+                         separa automaticamente i loop degeneri (start == end)
 
-Utility interne (usate da loops.py):
+Utility interne (usate da loop_finder.py):
     _edge_coords       — punti dell'edge come lista (x, y)
     _first_coord       — primo punto della geometry
     _arrival_direction — vettore di arrivo
@@ -23,7 +23,7 @@ Utility interne (usate da loops.py):
 import math
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Tuple, List
 
 from ..geometry import round_point
 from ...model.edge import Edge
@@ -38,9 +38,12 @@ class Graph:
     """
     Grafo topologico interrogabile.
 
-    nodes: dict[punto, list[(Edge, punto_opposto)]]
+    nodes:            dict[punto, list[(Edge, punto_opposto)]]
+    degenerate_loops: list[Edge] — edge con start == end (CIRCLE, SPLINE chiusa)
+                      non entrano nel grafo: sono già loop completi per definizione.
     """
-    nodes: dict = field(default_factory=dict)
+    nodes:            dict       = field(default_factory=dict)
+    degenerate_loops: List[Edge] = field(default_factory=list)
 
     def degree(self, node: Tuple) -> int:
         return len(self.nodes.get(node, []))
@@ -49,7 +52,11 @@ class Graph:
         return [n for n, conn in self.nodes.items() if len(conn) > 2]
 
     def pruned(self) -> 'Graph':
-        """Restituisce un nuovo Graph senza nodi dead-end (degree ≤ 1)."""
+        """
+        Restituisce un nuovo Graph senza nodi dead-end (degree <= 1).
+        I degenerate_loops vengono preservati invariati — non hanno
+        nodi nel grafo e non sono soggetti a potatura.
+        """
         g = {node: list(neighbors) for node, neighbors in self.nodes.items()}
 
         changed = True
@@ -66,7 +73,7 @@ class Graph:
                 del g[leaf]
                 changed = True
 
-        return Graph(nodes=g)
+        return Graph(nodes=g, degenerate_loops=self.degenerate_loops)
 
     def __iter__(self):
         return iter(self.nodes)
@@ -79,7 +86,7 @@ class Graph:
 
     def items(self):
         return self.nodes.items()
-    
+
     def get(self, node, default=None):
         return self.nodes.get(node, default)
 
@@ -89,15 +96,29 @@ class Graph:
 # ---------------------------------------------------------------------------
 
 def build_node_graph(edges: list) -> Graph:
-    raw = defaultdict(list)
+    """
+    Costruisce il Graph da list[Edge].
+
+    Edge con start == end (CIRCLE, SPLINE chiusa) vengono separati
+    in degenerate_loops — non hanno senso come nodi del grafo perché
+    il loro unico nodo sarebbe vicino di se stesso.
+    """
+    raw        = defaultdict(list)
+    degenerate = []
+
     for edge in edges:
-        raw[edge.start].append((edge, edge.end))
-        raw[edge.end].append((edge, edge.start))
-    return Graph(nodes=dict(raw))
+        if edge.start == edge.end:
+            # Loop degenere: non entra nel grafo, va diretto al loop finder
+            degenerate.append(edge)
+        else:
+            raw[edge.start].append((edge, edge.end))
+            raw[edge.end].append((edge, edge.start))
+
+    return Graph(nodes=dict(raw), degenerate_loops=degenerate)
 
 
 # ---------------------------------------------------------------------------
-# Utility geometriche (usate da loops.py)
+# Utility geometriche (usate da loop_finder.py)
 # ---------------------------------------------------------------------------
 
 def _edge_coords(edge: Edge, reversed_flag: bool) -> list:
@@ -138,4 +159,3 @@ def _angular_deviation(arrival_dir, edge: Edge, rev: bool):
     cross = arrival_dir[0] * dy - arrival_dir[1] * dx
     dot   = arrival_dir[0] * dx + arrival_dir[1] * dy
     return abs(math.atan2(cross, dot))
-

@@ -6,14 +6,14 @@ Produce un file healed.dxf nella cartella di output.
 """
 
 import forge
-from forge.dxf_inspect import DxfInspector
+# from forge.dxf_inspect import DxfInspector
 import os
 
 # ---------------------------------------------------------------------------
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/FU.dxf"
+input_dxf = r"tests/examples/PROFILE_PART.dxf"
 
 tolerance = .2
 

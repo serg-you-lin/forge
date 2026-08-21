@@ -1,21 +1,27 @@
+import sys
+from pathlib import Path
+
 import numpy as np
 
-from forge.adapters.dxf import sanitize
-
-from ..model.result import (
-    ForgeResult,
-)
-from ..core.topology.graph import (
-    build_node_graph,
-)
-from ..adapters.dxf.geometry_adapter import (
-    _spline_is_closed,
-)
-from ..adapters.dxf.sanitize import deduplicate as _deduplicate_entities
-from ..core.geometry import spline_endpoints
-from ..core.geometry import round_point
-# from ..adapters.dxf.gap_adapter import extract_free_endpoints, apply_gap_fixes
-from ..adapters.dxf.sanitize import _explode_inserts
+if __package__:
+    from forge.adapters.dxf import sanitize
+    from ..model.result import ForgeResult
+    from ..core.topology.graph import build_node_graph
+    from ..adapters.dxf.geometry_adapter import _spline_is_closed
+    from ..adapters.dxf.sanitize import deduplicate as _deduplicate_entities
+    from ..core.geometry import spline_endpoints, round_point
+    # from ..adapters.dxf.gap_adapter import extract_free_endpoints, apply_gap_fixes
+    from ..adapters.dxf.sanitize import _explode_inserts
+else:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from forge.adapters.dxf import sanitize
+    from forge.model.result import ForgeResult
+    from forge.core.topology.graph import build_node_graph
+    from forge.adapters.dxf.geometry_adapter import _spline_is_closed
+    from forge.adapters.dxf.sanitize import deduplicate as _deduplicate_entities
+    from forge.core.geometry import spline_endpoints, round_point
+    # from forge.adapters.dxf.gap_adapter import extract_free_endpoints, apply_gap_fixes
+    from forge.adapters.dxf.sanitize import _explode_inserts
 
 class HealStep:
     def __init__(
@@ -62,7 +68,6 @@ class HealStep:
         if not self.result.is_valid:
             return self.result
         self._preprocess()
-        self.proxies = self.adapter.to_closed()
         self.result.all_arcs = self.adapter.to_circular_arcs()
         self._find_bending_candidates()
         self._find_loops()
@@ -70,6 +75,7 @@ class HealStep:
         self._build_hierarchy()
         self._build_trash()
         return self.result
+    
 
     def _build_graph(self, exclude_ids=None):
         edges = self.adapter.to_edges()
@@ -137,7 +143,16 @@ class HealStep:
         graph_full = self._build_graph()
         edges      = self.adapter.to_edges()
 
-        self.candidate_bending_ids = BendingDetector(self.tolerance).detect(graph_full, edges)
+        raw_candidates = BendingDetector(self.tolerance).detect(graph_full, edges)
+
+        # La bending detection deve escludere dal grafo solo entita LINE.
+        # Con to_edges() anche LWPOLYLINE/POLYLINE vengono esplose in Edge: se
+        # un loro id finisce qui, rimuoverle spezza contorni strutturali.
+        self.candidate_bending_ids = {
+            id(e)
+            for e in self.msp.query("LINE")
+            if id(e) in raw_candidates
+        }
 
         if self.candidate_bending_ids:
             self.result.warnings.append(
@@ -150,11 +165,17 @@ class HealStep:
             ]
 
     def _find_loops(self):
-        if not (self.all_lines or self.all_arcs or self.open_splines):
+        if not (self.all_lines or self.all_arcs or self.open_splines
+                or self.all_circles or self.all_plines or self.closed_splines):
             return
 
         from ..core.topology.loop_finder import LoopFinder
         graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
+        # LoopFinder().find() include già i loop degeneri (CIRCLE, SPLINE
+        # chiuse) presi da graph.degenerate_loops — non vanno riaggiunti qui,
+        # altrimenti ogni CIRCLE/loop degenere viene duplicato in due proxy
+        # identici, che l'albero di contenimento interpreta come un
+        # countersink (cerchio dentro sé stesso).
         loops = LoopFinder().find(graph, exclude_ids=self.candidate_bending_ids)
 
         if not loops:
@@ -168,12 +189,21 @@ class HealStep:
         self.all_lines = self.all_lines + [
             l for l in all_lines_full if id(l) in self.candidate_bending_ids
         ]
+
+
 # metodi estratti in moduli separati
-from ..core.topology.loop_finder import LoopFinder, classify_loops, check_loop_ambiguity
-from ..core.healing.hierarchy  import _build_hierarchy, _build_trash
-from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext
-from ..adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
-from ..rules.palette import COLOR_OUTER, COLOR_INNER
+if __package__:
+    from ..core.topology.loop_finder import LoopFinder, classify_loops, check_loop_ambiguity
+    from ..core.healing.hierarchy import _build_hierarchy, _build_trash
+    from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext
+    from ..adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
+    from ..rules.palette import COLOR_OUTER, COLOR_INNER
+else:
+    from forge.core.topology.loop_finder import LoopFinder, classify_loops, check_loop_ambiguity
+    from forge.core.healing.hierarchy import _build_hierarchy, _build_trash
+    from forge.adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext
+    from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
+    from forge.rules.palette import COLOR_OUTER, COLOR_INNER
 from shapely.geometry import Polygon
 
 
@@ -237,6 +267,27 @@ def _fallback_polygonize(self):
         )
 
 
+def _loop_is_structural(loop, label_map) -> bool:
+    from ..model.role import ContourRole, layer_to_role
+
+    # Countersink/threaded hole sono fori a tutti gli effetti — vanno
+    # inclusi nell'albero di contenimento come HOLE/INNER, altrimenti
+    # un loop etichettato via label_map (es. layer "Svasati" ->
+    # "countersink") sparisce del tutto invece di diventare un Hole.
+    structural_roles = {
+        ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE,
+        ContourRole.COUNTERSINK, ContourRole.THREADED_HOLE,
+    }
+    for edge, _ in loop:
+        # Edge.layer è già una stringa cached — zero accessi a source_ref.dxf
+        role = layer_to_role(edge.layer, label_map or {})
+        if role == ContourRole.UNKNOWN:
+            continue
+        if role not in structural_roles:
+            return False
+    return True
+
+
 def _classify_and_build(self, loops, graph):
     from ..core.topology.loop_finder import classify_loops, check_loop_ambiguity
 
@@ -249,21 +300,23 @@ def _classify_and_build(self, loops, graph):
 
     outer_loops, inner_loops = classify_loops(loops)
 
+    structural_loops = [loop for loop in outer_loops if _loop_is_structural(loop, self.result.label_map)]
+    structural_loops += [loop for loop in inner_loops if _loop_is_structural(loop, self.result.label_map)]
+
     self.entities_in_loops = {
-        id(edge.source_ref) for loop in (outer_loops + inner_loops) for edge, _ in loop
+        id(edge.source_ref) for loop in structural_loops for edge, _ in loop
     }
     self.result._entities_in_loops_ids = self.entities_in_loops
 
-    for loop in outer_loops:
-        ctx = _loop_to_contour(loop, LAYER_OUTER, COLOR_OUTER)
-        if ctx is not None:
-            self.result._virtual_shapes.append(ctx)
-    for loop in inner_loops:
-        ctx = _loop_to_contour(loop, LAYER_INNER, COLOR_INNER)
-        if ctx is not None:
-            self.result._virtual_shapes.append(ctx)
-
-
+    for loop in structural_loops:
+        if loop in outer_loops:
+            ctx = _loop_to_contour(loop, LAYER_OUTER, COLOR_OUTER)
+            if ctx is not None:
+                self.result._virtual_shapes.append(ctx)
+        else:
+            ctx = _loop_to_contour(loop, LAYER_INNER, COLOR_INNER)
+            if ctx is not None:
+                self.result._virtual_shapes.append(ctx)
 
 
 HealStep._fallback_polygonize = _fallback_polygonize
