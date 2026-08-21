@@ -170,7 +170,21 @@ class HealStep:
             self._fallback_polygonize()
             return
 
-        self._classify_and_build(loops, graph)
+        structural_loops = [
+            loop for loop in loops if _loop_is_structural(loop, self.result.label_map)
+        ]
+        self.entities_in_loops = {
+            id(edge.source_ref)
+            for loop in structural_loops
+            for edge, _ in loop
+            if edge.source_ref is not None
+        }
+        self.result._entities_in_loops_ids = self.entities_in_loops
+
+        for loop in structural_loops:
+            ctx = _loop_to_contour(loop, LAYER_OUTER, COLOR_OUTER)
+            if ctx is not None:
+                self.result._virtual_shapes.append(ctx)
 
     def _reintegrate_bending(self):
         all_lines_full = list(self.msp.query("LINE"))
@@ -189,7 +203,24 @@ class HealStep:
             loop_layer = ctx.loop[0][0].layer if ctx.loop else ""
             role = layer_to_role(loop_layer, self.result.label_map)
             from ..core.healing.hierarchy import loop_to_closed_shape
-            shape = loop_to_closed_shape(ctx.loop, role=role, ctx=ctx)
+
+            first_source = None
+            is_durable = False
+            if ctx.loop:
+                first_edge, _ = ctx.loop[0]
+                first_source = getattr(first_edge, "source_ref", None)
+                if len(ctx.loop) == 1 and first_source is not None:
+                    dtype = getattr(first_source, "dxftype", lambda: None)()
+                    is_durable = dtype not in ("LINE", "ARC")
+
+            proxy_source_ref = first_source if is_durable else ctx
+            shape = loop_to_closed_shape(
+                ctx.loop,
+                role=role,
+                polygon=ctx.polygon,
+                source_ref=proxy_source_ref,
+                is_virtual=not is_durable,
+            )
             if shape is not None:
                 virtual_proxies.append(shape)
 
@@ -237,12 +268,12 @@ class HealStep:
 # ---------------------------------------------------------------------------
 
 if __package__:
-    from ..core.topology.loop_finder import LoopFinder, classify_loops, check_loop_ambiguity
+    from ..core.topology.loop_finder import LoopFinder
     from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext
     from ..adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
     from ..rules.palette import COLOR_OUTER, COLOR_INNER
 else:
-    from forge.core.topology.loop_finder import LoopFinder, classify_loops, check_loop_ambiguity
+    from forge.core.topology.loop_finder import LoopFinder
     from forge.adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext
     from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
     from forge.rules.palette import COLOR_OUTER, COLOR_INNER
@@ -326,36 +357,4 @@ def _loop_is_structural(loop, label_map) -> bool:
     return True
 
 
-def _classify_and_build(self, loops, graph):
-    from ..core.topology.loop_finder import classify_loops, check_loop_ambiguity
-
-    branching_check = check_loop_ambiguity(loops, graph)
-    if branching_check:
-        self.result.warnings.append(
-            f"Geometria ambigua: {len(branching_check)} nodi con più di 2 "
-            f"connessioni all'interno dei loop chiusi. Verificare il risultato."
-        )
-
-    outer_loops, inner_loops = classify_loops(loops)
-
-    structural_loops = [loop for loop in outer_loops if _loop_is_structural(loop, self.result.label_map)]
-    structural_loops += [loop for loop in inner_loops if _loop_is_structural(loop, self.result.label_map)]
-
-    self.entities_in_loops = {
-        id(edge.source_ref) for loop in structural_loops for edge, _ in loop
-    }
-    self.result._entities_in_loops_ids = self.entities_in_loops
-
-    for loop in structural_loops:
-        if loop in outer_loops:
-            ctx = _loop_to_contour(loop, LAYER_OUTER, COLOR_OUTER)
-            if ctx is not None:
-                self.result._virtual_shapes.append(ctx)
-        else:
-            ctx = _loop_to_contour(loop, LAYER_INNER, COLOR_INNER)
-            if ctx is not None:
-                self.result._virtual_shapes.append(ctx)
-
-
 HealStep._fallback_polygonize = _fallback_polygonize
-HealStep._classify_and_build  = _classify_and_build

@@ -1,39 +1,39 @@
 # forge/core/healing/hierarchy.py
 
 from typing import Optional
+
 from shapely.geometry import Polygon
 
 from ...model.shape import ClosedShape, OpenShape
 from ...model.part import ForgePart, ForgeContour
 from ...model.hole import Hole, HOLE_TYPE_UNKNOWN
-from ...model.role import ContourRole, layer_to_role
+from ...model.role import ContourRole
 from ...rules.thresholds import HOLE_DIAMETER_THRESHOLD
-from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER, LAYER_HOLE, color_for_layer
-from forge.adapters.dxf.virtual_adapter import _loop_to_contour
 
 
 # ---------------------------------------------------------------------------
-# Conversione loop → ClosedShape (ex closed_adapter)
+# Conversione loop → ClosedShape
 # ---------------------------------------------------------------------------
 
-def loop_to_closed_shape(loop, role: ContourRole = ContourRole.UNKNOWN, ctx=None) -> Optional[ClosedShape]:
+def loop_to_closed_shape(
+    loop,
+    role: ContourRole = ContourRole.UNKNOWN,
+    polygon=None,
+    source_ref=None,
+    is_virtual: bool = False,
+) -> Optional[ClosedShape]:
     """
     Converte un loop (lista di (Edge, bool)) in ClosedShape.
 
-    ctx : DxfWriteContext associato al loop, se disponibile — usato come
-          source_ref/vs_id quando il loop richiede materializzazione
-          (più entità fuse, o singola LINE/ARC che verrà rimossa da
-          _remove_superseded_line_arc). Per un loop degenere composto da
-          una singola entità "durevole" (CIRCLE, SPLINE chiusa, POLYLINE/
-          LWPOLYLINE chiusa) — mai toccata da _remove_superseded_line_arc —
-          si mantiene invece il riferimento diretto all'entità originale,
-          che resta valido per tutto il ciclo di vita di write()/split().
+    polygon   : poligono già calcolato, se disponibile.
+    source_ref: riferimento opaco associato al loop, se disponibile.
+
+    La funzione resta nel core e non prende decisioni di export o writeback.
     """
-    from shapely.geometry import Polygon
     from ...core.topology.loop_finder import LoopFinder
 
-    if ctx is not None and getattr(ctx, "polygon", None) is not None:
-        poly = ctx.polygon
+    if polygon is not None:
+        poly = polygon
     else:
         pts = LoopFinder._loop_to_points(loop)
         if len(pts) < 3:
@@ -46,16 +46,10 @@ def loop_to_closed_shape(loop, role: ContourRole = ContourRole.UNKNOWN, ctx=None
         if poly.is_empty:
             return None
 
-        first_ref  = loop[0][0].source_ref if loop else None
-        first_type = getattr(first_ref, "dxftype", lambda: None)()
-        is_durable = (
-            len(loop) == 1
-            and first_ref is not None
-            and first_type not in ("LINE", "ARC")
-        )
-        source_ref = first_ref if is_durable else ctx
+        first_ref = loop[0][0].source_ref if loop else None
+        resolved_source_ref = source_ref if source_ref is not None else first_ref
 
-        is_circle = len(loop) == 1 and first_type == "CIRCLE"
+        is_circle = len(loop) == 1 and first_ref is not None and getattr(first_ref, "dxftype", lambda: None)() == "CIRCLE"
         diameter = None
         center = None
         if is_circle:
@@ -67,16 +61,16 @@ def loop_to_closed_shape(loop, role: ContourRole = ContourRole.UNKNOWN, ctx=None
             polygon=poly,
             diameter=diameter,
             center=center,
-            source_ref=source_ref,
+            source_ref=resolved_source_ref,
             role=role,
-            is_virtual=not is_durable,
+            is_virtual=is_virtual,
         )
     except Exception:
         return None
 
 
 # ---------------------------------------------------------------------------
-# Helper privati — albero di contenimento
+# Helper privati - albero di contenimento
 # ---------------------------------------------------------------------------
 
 def _place(proxy: ClosedShape, nodes: list) -> bool:
@@ -98,7 +92,7 @@ def _build_tree(proxies: list[ClosedShape]) -> list:
 
 
 # ---------------------------------------------------------------------------
-# Helper privati — costruzione semantica
+# Helper privati - costruzione semantica
 # ---------------------------------------------------------------------------
 
 def _proxy_origin(proxy: ClosedShape) -> str:
@@ -107,8 +101,11 @@ def _proxy_origin(proxy: ClosedShape) -> str:
     return getattr(proxy.source_ref, "origin", "") or ""
 
 
-def _make_hole(proxy: ClosedShape, geometric_hint: str = "",
-               outer_proxy: Optional[ClosedShape] = None) -> Hole:
+def _make_hole(
+    proxy: ClosedShape,
+    geometric_hint: str = "",
+    outer_proxy: Optional[ClosedShape] = None,
+) -> Hole:
     role = proxy.role if proxy.role != ContourRole.UNKNOWN else (
         ContourRole.HOLE if proxy.diameter < HOLE_DIAMETER_THRESHOLD else ContourRole.INNER
     )
@@ -142,8 +139,7 @@ def _make_inner(proxy: ClosedShape, parent_role: ContourRole = ContourRole.UNKNO
     )
 
 
-def _register(proxy: ClosedShape, classified_virtual_ids: set,
-              classified_entity_ids: set):
+def _register(proxy: ClosedShape, classified_virtual_ids: set, classified_entity_ids: set):
     if proxy.is_virtual:
         classified_virtual_ids.add(id(proxy.source_ref))
     else:
@@ -159,9 +155,14 @@ def _collect_entity_ids(father_proxy: ClosedShape, children: list) -> set:
     return ids
 
 
-def _process_children(children: list, holes: list, inners: list,
-                      classified_virtual_ids: set, classified_entity_ids: set,
-                      parent_role: ContourRole = ContourRole.UNKNOWN):
+def _process_children(
+    children: list,
+    holes: list,
+    inners: list,
+    classified_virtual_ids: set,
+    classified_entity_ids: set,
+    parent_role: ContourRole = ContourRole.UNKNOWN,
+):
     for child_node in children:
         child_proxy, grandchildren = child_node
 
@@ -193,16 +194,6 @@ def _process_children(children: list, holes: list, inners: list,
 
             _register(child_proxy, classified_virtual_ids, classified_entity_ids)
 
-            if child_proxy.is_virtual:
-                from ...adapters.dxf.layers import ROLE_TO_LAYER
-                default_layer = LAYER_HOLE if is_hole else LAYER_INNER
-                assigned_layer = ROLE_TO_LAYER.get(obj.role, default_layer)
-                try:
-                    child_proxy.source_ref.layer = assigned_layer
-                    child_proxy.source_ref.color = color_for_layer(assigned_layer)
-                except Exception:
-                    pass
-
 
 # ---------------------------------------------------------------------------
 # HierarchyBuilder
@@ -212,11 +203,7 @@ class HierarchyBuilder:
     """
     Costruisce la gerarchia ForgePart da una lista piatta di ClosedShape.
 
-    Interfaccia:
-        builder = HierarchyBuilder(label, source_file, label_map, entities_in_loops)
-        parts, trash = builder.build(proxies)
-
-    Non ha dipendenze da HealStep né da adapter DXF — riceve tutto ciò
+    Non ha dipendenze da HealStep né da adapter DXF - riceve tutto ciò
     che gli serve nel costruttore e lavora solo su ClosedShape e Polygon.
     """
 
@@ -227,41 +214,34 @@ class HierarchyBuilder:
         label_map: dict,
         entities_in_loops: set,
     ):
-        self.label             = label
-        self.source_file       = source_file
-        self.label_map         = label_map
+        self.label = label
+        self.source_file = source_file
+        self.label_map = label_map
         self.entities_in_loops = entities_in_loops
 
     def build(self, proxies: list) -> tuple[list[ForgePart], list]:
         """
         Restituisce (parts, trash).
 
-        proxies : lista mista di ClosedShape e OpenShape — tutto ciò che
-                  il pipeline ha prodotto dopo il loop-finding. Le OpenShape
-                  non entrano nell'albero di contenimento e finiscono in
-                  trash per costruzione (se role=UNKNOWN e non in
-                  entities_in_loops), che è il comportamento corretto.
+        proxies : lista mista di ClosedShape e OpenShape - tutto ciò che
+                  il pipeline ha prodotto dopo il loop-finding.
 
         parts : lista di ForgePart, ordinata per area outer decrescente
         trash : proxy non classificati in nessuna part (ClosedShape o OpenShape)
         """
         self._classified_virtual_ids: set = set()
-        self._classified_entity_ids:  set = set()
+        self._classified_entity_ids: set = set()
 
         valid = [p for p in proxies if getattr(p, "polygon", None) is not None]
         if not valid:
             return [], self._collect_trash(proxies)
 
-        tree  = _build_tree(valid)
+        tree = _build_tree(valid)
         parts = self._build_parts(tree)
         trash = self._collect_trash(proxies)
 
         parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
         return parts, trash
-
-    # ------------------------------------------------------------------
-    # Privati
-    # ------------------------------------------------------------------
 
     def _build_parts(self, tree: list) -> list[ForgePart]:
         parts = []
@@ -279,16 +259,15 @@ class HierarchyBuilder:
 
             _register(father_proxy, self._classified_virtual_ids, self._classified_entity_ids)
 
-            if father_proxy.is_virtual:
-                father_proxy.source_ref.layer = LAYER_OUTER
-                father_proxy.source_ref.color = color_for_layer(LAYER_OUTER)
-
-            holes  = []
+            holes = []
             inners = []
 
             _process_children(
-                children, holes, inners,
-                self._classified_virtual_ids, self._classified_entity_ids,
+                children,
+                holes,
+                inners,
+                self._classified_virtual_ids,
+                self._classified_entity_ids,
                 parent_role=father_proxy.role,
             )
 
@@ -317,17 +296,14 @@ class HierarchyBuilder:
 
         return parts
 
-    def _update_vs_map(self, father_proxy: ClosedShape, children: list,
-                       part: ForgePart):
+    def _update_vs_map(self, father_proxy: ClosedShape, children: list, part: ForgePart):
         """
         Popola il mapping vs_id → ForgePart su ForgeResult.
 
-        Non disponibile qui (HierarchyBuilder non conosce ForgeResult) —
-        il chiamante (HealStep) deve farlo dopo build() se ne ha bisogno.
-        Restituiamo il mapping come dict separato invece di scriverlo
-        direttamente su result.
+        Non disponibile qui (HierarchyBuilder non conosce ForgeResult) -
+        il chiamante deve farlo dopo build() se ne ha bisogno.
         """
-        pass  # vedi _build_vs_map() sul chiamante
+        pass
 
     def _collect_trash(self, proxies: list[ClosedShape | OpenShape]) -> list[ClosedShape | OpenShape]:
         STRUCTURAL_ROLES = {

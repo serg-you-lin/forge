@@ -70,144 +70,6 @@ DxfWriter.apply()
 
 ---
 
-## Tipi core da tipizzare
-
-### `Graph` (oggi è `dict`)
-```python
-# forge/core/topology/graph.py
-
-@dataclass
-class GraphNode:
-    point: Tuple[float, float]
-    connections: list[tuple[Edge, Tuple[float, float]]]
-
-Graph = dict[Tuple[float, float], list[tuple[Edge, Tuple[float, float]]]]
-# oppure, se vogliamo interrogabile:
-@dataclass
-class Graph:
-    nodes: dict[Tuple[float, float], list[tuple[Edge, Tuple[float, float]]]]
-
-    def neighbors(self, node) -> list: ...
-    def degree(self, node) -> int: ...
-    def branching_nodes(self) -> list: ...
-    def pruned(self) -> 'Graph': ...        # prune_dead_ends
-```
-
-### `Loop`
-```python
-# forge/core/topology/loops.py
-Loop = list[tuple[Edge, bool]]   # (edge, reversed)
-# già usato così — solo dargli un alias esplicito
-```
-
----
-
-
-## Step successivi (da fare in ordine)
-
-### Step 1 — `Graph` tipizzato
-
-**Obiettivo:** `build_node_graph()` restituisce `Graph` dataclass invece di `dict`.
-
-**File da toccare:**
-- `forge/core/topology/graph.py` — aggiungere dataclass `Graph`, aggiornare `build_node_graph()`
-- `forge/core/topology/loops.py` — aggiornare `find_closed_loops()`, `_prune_dead_ends()`, `check_loop_ambiguity()`
-- `forge/pipeline/heal.py` — `_build_graph()` restituisce `Graph`
-- `forge/adapters/dxf/gap_adapter.py` — `extract_free_endpoints()` riceve `Graph`
-
-**Test da scrivere prima di toccare codice:**
-```python
-def test_graph_degree():
-    # 3 edge a triangolo → ogni nodo ha degree 2
-def test_graph_branching_nodes():
-    # nodo con 3 connessioni → appare in branching_nodes()
-def test_graph_pruned_removes_dead_ends():
-    # catena aperta → nodi degree-1 rimossi
-```
-
----
-
-### Step 2 — `BendingDetector` come classe indipendente
-
-**Obiettivo:** estrarre `_find_bending_candidates()` da `HealStep`.
-
-**Interfaccia target:**
-```python
-class BendingDetector:
-    def detect(self, graph: Graph, edges: list[Edge]) -> set[int]:
-        ...
-```
-
-**File da toccare:**
-- nuovo `forge/core/healing/bending_detector.py`
-- `forge/pipeline/heal.py` — `_find_bending_candidates()` diventa `BendingDetector().detect()`
-
-**Test da scrivere prima:**
-```python
-def test_bending_detector_trova_linea_interna():
-    # grafo con linea che connette due nodi branching interni
-    # → id della linea in output
-def test_bending_detector_ignora_linea_sul_bordo():
-    # linea sul convex hull → non è bending
-```
-
----
-
-### Step 3 — `LoopFinder` come classe indipendente
-
-**Obiettivo:** `find_closed_loops()` + `_deduplicate_loops()` diventano `LoopFinder`.
-
-**Interfaccia target:**
-```python
-class LoopFinder:
-    def find(self, graph: Graph, exclude_ids: set[int] = None) -> list[Loop]:
-        ...
-```
-
-**File da toccare:**
-- `forge/core/topology/loops.py` — wrappare in classe
-- `forge/pipeline/heal.py` — `_find_loops()` usa `LoopFinder`
-
-**Test da scrivere prima:**
-```python
-def test_loop_finder_triangolo():
-    # 3 edge triangolo → 1 loop
-def test_loop_finder_esclude_bending():
-    # triangolo + linea bending → esclude la linea, trova 1 loop
-def test_loop_finder_deduplica():
-    # stesso loop trovato da due nodi di partenza → 1 solo risultato
-```
-
----
-
-### Step 4 — `HierarchyBuilder` come classe indipendente
-
-**Obiettivo:** `_build_hierarchy()` e `_build_trash()` diventano `HierarchyBuilder`.
-
-**Interfaccia target:**
-```python
-class HierarchyBuilder:
-    def build(self, proxies: list[ClosedShape]) -> tuple[list[ForgePart], list[ClosedShape]]:
-        # restituisce (parts, trash)
-        ...
-```
-
-**File da toccare:**
-- `forge/core/healing/hierarchy.py` — wrappare in classe, eliminare monkey-patch su HealStep
-- `forge/pipeline/heal.py` — `_build_hierarchy()` + `_build_trash()` usano `HierarchyBuilder`
-
-**Test da scrivere prima:**
-```python
-def test_hierarchy_outer_con_hole():
-    # proxy outer + proxy piccolo interno → 1 part con 1 hole
-def test_hierarchy_countersink():
-    # proxy outer + proxy medio + proxy piccolo annidato → outer + countersink
-def test_hierarchy_trash():
-    # proxy con role UNKNOWN non in loop → finisce in trash
-```
-
----
-
 ### Step 5 — `ForgePipeline` come orchestratore esplicito
 
 **Obiettivo:** `HealStep.run()` diventa `ForgePipeline.heal()` che chiama gli stadi in sequenza.
@@ -260,6 +122,51 @@ session.save_dxf("part_healed.dxf")
 1. Incollalo all'inizio della sessione
 2. Dimmi quale step vuoi fare
 3. Partiamo dalle interfacce / test, poi spostiamo il codice
+
+
+---
+
+## Refactoring - candidati da ridurre
+
+Obiettivo: togliere i doppioni di concetto, non aggiungere nuovi wrapper.
+
+### Decisione presa
+
+- `ClosedShape` resta il nome canonico.
+- `ForgeContour` si elimina.
+
+### Keep
+
+| Nome | Perche tenerlo |
+|------|----------------|
+| `Hole` | Ha semantica di dominio reale e viene usato in detect, write e model. |
+| `ClassifiedEntity` | E' il payload di detection verso inject/write. |
+| `ForgeResult` | E' il contenitore di sessione della pipeline. |
+| `ForgePart` | Rappresenta l'unita finale del dominio. |
+
+### Merge o semplifica
+
+| Nome | Problema | Direzione consigliata |
+|------|----------|-----------------------|
+| `ClosedShape` | Si sovrappone a `ForgeContour` come proxy di contorno chiuso. | Unificare su un solo concetto di contorno chiuso, con un eventuale adapter/proxy temporaneo. |
+| `OpenShape` | E' un proxy di traccia aperta gia ricostruibile da `Edge`. | Tenerlo solo se serve come boundary di pipeline; altrimenti sostituirlo con una vista derivata da `Edge`. |
+| `LineSeg` / `ArcSeg` / `SplineSeg` / `DiscretizedArcSeg` | Sono DTO quasi equivalenti, con logica distribuita in adapter e builder. | Unificare in primitive piu generiche o in un singolo registry di handler. |
+| `CircularArcSeg` | Serve, ma e un caso speciale molto vicino a `ArcSeg`. | Valutare se assorbirlo in `ArcSeg` o tenerlo solo dove l'hole detector lo richiede davvero. |
+
+### Candidati a rimozione solo dopo consolidamento
+
+| Nome | Perche ora sembra superfluo | Cosa deve succedere prima |
+|------|-----------------------------|---------------------------|
+| `ForgeContour` | Duplica il ruolo di `ClosedShape` e sembra un secondo contenitore di contorni. | Decidere un solo modello canonico per contorni chiusi. |
+| `DiscretizedArcSeg` | Rappresenta una forma gia approssimata che potrebbe stare direttamente in una lista di punti. | Introdurre un tipo piu esplicito per le tracce campionate, oppure eliminarne l'uso nel virtual adapter. |
+| `to_open()` in `ForgeAdapter` | Il core ha gia `edges_to_open_shapes()`. | Spostare del tutto la responsabilita di costruzione open nel core. |
+
+### Ordine pratico
+
+1. Unificare `ClosedShape` e `ForgeContour`.
+2. Togliere `to_open()` come sorgente primaria.
+3. Ridurre le primitive a un set minimo e portare il resto nei handler.
+4. Solo dopo, ripulire i wrapper rimasti in `model/`.
 
 
 

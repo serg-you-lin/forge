@@ -28,9 +28,6 @@ from forge.rules.palette import COLOR_OUTER, COLOR_INNER, COLOR_HOLE
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
 
-# def load(name):
-#     return ezdxf.readfile(str(EXAMPLES_DIR / name))
-
 def load(name):
     return EXAMPLES_DIR / name
 
