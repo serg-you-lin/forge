@@ -24,7 +24,7 @@ project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from forge.core.topology.graph import Graph, build_node_graph
-from forge.core.topology.loop_finder import LoopFinder, classify_loops
+from forge.core.topology.loop_finder import LoopFinder
 from forge.model.edge import Edge
 
 
@@ -310,71 +310,11 @@ class TestLoopWithArcs(unittest.TestCase):
                             f"Loop {i+1} non è CCW (area={poly.area:.1f})")
 
 
-# ---------------------------------------------------------------------------
-# Test: classify_loops – outer/inner
-# ---------------------------------------------------------------------------
-
-class TestClassifyLoopsInnerOuter(unittest.TestCase):
-    def setUp(self):
-        edges = _make_rect_with_inner_edges()
-        graph = build_node_graph(edges)
-        loops = LoopFinder().find(graph)
-        self.outer, self.inner = classify_loops(loops)
-
-    def test_finds_two_loops(self):
-        self.assertEqual(len(self.outer) + len(self.inner), 2)
-
-    def test_one_outer(self):
-        self.assertEqual(len(self.outer), 1)
-
-    def test_one_inner(self):
-        self.assertEqual(len(self.inner), 1)
-
-    def test_outer_area_larger(self):
-        outer_poly = _loop_to_polygon(self.outer[0])
-        inner_poly  = _loop_to_polygon(self.inner[0])
-        self.assertGreater(outer_poly.area, inner_poly.area)
-
-    def test_outer_contains_inner(self):
-        outer_poly = _loop_to_polygon(self.outer[0])
-        inner_poly  = _loop_to_polygon(self.inner[0])
-        self.assertTrue(outer_poly.contains(inner_poly))
-
-
-class TestClassifyLoopsSeparate(unittest.TestCase):
-    def setUp(self):
-        edges = _make_separate_rects_edges()
-        graph = build_node_graph(edges)
-        loops = LoopFinder().find(graph)
-        self.outer, self.inner = classify_loops(loops)
-
-    def test_two_outer(self):
-        self.assertEqual(len(self.outer), 2)
-
-    def test_no_inner(self):
-        self.assertEqual(len(self.inner), 0)
 
 
 # ---------------------------------------------------------------------------
 # Test: dead‑end pruning
 # ---------------------------------------------------------------------------
-
-class TestStubInLoop(unittest.TestCase):
-    def setUp(self):
-        edges = _make_stub_in_loop_edges()
-        graph = build_node_graph(edges)
-        loops = LoopFinder().find(graph)
-        self.outer, self.inner = classify_loops(loops)
-
-    def test_one_outer(self):
-        self.assertEqual(len(self.outer), 1)
-
-    def test_no_inner(self):
-        self.assertEqual(len(self.inner), 0)
-
-    def test_outer_area_correct(self):
-        poly = _loop_to_polygon(self.outer[0])
-        self.assertAlmostEqual(poly.area, 100 * 50, delta=2.0)
 
 
 # ---------------------------------------------------------------------------
@@ -390,8 +330,7 @@ class TestSplitArcStubs(unittest.TestCase):
     def setUp(self):
         edges = _make_rect_with_split_arcs_and_stubs()
         graph = build_node_graph(edges)
-        loops = LoopFinder().find(graph)
-        self.outer, self.inner = classify_loops(loops)
+        self.loops = LoopFinder().find(graph)
 
     @unittest.expectedFailure
     def test_un_solo_loop(self):
@@ -401,9 +340,9 @@ class TestSplitArcStubs(unittest.TestCase):
     @unittest.expectedFailure
     def test_area_corretta(self):
         """BUG: se il loop viene trovato, l'area deve essere quella del rettangolo."""
-        if not self.outer:
-            self.fail("Nessun outer loop trovato")
-        poly = _loop_to_polygon(self.outer[0])
+        if not self.loops:
+            self.fail("Nessun loop trovato")
+        poly = _loop_to_polygon(self.loops[0])
         self.assertAlmostEqual(poly.area, 1000.0 * 500.0, delta=100.0)
 
 
