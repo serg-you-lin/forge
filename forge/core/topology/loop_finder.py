@@ -22,6 +22,10 @@ class LoopFinder:
         """
         Restituisce tutti i loop chiusi.
 
+        Scopo del metodo: individuare la struttura topologica del modello,
+        non classificare geometria o containment. La gerarchia spaziale
+        (outer/inner/nesting) appartiene a HierarchyBuilder, non a LoopFinder.
+
         Percorsi:
           graph.degenerate_loops  → aggiunti direttamente come loop da 1 edge
           graph.nodes             → walking topologico standard
@@ -190,72 +194,6 @@ class LoopFinder:
             if key not in seen:
                 seen[key] = loop
         return list(seen.values())
-
-
-# ---------------------------------------------------------------------------
-# Funzioni di utilità: classificazione e controllo ambiguità
-# ---------------------------------------------------------------------------
-
-def classify_loops(loops: list) -> tuple:
-    shapely_polygons = []
-    for loop in loops:
-        pts = LoopFinder._loop_to_points(loop)
-        if len(pts) >= 3:
-            try:
-                from shapely.geometry import Polygon
-                poly = Polygon(pts)
-                if not poly.is_valid:
-                    poly = poly.buffer(0)
-                shapely_polygons.append(poly)
-            except Exception:
-                shapely_polygons.append(None)
-        else:
-            # loop degenere — costruiamo il polygon dalla geometry dell'edge
-            edge = loop[0][0]
-            try:
-                from shapely.geometry import Polygon
-                if edge.geometry is not None:
-                    coords = list(edge.geometry.coords)
-                    poly = Polygon(coords)
-                    if not poly.is_valid:
-                        poly = poly.buffer(0)
-                    shapely_polygons.append(poly if not poly.is_empty else None)
-                else:
-                    shapely_polygons.append(None)
-            except Exception:
-                shapely_polygons.append(None)
-
-    outer, inners = [], []
-    for i, (loop, poly) in enumerate(zip(loops, shapely_polygons)):
-        if poly is None or not poly.is_valid:
-            outer.append(loop)
-            continue
-        is_inner = any(
-            j != i
-            and shapely_polygons[j] is not None
-            and shapely_polygons[j].is_valid
-            and shapely_polygons[j].contains(poly)
-            for j in range(len(shapely_polygons))
-        )
-        if is_inner:
-            inners.append(loop)
-        else:
-            outer.append(loop)
-
-    return outer, inners
-
-
-def check_loop_ambiguity(loops: list, graph: 'Graph') -> list:
-    loop_edge_ids = {id(edge) for loop in loops for edge, _ in loop}
-    branching = []
-    for node, connections in graph.nodes.items():
-        loop_connections = [
-            (edge, n) for (edge, n) in connections
-            if id(edge) in loop_edge_ids
-        ]
-        if len(loop_connections) > 2:
-            branching.append(node)
-    return branching
 
 
 # ---------------------------------------------------------------------------
