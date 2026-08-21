@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 from forge.core.primitives import LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg
 from forge.model import Edge
 from forge.adapters.dxf.virtual_adapter import (
-    parse_loop, _loop_to_contour, DxfWriteContext,
+    DxfEntityDispatcher, parse_loop, _loop_to_contour, DxfWriteContext,
 )
 
 
@@ -63,6 +63,24 @@ def make_square_loop(side=100.0):
         (make_edge(make_line(s, s, 0, s)), False),
         (make_edge(make_line(0, s, 0, 0)), False),
     ]
+
+
+# ---------------------------------------------------------------------------
+# DxfEntityDispatcher — dispatch centralizzato per tipo entità DXF
+# ---------------------------------------------------------------------------
+
+class TestDxfEntityDispatcher(unittest.TestCase):
+
+    def test_001_dispatches_known_types(self):
+        self.assertEqual(DxfEntityDispatcher(make_line(0, 0, 10, 0)).kind, 'LINE')
+        self.assertEqual(DxfEntityDispatcher(make_arc(0, 0, 10, 0, 180)).kind, 'ARC')
+        self.assertEqual(DxfEntityDispatcher(make_spline_entity([(0, 0), (10, 10), (20, 0)])).kind, 'SPLINE')
+
+    def test_002_dispatch_to_parse_line(self):
+        parsed = DxfEntityDispatcher(make_line(0, 0, 10, 0)).parse(rev=False)
+        self.assertIsInstance(parsed, LineSeg)
+        self.assertEqual(parsed.start, (0.0, 0.0))
+        self.assertEqual(parsed.end, (10.0, 0.0))
 
 
 # ---------------------------------------------------------------------------

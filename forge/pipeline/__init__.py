@@ -30,7 +30,7 @@ def split_to_files(msp, output_folder, label="", source_file="",
     if not result.is_valid or not result.parts:
         return result
 
-    detect(result, msp)
+    detect(result)
     split(msp, result, output_folder=output_folder, namer=namer,
           keep_trash=keep_trash, include_annotations=include_annotations,
           min_area=min_area)

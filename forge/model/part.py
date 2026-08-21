@@ -28,17 +28,23 @@ class ForgeContour:
     area:       float        = field(init=False)
     bbox:       Tuple[float, float, float, float] = field(init=False)
     vs_id:      Optional[int] = None
+    origin:     str          = ""
 
     def __post_init__(self):
         self.area = self.polygon.area
         self.bbox = self.polygon.bounds
 
     def source_layer(self) -> str:
-        """Restituisce il layer DXF della sorgente, se disponibile."""
+        """Restituisce il layer DXF della sorgente, se disponibile.
+
+        Per contorni virtuali (loop di più entità fuse), source_ref è
+        None per costruzione — self.origin porta il layer catturato da
+        heal() prima che il riferimento venisse azzerato.
+        """
         try:
             return self.source_ref.dxf.layer
         except Exception:
-            return ""
+            return self.origin
 
     def to_dict(self) -> dict:
         """Per golden file / debug — non per logica di business."""

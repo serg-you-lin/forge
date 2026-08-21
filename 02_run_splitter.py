@@ -75,7 +75,6 @@ print(f"\n--- SPLIT → {output_dir} ---")
 result = forge.split_to_files(
     msp,
     output_folder=output_dir,
-    explode_inserts=True,
     label=label,
     source_file=input_dxf,
     include_annotations=True,

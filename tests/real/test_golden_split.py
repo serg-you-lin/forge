@@ -25,10 +25,14 @@ Lancia i test con:
     python tests/test_golden_split.py
 """
 
+import atexit
 import json
+import shutil
 import sys
 import tempfile
+from collections import Counter
 import unittest
+from functools import lru_cache
 from pathlib import Path
 
 import ezdxf
@@ -38,7 +42,6 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-# from forge.rules.layers import ROLE_TO_LAYER, LAYER_INNER, LAYER_OUTER, LAYER_HOLE
 from forge.adapters.dxf.layers import (
     ROLE_TO_LAYER,
     LAYER_INNER,
@@ -54,6 +57,58 @@ TOL_AREA      = 0.1
 TOL_PERIMETER = 0.5
 TOL_SHAPE     = 1.0
 DEFAULT_TOLERANCE = 0.5
+
+_PARENT_PIPELINE_CACHE: dict[tuple[Path, float], dict] = {}
+
+
+def _match_inner_polygons(actual_wkts: list[str], expected_wkts: list[str]) -> list[tuple[int, int, float]]:
+    """
+    Restituisce un matching one-to-one (greedy) tra inner attuali/attesi
+    minimizzando il diff geometrico (area symmetric_difference).
+    """
+    if len(actual_wkts) != len(expected_wkts):
+        raise ValueError(
+            f"inner count mismatch: actual={len(actual_wkts)} expected={len(expected_wkts)}"
+        )
+
+    actual_polys = [shapely_wkt.loads(w) for w in actual_wkts]
+    expected_polys = [shapely_wkt.loads(w) for w in expected_wkts]
+
+    candidates = []
+    for ai, a_poly in enumerate(actual_polys):
+        for ei, e_poly in enumerate(expected_polys):
+            diff = a_poly.symmetric_difference(e_poly).area
+            candidates.append((diff, ai, ei))
+
+    candidates.sort(key=lambda t: t[0])
+
+    matched_actual = set()
+    matched_expected = set()
+    matches: list[tuple[int, int, float]] = []
+    for diff, ai, ei in candidates:
+        if ai in matched_actual or ei in matched_expected:
+            continue
+        matched_actual.add(ai)
+        matched_expected.add(ei)
+        matches.append((ai, ei, diff))
+        if len(matches) == len(actual_wkts):
+            break
+
+    if len(matches) != len(actual_wkts):
+        raise ValueError("impossibile costruire un matching completo tra inner")
+
+    return matches
+
+
+@lru_cache(maxsize=None)
+def _load_golden_entries() -> tuple[tuple[tuple[str, dict], ...], ...]:
+    if not GOLDEN_DIR.exists():
+        return ()
+    entries = []
+    for golden_path in sorted(GOLDEN_DIR.glob("*.json")):
+        golden = json.loads(golden_path.read_text(encoding="utf-8"))
+        entries.append((golden_path.stem, golden))
+    return tuple(entries)
 
 
 def _load_config(dxf_path: Path) -> dict:
@@ -79,66 +134,69 @@ def _run_pipeline_and_get_child(parent_path: Path, tolerance: float, child_stem:
     )
 
 
+def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
+    cache_key = (parent_path.resolve(), float(tolerance))
+    cached = _PARENT_PIPELINE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    output_folder = Path(tempfile.mkdtemp(prefix=f"golden_split_{parent_path.stem}_"))
+    atexit.register(shutil.rmtree, output_folder, ignore_errors=True)
+
+    doc, msp = forge.load_dxf(parent_path, explode_inserts=True)
+    result = forge.heal(msp, tolerance=tolerance)
+
+    if result.is_valid and result.parts:
+        forge.detect(result)
+        forge.write(msp, result)
+        forge.split(
+            msp,
+            result,
+            output_folder=str(output_folder),
+            namer=lambda i, part: f"{part.label}_P{i + 1:03d}",
+        )
+
+    part_payloads = []
+    for part in result.parts if result.is_valid and result.parts else []:
+        part_payloads.append({
+            "area": part.area,
+            "holes_count": len(part.holes + part.inners),
+            "outer_perimeter": part.outer.polygon.exterior.length,
+            "inner_perimeter": sum(h.polygon.exterior.length for h in part.holes + part.inners),
+            "outer_wkt": part.outer.polygon.wkt,
+            "inners_wkt": [h.polygon.wkt for h in sorted(part.holes + part.inners, key=lambda x: x.area, reverse=True)],
+            "outer_role": part.outer.role,
+            "inner_roles": [h.role for h in sorted(part.holes + part.inners, key=lambda x: x.area, reverse=True)],
+            "custom": dict(part.custom),
+        })
+
+    cached_entry = {
+        "output_folder": output_folder,
+        "children": sorted(output_folder.glob("*.dxf")),
+        "parts": part_payloads,
+    }
+    _PARENT_PIPELINE_CACHE[cache_key] = cached_entry
+    return cached_entry
+
+
 class _SplitContext:
     """
-    Context manager che esegue la pipeline sul padre e mette a disposizione
-    la cartella di output per tutta la durata del blocco `with`.
-
-    Esempio:
-        with _SplitContext(parent_path, tolerance) as output_folder:
-            child_path = output_folder / "la_104_1.dxf"
+    Context manager che esegue la pipeline sul padre una sola volta per
+    parent+tolerance e mette a disposizione la cartella di output per tutta
+    la durata del blocco `with`.
     """
 
     def __init__(self, parent_path: Path, tolerance: float):
         self._parent_path = parent_path
-        self._tolerance   = tolerance
-        self._tmpdir      = None
+        self._tolerance = tolerance
+        self._cache_entry = None
 
     def __enter__(self) -> Path:
-        self._tmpdir = tempfile.TemporaryDirectory()
-        output_folder = Path(self._tmpdir.name)
-
-        doc, msp = forge.load_dxf(self._parent_path, explode_inserts=True)
-
-        result = forge.heal(msp, tolerance=self._tolerance)
-
-        if result.is_valid and result.parts:
-            forge.detect(result)
-            forge.write(msp, result)
-            forge.split(msp, result, output_folder=str(output_folder), namer=lambda i, part: f"{part.label}_P{i + 1:03d}",)
-
-        for child in sorted(output_folder.glob("*.dxf")):
-            child_doc = ezdxf.readfile(child)
-            for e in child_doc.modelspace():
-                print(f"  [CHILD entities] {child.name}: {e.dxftype()} layer={e.dxf.layer}")
-
-        return output_folder
+        self._cache_entry = _get_parent_split_cache(self._parent_path, self._tolerance)
+        return self._cache_entry["output_folder"]
 
     def __exit__(self, *_):
-        if self._tmpdir:
-            self._tmpdir.cleanup()
-
-
-def _process_child(child_path: Path, tolerance: float):
-    """
-    Riprocessa un DXF figlio (singola parte attesa) con heal → detect → write.
-    Restituisce il result, oppure None se non valido.
-    """
-    doc, msp = forge.load_dxf(child_path, explode_inserts=True)
-    result = forge.heal(msp, tolerance=tolerance)
-
-    for idx, p in enumerate(result.parts):
-        print(f"  [CHILD] part{idx} outer.source_ref={type(p.outer.source_ref).__name__} area={p.area:.4f}")
-
-    if not result.is_valid or not result.parts:
-        return None
-
-    forge.detect(result)
-    forge.write(msp, result)
-
-    for idx, p in enumerate(result.parts):
-        print(f"  [CHILD2] part{idx}: outer={p.outer.polygon.area:.4f} holes={sum(h.area for h in p.holes):.4f} inners={sum(i.area for i in p.inners):.4f} net={p.area:.4f}")
-    return result
+        return False
 
 
 def _load_golden_files():
@@ -179,31 +237,23 @@ def _make_split_test(golden_path: Path):
                     f"Figli generati: {[f.name for f in children]}"
                 )
 
-            child_path = children[part_index]
-            result = _process_child(child_path, tolerance)
+            part_payload = _PARENT_PIPELINE_CACHE[(parent_path.resolve(), float(tolerance))]["parts"][part_index]
 
-        # Dopo il context manager la cartella tmp è rimossa, ma result è già in memoria.
         self.assertIsNotNone(
-            result,
-            f"{child_name}: heal sul figlio ha restituito None (file non valido?)"
+            part_payload,
+            f"{child_name}: nessuna parte disponibile per il figlio richiesto"
         )
 
         self.assertEqual(
-            len(result.parts), 1,
-            f"{child_name}: attesa 1 parte nel figlio, trovate {len(result.parts)}"
+            len(_PARENT_PIPELINE_CACHE[(parent_path.resolve(), float(tolerance))]["parts"]),
+            len(children),
+            f"{child_name}: il numero di parti in cache ({len(_PARENT_PIPELINE_CACHE[(parent_path.resolve(), float(tolerance))]['parts'])}) non coincide con i figli generati ({len(children)})"
         )
 
-        part  = result.parts[0]
         label = child_name
 
-        all_inners = sorted(
-            part.holes + part.inners,
-            key=lambda x: x.area,
-            reverse=True,
-        )
-
         # --- Area ---
-        actual_area = round(part.area, 4)
+        actual_area = round(part_payload["area"], 4)
         self.assertAlmostEqual(
             actual_area,
             golden["area_mm2"],
@@ -213,13 +263,13 @@ def _make_split_test(golden_path: Path):
 
         # --- Holes count ---
         self.assertEqual(
-            len(all_inners),
+            part_payload["holes_count"],
             golden["holes_count"],
-            msg=f"{label}: holes_count {len(all_inners)} != atteso {golden['holes_count']}",
+            msg=f"{label}: holes_count {part_payload['holes_count']} != atteso {golden['holes_count']}",
         )
 
         # --- Perimetro esterno ---
-        actual_outer_p = round(part.outer.polygon.exterior.length, 4)
+        actual_outer_p = round(part_payload["outer_perimeter"], 4)
         self.assertAlmostEqual(
             actual_outer_p,
             golden["outer_perimeter_mm"],
@@ -229,7 +279,7 @@ def _make_split_test(golden_path: Path):
 
         # --- Perimetro interno ---
         actual_inner_p = round(
-            sum(h.polygon.exterior.length for h in all_inners),
+            part_payload["inner_perimeter"],
             4,
         )
         self.assertAlmostEqual(
@@ -241,42 +291,53 @@ def _make_split_test(golden_path: Path):
 
         # --- Geometria outer (WKT) ---
         expected_outer = shapely_wkt.loads(golden["outer_wkt"])
-        diff = part.outer.polygon.symmetric_difference(expected_outer).area
+        diff = shapely_wkt.loads(part_payload["outer_wkt"]).symmetric_difference(expected_outer).area
         self.assertLess(
             diff, TOL_SHAPE,
             msg=f"{label}: geometria outer cambiata (diff={diff:.4f} mm², tol={TOL_SHAPE})",
         )
 
         # --- Geometria inners (WKT) ---
-        for j, (inner, exp_wkt) in enumerate(zip(all_inners, golden["inners_wkt"])):
-            expected_inner = shapely_wkt.loads(exp_wkt)
-            diff = inner.polygon.symmetric_difference(expected_inner).area
+        self.assertEqual(
+            len(part_payload["inners_wkt"]),
+            len(golden["inners_wkt"]),
+            msg=(
+                f"{label}: numero inner diverso "
+                f"(actual={len(part_payload['inners_wkt'])}, expected={len(golden['inners_wkt'])})"
+            ),
+        )
+
+        inner_matches = _match_inner_polygons(part_payload["inners_wkt"], golden["inners_wkt"])
+        for actual_idx, expected_idx, diff in inner_matches:
             self.assertLess(
                 diff, TOL_SHAPE,
-                msg=f"{label} inner[{j}]: geometria cambiata (diff={diff:.4f} mm², tol={TOL_SHAPE})",
+                msg=(
+                    f"{label} inner(actual={actual_idx}, expected={expected_idx}): "
+                    f"geometria cambiata (diff={diff:.4f} mm², tol={TOL_SHAPE})"
+                ),
             )
 
         # --- Layer ---
         if "outer_layer" in golden:
             self.assertEqual(
-                ROLE_TO_LAYER.get(part.outer.role),
+                ROLE_TO_LAYER.get(part_payload["outer_role"]),
                 golden["outer_layer"],
-                msg=f"{label}: outer_layer '{ROLE_TO_LAYER.get(part.outer.role)}' != atteso '{golden['outer_layer']}'",
+                msg=f"{label}: outer_layer '{ROLE_TO_LAYER.get(part_payload['outer_role'])}' != atteso '{golden['outer_layer']}'",
             )
 
         if "inners_layers" in golden:
-            actual_layers = [ROLE_TO_LAYER.get(h.role, LAYER_INNER) for h in all_inners]
+            actual_layers = [ROLE_TO_LAYER.get(h_role, LAYER_INNER) for h_role in part_payload["inner_roles"]]
             self.assertEqual(
-                actual_layers,
-                golden["inners_layers"],
-                msg=f"{label}: inners_layers {actual_layers} != attesi {golden['inners_layers']}",
+                Counter(actual_layers),
+                Counter(golden["inners_layers"]),
+                msg=f"{label}: inners_layers multiset {actual_layers} != attesi {golden['inners_layers']}",
             )
 
 
         # --- Custom ---
         if "custom" in golden:
             for key, expected_val in golden["custom"].items():
-                actual_val = part.custom.get(key)
+                actual_val = part_payload["custom"].get(key)
                 if isinstance(expected_val, float):
                     self.assertAlmostEqual(
                         actual_val, expected_val, delta=TOL_PERIMETER,

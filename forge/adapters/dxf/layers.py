@@ -51,12 +51,15 @@ ALL_FORGE_LAYERS: dict[str, int] = {
 # Usato da write.py e hierarchy.py per assegnare layer alle entità in output.
 # ---------------------------------------------------------------------------
 ROLE_TO_LAYER: dict[ContourRole, str] = {
-    ContourRole.OUTER:  LAYER_OUTER,
-    ContourRole.INNER:  LAYER_INNER,
-    ContourRole.HOLE:   LAYER_HOLE,
-    ContourRole.BEND:   LAYER_BENDING,
-    ContourRole.FRAME:  LAYER_OUTER,
-    ContourRole.ENGRAVE:  LAYER_ENGRAVE,
+    ContourRole.OUTER:        LAYER_OUTER,
+    ContourRole.INNER:        LAYER_INNER,
+    ContourRole.HOLE:         LAYER_HOLE,
+    ContourRole.COUNTERSINK:  LAYER_COUNTERSINK,
+    ContourRole.THREADED_HOLE: LAYER_THREADED_HOLE,
+    ContourRole.BEND:         LAYER_BENDING,
+    ContourRole.FRAME:        LAYER_OUTER,
+    ContourRole.ENGRAVE:      LAYER_ENGRAVE,
+    ContourRole.MARKING:      LAYER_MARKING,
 }
 
 # ---------------------------------------------------------------------------

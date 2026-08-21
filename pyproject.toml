@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dxf-forge"
-version = "0.3.0"
+version = "0.4.0"
 description = "DXF geometry preprocessing for manufacturing pipelines"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,3 +34,6 @@ all    = ["dxf-forge[raster,pdf]"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["forge*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
