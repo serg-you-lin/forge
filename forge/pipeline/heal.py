@@ -209,9 +209,9 @@ class HealStep:
             if ctx.loop:
                 first_edge, _ = ctx.loop[0]
                 first_source = getattr(first_edge, "source_ref", None)
-                if len(ctx.loop) == 1 and first_source is not None:
-                    dtype = getattr(first_source, "dxftype", lambda: None)()
-                    is_durable = dtype not in ("LINE", "ARC")
+                # In core, the durability of a loop should depend on its geometry,
+                # not on a DXF-specific type check.
+                is_durable = len(ctx.loop) == 1 and first_source is not None
 
             proxy_source_ref = first_source if is_durable else ctx
             shape = loop_to_closed_shape(

@@ -12,26 +12,26 @@ Uso:
 import sys
 import os
 import ezdxf
-from forge.dxf_inspect import DxfInspector
+#  from forge.dxf_inspect import DxfInspector
 from collections import Counter
 import forge
 import math
 
 
-DEFAULT_FILE = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\img\leaf.dxf"
+DEFAULT_FILE = r"tests/examples/quadro_fori_spline.DXF"
 
-# ← CONFIGURA COSA VUOI VEDERE
-inspector = DxfInspector(
-    summary   = False,
-    lines     = True,
-    arcs      = True,
-    polylines = True,
-    circles   = True,
-    splines   = True,
-    graph     = True,
-    dimensions = False,
-    text      = False,
-)
+# # ← CONFIGURA COSA VUOI VEDERE
+# inspector = DxfInspector(
+#     summary   = False,
+#     lines     = True,
+#     arcs      = True,
+#     polylines = True,
+#     circles   = True,
+#     splines   = True,
+#     graph     = True,
+#     dimensions = False,
+#     text      = False,
+# )
 
 def debug_point_on_arc(msp, tolerance=2.0):
     all_lines = list(msp.query("LINE"))
@@ -130,7 +130,7 @@ def analyze_dxf(input_file: str):
     #         for ent, nbr in neighbors:
     #             print(f"    → {ent.dxftype()} layer={ent.dxf.layer}")
 
-    inspector.analyze(msp, title=input_file, doc=doc)
+    # inspector.analyze(msp, title=input_file, doc=doc)
     # debug_point_on_arc(msp, tolerance=2.0)
     # for e in msp:
     #   print(e.dxftype())
