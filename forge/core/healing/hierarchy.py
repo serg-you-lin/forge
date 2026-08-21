@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+import math
 from shapely.geometry import Polygon
 
 from ...model.shape import ClosedShape, OpenShape
@@ -14,6 +15,27 @@ from ...rules.thresholds import HOLE_DIAMETER_THRESHOLD
 # ---------------------------------------------------------------------------
 # Conversione loop → ClosedShape
 # ---------------------------------------------------------------------------
+
+
+def _single_loop_geometry(loop, poly):
+    """Estrae diametro e centro da un loop degenerato."""
+    if len(loop) != 1:
+        return None, None
+    if poly is None or poly.is_empty:
+        return None, None
+
+    minx, miny, maxx, maxy = poly.bounds
+    width = maxx - minx
+    height = maxy - miny
+    if width <= 0 or height <= 0:
+        return None, None
+
+    # Verifica che sia circolare
+    if abs(width - height) / max(width, height) > 0.15:
+        return None, None
+
+    return min(width, height), ((minx + maxx) / 2, (miny + maxy) / 2)
+
 
 def loop_to_closed_shape(
     loop,
@@ -49,13 +71,10 @@ def loop_to_closed_shape(
         first_ref = loop[0][0].source_ref if loop else None
         resolved_source_ref = source_ref if source_ref is not None else first_ref
 
-        is_circle = len(loop) == 1 and first_ref is not None and getattr(first_ref, "dxftype", lambda: None)() == "CIRCLE"
         diameter = None
         center = None
-        if is_circle:
-            minx, miny, maxx, maxy = poly.bounds
-            diameter = min(maxx - minx, maxy - miny)
-            center = ((minx + maxx) / 2, (miny + maxy) / 2)
+        if len(loop) == 1:
+            diameter, center = _single_loop_geometry(loop, poly)
 
         return ClosedShape(
             polygon=poly,

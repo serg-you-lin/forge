@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/PROFILE_PART.dxf"
+input_dxf = r"tests/examples/quadro_fori_spline.DXF"
 
 tolerance = .2
 
