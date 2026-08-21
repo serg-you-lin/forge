@@ -18,7 +18,7 @@ from collections import Counter
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\ProTest\intricato_doppio.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\7074_U150_30X2.nc_N°1 pz.nc.dxf"
 
 # ---------------------------------------------------------------------------
 
@@ -75,7 +75,6 @@ print(f"\n--- SPLIT → {output_dir} ---")
 result = forge.split_to_files(
     msp,
     output_folder=output_dir,
-    explode_inserts=True,
     label=label,
     source_file=input_dxf,
     include_annotations=True,

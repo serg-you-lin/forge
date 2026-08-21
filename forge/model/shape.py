@@ -35,8 +35,6 @@ class ClosedShape:
         diameter   : diametro in unità documento — solo per cerchi, None altrimenti
         center     : centro (x, y) — solo per cerchi, None altrimenti
         is_virtual : True se generata dal core (non da un'entità sorgente)
-        origin     : DEPRECATO — layer/classe di origine, usato solo dall'adapter
-                     per traceability/debug via source_ref; detect.py non lo legge
     """
     polygon:    Polygon
     source_ref: Any
@@ -60,7 +58,6 @@ class OpenShape:
         role       : ruolo semantico — impostato dall'adapter prima del core
         source_ref : oggetto originale — serve per traceability e writeback
         shape_type : categoria geometrica — "line" | "arc" | "polyline" | …
-        origin     : DEPRECATO — layer/classe di origine; detect.py non lo legge
     """
     pts:        List[Tuple[float, float]]
     length:     float

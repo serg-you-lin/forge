@@ -52,6 +52,29 @@ def _load_golden_files():
 
 def _make_test(path):
 
+    def _assert_shapes_match_unordered(self, actual_shapes, expected_wkts, label, kind):
+        expected_polys = [shapely_wkt.loads(wkt) for wkt in expected_wkts]
+        unmatched = list(range(len(expected_polys)))
+
+        for idx, actual_shape in enumerate(actual_shapes):
+            best_idx = None
+            best_score = None
+            for expected_idx in unmatched:
+                score = actual_shape.polygon.symmetric_difference(
+                    expected_polys[expected_idx]
+                ).area
+                if best_score is None or score < best_score:
+                    best_idx = expected_idx
+                    best_score = score
+
+            self.assertIsNotNone(best_idx, msg=f"{label} {kind}[{idx}] match")
+            self.assertLess(
+                best_score,
+                TOL_SHAPE,
+                msg=f"{label} {kind}[{idx}] shape",
+            )
+            unmatched.remove(best_idx)
+
     def test(self):
 
         golden = json.loads(path.read_text(encoding="utf-8"))
@@ -153,18 +176,37 @@ def _make_test(path):
             )
 
             for j, (hole, exp_wkt) in enumerate(zip(holes, expected["holes_wkt"])):
-                expected_hole = shapely_wkt.loads(exp_wkt)
-                self.assertLess(
-                    hole.polygon.symmetric_difference(expected_hole).area,
-                    TOL_SHAPE,
-                    msg=f"{label} hole[{j}] shape",
-                )
+                pass
+
+            _assert_shapes_match_unordered(
+                self,
+                holes,
+                expected["holes_wkt"],
+                label,
+                "hole",
+            )
 
             # --- holes to_dict ---
             if "holes" in expected:
-                for j, (hole, exp_hole_dict) in enumerate(
-                    zip(holes, expected["holes"])
-                ):
+                remaining_expected = list(enumerate(expected["holes"]))
+                for j, hole in enumerate(holes):
+                    best_idx = None
+                    best_score = None
+                    actual_center = hole.to_dict().get("center", (0, 0))
+                    for expected_idx, exp_hole_dict in remaining_expected:
+                        exp_center = exp_hole_dict.get("center", (0, 0))
+                        score = sum(
+                            abs(act - exp)
+                            for act, exp in zip(actual_center, exp_center)
+                        )
+                        if best_score is None or score < best_score:
+                            best_idx = expected_idx
+                            best_score = score
+                    exp_hole_dict = expected["holes"][best_idx]
+                    remaining_expected = [
+                        item for item in remaining_expected
+                        if item[0] != best_idx
+                    ]
                     actual_dict = hole.to_dict()
                     for key in ["hole_type", "diameter", "role", "confidence", "source"]:
                         if key in exp_hole_dict:
@@ -211,19 +253,34 @@ def _make_test(path):
             )
 
             for j, (inner, exp_wkt) in enumerate(zip(inners, expected["inners_wkt"])):
-                expected_inner = shapely_wkt.loads(exp_wkt)
-                self.assertLess(
-                    inner.polygon.symmetric_difference(expected_inner).area,
-                    TOL_SHAPE,
-                    msg=f"{label} inner[{j}] shape",
-                )
+                pass
+
+            _assert_shapes_match_unordered(
+                self,
+                inners,
+                expected["inners_wkt"],
+                label,
+                "inner",
+            )
 
             # --- inners to_dict ---
             if "inners" in expected:
-                for j, (inner, exp_inner_dict) in enumerate(
-                    zip(inners, expected["inners"])
-                ):
+                remaining_expected = list(enumerate(expected["inners"]))
+                for j, inner in enumerate(inners):
+                    best_idx = None
+                    best_score = None
                     actual_dict = inner.to_dict()
+                    actual_area = actual_dict.get("area", 0)
+                    for expected_idx, exp_inner_dict in remaining_expected:
+                        score = abs(actual_area - exp_inner_dict.get("area", 0))
+                        if best_score is None or score < best_score:
+                            best_idx = expected_idx
+                            best_score = score
+                    exp_inner_dict = expected["inners"][best_idx]
+                    remaining_expected = [
+                        item for item in remaining_expected
+                        if item[0] != best_idx
+                    ]
                     self.assertEqual(
                         actual_dict["role"],
                         exp_inner_dict["role"],

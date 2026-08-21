@@ -48,49 +48,6 @@ core._collect_proxies → riceve List[ShapeProxy], non sa niente di ezdxf
     _build_topology(self, proxies)
 Se ti fa senso, potresti eliminare Contour e fare in modo che _loop_to_contour produca direttamente uno ShapeProxy — salteresti un passaggio. Ma è un refactoring separato.
 
-### Refactoring Adapters
-# core/adapter_base.py  ← agnostico, zero import DXF
-from abc import ABC, abstractmethod
-
-class ForgeAdapter(ABC):
-    
-    @abstractmethod
-    def to_edges(self) -> List[Edge]:
-        """Produce gli archi per il grafo topologico."""
-        ...
-    
-    @abstractmethod
-    def to_proxies(self) -> List[ShapeProxy]:
-        """Produce le forme chiuse pre-esistenti (cerchi, polyline chiuse)."""
-        ...
-    
-    @abstractmethod
-    def origin(self, ref: Any) -> str:
-        """Estrae il layer dall'oggetto originale."""
-        ...
-E DxfAdapter diventa:
-python# adapters/dxf/adapter.py
-class DxfAdapter(ForgeAdapter):
-    def __init__(self, msp, node_decimals, exclude_ids=None, ignore_layers=None):
-        self.msp = msp
-        ...
-    
-    def to_edges(self) -> List[Edge]:
-        # tutto ciò che oggi fa edges_from_msp()
-        ...
-    
-    def to_proxies(self) -> List[ShapeProxy]:
-        # converte circles, plines chiuse, splines chiuse
-        # tutto ciò che oggi _build_hierarchy() fa nella prima sezione
-        ...
-E HealStep diventa:
-pythonclass HealStep:
-    def __init__(self, adapter: ForgeAdapter, tolerance, label="", ...):
-        self.adapter   = adapter
-        self.edges     = adapter.to_edges()      # List[Edge] — zero formato
-        self.proxies   = adapter.to_proxies()    # List[ShapeProxy] — zero formato
-        self.tolerance = tolerance
-        # mai più self.msp, mai più self.all_lines, mai più ezdxf
 
 
 Il pattern if entity.dxftype() == "ARC" sparso in 150 posti è fragile e non scala.
@@ -238,6 +195,18 @@ skeleton() — asse mediano (utile per bend detection avanzato)
 region_decompose() — divide parti complesse in regioni semantiche
 
 
+### Cos'è in poche parole:
+
+Questa libreria è tipo un “riparatore di disegni tecnici”: legge un file DXF, controlla se le linee e le forme sono rotte o confuse, le sistema, trova le parti e gli spazi vuoti, e poi salva un disegno più pulito e ordinato.
+
+In pratica
+Ora: utile per CAD/CAM e automazione industriale.
+Domani: può diventare un sistema di “interpretazione visiva di disegni” se aggiungi:
+classificazione robusta,
+feature detection,
+model di topologia,
+regole di business,
+eventualmente ML/vision.
 
 
 

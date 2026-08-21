@@ -1,5 +1,3 @@
-
-
 """
 adapters/dxf/virtual_adapter.py
 --------------------------------
@@ -25,6 +23,66 @@ from ...core.primitives import LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg
 from ...core.primitives.polygon_builder import build_polygon
 from ...core.geometry import num_segments_for_bulge
 from .geometry_adapter import arc_to_bulge, arc_to_linestrings, spline_to_points
+
+
+class DxfEntityDispatcher:
+    """Centralizes the DXF entity-type routing used by the adapter layer."""
+
+    def __init__(self, entity):
+        self.entity = entity
+        self.kind = entity.dxftype()
+
+    def parse(self, rev: bool = False, has_spline: bool = False):
+        if self.kind == "LINE":
+            return _parse_line(self.entity, rev)[0]
+        if self.kind == "ARC":
+            if has_spline:
+                return _parse_arc_discretized(self.entity, rev)
+            return _parse_arc(self.entity, rev)
+        if self.kind == "SPLINE":
+            return _parse_spline(self.entity, rev)
+        if self.kind in ("LWPOLYLINE", "POLYLINE"):
+            return _parse_polyline(self.entity, rev)
+        if self.kind == "CIRCLE":
+            return _parse_circle(self.entity)
+        return None
+
+
+def _parse_polyline(entity, rev) -> list:
+    if entity.dxftype() == "POLYLINE":
+        # POLYLINE (R12 legacy) non ha get_points() — solo LWPOLYLINE lo ha.
+        points = [
+            (v.dxf.location.x, v.dxf.location.y, v.dxf.bulge)
+            for v in entity.vertices
+        ]
+    else:
+        points = list(entity.get_points('xyb'))
+
+    if not points:
+        return []
+
+    if rev:
+        reversed_points = []
+        n = len(points)
+        for i in range(n):
+            idx = (-i) % n
+            x, y, _ = points[idx]
+            prev_idx = (idx - 1) % n
+            bulge = -points[prev_idx][2]
+            reversed_points.append((x, y, bulge))
+        points = reversed_points
+
+    primitives = []
+    n = len(points)
+    for i in range(n):
+        x1, y1, bulge = points[i]
+        x2, y2, _ = points[(i + 1) % n]
+        if abs(bulge) > 1e-6:
+            primitives.append(ArcSeg(start=(x1, y1), end=(x2, y2), bulge=bulge))
+        else:
+            primitives.append(LineSeg(start=(x1, y1), end=(x2, y2)))
+    return primitives
+
 
 
 # ---------------------------------------------------------------------------
@@ -62,24 +120,26 @@ def parse_loop(loop) -> List:
     Restituisce List[LineSeg | ArcSeg | SplineSeg | DiscretizedArcSeg].
     Se il loop contiene SPLINE, gli archi vengono discretizzati.
     """
+    if loop:
+        source_refs = {id(edge.source_ref) for edge, _ in loop}
+        if len(source_refs) == 1:
+            first_edge = loop[0][0]
+            if first_edge.source_ref.dxftype() in ("LWPOLYLINE", "POLYLINE"):
+                parsed = DxfEntityDispatcher(first_edge.source_ref).parse(rev=loop[0][1])
+                return parsed if isinstance(parsed, list) else [parsed]
+
     has_spline = any(edge.source_ref.dxftype() == "SPLINE" for edge, _ in loop)
     primitives = []
 
     for edge, rev in loop:
         entity = edge.source_ref
-
-        if entity.dxftype() == "LINE":
-            seg, _ = _parse_line(entity, rev)
-            primitives.append(seg)
-
-        elif entity.dxftype() == "ARC":
-            if has_spline:
-                primitives.append(_parse_arc_discretized(entity, rev))
-            else:
-                primitives.append(_parse_arc(entity, rev))
-
-        elif entity.dxftype() == "SPLINE":
-            primitives.append(_parse_spline(entity, rev))
+        parsed = DxfEntityDispatcher(entity).parse(rev=rev, has_spline=has_spline)
+        if parsed is None:
+            continue
+        if isinstance(parsed, list):
+            primitives.extend(parsed)
+        else:
+            primitives.append(parsed)
 
     return primitives
 
@@ -123,6 +183,26 @@ def _parse_spline(entity, rev) -> SplineSeg:
     return SplineSeg(points=pts)
 
 
+def _parse_circle(entity) -> List[ArcSeg]:
+    """
+    Converte un CIRCLE ezdxf in due ArcSeg da 180° (bulge=1.0).
+    
+    Il cerchio DXF non ha punto di inizio/fine — costruiamo due semicirconferenze:
+    - prima: punto destro → punto sinistro (0° → 180°)
+    - seconda: punto sinistro → punto destro (180° → 360°)
+    
+    bulge = tan(θ/4) dove θ è l'angolo sotteso in radianti.
+    Per 180°: bulge = tan(π/4) = 1.0
+    """
+    cx = entity.dxf.center.x
+    cy = entity.dxf.center.y
+    r = entity.dxf.radius
+    return [
+        ArcSeg(start=(cx + r, cy), end=(cx - r, cy), bulge=1.0),
+        ArcSeg(start=(cx - r, cy), end=(cx + r, cy), bulge=1.0),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # loop → DxfWriteContext
 # ---------------------------------------------------------------------------
@@ -163,7 +243,7 @@ def _extract_origin(loop: list) -> str:
         return ""
     origins = {
         e.layer for e, _ in loop
-        if hasattr(e, "layer") and e.layer and e.layer != "0"
+        if hasattr(e, "layer") and e.layer
     }
     return origins.pop() if len(origins) == 1 else ""
 
@@ -175,16 +255,8 @@ def _extract_origin(loop: list) -> str:
 def _write_virtual_shape(msp, ctx: DxfWriteContext):
     """Scrive il DxfWriteContext su msp come LWPOLYLINE."""
     if ctx.has_spline:
-        pts = [
-            (x, y, 0.0, 0.0, 0.0)
-            for x, y in list(ctx.polygon.exterior.coords)[:-1]
-        ]
-        return msp.add_lwpolyline(
-            pts,
-            format="xyseb",
-            dxfattribs={"layer": ctx.layer, "color": ctx.color},
-            close=True,
-        )
+        # Preserve SPLINE exactly as source: no polygon/polyline rewrite.
+        return None
 
     is_r12 = msp.doc is not None and msp.doc.dxfversion < "AC1015"
     if is_r12:
@@ -201,6 +273,6 @@ def _write_virtual_shape(msp, ctx: DxfWriteContext):
         return msp.add_lwpolyline(
             ctx.pts_with_bulge,
             format="xyseb",
-            dxfattribs={"layer": ctx.layer, "color": 256},
+            dxfattribs={"layer": ctx.layer, "color": ctx.color},
             close=True,
         )

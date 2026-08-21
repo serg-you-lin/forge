@@ -164,6 +164,15 @@ def _polygon_flattened(entity) -> Optional[Polygon]:
 
 
 def pline_to_polygon(pline) -> Optional[Polygon]:
+    # Solo le polilinee CHIUSE possono rappresentare un contorno areale.
+    # Se una polyline aperta viene chiusa implicitamente (ultimo->primo),
+    # genera loop fittizi che poi diventano inner/hole strutturali.
+    is_closed = bool(getattr(pline, "is_closed", False))
+    if not is_closed:
+        is_closed = bool(getattr(pline, "closed", False))
+    if not is_closed:
+        return None
+
     if pline.dxftype() == 'POLYLINE':
         pts = [(v.dxf.location.x, v.dxf.location.y) for v in pline.vertices]
     else:

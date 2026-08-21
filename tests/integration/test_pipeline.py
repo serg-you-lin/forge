@@ -114,7 +114,7 @@ class TestPipelineThreadedHolePersistence(unittest.TestCase):
 
     def setUp(self):
         self.pipeline = run_pipeline(
-            ex("rect_with_threaded_holes.dxf"),
+            ex("rect_with_threaded_holes_geometric.dxf"),
             do_detect=True,
             do_inject=True,
             do_write=True,

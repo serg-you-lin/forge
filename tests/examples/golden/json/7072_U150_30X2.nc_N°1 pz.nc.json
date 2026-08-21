@@ -26,7 +26,7 @@
       "outer_perimeter_mm": 1549.996,
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 1549.996,
-      "outer_wkt": "POLYGON ((0 420, 624.9979999999996 420, 624.9979999999996 270, 0 270, 0 420))",
+      "outer_wkt": "POLYGON ((0 420, 0 270, 624.9979999999996 270, 624.9979999999996 420, 0 420))",
       "holes_count": 0,
       "holes_wkt": [],
       "holes": [],
@@ -45,7 +45,7 @@
       "outer_perimeter_mm": 1309.996,
       "inner_perimeter_mm": 0,
       "total_perimeter_mm": 1309.996,
-      "outer_wkt": "POLYGON ((0 29.99999999999989, 624.9979999999996 30, 624.9979999999996 0, 0 1.137e-13, 0 29.99999999999989))",
+      "outer_wkt": "POLYGON ((0 29.99999999999989, 0 1.137e-13, 624.9979999999996 0, 624.9979999999996 30, 0 29.99999999999989))",
       "holes_count": 0,
       "holes_wkt": [],
       "holes": [],
@@ -54,8 +54,8 @@
       "inners": [],
       "bending_lines_count": 0,
       "bending_lines": [],
-      "total_engrave_length": 235.1823,
-      "engrave_lines_count": 23,
+      "total_engrave_length": 181.697,
+      "engrave_lines_count": 22,
       "engrave_lines": [
         {
           "closed": false,
@@ -364,15 +364,10 @@
             328.8739999999998,
             21.0
           ]
-        },
-        {
-          "closed": true,
-          "length": 53.4853,
-          "part_label": ""
         }
       ],
       "custom": {
-        "total_engrave_length": 235.1823
+        "total_engrave_length": 181.697
       }
     },
     {

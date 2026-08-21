@@ -44,8 +44,8 @@
       "inners": [],
       "bending_lines_count": 0,
       "bending_lines": [],
-      "total_engrave_length": 206.7257,
-      "engrave_lines_count": 33,
+      "total_engrave_length": 142.7534,
+      "engrave_lines_count": 31,
       "engrave_lines": [
         {
           "closed": false,
@@ -480,21 +480,11 @@
             73.297,
             10.0
           ]
-        },
-        {
-          "closed": true,
-          "length": 33.5927,
-          "part_label": ""
-        },
-        {
-          "closed": true,
-          "length": 30.3796,
-          "part_label": ""
         }
       ],
       "custom": {
         "plain_holes_count": 2,
-        "total_engrave_length": 206.7257
+        "total_engrave_length": 142.7534
       }
     }
   ]

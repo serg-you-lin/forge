@@ -39,8 +39,12 @@ _ROLE_TO_HOLE_TYPE = {
 def detect(
     result:            ForgeResult,
     bending_tolerance: float = 1.0,
+    deduplicate_boundary_open: bool = True,
+    boundary_tolerance: float = 0.05,
 ) -> None:
     _detect_labeled(result)
+    if deduplicate_boundary_open:
+        _deduplicate_boundary_open_segments(result, tolerance=boundary_tolerance)
     _detect_bending(result, bending_tolerance=bending_tolerance)
     _detect_holes(result)
 
@@ -125,6 +129,45 @@ def _detect_labeled(result: ForgeResult) -> None:
 # ---------------------------------------------------------------------------
 # Step 2 — bending geometrico
 # ---------------------------------------------------------------------------
+
+def _deduplicate_boundary_open_segments(result: ForgeResult, tolerance: float = 0.05) -> None:
+    """
+    Rimuove da trash_entities i segmenti aperti appoggiati al bordo outer.
+
+    Questa deduplica e' conservativa: agisce solo su proxy lineari con almeno
+    due punti e solo se il segmento e' coperto dalla fascia del boundary.
+    """
+    if not result.parts or not result.trash_entities:
+        return
+
+    kept = []
+    removed = 0
+
+    for proxy in result.trash_entities:
+        if proxy.shape_type != "line" or len(proxy.pts) < 2:
+            kept.append(proxy)
+            continue
+
+        segment = LineString([proxy.pts[0], proxy.pts[-1]])
+        on_outer_boundary = False
+        for part in result.parts:
+            boundary_band = part.outer.polygon.boundary.buffer(tolerance)
+            if boundary_band.covers(segment):
+                on_outer_boundary = True
+                break
+
+        if on_outer_boundary:
+            removed += 1
+        else:
+            kept.append(proxy)
+
+    if removed:
+        result.warnings.append(
+            f"detect(): rimossi {removed} segmenti aperti sovrapposti al bordo outer"
+        )
+
+    result.trash_entities = kept
+
 
 def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None:
     classified_ids = {id(ce.source_ref) for ce in result.classified_entities}
@@ -268,10 +311,13 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
             continue
 
         if work_type == "bending":
-            part.bending_lines.append(
-                _bending_line_from_data(ce.data, ce.source_ref, part.label)
-            )
-            if ce.source_ref is not None:
+            part.bending_lines.append(_bending_line_from_data(ce.data, ce.source_ref, part.label))
+            if (
+                ce.source_ref is not None
+                and hasattr(ce.source_ref, "dxftype")
+                and ce.source_ref.dxftype() == "LINE"
+            ):
+                # Solo le LINE native sono copiabili 1:1 da source_ref.
                 part.entity_ids.add(id(ce.source_ref))
 
         _write_custom(ce, part)

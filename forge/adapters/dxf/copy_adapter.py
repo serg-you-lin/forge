@@ -110,7 +110,8 @@ def _copy_spline(entity, msp, attribs) -> None:
     new_entity = entity.copy()
     new_entity.dxf.layer = attribs.get('layer', entity.dxf.layer)
     new_entity.dxf.color = attribs.get('color', entity.dxf.color)
-    return msp.add_entity(new_entity)
+    msp.add_entity(new_entity)
+    return new_entity
 
 
 @_register_copy('ELLIPSE')

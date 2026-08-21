@@ -9,6 +9,12 @@ import numpy as np
 from shapely.geometry import LineString
 
 from ...core.adapter_base import ForgeAdapter
+from .geometry_adapter import (
+    arc_endpoints,
+    entity_to_polygon,
+    pline_to_polygon,
+    _spline_is_closed,
+)
 from ...core.geometry import round_point
 from ...core.healing.gap_solver import (
     GapEndpoint,
@@ -20,8 +26,6 @@ from ...model.edge import Edge, BendingLine
 from ...model.role import ContourRole
 from ...model.shape import ClosedShape, OpenShape
 from ...core.primitives.segments import CircularArcSeg
-from .geometry_adapter import arc_endpoints
-from .closed_adapter import entity_to_closed, contour_to_closed
 
 
 # ---------------------------------------------------------------------------
@@ -40,23 +44,10 @@ _GAP_KIND_MAP: Dict[str, str] = {
 # ---------------------------------------------------------------------------
 # Layer → role
 # ---------------------------------------------------------------------------
-
-_WORK_TYPE_TO_ROLE: Dict[str, ContourRole] = {
-    "outer":         ContourRole.OUTER,
-    "hole":          ContourRole.HOLE,
-    "bending":       ContourRole.BEND,
-    "frame":         ContourRole.FRAME,
-    "inner":         ContourRole.INNER,
-    "countersink":   ContourRole.COUNTERSINK,
-    "threaded_hole": ContourRole.THREADED_HOLE,
-    "engrave":       ContourRole.ENGRAVE,
-    "marking":       ContourRole.MARKING,
-}
-
-
-def _layer_to_role(layer: str, label_map: Dict[str, str]) -> ContourRole:
-    work_type = label_map.get(layer, label_map.get(layer.lower(), ""))
-    return _WORK_TYPE_TO_ROLE.get(work_type.lower(), ContourRole.UNKNOWN)
+# La mappatura vive in model/role.py (pura, zero dipendenze DXF).
+# Riesportata qui solo per backward compatibility di eventuali import esterni.
+from ...model.role import WORK_TYPE_TO_ROLE as _WORK_TYPE_TO_ROLE
+from ...model.role import layer_to_role as _layer_to_role
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +71,7 @@ def _gap_meta_for(entity) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Geometria DXF → Edge  (ex graph_adapter.py)
+# Geometria DXF → Edge
 # ---------------------------------------------------------------------------
 
 def _spline_endpoints(spline):
@@ -94,10 +85,6 @@ def _spline_endpoints(spline):
 
 
 def entity_endpoints(entity):
-    """
-    Restituisce (start, end) come tuple (x, y) per LINE, ARC, SPLINE.
-    Usata anche da extract_free_endpoints per il gap healing.
-    """
     t = entity.dxftype()
     if t == 'LINE':
         return (
@@ -112,10 +99,6 @@ def entity_endpoints(entity):
 
 
 def _entity_to_linestring(entity) -> LineString:
-    """
-    Approssima un'entità DXF come LineString shapely.
-    Usata dal core per classificazione e loop detection — mai per write-back.
-    """
     t = entity.dxftype()
 
     if t == 'LINE':
@@ -143,11 +126,28 @@ def _entity_to_linestring(entity) -> LineString:
         except Exception:
             pass
 
-    # fallback: segmento diretto tra i due endpoint
     s, e = entity_endpoints(entity)
     if s and e:
         return LineString([s, e])
     return LineString([(0, 0), (0, 0)])
+
+
+def _polyline_is_closed(entity) -> bool:
+    if hasattr(entity, "is_closed"):
+        try:
+            return bool(entity.is_closed)
+        except Exception:
+            pass
+    return bool(getattr(entity, "closed", False))
+
+
+def _polyline_points_xy(entity) -> list[tuple[float, float]]:
+    if entity.dxftype() == 'POLYLINE':
+        return [(v.dxf.location.x, v.dxf.location.y) for v in entity.vertices]
+    try:
+        return [(p[0], p[1]) for p in entity.get_points('xy')]
+    except Exception:
+        return [(p[0], p[1]) for p in entity.get_points()]
 
 
 # ---------------------------------------------------------------------------
@@ -175,10 +175,6 @@ class DxfAdapter(ForgeAdapter):
     # ------------------------------------------------------------------
 
     def to_edges(self) -> List[Edge]:
-        """
-        Produce la lista di Edge topologici dal modelspace.
-        Pronti per build_node_graph() — zero dipendenze DXF oltre questo punto.
-        """
         ignore = {s.lower() for s in self.ignore_layers}
 
         def _is_excluded(entity) -> bool:
@@ -190,10 +186,74 @@ class DxfAdapter(ForgeAdapter):
             return any(sl in layer for sl in ignore)
 
         edges = []
+
         for entity in self.msp:
             if _is_excluded(entity):
                 continue
-            if entity.dxftype() not in _SUPPORTED_TYPES:
+
+            dtype = entity.dxftype()
+            layer = entity.dxf.layer if entity.dxf.hasattr('layer') else ''
+
+            # ── CIRCLE → loop degenere (start == end) ──
+            if dtype == 'CIRCLE':
+                poly = entity_to_polygon(entity)
+                if poly is not None and not poly.is_empty:
+                    coords = list(poly.exterior.coords)
+                    pt = round_point(coords[0], self.node_decimals)
+                    edges.append(Edge(
+                        source_ref=entity, layer=layer,
+                        start=pt, end=pt,
+                        geometry=LineString(coords),
+                    ))
+                continue
+
+            # ── SPLINE chiusa → loop degenere ──
+            if dtype == 'SPLINE' and _spline_is_closed(entity):
+                poly = entity_to_polygon(entity)
+                if poly is not None and not poly.is_empty:
+                    coords = list(poly.exterior.coords)
+                    pt = round_point(coords[0], self.node_decimals)
+                    edges.append(Edge(
+                        source_ref=entity, layer=layer,
+                        start=pt, end=pt,
+                        geometry=LineString(coords),
+                    ))
+                continue
+
+            # ── LWPOLYLINE / POLYLINE → esplodi in segmenti ──
+            if dtype in ('LWPOLYLINE', 'POLYLINE'):
+                if _polyline_is_closed(entity):
+                    poly = pline_to_polygon(entity)
+                    if poly is not None and not poly.is_empty:
+                        coords = list(poly.exterior.coords)
+                        for i in range(len(coords) - 1):
+                            s_raw, e_raw = coords[i], coords[i + 1]
+                            s_r = round_point(s_raw, self.node_decimals)
+                            e_r = round_point(e_raw, self.node_decimals)
+                            if s_r is None or e_r is None:
+                                continue
+                            edges.append(Edge(
+                                source_ref=entity, layer=layer,
+                                start=s_r, end=e_r,
+                                geometry=LineString([s_raw, e_raw]),
+                            ))
+                else:
+                    pts = _polyline_points_xy(entity)
+                    for i in range(len(pts) - 1):
+                        s_raw, e_raw = pts[i], pts[i + 1]
+                        s_r = round_point(s_raw, self.node_decimals)
+                        e_r = round_point(e_raw, self.node_decimals)
+                        if s_r is None or e_r is None:
+                            continue
+                        edges.append(Edge(
+                            source_ref=entity, layer=layer,
+                            start=s_r, end=e_r,
+                            geometry=LineString([s_raw, e_raw]),
+                        ))
+                continue
+
+            # ── Tipi base: LINE, ARC, SPLINE aperta ──
+            if dtype not in _SUPPORTED_TYPES:
                 continue
 
             s, e = entity_endpoints(entity)
@@ -205,35 +265,27 @@ class DxfAdapter(ForgeAdapter):
             if s_r is None or e_r is None:
                 continue
 
-            layer    = entity.dxf.layer if entity.dxf.hasattr('layer') else ''
             geometry = _entity_to_linestring(entity)
             edges.append(Edge(
-                source_ref=entity,
-                layer=layer,
-                start=s_r,
-                end=e_r,
+                source_ref=entity, layer=layer,
+                start=s_r, end=e_r,
                 geometry=geometry,
             ))
 
         return edges
 
     def to_closed(self) -> List[ClosedShape]:
-        shapes = []
-        for entity in self.msp:
-            layer = entity.dxf.layer if entity.dxf.hasattr("layer") else ""
-            role  = _layer_to_role(layer, self._label_map)
-            shape = entity_to_closed(entity, role=role)
-            if shape is not None:
-                shapes.append(shape)
-        return shapes
+        return []
 
     def to_open(self) -> List[OpenShape]:
-        shapes = []
-        for entity in self.msp:
-            shape = self._open_entity_to_shape(entity)
-            if shape is not None:
-                shapes.append(shape)
-        return shapes
+        # Deliberatamente vuoto: la costruzione di OpenShape dagli Edge
+        # non consumati da loop strutturali è responsabilità del core
+        # (vedi core/topology/loop_finder.edges_to_open_shapes), che opera
+        # solo su Edge/geometry già prodotti da to_edges() — mai su ezdxf.
+        return []
+
+    def collect_closed(self, open_splines: list, virtual_shapes: list) -> list[ClosedShape]:
+        return []
 
     def source_context(self, ref: Any) -> str:
         if isinstance(ref, str):
@@ -256,65 +308,6 @@ class DxfAdapter(ForgeAdapter):
             "splines": list(self.msp.query("SPLINE")),
         }
 
-    def _open_entity_to_shape(self, entity) -> Optional[OpenShape]:
-        dtype = entity.dxftype()
-        layer = entity.dxf.layer if entity.dxf.hasattr("layer") else ""
-        role  = _layer_to_role(layer, self._label_map)
-
-        if dtype == "LINE":
-            start  = (entity.dxf.start.x, entity.dxf.start.y)
-            end    = (entity.dxf.end.x,   entity.dxf.end.y)
-            pts    = [start, end]
-            length = entity.dxf.start.distance(entity.dxf.end)
-            return OpenShape(
-                pts=pts, length=length,
-                source_ref=entity, role=role, shape_type="line",
-            )
-
-        if dtype == "ARC":
-            cx, cy = entity.dxf.center.x, entity.dxf.center.y
-            r      = entity.dxf.radius
-            a0     = math.radians(entity.dxf.start_angle)
-            a1     = math.radians(entity.dxf.end_angle)
-            pts    = [
-                (cx + r * math.cos(a0), cy + r * math.sin(a0)),
-                (cx + r * math.cos(a1), cy + r * math.sin(a1)),
-            ]
-            span   = (a1 - a0) % (2 * math.pi)
-            length = r * span
-            return OpenShape(
-                pts=pts, length=length,
-                source_ref=entity, role=role, shape_type="arc",
-                center=(cx, cy), diameter=r * 2,
-            )
-
-        return None
-
-    def collect_closed(self, open_splines: list, virtual_shapes: list) -> list[ClosedShape]:
-        open_spline_ids = {id(s) for s in open_splines}
-        shapes = []
-
-        for entity in self.msp:
-            layer = entity.dxf.layer if entity.dxf.hasattr("layer") else ""
-            role  = _layer_to_role(layer, self._label_map)
-            shape = entity_to_closed(entity, role=role)
-            if shape is None:
-                continue
-            if entity.dxftype() == "SPLINE" and id(entity) in open_spline_ids:
-                continue
-            shapes.append(shape)
-
-        virtual = []
-        for ctx in virtual_shapes:
-            loop_layer = (
-                ctx.loop[0][0].source_ref.dxf.layer
-                if ctx.loop and ctx.loop[0][0].source_ref is not None
-                else ""
-            )
-            role = _layer_to_role(loop_layer, self._label_map)
-            virtual.append(contour_to_closed(ctx, role=role))
-        return virtual + shapes
-
     def to_circular_arcs(self) -> List[CircularArcSeg]:
         result = []
         for entity in self.msp:
@@ -329,7 +322,7 @@ class DxfAdapter(ForgeAdapter):
         return result
 
     # ------------------------------------------------------------------
-    # Gap healing — ex gap_adapter.py
+    # Gap healing
     # ------------------------------------------------------------------
 
     def extract_free_endpoints(self, graph) -> List[GapEndpoint]:
@@ -344,15 +337,13 @@ class DxfAdapter(ForgeAdapter):
             if s is None or e is None:
                 continue
 
-            s_r  = round_point(s, self.node_decimals)
-            e_r  = round_point(e, self.node_decimals)
+            s_r = round_point(s, self.node_decimals)
+            e_r = round_point(e, self.node_decimals)
             meta = _gap_meta_for(entity)
 
             if len(graph.get(s_r, [])) < 2:
-                print(f"[FREE] {entity.dxftype()} start {s_r} grado {len(graph.get(s_r, []))}")
                 free.append(GapEndpoint(pt=s, ref=entity, role='start', kind=kind, meta=meta))
             if len(graph.get(e_r, [])) < 2:
-                print(f"[FREE] {entity.dxftype()} end {e_r} grado {len(graph.get(e_r, []))}")
                 free.append(GapEndpoint(pt=e, ref=entity, role='end', kind=kind, meta=meta))
 
         return free
