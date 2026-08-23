@@ -21,7 +21,7 @@ from ..model import (
     HOLE_TYPE_UNKNOWN,
 )
 from ..model.role import ContourRole
-from ..model.shape import OpenShape, ClosedShape
+from ..bridge.shape import OpenShape, ClosedShape
 from ..model.engraving import Engraving
 from ..core.classification.hole_detector import is_threaded_hole
 from ..rules.thresholds import STRUCTURAL_ROLES

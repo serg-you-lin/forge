@@ -3,8 +3,8 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from typing import Any, List
-from ..model.edge import Edge
-from ..model.shape import ClosedShape, OpenShape
+from ..bridge.edge import Edge
+from ..bridge.shape import ClosedShape, OpenShape
 
 
 class ForgeAdapter(ABC):

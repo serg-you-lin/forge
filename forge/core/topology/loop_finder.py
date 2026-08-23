@@ -13,7 +13,7 @@ graph.degenerate_loops — non passano per il walking nel grafo.
 
 import math
 from .graph import Graph
-from ...model.edge import Edge
+from ...bridge.edge import Edge
 
 
 class LoopFinder:
@@ -215,7 +215,7 @@ def edges_to_open_shapes(edges: list, exclude_ids: set, label_map: dict) -> list
         label_map:   {nome_layer: work_type} — tradotto in ContourRole
     """
     from ...model.role import layer_to_role
-    from ...model.shape import OpenShape
+    from ...bridge.shape import OpenShape
 
     shapes = []
     for edge in edges:

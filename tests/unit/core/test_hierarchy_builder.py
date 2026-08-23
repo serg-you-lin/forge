@@ -13,7 +13,7 @@ import math
 import unittest
 from shapely.geometry import Polygon
 
-from forge.model.shape import ClosedShape, OpenShape
+from forge.bridge.shape import ClosedShape, OpenShape
 from forge.model.role import ContourRole
 from forge.core.healing.hierarchy import HierarchyBuilder
 
