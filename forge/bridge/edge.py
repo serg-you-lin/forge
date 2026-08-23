@@ -1,5 +1,5 @@
 """
-core/model/edge.py
+bridge/edge.py
 """
 
 from dataclasses import dataclass

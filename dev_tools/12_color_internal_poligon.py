@@ -1,92 +1,283 @@
 import sys
 from pathlib import Path
-import matplotlib.pyplot as plt
-import ezdxf
 
-# Impostazione root del progetto
-project_root = Path(".").resolve()
-sys.path.insert(0, str(project_root))
+import ezdxf
+import matplotlib.pyplot as plt
+
+# ---------------------------------------------------------------------------
+# Forge
+# ---------------------------------------------------------------------------
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from forge.adapters.dxf.adapter import DxfAdapter
 from forge.core.topology.graph import build_node_graph
-from forge.core.topology.loop_finder import find_closed_loops, classify_loops
-from forge.core.geometry import edges_to_polygon, circle_to_polygon
-from forge.adapters.dxf.layers import LAYER_OUTER
-
-# 1. Caricamento del documento DXF
-input_dxf = r"tests/examples/archi_bastardi_xdata_test_healed.dxf"
-doc = ezdxf.readfile(input_dxf)
-msp = doc.modelspace()
-
-# 2. Inizializzazione dell'Adapter DXF
-# L'adapter gestisce la conversione di LINE, ARC, SPLINE, CIRCLE e POLYLINE in istanze di Edge
-adapter = DxfAdapter(
-    msp=msp,
-    tolerance=0.05,
-    # Se la tua nuova gestione layer si basa su label_map o ignore_layers, puoi passarli qui:
-    # label_map={"outer": "outer"}, 
+from forge.core.topology.loop_finder import LoopFinder
+from forge.core.healing.hierarchy import (
+    HierarchyBuilder,
+    loop_to_closed_shape,
 )
 
-# 3. Estrazione degli Edge
+
+# ===========================================================================
+# CONFIGURAZIONE
+# ===========================================================================
+
+# INCOLLA QUI IL FILE DXF
+InputPath = r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\dxf-forge\tests\examples"
+FileName = "cerchi_ciambella.dxf"
+
+INPUT_DXF = Path(InputPath) / FileName
+
+TOLERANCE = 0.05
+
+
+# ===========================================================================
+# LOAD DXF
+# ===========================================================================
+
+doc = ezdxf.readfile(INPUT_DXF)
+msp = doc.modelspace()
+
+print(f"DXF: {INPUT_DXF}")
+
+
+# ===========================================================================
+# ADAPTER
+# ===========================================================================
+
+adapter = DxfAdapter(
+    msp=msp,
+    tolerance=TOLERANCE,
+)
+
 all_edges = adapter.to_edges()
 
-# Filtriamo gli edge appartenenti al layer OUTER (gestito secondo le tue nuove definizioni)
-outer_edges = [edge for edge in all_edges if edge.layer == LAYER_OUTER]
-
-if not outer_edges:
-    print(f"Nessun edge trovato per il layer '{LAYER_OUTER}'")
+if not all_edges:
+    print("Nessun Edge prodotto dal DxfAdapter.")
     sys.exit(1)
 
-# 4. Costruzione del Grafo Topologico e Pruning
-raw_graph = build_node_graph(outer_edges)
-clean_graph = raw_graph.pruned()  # Elimina rami morti e linee spuri (degree <= 1)
+print(f"Edge prodotti: {len(all_edges)}")
 
-# 5. Estrazione e Classificazione dei Loop
-loops = find_closed_loops(clean_graph)
-outer_loops, _ = classify_loops(loops)
 
-if not outer_loops:
-    print("Nessun loop esterno valido trovato.")
+# ===========================================================================
+# GRAPH
+# ===========================================================================
+
+graph = build_node_graph(all_edges)
+
+
+# ===========================================================================
+# LOOP FINDER
+# ===========================================================================
+
+finder = LoopFinder()
+
+loops = finder.find(graph)
+
+if not loops:
+    print("Nessun loop trovato.")
     sys.exit(1)
 
-# Conversione del loop in Polygon Shapely tramite la geometria degli Edge
-outer_poly = edges_to_polygon(outer_loops[0])
+print(f"Loop trovati: {len(loops)}")
 
-# 6. Visualizzazione e Rendering (Matplotlib)
-fig, ax = plt.subplots(figsize=(12, 8))
 
-# Disegno dell'Outer Polygon
-x, y = outer_poly.exterior.xy
-ax.fill(x, y, alpha=0.3, color='blue', label='Outer Polygon (DxfAdapter)')
-ax.plot(x, y, 'b-', linewidth=1.5)
+# ===========================================================================
+# LOOP → CLOSED SHAPE
+# ===========================================================================
 
-# Annotazione dei vertici del poligono
-for i, (px, py) in enumerate(zip(x, y)):
-    ax.annotate(str(i), (px, py), fontsize=8, color='black', ha='center', va='bottom')
+closed_shapes = []
 
-# Controllo e disegno dei Cerchi dal Modello DXF
-for circle in msp.query('CIRCLE'):
-    cx, cy = circle.dxf.center.x, circle.dxf.center.y
-    r = circle.dxf.radius
-    poly = circle_to_polygon(circle)
-    
-    inside = outer_poly.contains(poly)
-    color = 'green' if inside else 'red'
-    
-    patch = plt.Circle((cx, cy), r, color=color, fill=False, linewidth=2)
-    ax.add_patch(patch)
-    ax.plot(cx, cy, 'x', color=color)
-    ax.annotate(f"({cx:.0f},{cy:.0f})\n{'IN' if inside else 'OUT'}", 
-                (cx, cy), fontsize=7, ha='center')
+for loop in loops:
+    shape = loop_to_closed_shape(loop)
 
-ax.set_aspect('equal')
+    if shape is not None:
+        closed_shapes.append(shape)
+
+print(f"ClosedShape valide: {len(closed_shapes)}")
+
+if not closed_shapes:
+    print("Nessuna ClosedShape valida.")
+    sys.exit(1)
+
+
+# ===========================================================================
+# ENTITY IDS
+# ===========================================================================
+
+entities_in_loops = {
+    id(edge.source_ref)
+    for loop in loops
+    for edge, _ in loop
+    if edge.source_ref is not None
+}
+
+
+# ===========================================================================
+# HIERARCHY
+# ===========================================================================
+
+hierarchy = HierarchyBuilder(
+    label="DEBUG",
+    source_file=str(INPUT_DXF),
+    label_map={},
+    entities_in_loops=entities_in_loops,
+)
+
+parts, trash = hierarchy.build(closed_shapes)
+
+print(f"ForgePart: {len(parts)}")
+
+if not parts:
+    print("Nessuna ForgePart.")
+    sys.exit(1)
+
+
+# ===========================================================================
+# DEBUG INFO
+# ===========================================================================
+
+for i, part in enumerate(parts):
+
+    print(
+        f"\nPART {i}"
+        f"\n  OUTER : area={part.outer.polygon.area:.3f}"
+        f"\n  INNER : {len(part.inners)}"
+        f"\n  HOLE  : {len(part.holes)}"
+    )
+
+    for j, inner in enumerate(part.inners):
+        print(
+            f"    INNER {j}: "
+            f"area={inner.polygon.area:.3f}"
+        )
+
+    for j, hole in enumerate(part.holes):
+        print(
+            f"    HOLE {j}: "
+            f"area={hole.polygon.area:.3f}"
+        )
+
+
+# ===========================================================================
+# PLOT
+# ===========================================================================
+
+fig, ax = plt.subplots(figsize=(14, 10))
+
+
+def draw_polygon(
+    polygon,
+    face_color,
+    edge_color,
+    alpha,
+    label=None,
+    linewidth=2.0,
+):
+    if polygon.is_empty:
+        return
+
+    x, y = polygon.exterior.xy
+
+    ax.fill(
+        x,
+        y,
+        color=face_color,
+        alpha=alpha,
+        label=label,
+    )
+
+    ax.plot(
+        x,
+        y,
+        color=edge_color,
+        linewidth=linewidth,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Disegna PART
+# ---------------------------------------------------------------------------
+
+for part_index, part in enumerate(parts):
+
+    # OUTER
+    draw_polygon(
+        part.outer.polygon,
+        face_color="blue",
+        edge_color="blue",
+        alpha=0.20,
+        label="OUTER" if part_index == 0 else None,
+        linewidth=2.5,
+    )
+
+    # INNER
+    for inner_index, inner in enumerate(part.inners):
+
+        draw_polygon(
+            inner.polygon,
+            face_color="orange",
+            edge_color="orange",
+            alpha=0.45,
+            label="INNER" if (
+                part_index == 0 and inner_index == 0
+            ) else None,
+            linewidth=2.0,
+        )
+
+        centroid = inner.polygon.centroid
+
+        ax.annotate(
+            f"INNER {inner_index}",
+            (centroid.x, centroid.y),
+            fontsize=9,
+            ha="center",
+            va="center",
+        )
+
+    # HOLE
+    for hole_index, hole in enumerate(part.holes):
+
+        draw_polygon(
+            hole.polygon,
+            face_color="red",
+            edge_color="red",
+            alpha=0.45,
+            label="HOLE" if (
+                part_index == 0 and hole_index == 0
+            ) else None,
+            linewidth=2.0,
+        )
+
+        centroid = hole.polygon.centroid
+
+        ax.annotate(
+            f"HOLE {hole_index}",
+            (centroid.x, centroid.y),
+            fontsize=8,
+            ha="center",
+            va="center",
+        )
+
+
+# ===========================================================================
+# VIEW
+# ===========================================================================
+
+ax.set_aspect("equal")
 ax.legend()
-plt.title("Visualizzazione Debug — DxfAdapter + Graph Topology")
+ax.set_title("Forge — Polygon Hierarchy")
+
 plt.tight_layout()
 
-# Salvataggio e Output
-output_img = "debug_polygon_adapter.png"
-plt.savefig(output_img, dpi=150)
-plt.show()
+OUTPUT = PROJECT_ROOT / "debug_polygon_hierarchy.png"
 
-print(f"Salvato con successo in {output_img}")
+plt.savefig(
+    OUTPUT,
+    dpi=150,
+)
+
+print(f"\nSalvato: {OUTPUT}")
+
+plt.show()
