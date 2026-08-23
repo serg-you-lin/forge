@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, List, Set, Tuple, Optional
 from shapely.geometry import Polygon
 
+from ..core.primitives import LineSeg, ArcSeg, SplineSeg
 from .hole import Hole
 from ..bridge.edge import BendingLine
 from .engraving import Engraving
@@ -29,6 +30,7 @@ class ForgeContour:
     bbox:       Tuple[float, float, float, float] = field(init=False)
     vs_id:      Optional[int] = None
     origin:     str          = ""
+    segments:   list         = field(default_factory=list)
 
     def __post_init__(self):
         self.area = self.polygon.area
