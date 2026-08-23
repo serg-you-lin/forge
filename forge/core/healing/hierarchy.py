@@ -12,6 +12,10 @@ from ...model.role import ContourRole
 from ...rules.thresholds import HOLE_DIAMETER_THRESHOLD
 
 
+MIN_CONTOUR_AREA = 1e-3
+MIN_SINGLE_LOOP_DIAMETER = 0.05
+
+
 # ---------------------------------------------------------------------------
 # Conversione loop → ClosedShape
 # ---------------------------------------------------------------------------
@@ -67,6 +71,8 @@ def loop_to_closed_shape(
             poly = poly.buffer(0)
         if poly.is_empty:
             return None
+        if poly.area <= MIN_CONTOUR_AREA:
+            return None
 
         first_ref = loop[0][0].source_ref if loop else None
         resolved_source_ref = source_ref if source_ref is not None else first_ref
@@ -75,6 +81,8 @@ def loop_to_closed_shape(
         center = None
         if len(loop) == 1:
             diameter, center = _single_loop_geometry(loop, poly)
+            if diameter is not None and diameter < MIN_SINGLE_LOOP_DIAMETER:
+                return None
 
         return ClosedShape(
             polygon=poly,
@@ -165,12 +173,38 @@ def _register(proxy: ClosedShape, classified_virtual_ids: set, classified_entity
         classified_entity_ids.add(id(proxy.source_ref))
 
 
-def _collect_entity_ids(father_proxy: ClosedShape, children: list) -> set:
-    ids = {id(father_proxy.source_ref)}
+def _collect_entity_ids(father_proxy, children) -> set:
+    ids = set()
+
+    # Colleziona tutte le entità dal loop del DxfWriteContext
+    src = father_proxy.source_ref
+    if src is not None:
+        # Mantieni anche l'id del container virtuale: serve per il mapping
+        # vs_id -> part durante heal(), usato poi da write()/split().
+        ids.add(id(src))
+    if hasattr(src, 'loop'):
+        for edge, _ in src.loop:
+            if edge.source_ref is not None:
+                ids.add(id(edge.source_ref))
+
     for child_proxy, grandchildren in children:
-        ids.add(id(child_proxy.source_ref))
+        child_src = child_proxy.source_ref
+        if child_src is not None:
+            ids.add(id(child_src))
+        if hasattr(child_src, 'loop'):
+            for edge, _ in child_src.loop:
+                if edge.source_ref is not None:
+                    ids.add(id(edge.source_ref))
+
         for gc_proxy, _ in grandchildren:
-            ids.add(id(gc_proxy.source_ref))
+            gc_src = gc_proxy.source_ref
+            if gc_src is not None:
+                ids.add(id(gc_src))
+            if hasattr(gc_src, 'loop'):
+                for edge, _ in gc_src.loop:
+                    if edge.source_ref is not None:
+                        ids.add(id(edge.source_ref))
+
     return ids
 
 

@@ -1,5 +1,5 @@
 """
-model/shape.py
+bridge/shape.py
 
 Due tipi distinti per due concetti distinti:
   - ClosedShape : contorno chiuso → ha un Polygon shapely

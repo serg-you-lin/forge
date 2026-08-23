@@ -26,12 +26,13 @@ import sys
 import argparse
 import tempfile
 from pathlib import Path
-import ezdxf
+import traceback
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-import dxf_forge as forge
+import forge
+from forge.adapters.dxf.layers import ROLE_TO_LAYER, LAYER_INNER
 
 MULTIPLI_DIR      = project_root / "tests" / "examples" / "golden_multipli"
 GOLDEN_DIR        = MULTIPLI_DIR / "golden"
@@ -70,30 +71,27 @@ def generate(force: bool = False, only: str = None):
         tolerance = config.get("tolerance", DEFAULT_TOLERANCE)
 
         try:
-            doc = ezdxf.readfile(parent_path)
-            if doc.dxfversion < "AC1015":
-                doc = forge.upgrade_to_r2010(doc)
-            msp = doc.modelspace()
-
-            result = forge.heal(msp, tolerance=tolerance, explode_inserts=True)
-
-            for idx, p in enumerate(result.parts):
-                print(f"  [GEN] part{idx} outer.entity={type(p.outer.entity).__name__} area={p.area:.4f}")
+            _, msp = forge.load_dxf(parent_path, upgrade=True, explode_inserts=True)
+            result = forge.heal(msp, tolerance=tolerance)
 
             if not result.is_valid or not result.parts:
                 print(f"  SKIP (non valido): {parent_path.name}")
                 skipped += 1
                 continue
 
-            forge.detect(result, msp)
+            forge.detect(result)
             forge.write(msp, result)
 
             with tempfile.TemporaryDirectory() as tmp_dir:
-                forge.split(msp, result, output_folder=tmp_dir, namer=lambda i, part: f"{part.label}_P{i + 1:03d}",)
+                forge.split(
+                    msp,
+                    result,
+                    output_folder=tmp_dir,
+                    namer=lambda i, part: f"{part.label}_P{i + 1:03d}",
+                )
 
             print(f"  {parent_path.name} → {len(result.parts)} parti")
 
-            print(f"  result.is_valid={result.is_valid}, parts={len(result.parts)}, warnings={result.warnings}")
             for part_index, part in enumerate(result.parts):
                 golden_stem = f"{parent_path.stem}__{part_index:03d}"
                 golden_path = GOLDEN_DIR / f"{golden_stem}.json"
@@ -109,9 +107,6 @@ def generate(force: bool = False, only: str = None):
                     reverse=True,
                 )
 
-                print(f"  [GEN2] part{part_index}: outer.area={part.outer.polygon.area:.4f} holes_area={sum(h.area for h in part.holes):.4f} inners_area={sum(i.area for i in part.inners):.4f} net={part.area:.4f}")
-                print(f"  [GEN] part{part_index} area={part.area:.4f}")
-
                 golden = {
                     "parent_file":         parent_path.name,
                     "part_index":          part_index,
@@ -126,8 +121,8 @@ def generate(force: bool = False, only: str = None):
                     ),
                     "outer_wkt":     part.outer.polygon.wkt,
                     "inners_wkt":    [i.polygon.wkt for i in all_inners],
-                    "outer_layer":   part.outer.layer,
-                    "inners_layers": [i.layer for i in all_inners],
+                    "outer_layer":   ROLE_TO_LAYER.get(part.outer.role),
+                    "inners_layers": [ROLE_TO_LAYER.get(i.role, LAYER_INNER) for i in all_inners],
                     "custom":        dict(part.custom),
                 }
 
@@ -140,6 +135,7 @@ def generate(force: bool = False, only: str = None):
 
         except Exception as ex:
             print(f"  ERRORE: {parent_path.name} — {ex}")
+            traceback.print_exc()
             failed += 1
 
     print(f"\nGenerati: {generated}  Skippati: {skipped}  Errori: {failed}")
