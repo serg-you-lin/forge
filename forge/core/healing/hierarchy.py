@@ -47,6 +47,7 @@ def loop_to_closed_shape(
     polygon=None,
     source_ref=None,
     is_virtual: bool = False,
+    segments: list = None,
 ) -> Optional[ClosedShape]:
     """
     Converte un loop (lista di (Edge, bool)) in ClosedShape.
@@ -91,6 +92,7 @@ def loop_to_closed_shape(
             source_ref=resolved_source_ref,
             role=role,
             is_virtual=is_virtual,
+            segments=segments or [],
         )
     except Exception:
         return None
@@ -149,6 +151,7 @@ def _make_hole(
         origin=_proxy_origin(proxy),
         outer_diameter=outer_proxy.diameter if outer_proxy else None,
         outer_source_ref=outer_proxy.source_ref if outer_proxy and not outer_proxy.is_virtual else None,
+        segments=list(proxy.segments),
     )
 
 
@@ -163,6 +166,7 @@ def _make_inner(proxy: ClosedShape, parent_role: ContourRole = ContourRole.UNKNO
         source_ref=proxy.source_ref if not is_virtual else None,
         vs_id=id(proxy.source_ref) if is_virtual else None,
         origin=_proxy_origin(proxy),
+        segments=list(proxy.segments),
     )
 
 
@@ -308,6 +312,7 @@ class HierarchyBuilder:
                 source_ref=father_proxy.source_ref if not father_proxy.is_virtual else None,
                 vs_id=id(father_proxy.source_ref) if father_proxy.is_virtual else None,
                 origin=_proxy_origin(father_proxy),
+                segments=list(father_proxy.segments),
             )
 
             _register(father_proxy, self._classified_virtual_ids, self._classified_entity_ids)

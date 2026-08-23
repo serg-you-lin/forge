@@ -195,6 +195,51 @@ class TestTrash(unittest.TestCase):
             )
         )
 
+# ---------------------------------------------------------------------------
+# Test 4 — segments copiati dal proxy al model
+# ---------------------------------------------------------------------------
+
+class TestSegmentsCopiati(unittest.TestCase):
+    """
+    Verifica che HierarchyBuilder copi proxy.segments su ForgeContour e Hole.
+
+    I segments sono stub — l'importante è che arrivino intatti,
+    non che siano geometricamente corretti.
+    """
+
+    def setUp(self):
+        from forge.core.primitives import LineSeg, ArcSeg
+
+        self.seg_outer = [
+            LineSeg(start=(0, 0),   end=(100, 0)),
+            LineSeg(start=(100, 0), end=(100, 100)),
+            LineSeg(start=(100, 100), end=(0, 100)),
+            LineSeg(start=(0, 100), end=(0, 0)),
+        ]
+        self.seg_hole = [
+            ArcSeg(center=(50, 50), radius=2.5,
+                   start_angle=0.0, end_angle=6.2831, ccw=True),
+        ]
+
+        outer = _rect_proxy(0, 0, 100, 100)
+        outer.segments = list(self.seg_outer)
+
+        hole = _circle_proxy(50, 50, 2.5)
+        hole.segments = list(self.seg_hole)
+
+        self.parts, _ = _make_builder().build([outer, hole])
+
+    def test_outer_segments_copiati(self):
+        self.assertEqual(
+            self.parts[0].outer.segments,
+            self.seg_outer,
+        )
+
+    def test_hole_segments_copiati(self):
+        self.assertEqual(
+            self.parts[0].holes[0].segments,
+            self.seg_hole,
+        )
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -218,12 +218,15 @@ class HealStep:
                 is_durable = len(ctx.loop) == 1 and first_source is not None
 
             proxy_source_ref = first_source if is_durable else ctx
+            from ..adapters.dxf.virtual_adapter import parse_loop
+            segments = parse_loop(ctx.loop)
             shape = loop_to_closed_shape(
                 ctx.loop,
                 role=role,
                 polygon=ctx.polygon,
                 source_ref=proxy_source_ref,
                 is_virtual=not is_durable,
+                segments=segments,
             )
             if shape is not None:
                 virtual_proxies.append(shape)
