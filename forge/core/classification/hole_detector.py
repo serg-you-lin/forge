@@ -1,4 +1,3 @@
-
 """
 core/classification/hole_detector.py
 -------------------------------
@@ -7,19 +6,19 @@ Rileva fori filettati e svasature da primitive geometriche pure.
     is_threaded_hole     — True se il cerchio è un foro filettato
     is_countersink_outer — True se il cerchio è il cerchio esterno di svasatura
 
-Zero dipendenze da formato — lavora su CircularArcSeg e tuple (x, y).
+Zero dipendenze da formato — lavora su ArcSeg e tuple (x, y).
 """
 
 import math
-from typing import Optional, Tuple
+from typing import Tuple
 
-from forge.core.primitives.segments import CircularArcSeg
+from forge.core.primitives.segments import ArcSeg
 
 
 def is_threaded_hole(
     center:           Tuple[float, float],
     radius:           float,
-    all_arcs:         list[CircularArcSeg],
+    all_arcs:         list[ArcSeg],
     tolerance_center: float = 1.0,
     angle_tolerance:  float = 35.0,
 ) -> bool:
@@ -29,14 +28,21 @@ def is_threaded_hole(
     Args:
         center:           centro del cerchio (x, y)
         radius:           raggio del cerchio
-        all_arcs:         tutti gli archi del documento come CircularArcSeg
+        all_arcs:         tutti gli archi del documento come ArcSeg
         tolerance_center: distanza massima tra centri (mm)
         angle_tolerance:  tolleranza sull'angolo swept (gradi)
     """
+    # Converte tolleranza da gradi a radianti
+    angle_tolerance_rad = math.radians(angle_tolerance)
+    target_swept = math.radians(270)  # 270 gradi in radianti
+    
     for arc in all_arcs:
-        swept = (arc.end_angle - arc.start_angle) % 360
+        # Calcola angolo swept in radianti
+        swept = (arc.end_angle - arc.start_angle) % (2 * math.pi)
+        
+        # Verifica se è circa 270 gradi
         if (
-            abs(swept - 270) < angle_tolerance
+            abs(swept - target_swept) < angle_tolerance_rad
             and arc.radius > radius
             and math.hypot(center[0] - arc.center[0], center[1] - arc.center[1]) < tolerance_center
         ):

@@ -182,6 +182,10 @@ class HealStep:
         self.result._entities_in_loops_ids = self.entities_in_loops
 
         for loop in structural_loops:
+                        # DEBUG
+            print(f"\nDEBUG: loop con {len(loop)} edge")
+            for edge, rev in loop:
+                print(f"  {edge.source_ref.dxftype()} id={id(edge.source_ref)} rev={rev}")
             ctx = _loop_to_contour(loop, LAYER_OUTER, COLOR_OUTER)
             if ctx is not None:
                 self.result._virtual_shapes.append(ctx)
@@ -282,23 +286,38 @@ from shapely.geometry import Polygon
 
 
 def _fallback_polygonize(self):
+    import math
     from shapely.ops import unary_union, snap, polygonize
-    from ..adapters.dxf.geometry_adapter import arc_to_linestrings
-    from shapely.geometry import LineString
+    from shapely.geometry import LineString, Polygon
+    from ..core.primitives.segments import ArcSeg, DEFAULT_TOLERANCE
 
     self.result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
     segments = []
+    
+    # Linee
     for l in self.all_lines:
         segments.append(LineString([
             (l.dxf.start.x, l.dxf.start.y),
             (l.dxf.end.x,   l.dxf.end.y),
         ]))
+    
+    # Archi: usa ArcSeg.discretize() centralizzato
     for a in self.all_arcs:
-        segments.extend(arc_to_linestrings(a))
+        arc = ArcSeg(
+            center=(a.dxf.center.x, a.dxf.center.y),
+            radius=a.dxf.radius,
+            start_angle=math.radians(a.dxf.start_angle),
+            end_angle=math.radians(a.dxf.end_angle),
+            ccw=True,
+        )
+        pts = arc.discretize(DEFAULT_TOLERANCE)
+        if len(pts) >= 2:
+            segments.append(LineString(pts))
 
     merged   = unary_union(segments)
     snapped  = snap(merged, merged, self.tolerance)
     polygons = list(polygonize(snapped))
+    
 
     if polygons:
         self.result.warnings.append(
@@ -315,6 +334,7 @@ def _fallback_polygonize(self):
             ctx = DxfWriteContext(
                 polygon=poly,
                 has_spline=False,
+                origin="",
                 pts_with_bulge=pts,
                 loop=[],
                 layer=LAYER_OUTER,
@@ -327,6 +347,7 @@ def _fallback_polygonize(self):
                 ctx_i = DxfWriteContext(
                     polygon=Polygon(interior),
                     has_spline=False,
+                    origin="",
                     pts_with_bulge=pts_i,
                     loop=[],
                     layer=LAYER_INNER,
@@ -339,7 +360,6 @@ def _fallback_polygonize(self):
             "LINE/ARC non formano loop chiusi — "
             "potrebbero essere marcature o geometria aperta."
         )
-
 
 def _loop_is_structural(loop, label_map) -> bool:
     from ..model.role import ContourRole, layer_to_role

@@ -5,9 +5,9 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 from shapely.geometry import LineString
 
+from ...core.primitives.segments import ArcSeg, DEFAULT_TOLERANCE
 from ...core.adapter_base import ForgeAdapter
 from .geometry_adapter import (
     arc_endpoints,
@@ -25,7 +25,7 @@ from ...core.healing.gap_solver import (
 from ...bridge.edge import Edge, BendingLine
 from ...model.role import ContourRole
 from ...bridge.shape import ClosedShape, OpenShape
-from ...core.primitives.segments import CircularArcSeg
+from ...core.primitives.segments import ArcSeg
 
 
 # ---------------------------------------------------------------------------
@@ -108,19 +108,20 @@ def _entity_to_linestring(entity) -> LineString:
         ])
 
     if t == 'ARC':
-        cx, cy = entity.dxf.center.x, entity.dxf.center.y
-        r      = entity.dxf.radius
-        start  = np.radians(entity.dxf.start_angle)
-        end    = np.radians(entity.dxf.end_angle)
-        if start > end:
-            end += 2 * np.pi
-        angles = np.linspace(start, end, 33)
-        pts = [(cx + r * np.cos(a), cy + r * np.sin(a)) for a in angles]
+        # Usa ArcSeg.discretize() centralizzato
+        arc = ArcSeg(
+            center=(entity.dxf.center.x, entity.dxf.center.y),
+            radius=entity.dxf.radius,
+            start_angle=math.radians(entity.dxf.start_angle),
+            end_angle=math.radians(entity.dxf.end_angle),
+            ccw=True,
+        )
+        pts = arc.discretize(DEFAULT_TOLERANCE)
         return LineString(pts)
 
     if t == 'SPLINE':
         try:
-            pts = [(p[0], p[1]) for p in entity.flattening(0.01)]
+            pts = [(p[0], p[1]) for p in entity.flattening(DEFAULT_TOLERANCE)]
             if len(pts) >= 2:
                 return LineString(pts)
         except Exception:
@@ -308,16 +309,17 @@ class DxfAdapter(ForgeAdapter):
             "splines": list(self.msp.query("SPLINE")),
         }
 
-    def to_circular_arcs(self) -> List[CircularArcSeg]:
+    def to_circular_arcs(self) -> List[ArcSeg]:
         result = []
         for entity in self.msp:
             if entity.dxftype() != "ARC":
                 continue
-            result.append(CircularArcSeg(
+            result.append(ArcSeg(
                 center=(entity.dxf.center.x, entity.dxf.center.y),
                 radius=entity.dxf.radius,
-                start_angle=entity.dxf.start_angle,
-                end_angle=entity.dxf.end_angle,
+                start_angle=math.radians(entity.dxf.start_angle),
+                end_angle=math.radians(entity.dxf.end_angle),
+                ccw=True,
             ))
         return result
 

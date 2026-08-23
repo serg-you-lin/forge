@@ -34,6 +34,7 @@ import os
 from typing import Callable, Optional
 
 import ezdxf
+from shapely.geometry import Point
 
 from ..model import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..adapters.dxf.copy_adapter import copy_entity
@@ -212,6 +213,7 @@ def split(
 
         vs_swap = _write_virtual_shapes_to_msp(msp_out, result, part)
         vs_passthrough_structural = _collect_vs_passthrough_structural(result, part)
+        consumed_source_ids = _collect_consumed_virtual_source_ids(result, part, vs_swap)
 
         effective_ids = set()
         for eid in part.entity_ids:
@@ -232,10 +234,19 @@ def split(
                 if not include_annotations:
                     continue
                 pt = get_representative_point(entity)
-                if pt is None or not part.outer.polygon.covers(pt):
+                if pt is None:
+                    continue
+                # Converti tupla (x, y) in Point Shapely
+                pt_geom = Point(pt)
+                if not part.outer.polygon.covers(pt_geom):
                     continue
             else:
                 if id(entity) not in effective_ids:
+                    continue
+                if id(entity) in consumed_source_ids:
+                    # Questo source_ref è già stato materializzato come
+                    # VirtualShape nel file figlio: non duplicarlo col layer
+                    # originale del DXF sorgente.
                     continue
 
             new_entity = copy_entity(entity, msp_out)
@@ -445,3 +456,25 @@ def _collect_vs_passthrough_structural(result: ForgeResult, part: ForgePart) -> 
         for entity, _ in vs.loop:
             mapping[id(entity)] = target_layer
     return mapping
+
+
+def _collect_consumed_virtual_source_ids(result: ForgeResult, part: ForgePart, vs_swap: dict) -> set:
+    """
+    Restituisce gli id(entità sorgente) dei loop virtuali già materializzati
+    nel figlio come nuova entità (id(vs) -> id(lwpoly)).
+
+    Queste entità non vanno ricopiate da msp sorgente per evitare duplicati
+    su layer originali non-forge.
+    """
+    consumed = set()
+    for vs in result._virtual_shapes:
+        if result._vs_to_part.get(id(vs)) is not part:
+            continue
+        swap = vs_swap.get(id(vs))
+        if swap is None or isinstance(swap, list):
+            continue
+        for edge, _ in getattr(vs, "loop", []):
+            source_ref = getattr(edge, "source_ref", None)
+            if source_ref is not None:
+                consumed.add(id(source_ref))
+    return consumed

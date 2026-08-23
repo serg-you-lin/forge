@@ -6,7 +6,7 @@
   "outer_perimeter_mm": 1549.996,
   "inner_perimeter_mm": 0,
   "total_perimeter_mm": 1549.996,
-  "outer_wkt": "POLYGON ((0 420, 624.9979999999996 420, 624.9979999999996 270, 0 270, 0 420))",
+  "outer_wkt": "POLYGON ((0 420, 0 270, 624.9979999999996 270, 624.9979999999996 420, 0 420))",
   "inners_wkt": [],
   "outer_layer": "OuterContour",
   "inners_layers": [],

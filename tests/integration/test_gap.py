@@ -179,7 +179,6 @@ class TestArcLineGapClose(unittest.TestCase):
         self.assertLess(area, W * H)
         self.assertGreater(area, W * H * 0.8)
 
-
 class TestArcLineGapNoClose(unittest.TestCase):
     """tolerance < gap → profilo non chiuso."""
 
@@ -202,8 +201,10 @@ class TestArcArcSameCircleClose(unittest.TestCase):
     tolerance > gap → profilo chiuso, area ≈ π*r².
     """
 
-    AREA_C  = 7841.4   # area misurata in CAD dopo heal
-    DELTA_C = 2.0
+    RADIUS_C = 50.0
+    AREA_C = math.pi * (RADIUS_C ** 2)
+    # Tolleranza numerica: include discretizzazione arco + gap-fix.
+    DELTA_C = 5.0
 
     def setUp(self):
         doc = load("arc_arc_gap.dxf")

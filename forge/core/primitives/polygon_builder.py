@@ -14,87 +14,48 @@ from typing import List, Optional
 
 from shapely.geometry import Polygon
 
-from . import LineSeg, ArcSeg, SplineSeg, DiscretizedArcSeg
-from ..geometry import num_segments_for_bulge
-
 try:
-    from ezdxf.math import bulge_to_arc
-except ImportError:
-    bulge_to_arc = None
+    from ezdxf.math import bulge_to_arc as _ez_bulge_to_arc
+except Exception:
+    _ez_bulge_to_arc = None
+
+from . import LineSeg, ArcSeg, SplineSeg
 
 
 def build_polygon(
-    primitives: List[LineSeg | ArcSeg | SplineSeg | DiscretizedArcSeg],
+    primitives: List[LineSeg | ArcSeg | SplineSeg],
+    tolerance:  float = 0.01,
 ) -> Optional[Polygon]:
     """
     Costruisce un Polygon shapely da una lista di primitive geometriche.
+
+    Ogni primitiva viene discretizzata con la stessa tolerance.
+    _BulgeSeg (privato all'adapter, Fase 3) non ha discretize() —
+    trattato come segmento rettilineo fino alla sua eliminazione.
     Restituisce None se la geometria non è valida o ha meno di 3 punti.
     """
     if not primitives:
         return None
 
-    has_spline = any(isinstance(p, SplineSeg) for p in primitives)
-
-    if has_spline:
-        return _polygon_from_spline_primitives(primitives)
-    return _polygon_from_line_arc_primitives(primitives)
-
-
-# ---------------------------------------------------------------------------
-# Helper privati
-# ---------------------------------------------------------------------------
-
-def _polygon_from_line_arc_primitives(primitives: list) -> Optional[Polygon]:
-    pts_with_bulge = []
-    for prim in primitives:
-        if isinstance(prim, LineSeg):
-            pts_with_bulge.append((prim.start[0], prim.start[1], 0.0, 0.0, 0.0))
-        elif isinstance(prim, ArcSeg):
-            pts_with_bulge.append((prim.start[0], prim.start[1], 0.0, 0.0, prim.bulge))
-
-    pts = _discretize_pts_with_bulge(pts_with_bulge)
-    return _make_polygon(pts)
-
-
-def _polygon_from_spline_primitives(primitives: list) -> Optional[Polygon]:
-    pts = []
-    for prim in primitives:
-        if isinstance(prim, LineSeg):
-            pts.append(prim.start)
-        elif isinstance(prim, DiscretizedArcSeg):
-            pts.extend(prim.points[1:])
-        elif isinstance(prim, SplineSeg):
-            pts.extend(prim.points[1:])
+    pts: list = []
+    for i, prim in enumerate(primitives):
+        if hasattr(prim, "discretize"):
+            seg_pts = prim.discretize(tolerance)
+        elif hasattr(prim, "bulge") and hasattr(prim, "start") and hasattr(prim, "end"):
+            seg_pts = _discretize_bulge_segment(prim.start, prim.end, prim.bulge)
+        else:
+            seg_pts = [prim.start, prim.end]
+        if i == 0:
+            pts.extend(seg_pts)
+        else:
+            pts.extend(seg_pts[1:])
 
     return _make_polygon(pts)
 
 
-def _discretize_pts_with_bulge(pts_with_bulge: list) -> list:
-    poly_pts = []
-    n = len(pts_with_bulge)
-    for i in range(n):
-        x1, y1, _, _, bulge = pts_with_bulge[i]
-        x2, y2, _, _, _     = pts_with_bulge[(i + 1) % n]
-        poly_pts.append((x1, y1))
-        if abs(bulge) > 1e-6:
-            center, _, _, radius = bulge_to_arc((x1, y1), (x2, y2), bulge)
-            cx, cy = center.x, center.y
-            a1 = math.atan2(y1 - cy, x1 - cx)
-            a2 = math.atan2(y2 - cy, x2 - cx)
-            if bulge > 0:
-                if a2 <= a1:
-                    a2 += 2 * math.pi
-            else:
-                if a2 >= a1:
-                    a2 -= 2 * math.pi
-            angle  = a2 - a1
-            num_seg = num_segments_for_bulge(bulge)
-            for j in range(1, num_seg):
-                a = a1 + angle * j / num_seg
-                poly_pts.append((cx + radius * math.cos(a),
-                                 cy + radius * math.sin(a)))
-    return poly_pts
-
+# ---------------------------------------------------------------------------
+# Helper privato
+# ---------------------------------------------------------------------------
 
 def _make_polygon(pts: list) -> Optional[Polygon]:
     if len(pts) < 3:
@@ -108,3 +69,49 @@ def _make_polygon(pts: list) -> Optional[Polygon]:
         return poly if not poly.is_empty else None
     except Exception:
         return None
+
+
+def _discretize_bulge_segment(start, end, bulge: float) -> list:
+    x1, y1 = start
+    x2, y2 = end
+
+    if abs(bulge) <= 1e-12:
+        return [start, end]
+
+    included = 4.0 * math.atan(abs(bulge))
+    n_segments = max(8, int(included / math.pi * 32))
+
+    if _ez_bulge_to_arc is not None:
+        center, _, _, radius = _ez_bulge_to_arc((x1, y1), (x2, y2), bulge)
+        cx, cy = center.x, center.y
+    else:
+        chord = math.hypot(x2 - x1, y2 - y1)
+        if chord <= 1e-12:
+            return [start, end]
+        radius = chord / (2.0 * math.sin(included / 2.0))
+        mx, my = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+        dx, dy = x2 - x1, y2 - y1
+        nx, ny = -dy / chord, dx / chord
+        dist = radius * math.cos(included / 2.0)
+        if bulge > 0:
+            cx, cy = mx + nx * dist, my + ny * dist
+        else:
+            cx, cy = mx - nx * dist, my - ny * dist
+
+    start_a = math.atan2(y1 - cy, x1 - cx)
+    end_a = math.atan2(y2 - cy, x2 - cx)
+    if bulge > 0:
+        if end_a <= start_a:
+            end_a += 2.0 * math.pi
+    else:
+        if end_a >= start_a:
+            end_a -= 2.0 * math.pi
+    sweep = end_a - start_a
+
+    points = []
+    for i in range(n_segments + 1):
+        t = i / n_segments
+        a = start_a + t * sweep
+        points.append((cx + radius * math.cos(a), cy + radius * math.sin(a)))
+
+    return points

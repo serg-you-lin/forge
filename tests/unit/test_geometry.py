@@ -1,72 +1,49 @@
 """
 test_geometry.py
 ----------------
-Test unitari per le funzioni pure di forge.core.geometry.
+Test unitari per le funzioni pure di forge.core.geometry e
+forge.core.classification.hole_detector.
 
 Copre:
-  - is_threaded_arc      : riconosce archi a 270° (filettatura)
-  - is_threaded_hole     : riconosce fori filettati (cerchio + arco concentrico)
-  - is_countersink_outer : riconosce il cerchio esterno di un countersink
-  Test per are_collinear() e group_collinear_lines()
-in core/geometry.py
-
-Versione MOCK (senza ezdxf), coerente con test_virtual.py.
-
+  - is_threaded_hole      : riconosce fori filettati (cerchio + arco a 270°)
+  - is_countersink_outer  : riconosce il cerchio esterno di un countersink
+  - are_collinear         : verifica collinearità di due LineString
+  - group_collinear_lines : raggruppa LineString collineari
 """
 
 import unittest
 import math
 from pathlib import Path
-from unittest.mock import MagicMock
 import sys
 
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from forge.core.primitives.segments import CircularArcSeg
-from forge.core.classification.hole_detector import is_threaded_hole, is_countersink_outer
-from forge.core.geometry import are_collinear, group_collinear_lines
 from shapely.geometry import LineString
 
+from forge.core.primitives.segments import ArcSeg
+from forge.core.classification.hole_detector import is_threaded_hole, is_countersink_outer
+from forge.core.geometry import are_collinear, group_collinear_lines
 
 
 # ---------------------------------------------------------------------------
-# CircularArcSeg
+# Helper
 # ---------------------------------------------------------------------------
 
-class TestIsThreadedArc(unittest.TestCase):
+def make_arc(cx, cy, radius, start_angle, end_angle):
+    """Crea un ArcSeg con angoli in gradi."""
+    return ArcSeg(
+        center=(cx, cy),
+        radius=radius,
+        start_angle=math.radians(start_angle),
+        end_angle=math.radians(end_angle),
+        ccw=True
+    )
 
-    def _make_arc(self, cx, cy, radius, start_angle, end_angle):
-        return CircularArcSeg(
-            center=(cx, cy),
-            radius=radius,
-            start_angle=start_angle,
-            end_angle=end_angle,
-        )
 
-    def test_001_arco_270_gradi_e_filettato(self):
-        arc = self._make_arc(0, 0, 6, 0, 270)
-        self.assertTrue(is_threaded_hole((0, 0), 5, [arc]))
-
-    def test_002_arco_260_gradi_entro_tolleranza(self):
-        arc = self._make_arc(0, 0, 6, 0, 260)
-        self.assertTrue(is_threaded_hole((0, 0), 5, [arc]))
-
-    def test_003_arco_180_gradi_non_filettato(self):
-        arc = self._make_arc(0, 0, 6, 0, 180)
-        self.assertFalse(is_threaded_hole((0, 0), 5, [arc]))
-
-    def test_004_arco_360_non_filettato(self):
-        arc = self._make_arc(0, 0, 6, 0, 360)
-        self.assertFalse(is_threaded_hole((0, 0), 5, [arc]))
-
-    def test_006_tolleranza_custom_stretta(self):
-        arc = self._make_arc(0, 0, 6, 0, 260)
-        self.assertFalse(is_threaded_hole((0, 0), 5, [arc], angle_tolerance=1.0))
-
-    def test_007_arco_ruotato_stesso_risultato(self):
-        arc = self._make_arc(0, 0, 6, 45, 315)
-        self.assertTrue(is_threaded_hole((0, 0), 5, [arc]))
+def make_line(x1, y1, x2, y2) -> LineString:
+    """Crea una LineString shapely."""
+    return LineString([(x1, y1), (x2, y2)])
 
 
 # ---------------------------------------------------------------------------
@@ -75,37 +52,54 @@ class TestIsThreadedArc(unittest.TestCase):
 
 class TestIsThreadedHole(unittest.TestCase):
 
-    def _arc(self, cx, cy, radius, start_angle, end_angle):
-        return CircularArcSeg(
-            center=(cx, cy),
-            radius=radius,
-            start_angle=start_angle,
-            end_angle=end_angle,
-        )
+    def test_001_arco_270_gradi_e_filettato(self):
+        arc = make_arc(0, 0, 6, 0, 270)
+        self.assertTrue(is_threaded_hole((0, 0), 5, [arc]))
 
-    def test_001_coppia_concentrica_filettata(self):
-        arc = self._arc(0, 0, 4, 0, 270)
-        self.assertTrue(is_threaded_hole((0, 0), 3, [arc]))
+    def test_002_arco_260_gradi_entro_tolleranza(self):
+        arc = make_arc(0, 0, 6, 0, 260)
+        self.assertTrue(is_threaded_hole((0, 0), 5, [arc]))
 
-    def test_002_nessun_arco(self):
-        self.assertFalse(is_threaded_hole((0, 0), 3, []))
-
-    def test_003_arco_non_filettato(self):
-        arc = self._arc(0, 0, 4, 0, 180)
-        self.assertFalse(is_threaded_hole((0, 0), 3, [arc]))
-
-    def test_004_arco_non_concentrico(self):
-        arc = self._arc(100, 100, 4, 0, 270)
-        self.assertFalse(is_threaded_hole((0, 0), 3, [arc]))
-
-    def test_005_arco_piu_piccolo_del_cerchio(self):
-        arc = self._arc(0, 0, 3, 0, 270)
+    def test_003_arco_180_gradi_non_filettato(self):
+        arc = make_arc(0, 0, 6, 0, 180)
         self.assertFalse(is_threaded_hole((0, 0), 5, [arc]))
 
-    def test_006_piu_archi_uno_solo_valido(self):
-        arc_bad = self._arc(0, 0, 4, 0, 180)
-        arc_ok  = self._arc(0, 0, 4, 0, 270)
-        self.assertTrue(is_threaded_hole((0, 0), 3, [arc_bad, arc_ok]))
+    def test_004_arco_360_non_filettato(self):
+        arc = make_arc(0, 0, 6, 0, 360)
+        self.assertFalse(is_threaded_hole((0, 0), 5, [arc]))
+
+    def test_005_tolleranza_custom_stretta(self):
+        arc = make_arc(0, 0, 6, 0, 260)
+        self.assertFalse(is_threaded_hole((0, 0), 5, [arc], angle_tolerance=1.0))
+
+    def test_006_arco_ruotato_stesso_risultato(self):
+        arc = make_arc(0, 0, 6, 45, 315)  # 270 gradi, ruotato
+        self.assertTrue(is_threaded_hole((0, 0), 5, [arc]))
+
+    def test_007_nessun_arco(self):
+        self.assertFalse(is_threaded_hole((0, 0), 5, []))
+
+    def test_008_arco_non_concentrico(self):
+        arc = make_arc(100, 100, 6, 0, 270)
+        self.assertFalse(is_threaded_hole((0, 0), 5, [arc]))
+
+    def test_009_arco_piu_piccolo_del_cerchio(self):
+        arc = make_arc(0, 0, 4, 0, 270)
+        self.assertFalse(is_threaded_hole((0, 0), 5, [arc]))
+
+    def test_010_piu_archi_uno_solo_valido(self):
+        arc_bad = make_arc(0, 0, 6, 0, 180)   # non filettato
+        arc_ok  = make_arc(0, 0, 6, 0, 270)   # filettato
+        self.assertTrue(is_threaded_hole((0, 0), 5, [arc_bad, arc_ok]))
+
+    def test_011_tolleranza_centro(self):
+        # Centro leggermente spostato, entro tolleranza
+        arc = make_arc(0.5, 0.5, 6, 0, 270)
+        self.assertTrue(is_threaded_hole((0, 0), 5, [arc], tolerance_center=1.0))
+
+    def test_012_centro_fuori_tolleranza(self):
+        arc = make_arc(2.0, 0, 6, 0, 270)
+        self.assertFalse(is_threaded_hole((0, 0), 5, [arc], tolerance_center=1.0))
 
 
 # ---------------------------------------------------------------------------
@@ -113,12 +107,9 @@ class TestIsThreadedHole(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestIsCountersinkOuter(unittest.TestCase):
-    """
-    Il cerchio esterno di un countersink ha un cerchio più piccolo concentrico
-    tra i suoi children.
-    """
 
     def test_001_cerchio_grande_con_piccolo_concentrico(self):
+        """Il cerchio esterno ha un cerchio più piccolo concentrico."""
         self.assertTrue(is_countersink_outer((0, 0), 10, [((0, 0), 5)]))
 
     def test_002_cerchio_senza_figli(self):
@@ -130,28 +121,23 @@ class TestIsCountersinkOuter(unittest.TestCase):
     def test_004_cerchio_con_figlio_stesso_raggio(self):
         self.assertFalse(is_countersink_outer((0, 0), 10, [((0, 0), 10)]))
 
-    def test_005_figlio_non_circle_ignorato(self):
-        # con primitive pure non esiste "tipo sbagliato" — se passa center/radius è un cerchio
-        # il test non ha più senso, rimosso
-        pass
+    def test_005_cerchio_con_figlio_piu_grande(self):
+        self.assertFalse(is_countersink_outer((0, 0), 10, [((0, 0), 15)]))
 
     def test_006_piu_figli_uno_solo_concentrico(self):
         siblings = [((50, 50), 3), ((0, 0), 4)]
         self.assertTrue(is_countersink_outer((0, 0), 10, siblings))
-# ---------------------------------------------------------------------------
-# Helper — LINE mock ezdxf-like
-# ---------------------------------------------------------------------------
 
-def make_line(x1, y1, x2, y2) -> LineString:
-    """
-    Crea una LineString shapely — compatibile con le funzioni
-    core/geometry.py dopo la rimozione della dipendenza ezdxf.
-    """
-    return LineString([(x1, y1), (x2, y2)])
+    def test_007_tolleranza_centro(self):
+        # Centro leggermente spostato, entro tolleranza
+        self.assertTrue(is_countersink_outer((0, 0), 10, [((0.5, 0.5), 5)], tolerance=1.0))
+
+    def test_008_centro_fuori_tolleranza(self):
+        self.assertFalse(is_countersink_outer((0, 0), 10, [((2.0, 0), 5)], tolerance=1.0))
 
 
 # ---------------------------------------------------------------------------
-# Test are_collinear
+# are_collinear
 # ---------------------------------------------------------------------------
 
 class TestAreCollinear(unittest.TestCase):
@@ -196,9 +182,14 @@ class TestAreCollinear(unittest.TestCase):
         b = make_line(0, 10.20, 100, 10.20)
         self.assertFalse(are_collinear(a, b, tolerance=0.1))
 
+    def test_009_linea_degenere(self):
+        a = make_line(0, 0, 0, 0)
+        b = make_line(10, 10, 10, 10)
+        self.assertFalse(are_collinear(a, b))
+
 
 # ---------------------------------------------------------------------------
-# Test group_collinear_lines
+# group_collinear_lines
 # ---------------------------------------------------------------------------
 
 class TestGroupCollinearLines(unittest.TestCase):
@@ -216,7 +207,7 @@ class TestGroupCollinearLines(unittest.TestCase):
         groups = group_collinear_lines(lines)
         self.assertEqual(len(groups), 2)
 
-    def test_002_ogni_gruppo_ha_due_segmenti(self):
+    def test_002_gruppi_con_dimensione_corretta(self):
         lines = [
             make_line(125.0, -39.628, 170.0, -39.628),
             make_line(0.0,   -39.628,  45.0, -39.628),
@@ -229,7 +220,6 @@ class TestGroupCollinearLines(unittest.TestCase):
         groups = group_collinear_lines(lines)
         sizes = sorted(len(g) for g in groups)
         self.assertEqual(sizes, [2, 4])
- 
 
     def test_003_segmento_singolo(self):
         lines = [make_line(0, 0, 100, 0)]
@@ -264,6 +254,33 @@ class TestGroupCollinearLines(unittest.TestCase):
         groups = group_collinear_lines(lines)
 
         self.assertEqual(len(groups), 3)
+
+    def test_007_linee_oblique_collineari(self):
+        lines = [
+            make_line(0, 0, 10, 10),
+            make_line(20, 20, 30, 30),
+            make_line(40, 40, 50, 50),
+        ]
+
+        groups = group_collinear_lines(lines)
+
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(len(groups[0]), 3)
+
+    def test_008_linee_miste(self):
+        lines = [
+            make_line(0, 0, 10, 0),    # orizzontale y=0
+            make_line(20, 0, 30, 0),   # orizzontale y=0
+            make_line(0, 10, 10, 10),  # orizzontale y=10
+            make_line(0, 0, 0, 10),    # verticale x=0
+        ]
+
+        groups = group_collinear_lines(lines)
+
+        self.assertEqual(len(groups), 3)
+        sizes = sorted(len(g) for g in groups)
+        self.assertEqual(sizes, [1, 1, 2])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
