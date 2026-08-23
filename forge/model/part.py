@@ -3,7 +3,7 @@ from typing import Any, List, Set, Tuple, Optional
 from shapely.geometry import Polygon
 
 from .hole import Hole
-from .edge import BendingLine
+from ..bridge.edge import BendingLine
 from .engraving import Engraving
 from .role import ContourRole
 
