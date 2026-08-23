@@ -43,6 +43,7 @@ class ClosedShape:
     is_virtual: bool                          = False
     diameter:   Optional[float]               = None
     center:     Optional[Tuple[float, float]] = None
+    segments:   List                          = field(default_factory=list)
 
 
 @dataclass

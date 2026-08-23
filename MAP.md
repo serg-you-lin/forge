@@ -334,3 +334,37 @@ representative point
 Domani se cambi il modo di rappresentare gli archi devi ricordarti di aggiornare tutto.
 
 Con gli handler, tutto quello che riguarda un ARC vive in un solo posto. L'adapter diventa un semplice orchestratore e aggiungere un nuovo tipo di entità significa estendere il sistema, non modificare codice esistente. Questo è molto più vicino al principio Open/Closed e, secondo me, si adatta bene alla direzione modulare che stai cercando di dare a Forge.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Feature (ABC)
+├── source_ref, part_label, source_layer(), to_dict()
+│
+├── ClosedFeature(Feature)
+│   ├── polygon, area, bbox, role, segments
+│   ├── ForgeContour      ← outer / inner
+│   ├── Hole              ← aggiunge diameter, center, hole_type
+│   └── EngravingClosed   ← contorno inciso chiuso
+│
+└── OpenFeature(Feature)
+    ├── pts, length, geometry
+    ├── BendingLine       ← aggiunge angle_deg
+    └── EngravingOpen     ← traccia incisa aperta

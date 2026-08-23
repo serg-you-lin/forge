@@ -1,7 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Tuple, Any
 from shapely.geometry import Polygon
 
+from ..core.primitives import LineSeg, ArcSeg, SplineSeg
 from .role import ContourRole
 
 # ---------------------------------------------------------------------------
@@ -65,6 +66,7 @@ class Hole:
     outer_diameter:   Optional[float] = None
     outer_source_ref: Any             = None
     is_hole:          bool            = True
+    segments:         list            = field(default_factory=list)
 
     @property
     def area(self) -> float:
