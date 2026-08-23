@@ -5,7 +5,7 @@ from typing import Optional
 import math
 from shapely.geometry import Polygon
 
-from ...model.shape import ClosedShape, OpenShape
+from ...bridge.shape import ClosedShape, OpenShape
 from ...model.part import ForgePart, ForgeContour
 from ...model.hole import Hole, HOLE_TYPE_UNKNOWN
 from ...model.role import ContourRole
