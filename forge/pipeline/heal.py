@@ -167,7 +167,7 @@ class HealStep:
             return
 
         from ..core.topology.loop_finder import LoopFinder
-        from ..adapters.dxf.virtual_adapter import parse_loop
+        from ..adapters.dxf.parser import parse_loop
         from ..core.healing.hierarchy import loop_to_closed_shape
         from ..model.role import layer_to_role
 

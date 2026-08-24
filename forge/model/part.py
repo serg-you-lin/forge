@@ -8,6 +8,7 @@ from typing import Any, List, Optional, Set, Tuple
 
 from shapely.geometry import Polygon
 
+from forge.core.primitives import LineSeg, ArcSeg, CircleSeg, SplineSeg
 from forge.model.feature import ClosedFeature
 from forge.model.role import ContourRole
 from forge.model.hole import Hole

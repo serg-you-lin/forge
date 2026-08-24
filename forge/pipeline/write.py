@@ -38,7 +38,7 @@ from shapely.geometry import Point
 from ..model import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..adapters.dxf.copy_adapter import copy_entity
 from ..adapters.dxf.geometry_adapter import get_representative_point
-from ..adapters.dxf.virtual_adapter import write_contour_to_msp
+from ..adapters.dxf.exporter import write_contour_to_msp
 from ..model.role import ContourRole
 
 from ..adapters.dxf.layers import (

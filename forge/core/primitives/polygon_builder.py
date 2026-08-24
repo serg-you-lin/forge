@@ -19,19 +19,18 @@ try:
 except Exception:
     _ez_bulge_to_arc = None
 
-from . import LineSeg, ArcSeg, SplineSeg
+from . import LineSeg, ArcSeg, SplineSeg, CircleSeg
 
 
 def build_polygon(
-    primitives: List[LineSeg | ArcSeg | SplineSeg],
+    primitives: List[LineSeg | ArcSeg | SplineSeg | CircleSeg],
     tolerance:  float = 0.01,
 ) -> Optional[Polygon]:
     """
     Costruisce un Polygon shapely da una lista di primitive geometriche.
 
-    Ogni primitiva viene discretizzata con la stessa tolerance.
-    _BulgeSeg (privato all'adapter, Fase 3) non ha discretize() —
-    trattato come segmento rettilineo fino alla sua eliminazione.
+    Supporta LineSeg, ArcSeg, CircleSeg, SplineSeg.
+    Tutte le primitive hanno il metodo discretize().
     Restituisce None se la geometria non è valida o ha meno di 3 punti.
     """
     if not primitives:
@@ -44,7 +43,9 @@ def build_polygon(
         elif hasattr(prim, "bulge") and hasattr(prim, "start") and hasattr(prim, "end"):
             seg_pts = _discretize_bulge_segment(prim.start, prim.end, prim.bulge)
         else:
+            # Fallback per compatibilità
             seg_pts = [prim.start, prim.end]
+            
         if i == 0:
             pts.extend(seg_pts)
         else:
@@ -72,6 +73,9 @@ def _make_polygon(pts: list) -> Optional[Polygon]:
 
 
 def _discretize_bulge_segment(start, end, bulge: float) -> list:
+    """
+    Discretizza un segmento con bulge (per retrocompatibilità con _BulgeSeg).
+    """
     x1, y1 = start
     x2, y2 = end
 
