@@ -2,9 +2,10 @@
 model/hole.py
 """
 from dataclasses import dataclass, field
-from typing import Optional, Tuple, Any
+from typing import Optional, Tuple, Any, List
 from shapely.geometry import Polygon
 
+from forge.core.primitives import LineSeg, ArcSeg, CircleSeg, SplineSeg
 from forge.model.feature import ClosedFeature
 from forge.model.role import ContourRole
 
