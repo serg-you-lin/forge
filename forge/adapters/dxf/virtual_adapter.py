@@ -1,22 +1,19 @@
+
 """
 adapters/dxf/virtual_adapter.py
 --------------------------------
-Traduce loop ezdxf in DxfWriteContext (dati DXF-specifici).
+Traduce entità ezdxf in primitive geometriche pure (LineSeg, ArcSeg, SplineSeg).
+Unico file che conosce ezdxf, il formato bulge DXF, e scrive LWPOLYLINE.
 
-DxfWriteContext è l'unico oggetto che circola in _virtual_shapes:
-    - polygon    → geometria pura, usata da hierarchy.py per containment
-    - has_spline → flag per il write-back
-    - pts_with_bulge, loop → dati DXF per il write-back
-    - layer, color → metadati DXF assegnati da hierarchy.py
-
-Unico punto che tocca ezdxf per tutto ciò che riguarda le forme chiuse.
+Fase 3: DxfWriteContext eliminato. write_contour_to_msp() riceve un
+ForgeContour o Hole e lavora direttamente su segments.
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional, List
+from dataclasses import dataclass
+from typing import List, Optional
 
 from shapely.geometry import Polygon
 
@@ -26,40 +23,16 @@ from ...core.primitives.segments import DEFAULT_TOLERANCE
 
 
 # ---------------------------------------------------------------------------
-# Tipo privato — bulge DXF per write-back fedele. Eliminato in Fase 3.
+# Tipo privato — bulge DXF per write-back fedele.
+# Prodotto da _parse_polyline, consumato da segments_to_pts_with_bulge.
 # ---------------------------------------------------------------------------
 
 @dataclass
 class _BulgeSeg:
-    """Arco LWPOLYLINE con bulge — non esce da questo file. Fase 3 lo elimina."""
+    """Arco LWPOLYLINE con bulge — non esce da questo file."""
     start: tuple
     end:   tuple
     bulge: float
-
-
-# ---------------------------------------------------------------------------
-# DxfWriteContext — dati DXF-specifici, non appartengono al core
-# ---------------------------------------------------------------------------
-
-@dataclass
-class DxfWriteContext:
-    """
-    Contesto DXF per il write-back di una forma chiusa.
-
-    polygon:        geometria pura — usata da hierarchy per containment
-    has_spline:     True se il contorno contiene spline
-    pts_with_bulge: ricostruzione fedele degli archi per LWPOLYLINE
-    loop:           entità ezdxf originali — tracciabilità e swap id()
-    layer:          layer DXF finale (OUTER/INNER) — assegnato da hierarchy
-    color:          colore DXF finale — assegnato da hierarchy
-    """
-    polygon:        Polygon
-    has_spline:     bool = False
-    origin:         str  = ""
-    pts_with_bulge: list = field(default_factory=list)
-    loop:           list = field(default_factory=list)
-    layer:          str  = ""
-    color:          int  = 256
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +40,7 @@ class DxfWriteContext:
 # ---------------------------------------------------------------------------
 
 class DxfEntityDispatcher:
-    """Centralizes the DXF entity-type routing used by the adapter layer."""
+    """Centralizza il routing per tipo di entità DXF."""
 
     def __init__(self, entity):
         self.entity = entity
@@ -101,46 +74,30 @@ def _parse_line(entity, rev) -> tuple:
     return LineSeg(start=start, end=end), end
 
 
-# def _parse_arc(entity, rev) -> ArcSeg:
-#     cx = entity.dxf.center.x
-#     cy = entity.dxf.center.y
-#     r  = entity.dxf.radius
-#     sa = math.radians(entity.dxf.start_angle)
-#     ea = math.radians(entity.dxf.end_angle)
-#     if rev:
-#         sa, ea = ea, sa
-#     return ArcSeg(center=(cx, cy), radius=r, start_angle=sa, end_angle=ea, ccw=not rev)
-
 def _parse_arc(entity, rev) -> ArcSeg:
     cx = entity.dxf.center.x
     cy = entity.dxf.center.y
     r  = entity.dxf.radius
     sa = math.radians(entity.dxf.start_angle)
     ea = math.radians(entity.dxf.end_angle)
-    
+
     ccw = True
     if rev:
         sa, ea = ea, sa
         ccw = False
-    
+
     return ArcSeg(center=(cx, cy), radius=r, start_angle=sa, end_angle=ea, ccw=ccw)
 
+
 def _parse_spline(entity, rev) -> SplineSeg:
-    """
-    Converte una spline ezdxf in SplineSeg.
-    
-    FASE 3: popolare degree/control_points/knots/weights dalla spline ezdxf
-    e usare SplineSeg.discretize() con BSpline evaluator.
-    Per ora: estrai punti dal flattening e usali come control_points.
-    """
     try:
         pts = [(p[0], p[1]) for p in entity.flattening(DEFAULT_TOLERANCE)]
     except Exception:
         pts = []
-    
+
     if rev:
         pts = list(reversed(pts))
-    
+
     return SplineSeg(degree=0, control_points=pts, knots=[], weights=None)
 
 
@@ -149,8 +106,8 @@ def _parse_circle(entity) -> List[ArcSeg]:
     cy = entity.dxf.center.y
     r  = entity.dxf.radius
     return [
-        ArcSeg(center=(cx, cy), radius=r, start_angle=0.0,      end_angle=math.pi,   ccw=True),
-        ArcSeg(center=(cx, cy), radius=r, start_angle=math.pi,  end_angle=2*math.pi, ccw=True),
+        ArcSeg(center=(cx, cy), radius=r, start_angle=0.0,     end_angle=math.pi,   ccw=True),
+        ArcSeg(center=(cx, cy), radius=r, start_angle=math.pi, end_angle=2*math.pi, ccw=True),
     ]
 
 
@@ -166,7 +123,9 @@ def _parse_polyline(entity, rev) -> list:
     if not points:
         return []
 
-    is_closed = bool(getattr(entity, "is_closed", False) or getattr(entity, "closed", False))
+    is_closed = bool(
+        getattr(entity, "is_closed", False) or getattr(entity, "closed", False)
+    )
 
     if rev:
         reversed_points = []
@@ -233,88 +192,97 @@ def parse_loop(loop) -> List:
 
 
 # ---------------------------------------------------------------------------
-# loop → DxfWriteContext
+# ArcSeg → bulge DXF
 # ---------------------------------------------------------------------------
 
-def _loop_to_contour(loop, layer: str, color: int) -> Optional[DxfWriteContext]:
-    primitives = parse_loop(loop)
+def arc_seg_to_bulge(arc: ArcSeg) -> float:
+    """
+    Converte ArcSeg in valore bulge DXF.
 
-    has_spline     = any(isinstance(p, SplineSeg) for p in primitives)
-    pts_with_bulge = [] if has_spline else _build_pts_with_bulge(primitives)
+    bulge = tan(Δθ / 4)
+    Positivo = CCW, negativo = CW.
+    """
+    delta = arc.end_angle - arc.start_angle
+    delta = delta % (2 * math.pi)
+    if delta == 0.0:
+        delta = 2 * math.pi  # arco completo
 
-    polygon = build_polygon(primitives, DEFAULT_TOLERANCE)
-
-    if polygon is None:
-        return None
-
-    return DxfWriteContext(
-        polygon=polygon,
-        has_spline=has_spline,
-        origin=_extract_origin(loop),
-        pts_with_bulge=pts_with_bulge,
-        loop=loop,
-        layer=layer,
-        color=color,
-    )
+    bulge = math.tan(delta / 4.0)
+    if not arc.ccw:
+        bulge = -bulge
+    return bulge
 
 
-def _build_pts_with_bulge(primitives: list) -> list:
+def _arc_start_point(arc: ArcSeg) -> tuple:
+    """Punto sul cerchio all'angolo start_angle."""
+    x = arc.center[0] + arc.radius * math.cos(arc.start_angle)
+    y = arc.center[1] + arc.radius * math.sin(arc.start_angle)
+    return (x, y)
+
+
+def segments_to_pts_with_bulge(segments: list) -> list:
+    """
+    Converte List[LineSeg | ArcSeg | SplineSeg | _BulgeSeg]
+    in lista di tuple (x, y, s, e, bulge) pronte per LWPOLYLINE format='xyseb'.
+
+    SplineSeg ignorato — has_spline va controllato a monte.
+    _BulgeSeg ancora prodotto da _parse_polyline per le LWPOLYLINE durevoli
+    con archi — gestito qui finché Fase 3 non converte tutto in ArcSeg puri.
+    """
     pts = []
-    for prim in primitives:
-        if isinstance(prim, LineSeg):
-            pts.append((prim.start[0], prim.start[1], 0.0, 0.0, 0.0))
-        elif isinstance(prim, _BulgeSeg):
-            pts.append((prim.start[0], prim.start[1], 0.0, 0.0, prim.bulge))
+    for seg in segments:
+        if isinstance(seg, LineSeg):
+            pts.append((seg.start[0], seg.start[1], 0.0, 0.0, 0.0))
+        elif isinstance(seg, ArcSeg):
+            start = _arc_start_point(seg)
+            pts.append((start[0], start[1], 0.0, 0.0, arc_seg_to_bulge(seg)))
+        elif isinstance(seg, _BulgeSeg):
+            pts.append((seg.start[0], seg.start[1], 0.0, 0.0, seg.bulge))
     return pts
-
-
-def _extract_origin(loop: list) -> str:
-    """
-    Estrae il layer DXF originale dalle entità sorgente del loop.
-    
-    NOTA: legge da edge.source_ref.dxf.layer, non da edge.layer
-    perché vogliamo il layer DXF originale, non il layer topologico.
-    """
-    if not loop:
-        return ""
-    
-    origins = set()
-    for edge, _ in loop:
-        source = edge.source_ref
-        # Accedi al layer DXF dell'entità sorgente
-        if hasattr(source, 'dxf') and hasattr(source.dxf, 'layer'):
-            layer = source.dxf.layer
-            if layer:  # Solo layer non vuoti
-                origins.add(layer)
-    
-    # Restituisci il layer solo se tutte le entità hanno lo stesso layer
-    return origins.pop() if len(origins) == 1 else ""
 
 
 # ---------------------------------------------------------------------------
 # Write-back — unico punto che tocca ezdxf per le forme chiuse
 # ---------------------------------------------------------------------------
 
-def _write_virtual_shape(msp, ctx: DxfWriteContext):
-    """Scrive il DxfWriteContext su msp come LWPOLYLINE."""
-    if ctx.has_spline:
+def write_contour_to_msp(msp, contour, layer: str) -> Optional[object]:
+    """
+    Materializza un ForgeContour o Hole su msp come LWPOLYLINE.
+
+    Lavora su contour.segments — non tocca ezdxf direttamente salvo
+    per add_lwpolyline / add_polyline2d.
+
+    Restituisce l'entità creata, o None se:
+      - segments è vuoto (forma durevole con source_ref, o spline)
+      - tutti i segmenti sono SplineSeg
+    """
+    segments = getattr(contour, "segments", [])
+    if not segments:
+        return None
+
+    has_spline = any(isinstance(s, SplineSeg) for s in segments)
+    if has_spline:
+        return None
+
+    pts = segments_to_pts_with_bulge(segments)
+    if not pts:
         return None
 
     is_r12 = msp.doc is not None and msp.doc.dxfversion < "AC1015"
     if is_r12:
         pline = msp.add_polyline2d(
-            [(p[0], p[1]) for p in ctx.pts_with_bulge],
-            dxfattribs={"layer": ctx.layer, "color": ctx.color},
+            [(p[0], p[1]) for p in pts],
+            dxfattribs={"layer": layer, "color": 256},
         )
-        for vertex, pt in zip(pline.vertices, ctx.pts_with_bulge):
+        for vertex, pt in zip(pline.vertices, pts):
             if pt[4] != 0.0:
                 vertex.dxf.bulge = pt[4]
         pline.close(True)
         return pline
     else:
         return msp.add_lwpolyline(
-            ctx.pts_with_bulge,
+            pts,
             format="xyseb",
-            dxfattribs={"layer": ctx.layer, "color": ctx.color},
+            dxfattribs={"layer": layer, "color": 256},
             close=True,
         )

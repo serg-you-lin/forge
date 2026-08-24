@@ -1,3 +1,5 @@
+
+
 import sys
 from pathlib import Path
 
@@ -20,6 +22,7 @@ else:
     from forge.adapters.dxf.sanitize import deduplicate as _deduplicate_entities
     from forge.core.geometry import spline_endpoints, round_point
     from forge.adapters.dxf.sanitize import _explode_inserts
+
 
 class HealStep:
     def __init__(
@@ -52,6 +55,7 @@ class HealStep:
         self.entities_in_loops      = set()
 
         self.proxies = []
+        self.closed_shapes = []  # <-- AGGIUNTA QUI
 
         self.all_lines      = []
         self.all_arcs       = []
@@ -163,6 +167,10 @@ class HealStep:
             return
 
         from ..core.topology.loop_finder import LoopFinder
+        from ..adapters.dxf.virtual_adapter import parse_loop
+        from ..core.healing.hierarchy import loop_to_closed_shape
+        from ..model.role import layer_to_role
+
         graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
         loops = LoopFinder().find(graph, exclude_ids=self.candidate_bending_ids)
 
@@ -182,13 +190,32 @@ class HealStep:
         self.result._entities_in_loops_ids = self.entities_in_loops
 
         for loop in structural_loops:
-                        # DEBUG
-            print(f"\nDEBUG: loop con {len(loop)} edge")
-            for edge, rev in loop:
-                print(f"  {edge.source_ref.dxftype()} id={id(edge.source_ref)} rev={rev}")
-            ctx = _loop_to_contour(loop, LAYER_OUTER, COLOR_OUTER)
-            if ctx is not None:
-                self.result._virtual_shapes.append(ctx)
+            loop_layer = loop[0][0].layer if loop else ""
+            role = layer_to_role(loop_layer, self.result.label_map)
+
+            first_edge, _ = loop[0]
+            first_source  = getattr(first_edge, "source_ref", None)
+            is_durable    = len(loop) == 1 and first_source is not None
+
+            segments         = parse_loop(loop)
+            proxy_source_ref = first_source if is_durable else None
+
+            from ..core.primitives.polygon_builder import build_polygon
+            from ..core.primitives.segments import DEFAULT_TOLERANCE
+            polygon = build_polygon(segments, DEFAULT_TOLERANCE)
+            if polygon is None:
+                continue
+
+            shape = loop_to_closed_shape(
+                loop,
+                role=role,
+                polygon=polygon,
+                source_ref=proxy_source_ref,
+                is_virtual=not is_durable,
+                segments=segments,
+            )
+            if shape is not None:
+                self.closed_shapes.append(shape)
 
     def _reintegrate_bending(self):
         all_lines_full = list(self.msp.query("LINE"))
@@ -200,44 +227,13 @@ class HealStep:
         from ..core.topology.loop_finder import edges_to_open_shapes
         from ..core.healing.hierarchy import HierarchyBuilder
 
-        # Converti virtual_shapes in ClosedShape
-        from ..model.role import layer_to_role
-        virtual_proxies = []
-        for ctx in self.result._virtual_shapes:
-            loop_layer = ctx.loop[0][0].layer if ctx.loop else ""
-            role = layer_to_role(loop_layer, self.result.label_map)
-            from ..core.healing.hierarchy import loop_to_closed_shape
-
-            first_source = None
-            is_durable = False
-            if ctx.loop:
-                first_edge, _ = ctx.loop[0]
-                first_source = getattr(first_edge, "source_ref", None)
-                # In core, the durability of a loop should depend on its geometry,
-                # not on a DXF-specific type check.
-                is_durable = len(ctx.loop) == 1 and first_source is not None
-
-            proxy_source_ref = first_source if is_durable else ctx
-            from ..adapters.dxf.virtual_adapter import parse_loop
-            segments = parse_loop(ctx.loop)
-            shape = loop_to_closed_shape(
-                ctx.loop,
-                role=role,
-                polygon=ctx.polygon,
-                source_ref=proxy_source_ref,
-                is_virtual=not is_durable,
-                segments=segments,
-            )
-            if shape is not None:
-                virtual_proxies.append(shape)
-
         open_proxies = edges_to_open_shapes(
             self.adapter.to_edges(),
             exclude_ids=self.entities_in_loops,
             label_map=self.result.label_map,
         )
 
-        all_proxies = virtual_proxies + open_proxies  # open finiscono in trash per costruzione
+        all_proxies = self.closed_shapes + open_proxies
 
         if not all_proxies:
             self.result.errors.append("Nessuna geometria chiusa trovata dopo healing.")
@@ -253,35 +249,23 @@ class HealStep:
 
         parts, trash = builder.build(all_proxies)
 
-        # Aggiorna gli id classificati su self per compatibilità
-        # con il resto del pipeline (split, write)
         self.classified_virtual_ids = builder._classified_virtual_ids
         self.classified_entity_ids  = builder._classified_entity_ids
 
-        # Ricostruisci _vs_to_part — mapping vs_id → ForgePart
-        # necessario per write() e split()
-        for part in parts:
-            for proxy in virtual_proxies:
-                if proxy.is_virtual and id(proxy.source_ref) in part.entity_ids:
-                    self.result._vs_to_part[id(proxy.source_ref)] = part
-
-        self.result.parts        = parts
+        self.result.parts          = parts
         self.result.trash_entities = trash
 
 
 # ---------------------------------------------------------------------------
-# Funzioni monkey-patched come metodi di HealStep
-# (non più monkey-patch — definite qui e assegnate sotto)
+# Funzioni module-level
 # ---------------------------------------------------------------------------
 
 if __package__:
     from ..core.topology.loop_finder import LoopFinder
-    from ..adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext
     from ..adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
     from ..rules.palette import COLOR_OUTER, COLOR_INNER
 else:
     from forge.core.topology.loop_finder import LoopFinder
-    from forge.adapters.dxf.virtual_adapter import _loop_to_contour, DxfWriteContext
     from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
     from forge.rules.palette import COLOR_OUTER, COLOR_INNER
 
@@ -293,18 +277,18 @@ def _fallback_polygonize(self):
     from shapely.ops import unary_union, snap, polygonize
     from shapely.geometry import LineString, Polygon
     from ..core.primitives.segments import ArcSeg, DEFAULT_TOLERANCE
+    from ..core.healing.hierarchy import loop_to_closed_shape
+    from ..model.role import ContourRole
 
     self.result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
     segments = []
-    
-    # Linee
+
     for l in self.all_lines:
         segments.append(LineString([
             (l.dxf.start.x, l.dxf.start.y),
             (l.dxf.end.x,   l.dxf.end.y),
         ]))
-    
-    # Archi: usa ArcSeg.discretize() centralizzato
+
     for a in self.all_arcs:
         arc = ArcSeg(
             center=(a.dxf.center.x, a.dxf.center.y),
@@ -320,7 +304,6 @@ def _fallback_polygonize(self):
     merged   = unary_union(segments)
     snapped  = snap(merged, merged, self.tolerance)
     polygons = list(polygonize(snapped))
-    
 
     if polygons:
         self.result.warnings.append(
@@ -333,36 +316,47 @@ def _fallback_polygonize(self):
         for poly in polygons:
             if not poly.is_valid:
                 poly = poly.buffer(0)
-            pts = [(x, y, 0.0, 0.0, 0.0) for x, y in poly.exterior.coords]
-            ctx = DxfWriteContext(
+            pts = [(x, y) for x, y in poly.exterior.coords]
+
+            from ..core.primitives import LineSeg
+            fallback_segments = [
+                LineSeg(start=pts[i], end=pts[i + 1])
+                for i in range(len(pts) - 1)
+            ]
+            shape = loop_to_closed_shape(
+                [],
+                role=ContourRole.OUTER,
                 polygon=poly,
-                has_spline=False,
-                origin="",
-                pts_with_bulge=pts,
-                loop=[],
-                layer=LAYER_OUTER,
-                color=COLOR_OUTER,
+                source_ref=None,
+                is_virtual=True,
+                segments=fallback_segments,
             )
-            self.result._virtual_shapes.append(ctx)
+            if shape is not None:
+                self.closed_shapes.append(shape)
 
             for interior in poly.interiors:
-                pts_i = [(x, y, 0.0, 0.0, 0.0) for x, y in interior.coords]
-                ctx_i = DxfWriteContext(
-                    polygon=Polygon(interior),
-                    has_spline=False,
-                    origin="",
-                    pts_with_bulge=pts_i,
-                    loop=[],
-                    layer=LAYER_INNER,
-                    color=COLOR_INNER,
+                pts_i = [(x, y) for x, y in interior.coords]
+                inner_segments = [
+                    LineSeg(start=pts_i[i], end=pts_i[i + 1])
+                    for i in range(len(pts_i) - 1)
+                ]
+                inner_poly = Polygon(interior)
+                shape_i = loop_to_closed_shape(
+                    [],
+                    role=ContourRole.INNER,
+                    polygon=inner_poly,
+                    source_ref=None,
+                    is_virtual=True,
+                    segments=inner_segments,
                 )
-                self.result._virtual_shapes.append(ctx_i)
-
+                if shape_i is not None:
+                    self.closed_shapes.append(shape_i)
     else:
         self.result.warnings.append(
             "LINE/ARC non formano loop chiusi — "
             "potrebbero essere marcature o geometria aperta."
         )
+
 
 def _loop_is_structural(loop, label_map) -> bool:
     from ..model.role import ContourRole, layer_to_role
