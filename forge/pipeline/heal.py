@@ -49,10 +49,8 @@ class HealStep:
         if special_layers:
             self.result.label_map = special_layers
 
-        self.candidate_bending_ids  = set()
-        self.classified_entity_ids  = set()
-        self.classified_virtual_ids = set()
-        self.entities_in_loops      = set()
+        self.candidate_bending_ids = set()
+        self.entities_in_loops     = set()
 
         self.proxies = []
         self.closed_shapes = []  # <-- AGGIUNTA QUI
@@ -211,8 +209,8 @@ class HealStep:
                 role=role,
                 polygon=polygon,
                 source_ref=proxy_source_ref,
-                is_virtual=not is_durable,
                 segments=segments,
+                origin=loop_layer,
             )
             if shape is not None:
                 self.closed_shapes.append(shape)
@@ -248,9 +246,6 @@ class HealStep:
         )
 
         parts, trash = builder.build(all_proxies)
-
-        self.classified_virtual_ids = builder._classified_virtual_ids
-        self.classified_entity_ids  = builder._classified_entity_ids
 
         self.result.parts          = parts
         self.result.trash_entities = trash
@@ -328,7 +323,6 @@ def _fallback_polygonize(self):
                 role=ContourRole.OUTER,
                 polygon=poly,
                 source_ref=None,
-                is_virtual=True,
                 segments=fallback_segments,
             )
             if shape is not None:
@@ -346,7 +340,6 @@ def _fallback_polygonize(self):
                     role=ContourRole.INNER,
                     polygon=inner_poly,
                     source_ref=None,
-                    is_virtual=True,
                     segments=inner_segments,
                 )
                 if shape_i is not None:
