@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Tuple, List, Any
 from shapely.geometry import Polygon
 
-from ..model.role import ContourRole
+from ...model.role import ContourRole
 
 
 @dataclass
