@@ -52,8 +52,8 @@ def main():
 
     # ── VIRTUAL SHAPES ──
     print(f"\n--- VIRTUAL SHAPES ---")
-    for vs in result._virtual_shapes:
-        print(f"  layer={vs.layer} area={vs.polygon.area:.2f}")
+    # Legacy virtual-shape inspection removed; the model now keeps only real geometry.
+    print("  no legacy virtual shapes")
 
 
 if __name__ == "__main__":

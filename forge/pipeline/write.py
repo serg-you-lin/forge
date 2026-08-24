@@ -1,31 +1,5 @@
 
-"""
-workflow/write.py
----------------------
-Materializza un ForgeResult su uno o più documenti ezdxf.
-
-Posizione nella pipeline:
-    heal()      → geometria pura (ForgeResult con parts, trash)
-    detect()    → semantica (geometry_hints, part.custom)
-    write()     → materializza LWPOLYLINE + assegna layer/colori sul msp
-    split()     → produce un documento separato per ogni part
-    inject()    → serializza metriche nel JSON/XDATA
-
-Responsabilità:
-    write()  → per ogni contorno con segments: materializza LWPOLYLINE
-               per ogni contorno con source_ref: assegna layer/color direttamente
-               rimuove LINE/ARC originali assorbite dai loop
-               aggiorna part.entity_ids: swap vs_id → id(LWPOLYLINE)
-
-    split()  → crea un nuovo documento ezdxf per ogni ForgePart
-               copia le entità usando part.entity_ids
-
-NON è responsabilità di questo modulo:
-    - decidere cosa è countersink o threaded     → detect()
-    - serializzare metriche                      → inject()
-    - aprire o salvare file su disco             → il chiamante
-    - conoscere ezdxf salvo per copy_entity      → adapters/dxf/
-"""
+"""DXF write helpers for ForgeResult materialization."""
 
 from __future__ import annotations
 
@@ -151,20 +125,8 @@ def split(
         _setup_layers(doc_out)
         msp_out = doc_out.modelspace()
 
-        # Materializza contorni nel figlio, ottieni swap vs_id → id(lwpoly)
-        vs_swap = _write_part_contours_to_msp(msp_out, part, entity_to_work)
-
-        # entity_ids effettivi dopo lo swap
-        effective_ids = set()
-        for eid in part.entity_ids:
-            swapped = vs_swap.get(eid, eid)
-            if isinstance(swapped, list):
-                effective_ids.update(swapped)
-            else:
-                effective_ids.add(swapped)
-
-        # id sorgente già materializzati come nuova entità nel figlio
-        consumed_source_ids = _collect_consumed_source_ids(part, vs_swap)
+        _write_part_contours_to_msp(msp_out, part, entity_to_work)
+        effective_ids = set(part.entity_ids)
 
         for entity in msp:
             if not entity.dxf.hasattr("layer"):
@@ -183,8 +145,6 @@ def split(
                     continue
             else:
                 if id(entity) not in effective_ids:
-                    continue
-                if id(entity) in consumed_source_ids:
                     continue
 
             new_entity = copy_entity(entity, msp_out)
@@ -243,8 +203,6 @@ def _write_or_assign_contour(msp, contour, part: ForgePart, entity_to_work: dict
 
     lwpoly = write_contour_to_msp(msp, contour, layer)
     if lwpoly is not None:
-        if contour.vs_id is not None:
-            part.entity_ids.discard(contour.vs_id)
         part.entity_ids.add(id(lwpoly))
         if contour.role not in (ContourRole.OUTER, ContourRole.INNER, ContourRole.UNKNOWN):
             entity_to_work[id(lwpoly)] = contour.role.value.lower()
@@ -282,8 +240,6 @@ def _write_or_assign_hole(msp, hole: Hole, part: ForgePart, entity_to_work: dict
 
     lwpoly = write_contour_to_msp(msp, hole, layer)
     if lwpoly is not None:
-        if hole.vs_id is not None:
-            part.entity_ids.discard(hole.vs_id)
         part.entity_ids.add(id(lwpoly))
         if hole.hole_type == HOLE_TYPE_COUNTERSINK:
             entity_to_work[id(lwpoly)] = "countersink"
@@ -292,64 +248,28 @@ def _write_or_assign_hole(msp, hole: Hole, part: ForgePart, entity_to_work: dict
 
 
 def _write_part_contours_to_msp(msp_out, part: ForgePart, entity_to_work: dict) -> dict:
-    """
-    Materializza i contorni del part nel msp figlio.
-    Restituisce vs_swap: vs_id → id(lwpoly) o vs_id → [id(source_ref), ...]
-    """
-    vs_swap = {}
-
+    """Materializza i contorni derivati del part senza introdurre ID virtuali."""
     for contour in [part.outer] + part.inners:
-        if contour.vs_id is None:
-            continue  # forma durevole — copiata dal loop principale di split()
-        layer  = ROLE_TO_LAYER.get(contour.role, LAYER_OUTER)
+        if contour.source_ref is not None:
+            continue
+        layer = ROLE_TO_LAYER.get(contour.role, LAYER_OUTER)
         lwpoly = write_contour_to_msp(msp_out, contour, layer)
         if lwpoly is not None:
-            vs_swap[contour.vs_id] = id(lwpoly)
             if contour.role not in (ContourRole.OUTER, ContourRole.INNER, ContourRole.UNKNOWN):
                 entity_to_work[id(lwpoly)] = contour.role.value.lower()
-        else:
-            # spline — nessuna materializzazione, le entità sorgente passano
-            vs_swap[contour.vs_id] = []
 
     for hole in part.holes:
-        if hole.vs_id is None:
+        if hole.source_ref is not None:
             continue
-        layer  = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
+        layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
         lwpoly = write_contour_to_msp(msp_out, hole, layer)
         if lwpoly is not None:
-            vs_swap[hole.vs_id] = id(lwpoly)
             if hole.hole_type == HOLE_TYPE_COUNTERSINK:
                 entity_to_work[id(lwpoly)] = "countersink"
             elif hole.hole_type == HOLE_TYPE_THREADED:
                 entity_to_work[id(lwpoly)] = "threaded_hole"
-        else:
-            vs_swap[hole.vs_id] = []
 
-    return vs_swap
-
-
-def _collect_consumed_source_ids(part: ForgePart, vs_swap: dict) -> set:
-    """
-    Restituisce gli id delle entità sorgente dei loop già materializzati
-    come nuova LWPOLYLINE nel figlio — non vanno ricopiati dal sorgente.
-    """
-    consumed = set()
-    # Per ora vs_swap mappa vs_id → id(lwpoly) o [].
-    # Le entità sorgente dei loop sono già in part.entity_ids come id(edge.source_ref).
-    # Se il vs_id è stato swappato con una nuova entità, le sorgenti originali
-    # non devono entrare nel figlio.
-    for contour in [part.outer] + part.inners:
-        if contour.vs_id is not None and vs_swap.get(contour.vs_id) not in (None, []):
-            # contorno materializzato — le sue entità sorgente non vanno copiate
-            # Le sorgenti sono già escluse perché vs_id non è in effective_ids
-            # dopo lo swap. Questo helper è conservativo.
-            pass
-
-    for hole in part.holes:
-        if hole.vs_id is not None and vs_swap.get(hole.vs_id) not in (None, []):
-            pass
-
-    return consumed
+    return {}
 
 
 # ---------------------------------------------------------------------------

@@ -23,8 +23,6 @@ from ...core.healing.gap_solver import (
     GapFix,
 )
 from ..bridge.edge import Edge
-from ...model.role import ContourRole
-from ..bridge.shape import ClosedShape, OpenShape
 from ...core.primitives.segments import ArcSeg
 
 
@@ -166,10 +164,13 @@ class DxfAdapter(ForgeAdapter):
         label_map: Optional[Dict[str, str]] = None,
     ):
         super().__init__(tolerance)
-        self.msp           = msp
-        self.exclude_ids   = exclude_ids or set()
+        self.msp = msp
+        self.exclude_ids = exclude_ids or set()
         self.ignore_layers = ignore_layers or set()
-        self._label_map    = {k.lower(): v for k, v in (label_map or {}).items()}
+        self._label_map = {
+            k.lower(): v
+            for k, v in (label_map or {}).items()
+        }
 
     # ------------------------------------------------------------------
     # ForgeAdapter contract
@@ -181,9 +182,15 @@ class DxfAdapter(ForgeAdapter):
         def _is_excluded(entity) -> bool:
             if id(entity) in self.exclude_ids:
                 return True
+
             if not ignore:
                 return False
-            layer = entity.dxf.layer.lower() if entity.dxf.hasattr('layer') else ''
+
+            layer = (
+                entity.dxf.layer.lower()
+                if entity.dxf.hasattr("layer")
+                else ""
+            )
             return any(sl in layer for sl in ignore)
 
         edges = []
@@ -193,106 +200,146 @@ class DxfAdapter(ForgeAdapter):
                 continue
 
             dtype = entity.dxftype()
-            layer = entity.dxf.layer if entity.dxf.hasattr('layer') else ''
+            layer = (
+                entity.dxf.layer
+                if entity.dxf.hasattr("layer")
+                else ""
+            )
 
-            # ── CIRCLE → loop degenere (start == end) ──
-            if dtype == 'CIRCLE':
+            # CIRCLE → loop degenere (start == end)
+            if dtype == "CIRCLE":
                 poly = entity_to_polygon(entity)
                 if poly is not None and not poly.is_empty:
                     coords = list(poly.exterior.coords)
                     pt = round_point(coords[0], self.node_decimals)
+
                     edges.append(Edge(
-                        source_ref=entity, layer=layer,
-                        start=pt, end=pt,
+                        source_ref=entity,
+                        layer=layer,
+                        start=pt,
+                        end=pt,
                         geometry=LineString(coords),
                     ))
                 continue
 
-            # ── SPLINE chiusa → loop degenere ──
-            if dtype == 'SPLINE' and _spline_is_closed(entity):
+            # SPLINE chiusa → loop degenere
+            if dtype == "SPLINE" and _spline_is_closed(entity):
                 poly = entity_to_polygon(entity)
                 if poly is not None and not poly.is_empty:
                     coords = list(poly.exterior.coords)
                     pt = round_point(coords[0], self.node_decimals)
+
                     edges.append(Edge(
-                        source_ref=entity, layer=layer,
-                        start=pt, end=pt,
+                        source_ref=entity,
+                        layer=layer,
+                        start=pt,
+                        end=pt,
                         geometry=LineString(coords),
                     ))
                 continue
 
-            # ── LWPOLYLINE / POLYLINE → esplodi in segmenti ──
-            if dtype in ('LWPOLYLINE', 'POLYLINE'):
+            # LWPOLYLINE / POLYLINE → segmenti
+            if dtype in ("LWPOLYLINE", "POLYLINE"):
                 if _polyline_is_closed(entity):
                     poly = pline_to_polygon(entity)
+
                     if poly is not None and not poly.is_empty:
                         coords = list(poly.exterior.coords)
+
                         for i in range(len(coords) - 1):
-                            s_raw, e_raw = coords[i], coords[i + 1]
-                            s_r = round_point(s_raw, self.node_decimals)
-                            e_r = round_point(e_raw, self.node_decimals)
+                            s_raw = coords[i]
+                            e_raw = coords[i + 1]
+
+                            s_r = round_point(
+                                s_raw, self.node_decimals
+                            )
+                            e_r = round_point(
+                                e_raw, self.node_decimals
+                            )
+
                             if s_r is None or e_r is None:
                                 continue
+
                             edges.append(Edge(
-                                source_ref=entity, layer=layer,
-                                start=s_r, end=e_r,
-                                geometry=LineString([s_raw, e_raw]),
+                                source_ref=entity,
+                                layer=layer,
+                                start=s_r,
+                                end=e_r,
+                                geometry=LineString([
+                                    s_raw,
+                                    e_raw,
+                                ]),
                             ))
+
                 else:
                     pts = _polyline_points_xy(entity)
+
                     for i in range(len(pts) - 1):
-                        s_raw, e_raw = pts[i], pts[i + 1]
-                        s_r = round_point(s_raw, self.node_decimals)
-                        e_r = round_point(e_raw, self.node_decimals)
+                        s_raw = pts[i]
+                        e_raw = pts[i + 1]
+
+                        s_r = round_point(
+                            s_raw, self.node_decimals
+                        )
+                        e_r = round_point(
+                            e_raw, self.node_decimals
+                        )
+
                         if s_r is None or e_r is None:
                             continue
+
                         edges.append(Edge(
-                            source_ref=entity, layer=layer,
-                            start=s_r, end=e_r,
-                            geometry=LineString([s_raw, e_raw]),
+                            source_ref=entity,
+                            layer=layer,
+                            start=s_r,
+                            end=e_r,
+                            geometry=LineString([
+                                s_raw,
+                                e_raw,
+                            ]),
                         ))
+
                 continue
 
-            # ── Tipi base: LINE, ARC, SPLINE aperta ──
+            # LINE / ARC / SPLINE aperta
             if dtype not in _SUPPORTED_TYPES:
                 continue
 
-            s, e = entity_endpoints(entity)
-            if s is None or e is None:
+            start, end = entity_endpoints(entity)
+
+            if start is None or end is None:
                 continue
 
-            s_r = round_point(s, self.node_decimals)
-            e_r = round_point(e, self.node_decimals)
-            if s_r is None or e_r is None:
+            start_r = round_point(
+                start, self.node_decimals
+            )
+            end_r = round_point(
+                end, self.node_decimals
+            )
+
+            if start_r is None or end_r is None:
                 continue
 
-            geometry = _entity_to_linestring(entity)
             edges.append(Edge(
-                source_ref=entity, layer=layer,
-                start=s_r, end=e_r,
-                geometry=geometry,
+                source_ref=entity,
+                layer=layer,
+                start=start_r,
+                end=end_r,
+                geometry=_entity_to_linestring(entity),
             ))
 
         return edges
 
-    def to_closed(self) -> List[ClosedShape]:
-        return []
-
-    def to_open(self) -> List[OpenShape]:
-        # Deliberatamente vuoto: la costruzione di OpenShape dagli Edge
-        # non consumati da loop strutturali è responsabilità del core
-        # (vedi core/topology/loop_finder.edges_to_open_shapes), che opera
-        # solo su Edge/geometry già prodotti da to_edges() — mai su ezdxf.
-        return []
-
-    def collect_closed(self, open_splines: list, virtual_shapes: list) -> list[ClosedShape]:
-        return []
-
     def source_context(self, ref: Any) -> str:
         if isinstance(ref, str):
             return ref
+
         try:
-            return ref.dxf.layer if ref.dxf.hasattr("layer") else ""
+            return (
+                ref.dxf.layer
+                if ref.dxf.hasattr("layer")
+                else ""
+            )
         except AttributeError:
             return ""
 

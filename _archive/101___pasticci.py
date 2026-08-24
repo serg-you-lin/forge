@@ -19,7 +19,6 @@ sys.path.insert(0, str(project_root))
 
 
 from dxf_forge.core.models import ForgeContour, ForgePart, ForgeResult
-from dxf_forge.adapters.dxf.virtual_adapter import VirtualShape
 
 def print_attributes(obj):
     """Stampa gli attributi di un oggetto."""
@@ -113,15 +112,6 @@ def main():
     # print_attributes(result)
     # print_methods(result)
     # print_properties(result)
-    #print(inspect.getmembers(VirtualShape))
-    #help(VirtualShape)
-
-    print(dir(VirtualShape))
-
-    methods = inspect.getmembers(VirtualShape, predicate=inspect.isfunction)
-
-    for name, _ in methods:
-        print(name)
     # -------------------------
     # OUTPUT LOGICO
     # -------------------------

@@ -43,7 +43,6 @@ def _make_proxy(polygon, *, diameter=None, center=None, role=ContourRole.UNKNOWN
         source_ref=_FakeEntity(),
         role=role,
         shape_type="polyline",
-        is_virtual=False,
         diameter=diameter,
         center=center,
     )
@@ -84,6 +83,13 @@ def _make_builder():
         label_map={},
         entities_in_loops=set(),
     )
+
+
+class TestVirtualModelRemoved(unittest.TestCase):
+    def test_closed_shape_has_no_virtual_flag(self):
+        proxy = _make_proxy(Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]))
+        self.assertFalse(hasattr(proxy, "is_virtual"))
+        self.assertFalse(hasattr(proxy, "vs_id"))
 
 
 # ---------------------------------------------------------------------------
