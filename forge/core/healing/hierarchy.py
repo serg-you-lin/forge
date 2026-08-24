@@ -125,9 +125,24 @@ def _build_tree(proxies: list[ClosedShape]) -> list:
 # ---------------------------------------------------------------------------
 
 def _proxy_origin(proxy: ClosedShape) -> str:
-    if not proxy.is_virtual:
-        return ""
-    return getattr(proxy.source_ref, "origin", "") or ""
+    """Return the original DXF layer label for traceability.
+
+    Historical golden fixtures expect the original layer name even for
+    non-virtual contours. For virtual shapes we keep the legacy fallback
+    through `source_ref.origin` when present.
+    """
+    source_ref = getattr(proxy, "source_ref", None)
+    layer = None
+    if source_ref is not None:
+        dxf = getattr(source_ref, "dxf", None)
+        if dxf is not None and hasattr(dxf, "layer"):
+            layer = dxf.layer
+
+    if layer:
+        return str(layer)
+    if proxy.is_virtual:
+        return getattr(source_ref, "origin", "") or ""
+    return getattr(source_ref, "origin", "") or ""
 
 
 def _make_hole(
