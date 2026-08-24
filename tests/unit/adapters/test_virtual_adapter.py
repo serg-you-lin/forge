@@ -4,7 +4,7 @@ test_virtual_adapter.py
 Test unitari per adapters/dxf/virtual_adapter.py.
 
 Testa il parsing di entità ezdxf mock → primitive pure,
-e il routing _loop_to_contour → DxfWriteContext.
+e il routing parse_loop.
 """
 
 import unittest
@@ -14,11 +14,11 @@ import math
 from forge.core.primitives import LineSeg, ArcSeg, SplineSeg
 from forge.model import Edge
 from forge.adapters.dxf.virtual_adapter import (
-    DxfEntityDispatcher, 
-    parse_loop, 
-    _loop_to_contour, 
-    DxfWriteContext,
+    DxfEntityDispatcher,
+    parse_loop,
     _BulgeSeg,
+    arc_seg_to_bulge,
+    segments_to_pts_with_bulge,
 )
 
 
@@ -49,7 +49,7 @@ def make_arc(cx, cy, radius, start_angle, end_angle, layer="0"):
     return e
 
 
-def make_lwpolyline(points_with_bulge, layer="0"):
+def make_lwpolyline(points_with_bulge, layer="0", is_closed=True):
     """
     Crea una LWPOLYLINE mock.
     points_with_bulge: lista di tuple (x, y, bulge)
@@ -58,6 +58,8 @@ def make_lwpolyline(points_with_bulge, layer="0"):
     e.dxftype.return_value = 'LWPOLYLINE'
     e.get_points.return_value = points_with_bulge
     e.dxf.layer = layer
+    e.closed = is_closed
+    e.is_closed = is_closed
     return e
 
 
@@ -269,7 +271,7 @@ class TestParseLoopPolyline(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# parse_loop — loop con SPLINE (solo parsing, senza build_polygon)
+# parse_loop — loop con SPLINE
 # ---------------------------------------------------------------------------
 
 class TestParseLoopSpline(unittest.TestCase):
@@ -298,136 +300,88 @@ class TestParseLoopSpline(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# _loop_to_contour — restituisce DxfWriteContext
+# parse_loop — comportamento generale
 # ---------------------------------------------------------------------------
 
-class TestLoopToContour(unittest.TestCase):
+class TestParseLoopGeneral(unittest.TestCase):
 
-    def test_001_loop_line_restituisce_dxf_write_context(self):
-        ctx = _loop_to_contour(make_square_loop(100.0), 'outer', 1)
-        self.assertIsInstance(ctx, DxfWriteContext)
+    def test_001_loop_vuoto_restituisce_lista_vuota(self):
+        result = parse_loop([])
+        self.assertEqual(result, [])
 
-    def test_002_ctx_ha_area_corretta(self):
-        ctx = _loop_to_contour(make_square_loop(100.0), 'outer', 1)
-        self.assertAlmostEqual(ctx.polygon.area, 10000.0, delta=1.0)
-
-    def test_003_loop_line_has_spline_false(self):
-        ctx = _loop_to_contour(make_square_loop(100.0), 'outer', 1)
-        self.assertFalse(ctx.has_spline)
-
-    def test_004_ctx_ha_pts_with_bulge(self):
-        ctx = _loop_to_contour(make_square_loop(100.0), 'outer', 1)
-        self.assertGreater(len(ctx.pts_with_bulge), 0)
-        # Verifica formato tuple (x, y, start_width, end_width, bulge)
-        self.assertEqual(len(ctx.pts_with_bulge[0]), 5)
-
-    def test_005_ctx_ha_loop(self):
-        loop = make_square_loop(100.0)
-        ctx = _loop_to_contour(loop, 'outer', 1)
-        self.assertEqual(ctx.loop, loop)
-
-    def test_006_ctx_ha_layer_e_color(self):
-        ctx = _loop_to_contour(make_square_loop(100.0), 'outer', 2)
-        self.assertEqual(ctx.layer, 'outer')
-        self.assertEqual(ctx.color, 2)
-
-    def test_007_loop_spline_ha_has_spline_true(self):
-        """
-        Testa che il flag has_spline venga settato correttamente.
-        Mocka build_polygon per evitare NotImplementedError.
-        """
-        spline = make_spline_entity([(0,0), (0,50), (0,100)])
-        loop = [
-            (make_edge(spline), False),
-            (make_edge(make_line(0, 100, 100, 100)), False),
-            (make_edge(make_line(100, 100, 100, 0)), False),
-            (make_edge(make_line(100, 0, 0, 0)), False),
-        ]
-        with patch('forge.adapters.dxf.virtual_adapter._parse_spline',
-                side_effect=lambda entity, rev: SplineSeg(
-                    degree=0,
-                    control_points=entity._mock_points if not rev else list(reversed(entity._mock_points)),
-                    knots=[],
-                    weights=None
-                )), \
-            patch('forge.adapters.dxf.virtual_adapter.build_polygon',
-                return_value=MagicMock()):
-            ctx = _loop_to_contour(loop, 'outer', 1)
-        self.assertTrue(ctx.has_spline)
-
-    def test_008_loop_spline_pts_with_bulge_vuoto(self):
-        """
-        Testa che pts_with_bulge sia vuoto quando ci sono spline.
-        Mocka build_polygon per evitare NotImplementedError.
-        """
-        spline = make_spline_entity([(0,0), (0,50), (0,100)])
-        loop = [
-            (make_edge(spline), False),
-            (make_edge(make_line(0, 100, 100, 100)), False),
-            (make_edge(make_line(100, 100, 100, 0)), False),
-            (make_edge(make_line(100, 0, 0, 0)), False),
-        ]
-        with patch('forge.adapters.dxf.virtual_adapter._parse_spline',
-                side_effect=lambda entity, rev: SplineSeg(
-                    degree=0,
-                    control_points=entity._mock_points if not rev else list(reversed(entity._mock_points)),
-                    knots=[],
-                    weights=None
-                )), \
-            patch('forge.adapters.dxf.virtual_adapter.build_polygon',
-                return_value=MagicMock()):
-            ctx = _loop_to_contour(loop, 'outer', 1)
-        self.assertEqual(ctx.pts_with_bulge, [])
-
-    def test_009_loop_vuoto_restituisce_none(self):
-        ctx = _loop_to_contour([], 'outer', 1)
-        self.assertIsNone(ctx)
-
-    def test_010_loop_una_line_restituisce_none(self):
+    def test_002_loop_una_line_restituisce_line(self):
         loop = [(make_edge(make_line(0, 0, 10, 0)), False)]
-        ctx = _loop_to_contour(loop, 'outer', 1)
-        self.assertIsNone(ctx)
+        result = parse_loop(loop)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], LineSeg)
+        self.assertEqual(result[0].start, (0.0, 0.0))
+        self.assertEqual(result[0].end, (10.0, 0.0))
 
-    def test_011_ctx_con_bulge_ha_pts_with_bulge_corretti(self):
-        polyline = make_lwpolyline([
-            (0, 0, 0),
-            (10, 0, 0.5),
-            (10, 10, 0),
-            (0, 10, 0),
-        ])
-        loop = [(make_edge(polyline), False)]
-        ctx = _loop_to_contour(loop, 'outer', 1)
-        
-        self.assertIsNotNone(ctx)
-        self.assertFalse(ctx.has_spline)
-        self.assertGreater(len(ctx.pts_with_bulge), 0)
-        # Verifica che ci sia almeno un punto con bulge
-        bulge_points = [p for p in ctx.pts_with_bulge if p[4] != 0.0]
-        self.assertEqual(len(bulge_points), 1)
-        self.assertAlmostEqual(bulge_points[0][4], 0.5)
+    def test_003_loop_mista_restituisce_primitive_miste(self):
+        arc = make_arc(50, 0, 50, 0, 180)
+        loop = [
+            (make_edge(arc), False),
+            (make_edge(make_line(0, 0, 100, 0)), False),
+        ]
+        result = parse_loop(loop)
+        self.assertEqual(len(result), 2)
+        self.assertIsInstance(result[0], ArcSeg)
+        self.assertIsInstance(result[1], LineSeg)
 
-    def test_012_ctx_origin_da_loop(self):
-        """
-        Testa che origin venga estratto correttamente dal layer delle entità.
-        Nota: _extract_origin legge da edge.source_ref.dxf.layer
-        """
-        loop = make_square_loop(100.0)
-        # Modifica il layer delle entità sorgente (non dell'edge)
-        for edge, _ in loop:
-            edge.source_ref.dxf.layer = 'test_layer'
-        ctx = _loop_to_contour(loop, 'outer', 1)
-        self.assertEqual(ctx.origin, 'test_layer')
 
-    def test_013_ctx_origin_vuoto_se_layers_diversi(self):
-        """
-        Testa che origin sia vuoto quando le entità hanno layers diversi.
-        """
-        loop = make_square_loop(100.0)
-        # Imposta layers diversi sulle entità sorgente
-        for i, (edge, _) in enumerate(loop):
-            edge.source_ref.dxf.layer = f'layer_{i}'
-        ctx = _loop_to_contour(loop, 'outer', 1)
-        self.assertEqual(ctx.origin, '')
+# ---------------------------------------------------------------------------
+# arc_seg_to_bulge
+# ---------------------------------------------------------------------------
+
+class TestArcSegToBulge(unittest.TestCase):
+
+    def test_001_arco_90_ccw(self):
+        arc = ArcSeg(center=(0,0), radius=10, start_angle=0, end_angle=math.pi/2, ccw=True)
+        bulge = arc_seg_to_bulge(arc)
+        self.assertAlmostEqual(bulge, math.tan(math.pi/8), places=6)
+
+    def test_002_arco_90_cw(self):
+        arc = ArcSeg(center=(0,0), radius=10, start_angle=0, end_angle=math.pi/2, ccw=False)
+        bulge = arc_seg_to_bulge(arc)
+        self.assertAlmostEqual(bulge, -math.tan(math.pi/8), places=6)
+
+    def test_003_arco_180_ccw(self):
+        arc = ArcSeg(center=(0,0), radius=10, start_angle=0, end_angle=math.pi, ccw=True)
+        bulge = arc_seg_to_bulge(arc)
+        self.assertAlmostEqual(bulge, math.tan(math.pi/4), places=6)
+
+
+# ---------------------------------------------------------------------------
+# segments_to_pts_with_bulge
+# ---------------------------------------------------------------------------
+
+class TestSegmentsToPtsWithBulge(unittest.TestCase):
+
+    def test_001_line_segments(self):
+        segments = [
+            LineSeg(start=(0,0), end=(10,0)),
+            LineSeg(start=(10,0), end=(10,10)),
+        ]
+        result = segments_to_pts_with_bulge(segments)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], (0.0, 0.0, 0.0, 0.0, 0.0))
+        self.assertEqual(result[1], (10.0, 0.0, 0.0, 0.0, 0.0))
+
+    def test_002_arc_segments(self):
+        arc = ArcSeg(center=(0,0), radius=10, start_angle=0, end_angle=math.pi/2, ccw=True)
+        result = segments_to_pts_with_bulge([arc])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0][0], 10.0)  # x start
+        self.assertEqual(result[0][1], 0.0)   # y start
+        self.assertAlmostEqual(result[0][4], math.tan(math.pi/8), places=6)
+
+    def test_003_bulge_segments(self):
+        segments = [
+            _BulgeSeg(start=(0,0), end=(10,0), bulge=0.5),
+        ]
+        result = segments_to_pts_with_bulge(segments)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], (0.0, 0.0, 0.0, 0.0, 0.5))
 
 
 if __name__ == "__main__":
