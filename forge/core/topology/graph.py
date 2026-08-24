@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from typing import Tuple, List
 
 from ..geometry import round_point
-from ...bridge.edge import Edge
+from ...adapters.bridge.edge import Edge
 
 
 # ---------------------------------------------------------------------------

@@ -10,7 +10,9 @@ from .hole import (
 from .classified import ClassifiedEntity, BaseInterpreter
 from .part import ForgeContour, ForgePart
 from .result import ForgeResult
-from .engraving import Engraving
+from .engraving import EngravingClosed, EngravingOpen
+from .bending_line import BendingLine
+from .feature import Feature, ClosedFeature, OpenFeature
 
 __all__ = [
     "Hole",
@@ -24,19 +26,20 @@ __all__ = [
     "ForgeContour",
     "ForgePart",
     "ForgeResult",
-    "Engraving",
-    "Edge",
+    "EngravingClosed",
+    "EngravingOpen",
     "BendingLine",
-    "ClosedShape",
-    "OpenShape",
+    "Feature",
+    "ClosedFeature",
+    "OpenFeature",
 ]
 
 
 def __getattr__(name):
-    if name in {"Edge", "BendingLine"}:
-        from ..bridge.edge import Edge, BendingLine
-        return {"Edge": Edge, "BendingLine": BendingLine}[name]
+    if name == "Edge":
+        from ..adapters.bridge.edge import Edge
+        return Edge
     if name in {"ClosedShape", "OpenShape"}:
-        from ..bridge.shape import ClosedShape, OpenShape
+        from ..adapters.bridge.shape import ClosedShape, OpenShape
         return {"ClosedShape": ClosedShape, "OpenShape": OpenShape}[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -20,9 +20,9 @@ from ..model import (
     HOLE_TYPE_THREADED,
     HOLE_TYPE_UNKNOWN,
 )
+from ..model.engraving import EngravingClosed, EngravingOpen
 from ..model.role import ContourRole
-from ..bridge.shape import OpenShape, ClosedShape
-from ..model.engraving import Engraving
+from ..adapters.bridge.shape import OpenShape, ClosedShape
 from ..core.classification.hole_detector import is_threaded_hole
 from ..rules.thresholds import STRUCTURAL_ROLES
 
@@ -197,6 +197,7 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                 if outer.contains(midpoint):
                     geom = LineString([proxy.pts[0], proxy.pts[-1]])
                     part.bending_lines.append(BendingLine(
+                        role=ContourRole.BEND,
                         source_ref=proxy.source_ref,
                         geometry=geom,
                         length=proxy.length,
@@ -263,8 +264,8 @@ def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> None:
     else:
         rep = proxy.pts[0] if proxy.pts else None
 
-    engraving = Engraving(
-        closed=False,
+    engraving = EngravingOpen(
+        role=ContourRole.ENGRAVE,
         length=round(proxy.length, 4),
         source_ref=proxy.source_ref,
         pts=list(proxy.pts),
@@ -285,12 +286,12 @@ def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> None:
 
 def _handle_engrave_closed(inner, part: ForgePart) -> None:
     """Inner da part.inners — contorno chiuso."""
-    engraving = Engraving(
-        closed=True,
+    engraving = EngravingClosed(
+        role=ContourRole.ENGRAVE,
+        polygon=inner.polygon,
         length=round(inner.polygon.exterior.length, 4),
         part_label=part.label,
         source_ref=inner.source_ref,
-        polygon=inner.polygon,
     )
     part.engrave_lines.append(engraving)
 
@@ -420,6 +421,7 @@ def _bending_line_from_data(data: dict, source_ref, part_label: str) -> BendingL
     start = data["start"]
     end   = data["end"]
     return BendingLine(
+        role=ContourRole.BEND,       # aggiunto
         source_ref=source_ref,
         geometry=LineString([start, end]),
         length=data["length"],
