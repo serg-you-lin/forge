@@ -368,3 +368,27 @@ Feature (ABC)
     ├── pts, length, geometry
     ├── BendingLine       ← aggiunge angle_deg
     └── EngravingOpen     ← traccia incisa aperta
+
+
+
+forge/model/
+├── feature.py
+├── closed_feature.py
+├── open_feature.py
+├── contour.py
+├── hole.py
+├── engraving.py
+├── bending_line.py
+└── part.py
+
+Concettualmente:
+
+Feature
+├── ClosedFeature
+│   ├── ForgeContour
+│   ├── Hole
+│   └── EngravingClosed
+│
+└── OpenFeature
+    ├── BendingLine
+    └── EngravingOpen

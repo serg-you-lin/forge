@@ -22,9 +22,9 @@ from ...core.healing.gap_solver import (
     AddSegment,
     GapFix,
 )
-from ...bridge.edge import Edge, BendingLine
+from ..bridge.edge import Edge
 from ...model.role import ContourRole
-from ...bridge.shape import ClosedShape, OpenShape
+from ..bridge.shape import ClosedShape, OpenShape
 from ...core.primitives.segments import ArcSeg
 
 

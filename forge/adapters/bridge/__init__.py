@@ -1,9 +1,8 @@
-from .edge import Edge, BendingLine
+from .edge import Edge
 from .shape import ClosedShape, OpenShape
 
 __all__ = [
     "Edge",
-    "BendingLine",
     "ClosedShape",
     "OpenShape",
 ]

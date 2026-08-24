@@ -4,7 +4,7 @@ import unittest
 from shapely.geometry import LineString
 from forge.core.topology.graph import build_node_graph
 from forge.core.topology.bending_detector import BendingDetector
-from forge.bridge.edge import Edge
+from forge.adapters.bridge.edge import Edge
 
 
 def _make_edge(p1, p2):

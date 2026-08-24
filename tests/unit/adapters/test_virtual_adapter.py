@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import math
 
 from forge.core.primitives import LineSeg, ArcSeg, SplineSeg
-from forge.model import Edge
+from forge.adapters.bridge.edge import Edge
 from forge.adapters.dxf.virtual_adapter import (
     DxfEntityDispatcher,
     parse_loop,

@@ -1,55 +1,35 @@
+"""
+model/part.py
+"""
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, List, Set, Tuple, Optional
+from typing import Any, List, Optional, Set, Tuple
+
 from shapely.geometry import Polygon
 
-from ..core.primitives import LineSeg, ArcSeg, SplineSeg
-from .hole import Hole
-from ..bridge.edge import BendingLine
-from .engraving import Engraving
-from .role import ContourRole
+from forge.model.feature import ClosedFeature
+from forge.model.role import ContourRole
+from forge.model.hole import Hole
+from forge.model.bending_line import BendingLine
+from forge.model.engraving import EngravingClosed, EngravingOpen
 
 
 @dataclass
-class ForgeContour:
-    """
-    Un singolo contorno geometrico: esterno o contorno interno NON foro.
-
-    I fori usano Hole — ForgeContour è per contorni strutturali
-    (profili interni complessi, tasche, ecc.) che non sono fori circolari.
-
-    Campi:
-        polygon    : poligono Shapely del contorno
-        role       : ruolo semantico — tradotto da DxfAdapter, letto da detect()
-        source_ref : entità originale opaca — per traceability e writeback
-        vs_id      : id del VirtualShape sorgente, se generato dal core
-    """
-    polygon:    Polygon
-    role:       ContourRole  = ContourRole.UNKNOWN
-    source_ref: Any          = None
-    area:       float        = field(init=False)
-    bbox:       Tuple[float, float, float, float] = field(init=False)
-    vs_id:      Optional[int] = None
-    origin:     str          = ""
-    segments:   list         = field(default_factory=list)
+class ForgeContour(ClosedFeature):
+    vs_id:  Optional[int] = None
+    origin: str           = ""
 
     def __post_init__(self):
-        self.area = self.polygon.area
-        self.bbox = self.polygon.bounds
+        pass  # role arriva già settato dall'adapter
 
     def source_layer(self) -> str:
-        """Restituisce il layer DXF della sorgente, se disponibile.
-
-        Per contorni virtuali (loop di più entità fuse), source_ref è
-        None per costruzione — self.origin porta il layer catturato da
-        heal() prima che il riferimento venisse azzerato.
-        """
         try:
             return self.source_ref.dxf.layer
         except Exception:
             return self.origin
 
     def to_dict(self) -> dict:
-        """Per golden file / debug — non per logica di business."""
         d = {
             "role": self.role,
             "area": round(self.area, 4),
@@ -62,20 +42,15 @@ class ForgeContour:
 
 @dataclass
 class ForgePart:
-    """
-    Un pezzo completo: contorno esterno + fori + contorni interni + metadati.
-
-    È l'unità di lavoro di forge.
-    """
-    outer:          ForgeContour
-    holes:          List[Hole]         = field(default_factory=list)
-    inners:         List[ForgeContour] = field(default_factory=list)
-    bending_lines:  List[BendingLine]  = field(default_factory=list)
-    engrave_lines:  List[Engraving]    = field(default_factory=list)
-    label:          str                = ""
-    source_file:    str                = ""
-    custom:         dict               = field(default_factory=dict)
-    entity_ids:     Set[int]           = field(default_factory=set)
+    outer:         ForgeContour
+    holes:         List[Hole]                              = field(default_factory=list)
+    inners:        List[ForgeContour]                      = field(default_factory=list)
+    bending_lines: List[BendingLine]                       = field(default_factory=list)
+    engrave_lines: List[EngravingClosed | EngravingOpen]   = field(default_factory=list)
+    label:         str                                     = ""
+    source_file:   str                                     = ""
+    custom:        dict                                    = field(default_factory=dict)
+    entity_ids:    Set[int]                                = field(default_factory=set)
 
     @property
     def polygon_with_holes(self) -> Polygon:

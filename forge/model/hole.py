@@ -1,13 +1,12 @@
+"""
+model/hole.py
+"""
 from dataclasses import dataclass, field
 from typing import Optional, Tuple, Any
 from shapely.geometry import Polygon
 
-from ..core.primitives import LineSeg, ArcSeg, SplineSeg
-from .role import ContourRole
-
-# ---------------------------------------------------------------------------
-# Tipi di foro — valori validi per Hole.hole_type
-# ---------------------------------------------------------------------------
+from forge.model.feature import ClosedFeature
+from forge.model.role import ContourRole
 
 HOLE_TYPE_UNKNOWN      = "unknown"
 HOLE_TYPE_PLAIN        = "plain"
@@ -23,78 +22,35 @@ VALID_HOLE_TYPES = {
 
 
 @dataclass
-class Hole:
-    """
-    Un foro nel pezzo: entità di primo livello nel dominio forge.
+class Hole(ClosedFeature):
+    diameter:       float                     = 0.0
+    center:         Tuple[float, float]       = field(default_factory=lambda: (0.0, 0.0))
+    hole_type:      str                       = HOLE_TYPE_UNKNOWN
+    geometric_hint: str                       = ""
+    confidence:     float                     = 0.0
+    source:         str                       = ""
+    vs_id:          Optional[int]             = None
+    origin:         str                       = ""
+    outer_diameter:   Optional[float]         = None
+    outer_source_ref: Any                     = None
+    is_hole:          bool                    = True
 
-    Ciclo di vita:
-        heal()   → crea Hole con hole_type=UNKNOWN, geometric_hint opzionale
-        detect() → promuove hole_type al tipo definitivo leggendo l'hint
-                   o shape.role, senza ricalcolare la geometria
-
-    Campi:
-        polygon         : poligono Shapely del foro
-        diameter        : diametro del cerchio principale in mm
-        center          : centro (x, y) in coordinate documento
-        hole_type       : tipo definitivo — assegnato da detect()
-        geometric_hint  : hint prodotto da heal() — "" | "countersink" | "threaded"
-        confidence      : 0.0 da heal(), > 0.0 da detect()
-        source          : "" | "geometric" | "labeled" | "agent"
-        role            : ruolo semantico — tradotto da DxfAdapter, letto da detect()
-        source_ref      : entità originale opaca — per traceability e writeback
-        outer_diameter  : solo countersink — diametro cerchio esterno
-        outer_source_ref: entità esterna opaca — solo countersink
-        is_hole         : sempre True — compatibilità con codice che itera inners
-        origin          : DEPRECATO — layer DXF di provenienza; non leggere in detect()
-        vs_id           : id del VirtualShape sorgente, se generato dal core
-                          (loop di più entità fuse in un'unica LWPOLYLINE)
-    """
-    polygon:        Polygon
-    diameter:       float
-    center:         Tuple[float, float]
-
-    hole_type:      str          = HOLE_TYPE_UNKNOWN
-    geometric_hint: str          = ""
-    confidence:     float        = 0.0
-    source:         str          = ""
-
-    role:           ContourRole  = ContourRole.UNKNOWN
-    source_ref:     Any          = None
-    vs_id:          Optional[int] = None
-    origin:         str          = ""
-
-    outer_diameter:   Optional[float] = None
-    outer_source_ref: Any             = None
-    is_hole:          bool            = True
-    segments:         list            = field(default_factory=list)
-
-    @property
-    def area(self) -> float:
-        return self.polygon.area
-
-    @property
-    def bbox(self) -> Tuple[float, float, float, float]:
-        return self.polygon.bounds
+    def __post_init__(self):
+        if self.role == ContourRole.UNKNOWN:
+            self.role = ContourRole.HOLE
 
     def source_layer(self) -> str:
-        """
-        Restituisce il layer DXF della sorgente, se disponibile.
-
-        Per fori virtuali (loop di più entità fuse), source_ref è None
-        per costruzione — self.origin porta il layer catturato da heal()
-        prima che il riferimento venisse azzerato.
-        """
         try:
             return self.source_ref.dxf.layer
         except Exception:
             return self.origin
-    
+
     def to_dict(self) -> dict:
         d = {
             "hole_type":  self.hole_type,
             "diameter":   round(self.diameter, 4),
             "center":     (round(self.center[0], 4), round(self.center[1], 4)),
-            "role":       self.role,   # str mixin — serializza "hole" non <ContourRole.HOLE>
+            "role":       self.role,
             "confidence": round(self.confidence, 4),
             "source":     self.source,
         }
