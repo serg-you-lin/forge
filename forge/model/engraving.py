@@ -32,9 +32,15 @@ class EngravingClosed(ClosedFeature):
 
     def source_layer(self) -> str:
         try:
-            return self.source_ref.dxf.layer
+            if self.source_ref is not None and self.source_ref.dxf.hasattr("layer"):
+                layer = self.source_ref.dxf.layer
+                if layer:
+                    return str(layer)
         except Exception:
-            return ""
+            pass
+        if self.role is not None and self.role != ContourRole.UNKNOWN:
+            return self.role.value
+        return ""
 
     def to_dict(self) -> dict:
         d = {
@@ -61,9 +67,15 @@ class EngravingOpen(OpenFeature):
 
     def source_layer(self) -> str:
         try:
-            return self.source_ref.dxf.layer
+            if self.source_ref is not None and self.source_ref.dxf.hasattr("layer"):
+                layer = self.source_ref.dxf.layer
+                if layer:
+                    return str(layer)
         except Exception:
-            return ""
+            pass
+        if self.role is not None and self.role != ContourRole.UNKNOWN:
+            return self.role.value
+        return ""
 
     def to_dict(self) -> dict:
         d = {

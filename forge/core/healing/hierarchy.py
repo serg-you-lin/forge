@@ -46,8 +46,8 @@ def loop_to_closed_shape(
     role: ContourRole = ContourRole.UNKNOWN,
     polygon=None,
     source_ref=None,
-    is_virtual: bool = False,
     segments: list = None,
+    origin: str = "",
 ) -> Optional[ClosedShape]:
     """
     Converte un loop (lista di (Edge, bool)) in ClosedShape.
@@ -75,9 +75,6 @@ def loop_to_closed_shape(
         if poly.area <= MIN_CONTOUR_AREA:
             return None
 
-        first_ref = loop[0][0].source_ref if loop else None
-        resolved_source_ref = source_ref if source_ref is not None else first_ref
-
         diameter = None
         center = None
         if len(loop) == 1:
@@ -85,14 +82,22 @@ def loop_to_closed_shape(
             if diameter is not None and diameter < MIN_SINGLE_LOOP_DIAMETER:
                 return None
 
+        resolved_origin = origin
+        if not resolved_origin and source_ref is not None:
+            dxf = getattr(source_ref, "dxf", None)
+            if dxf is not None and hasattr(dxf, "layer"):
+                resolved_origin = str(dxf.layer)
+        if not resolved_origin and role not in (None, ContourRole.UNKNOWN):
+            resolved_origin = str(role.value)
+
         return ClosedShape(
             polygon=poly,
             diameter=diameter,
             center=center,
-            source_ref=resolved_source_ref,
+            source_ref=source_ref,
             role=role,
-            is_virtual=is_virtual,
             segments=segments or [],
+            origin=resolved_origin,
         )
     except Exception:
         return None
@@ -125,24 +130,24 @@ def _build_tree(proxies: list[ClosedShape]) -> list:
 # ---------------------------------------------------------------------------
 
 def _proxy_origin(proxy: ClosedShape) -> str:
-    """Return the original DXF layer label for traceability.
+    """Return the original provenance for a contour; if there is no source entity use the semantic role as fallback."""
+    value = getattr(proxy, "origin", "")
+    if value:
+        return str(value)
 
-    Historical golden fixtures expect the original layer name even for
-    non-virtual contours. For virtual shapes we keep the legacy fallback
-    through `source_ref.origin` when present.
-    """
     source_ref = getattr(proxy, "source_ref", None)
-    layer = None
     if source_ref is not None:
         dxf = getattr(source_ref, "dxf", None)
-        if dxf is not None and hasattr(dxf, "layer"):
-            layer = dxf.layer
+        if dxf is not None and hasattr(dxf, "layer") and dxf.layer:
+            return str(dxf.layer)
+        origin = getattr(source_ref, "origin", "")
+        if origin:
+            return str(origin)
 
-    if layer:
-        return str(layer)
-    if proxy.is_virtual:
-        return getattr(source_ref, "origin", "") or ""
-    return getattr(source_ref, "origin", "") or ""
+    role = getattr(proxy, "role", None)
+    if role is not None and role != ContourRole.UNKNOWN:
+        return str(role.value)
+    return ""
 
 
 def _make_hole(
@@ -153,7 +158,6 @@ def _make_hole(
     role = proxy.role if proxy.role != ContourRole.UNKNOWN else (
         ContourRole.HOLE if proxy.diameter < HOLE_DIAMETER_THRESHOLD else ContourRole.INNER
     )
-    is_virtual = proxy.is_virtual
     return Hole(
         polygon=proxy.polygon,
         diameter=proxy.diameter,
@@ -161,45 +165,37 @@ def _make_hole(
         hole_type=HOLE_TYPE_UNKNOWN,
         geometric_hint=geometric_hint,
         role=role,
-        source_ref=proxy.source_ref if not is_virtual else None,
-        vs_id=id(proxy.source_ref) if is_virtual else None,
+        source_ref=proxy.source_ref,
         origin=_proxy_origin(proxy),
         outer_diameter=outer_proxy.diameter if outer_proxy else None,
-        outer_source_ref=outer_proxy.source_ref if outer_proxy and not outer_proxy.is_virtual else None,
+        outer_source_ref=outer_proxy.source_ref if outer_proxy else None,
         segments=list(proxy.segments),
     )
 
 
 def _make_inner(proxy: ClosedShape, parent_role: ContourRole = ContourRole.UNKNOWN) -> ForgeContour:
-    is_virtual = proxy.is_virtual
     role = proxy.role if proxy.role not in (ContourRole.UNKNOWN, ContourRole.INNER) else \
            parent_role if parent_role not in (ContourRole.UNKNOWN, ContourRole.INNER) else \
            ContourRole.INNER
     return ForgeContour(
         polygon=proxy.polygon,
         role=role,
-        source_ref=proxy.source_ref if not is_virtual else None,
-        vs_id=id(proxy.source_ref) if is_virtual else None,
+        source_ref=proxy.source_ref,
         origin=_proxy_origin(proxy),
         segments=list(proxy.segments),
     )
 
 
-def _register(proxy: ClosedShape, classified_virtual_ids: set, classified_entity_ids: set):
-    if proxy.is_virtual:
-        classified_virtual_ids.add(id(proxy.source_ref))
-    else:
+def _register(proxy: ClosedShape, classified_entity_ids: set):
+    if proxy.source_ref is not None:
         classified_entity_ids.add(id(proxy.source_ref))
 
 
 def _collect_entity_ids(father_proxy, children) -> set:
     ids = set()
 
-    # Colleziona tutte le entità dal loop del DxfWriteContext
     src = father_proxy.source_ref
     if src is not None:
-        # Mantieni anche l'id del container virtuale: serve per il mapping
-        # vs_id -> part durante heal(), usato poi da write()/split().
         ids.add(id(src))
     if hasattr(src, 'loop'):
         for edge, _ in src.loop:
@@ -231,7 +227,6 @@ def _process_children(
     children: list,
     holes: list,
     inners: list,
-    classified_virtual_ids: set,
     classified_entity_ids: set,
     parent_role: ContourRole = ContourRole.UNKNOWN,
 ):
@@ -239,7 +234,7 @@ def _process_children(
         child_proxy, grandchildren = child_node
 
         if grandchildren:
-            _register(child_proxy, classified_virtual_ids, classified_entity_ids)
+            _register(child_proxy, classified_entity_ids)
 
             for gc_node in grandchildren:
                 gc_proxy, _ = gc_node
@@ -253,7 +248,7 @@ def _process_children(
                 else:
                     inners.append(_make_inner(gc_proxy, parent_role=parent_role))
 
-                _register(gc_proxy, classified_virtual_ids, classified_entity_ids)
+                _register(gc_proxy, classified_entity_ids)
 
         else:
             is_hole = child_proxy.diameter is not None
@@ -264,7 +259,7 @@ def _process_children(
                 obj = _make_inner(child_proxy, parent_role=parent_role)
                 inners.append(obj)
 
-            _register(child_proxy, classified_virtual_ids, classified_entity_ids)
+            _register(child_proxy, classified_entity_ids)
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +296,6 @@ class HierarchyBuilder:
         parts : lista di ForgePart, ordinata per area outer decrescente
         trash : proxy non classificati in nessuna part (ClosedShape o OpenShape)
         """
-        self._classified_virtual_ids: set = set()
         self._classified_entity_ids: set = set()
 
         valid = [p for p in proxies if getattr(p, "polygon", None) is not None]
@@ -324,13 +318,12 @@ class HierarchyBuilder:
             outer = ForgeContour(
                 polygon=father_proxy.polygon,
                 role=ContourRole.OUTER,
-                source_ref=father_proxy.source_ref if not father_proxy.is_virtual else None,
-                vs_id=id(father_proxy.source_ref) if father_proxy.is_virtual else None,
+                source_ref=father_proxy.source_ref,
                 origin=_proxy_origin(father_proxy),
                 segments=list(father_proxy.segments),
             )
 
-            _register(father_proxy, self._classified_virtual_ids, self._classified_entity_ids)
+            _register(father_proxy, self._classified_entity_ids)
 
             holes = []
             inners = []
@@ -339,7 +332,6 @@ class HierarchyBuilder:
                 children,
                 holes,
                 inners,
-                self._classified_virtual_ids,
                 self._classified_entity_ids,
                 parent_role=father_proxy.role,
             )
@@ -363,20 +355,9 @@ class HierarchyBuilder:
                 custom={},
                 entity_ids=entity_ids,
             )
-
-            self._update_vs_map(father_proxy, children, part)
             parts.append(part)
 
         return parts
-
-    def _update_vs_map(self, father_proxy: ClosedShape, children: list, part: ForgePart):
-        """
-        Popola il mapping vs_id → ForgePart su ForgeResult.
-
-        Non disponibile qui (HierarchyBuilder non conosce ForgeResult) -
-        il chiamante deve farlo dopo build() se ne ha bisogno.
-        """
-        pass
 
     def _collect_trash(self, proxies: list[ClosedShape | OpenShape]) -> list[ClosedShape | OpenShape]:
         STRUCTURAL_ROLES = {
@@ -386,11 +367,10 @@ class HierarchyBuilder:
         }
         return [
             proxy for proxy in proxies
-            if id(proxy.source_ref) not in self._classified_entity_ids
-            and id(proxy.source_ref) not in self._classified_virtual_ids
+            if (proxy.source_ref is None or id(proxy.source_ref) not in self._classified_entity_ids)
             and proxy.role not in STRUCTURAL_ROLES
             and (
                 proxy.role != ContourRole.UNKNOWN
-                or id(proxy.source_ref) not in self.entities_in_loops
+                or (proxy.source_ref is not None and id(proxy.source_ref) not in self.entities_in_loops)
             )
         ]

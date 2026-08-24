@@ -29,21 +29,22 @@ class ClosedShape:
         polygon    : Polygon shapely — forma chiusa già calcolata
         role       : ruolo semantico — impostato dall'adapter prima del core
         source_ref : oggetto originale (entità ezdxf, DxfWriteContext, …)
-                     — serve per traceability e writeback
+                     — serve per traceability e writeback; se None la forma è
+                     stata ricostruita dal core e non corrisponde ad una singola
+                     entità sorgente
         shape_type : categoria geometrica — "circle" | "polyline" |
-                     "spline" | "ellipse" | "virtual"
+                     "spline" | "ellipse"
         diameter   : diametro in unità documento — solo per cerchi, None altrimenti
         center     : centro (x, y) — solo per cerchi, None altrimenti
-        is_virtual : True se generata dal core (non da un'entità sorgente)
     """
     polygon:    Polygon
     source_ref: Any
     role:       ContourRole                   = field(default=ContourRole.UNKNOWN)
     shape_type: str                           = ""
-    is_virtual: bool                          = False
     diameter:   Optional[float]               = None
     center:     Optional[Tuple[float, float]] = None
     segments:   List                          = field(default_factory=list)
+    origin:     str                           = ""
 
 
 @dataclass

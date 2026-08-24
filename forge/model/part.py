@@ -18,17 +18,24 @@ from forge.model.engraving import EngravingClosed, EngravingOpen
 
 @dataclass
 class ForgeContour(ClosedFeature):
-    vs_id:  Optional[int] = None
-    origin: str           = ""
+    origin: str = ""
 
     def __post_init__(self):
         pass  # role arriva già settato dall'adapter
 
     def source_layer(self) -> str:
-        try:
-            return self.source_ref.dxf.layer
-        except Exception:
+        if self.origin:
             return self.origin
+        try:
+            if self.source_ref is not None and self.source_ref.dxf.hasattr("layer"):
+                layer = self.source_ref.dxf.layer
+                if layer:
+                    return str(layer)
+        except Exception:
+            pass
+        if self.role is not None and self.role != ContourRole.UNKNOWN:
+            return self.role.value
+        return ""
 
     def to_dict(self) -> dict:
         d = {

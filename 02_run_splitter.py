@@ -18,7 +18,7 @@ from collections import Counter
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\7074_U150_30X2.nc_N°1 pz.nc.dxf"
+input_dxf = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\intricato_doppio.dxf"
 
 # ---------------------------------------------------------------------------
 

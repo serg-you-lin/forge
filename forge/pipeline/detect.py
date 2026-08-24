@@ -101,8 +101,6 @@ def _detect_labeled(result: ForgeResult) -> None:
 
             if inner.role == ContourRole.ENGRAVE:
                 _handle_engrave_closed(inner, part)
-                if inner.vs_id is not None:
-                    result._suppressed_vs_ids.add(inner.vs_id)
                 continue
 
             work_type = inner.role.value
@@ -120,8 +118,6 @@ def _detect_labeled(result: ForgeResult) -> None:
                 representative_point=rep,
             )
             result.classified_entities.append(ce)
-            if inner.vs_id is not None:
-                result._suppressed_vs_ids.add(inner.vs_id)
             _assign_to_part(ce, result)
         part.inners = remaining
 

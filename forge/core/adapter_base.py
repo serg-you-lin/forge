@@ -1,10 +1,23 @@
 # forge/core/adapter_base.py
+"""
+Contratto base per gli adapter di input di Forge.
+
+Un adapter traduce la geometria di una sorgente nel vocabolario
+geometrico che il Core può elaborare.
+
+L'adapter NON costruisce ClosedShape/OpenShape e non conosce
+la topologia del Core: produce Edge e fornisce il contesto della
+sorgente quando necessario.
+"""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
-from abc import ABC, abstractmethod
-from typing import Any, List
+
 from ..adapters.bridge.edge import Edge
-from ..adapters.bridge.shape import ClosedShape, OpenShape
 
 
 class ForgeAdapter(ABC):
@@ -14,20 +27,11 @@ class ForgeAdapter(ABC):
         self.node_decimals = max(round(-np.log10(tolerance * 2)), 1)
 
     @abstractmethod
-    def to_edges(self) -> List[Edge]:
-        """Produce gli archi per il grafo topologico."""
-        ...
-
-    @abstractmethod
-    def to_closed(self) -> List[ClosedShape]:
-        """Produce le forme chiuse (cerchi, polyline chiuse, spline chiuse, virtual)."""
-        ...
-
-    @abstractmethod
-    def to_open(self) -> List[OpenShape]:
-        """Produce le tracce aperte (LINE, ARC, spline aperte)."""
+    def to_edges(self) -> list[Edge]:
+        """Converte la geometria della sorgente in Edge topologici."""
         ...
 
     @abstractmethod
     def source_context(self, ref: Any) -> str:
+        """Restituisce il contesto della sorgente associata a un Edge."""
         ...
