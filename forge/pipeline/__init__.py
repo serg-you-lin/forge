@@ -26,7 +26,8 @@ def heal(msp, tolerance=0.05, ignore_layers=None, label="",
 def split_to_files(msp, output_folder, label="", source_file="",
                    tolerance=0.05, label_map=None,
                    namer=None, keep_trash=False, include_annotations=True,
-                   min_area=DEFAULT_MIN_PART_AREA) -> ForgeResult:
+                   min_area=DEFAULT_MIN_PART_AREA,
+                   exclude_types=None) -> ForgeResult:
     result = heal(msp, tolerance=tolerance,
                   label=label, source_file=source_file, label_map=label_map)
 
@@ -36,6 +37,6 @@ def split_to_files(msp, output_folder, label="", source_file="",
     detect(result)
     split(msp, result, output_folder=output_folder, namer=namer,
           keep_trash=keep_trash, include_annotations=include_annotations,
-          min_area=min_area)
+          min_area=min_area, exclude_types=exclude_types)
 
     return result
