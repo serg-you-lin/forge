@@ -11,7 +11,6 @@ Funzioni pubbliche:
 import os
 import ezdxf
 from ezdxf.addons import odafc
-from .copy_adapter import copy_entity
 from .sanitize import sanitize, _explode_inserts, deduplicate
 
 ODA_PATH = os.environ.get(
@@ -97,16 +96,11 @@ def _upgrade_to_r2010(doc) -> object:
         except Exception as ex:
             print(f"  [WARN] upgrade: explode POLYLINE fallito — {ex}")
 
-    copied = 0
-    skipped = 0
     for entity in old_msp:
-        result = copy_entity(entity, new_msp)
-        if result is not None:
-            copied += 1
-        else:
-            skipped += 1
+        # Le entità devono essere copiate nel nuovo documento: non è lecito
+        # trasferire un'entità da un DXF all'altro tramite add_entity().
+        new_msp.add_entity(entity.copy())
 
-    print(f"  [upgrade] {copied} entità copiate, {skipped} skippate → R2010")
     return new_doc
 
 

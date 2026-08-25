@@ -1,118 +1,273 @@
-# forge/adapters/dxf/adapter.py
+
+
+"""
+forge/adapters/dxf/adapter.py
+--------------------------------
+Traduce entità DXF in primitive Forge.
+UNICO punto di conversione DXF → primitive.
+"""
 
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from ...core.primitives.segments import ArcSeg, DEFAULT_TOLERANCE
+from ...core.primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg, DEFAULT_TOLERANCE
 from ...core.adapter_base import ForgeAdapter
-from .geometry_adapter import (
-    arc_endpoints,
-    entity_to_primitive,
-    entity_to_polygon,
-    pline_to_polygon,
-    _spline_is_closed,
-)
 from ...core.geometry import round_point
-from ...core.healing.gap_solver import (
-    GapEndpoint,
-    MoveEndpoint,
-    AddSegment,
-    GapFix,
+from ...core.healing.gap_solver import GapEndpoint, MoveEndpoint, AddSegment, GapFix
+from ..bridge.edge import Edge, Segment
+from ...model.role import WORK_TYPE_TO_ROLE, layer_to_role
+
+from .geometry_adapter import (
+    entity_endpoints,
+    get_representative_point,
+    entity_to_polygon,
+    spline_is_closed,
 )
-from ..bridge.edge import Edge
-from ...core.primitives.segments import ArcSeg, LineSeg, SplineSeg, CircleSeg, DEFAULT_TOLERANCE
-from ..bridge.edge import Segment
 
 
 # ---------------------------------------------------------------------------
-# Costanti — tipi DXF supportati per la topologia
+# Costanti
 # ---------------------------------------------------------------------------
 
 _SUPPORTED_TYPES = frozenset({'LINE', 'ARC', 'SPLINE'})
 
-_GAP_KIND_MAP: Dict[str, str] = {
-    'LINE':   'line',
-    'ARC':    'arc',
+_GAP_KIND_MAP = {
+    'LINE': 'line',
+    'ARC': 'arc',
     'SPLINE': 'spline',
 }
 
 
 # ---------------------------------------------------------------------------
-# Layer → role
-# ---------------------------------------------------------------------------
-# La mappatura vive in model/role.py (pura, zero dipendenze DXF).
-# Riesportata qui solo per backward compatibility di eventuali import esterni.
-from ...model.role import WORK_TYPE_TO_ROLE as _WORK_TYPE_TO_ROLE
-from ...model.role import layer_to_role as _layer_to_role
-
-
-# ---------------------------------------------------------------------------
-# Gap healing — metadati per entità
+# TRADUZIONE DXF → PRIMITIVE (UNICO PUNTO)
 # ---------------------------------------------------------------------------
 
-def _gap_meta_for(entity) -> dict:
+def entity_to_primitive(entity, rev: bool = False):
+    """
+    Traduce un'entità DXF in una primitiva Forge.
+    
+    IMPORTANTE: 
+    - CIRCLE → CircleSeg (NON 2 ArcSeg!)
+    - SPLINE → SplineSeg
+    - LINE → LineSeg
+    - ARC → ArcSeg
+    - LWPOLYLINE/POLYLINE → List[LineSeg | ArcSeg]
+    
+    Questa è l'UNICA sede di questa traduzione.
+    """
     t = entity.dxftype()
+    
     if t == 'LINE':
-        return {
-            'start': (entity.dxf.start.x, entity.dxf.start.y),
-            'end':   (entity.dxf.end.x,   entity.dxf.end.y),
-        }
-    if t == 'ARC':
-        return {
-            'cx':     entity.dxf.center.x,
-            'cy':     entity.dxf.center.y,
-            'radius': entity.dxf.radius,
-        }
-    return {}
-
-
-# ---------------------------------------------------------------------------
-# Geometria DXF → Edge
-# ---------------------------------------------------------------------------
-
-def _spline_endpoints(spline):
-    try:
-        pts = list(spline.flattening(0.01))
-        if len(pts) < 2:
-            return None, None
-        return (pts[0][0], pts[0][1]), (pts[-1][0], pts[-1][1])
-    except Exception:
-        return None, None
-
-
-def _entity_to_segment(entity) -> Segment:
-    t = entity.dxftype()
-
-    if t == 'LINE':
+        if rev:
+            return LineSeg(
+                start=(entity.dxf.end.x, entity.dxf.end.y),
+                end=(entity.dxf.start.x, entity.dxf.start.y),
+            )
         return LineSeg(
             start=(entity.dxf.start.x, entity.dxf.start.y),
-            end=(entity.dxf.end.x,     entity.dxf.end.y),
+            end=(entity.dxf.end.x, entity.dxf.end.y),
         )
-
-    if t == 'ARC':
+    
+    elif t == 'ARC':
+        sa = math.radians(entity.dxf.start_angle)
+        ea = math.radians(entity.dxf.end_angle)
+        ccw = True
+        if rev:
+            sa, ea = ea, sa
+            ccw = False
         return ArcSeg(
             center=(entity.dxf.center.x, entity.dxf.center.y),
             radius=entity.dxf.radius,
-            start_angle=math.radians(entity.dxf.start_angle),
-            end_angle=math.radians(entity.dxf.end_angle),
-            ccw=True,
+            start_angle=sa,
+            end_angle=ea,
+            ccw=ccw,
         )
+    
+    elif t == 'CIRCLE':
+        # CERCHIO → CircleSeg (preservato!)
+        return CircleSeg(
+            center=(entity.dxf.center.x, entity.dxf.center.y),
+            radius=entity.dxf.radius
+        )
+    
+    elif t == 'SPLINE':
+        return _spline_to_primitive(entity, rev)
+    
+    elif t in ('LWPOLYLINE', 'POLYLINE'):
+        return _polyline_to_primitives(entity, rev)
+    
+    return None
 
-    if t == 'SPLINE':
-        prim = entity_to_primitive(entity)
-        if isinstance(prim, SplineSeg):
-            return prim
 
-    # fallback
-    s, e = entity_endpoints(entity)
-    if s and e:
-        return LineSeg(start=s, end=e)
-    return LineSeg(start=(0, 0), end=(0, 0))
+def _spline_to_primitive(entity, rev: bool = False) -> Optional[SplineSeg]:
+    """Traduce SPLINE in SplineSeg."""
+    try:
+        cps = [_vec3_to_tuple(p) for p in entity.control_points]
+        approx_points = [(float(p[0]), float(p[1])) for p in entity.flattening(DEFAULT_TOLERANCE)]
+        knots = [float(k) for k in entity.knots]
+        weights = [float(w) for w in entity.weights] if len(entity.weights) else None
+        fit_points = [_vec3_to_tuple(p) for p in entity.fit_points] if len(entity.fit_points) else None
+        flags = int(getattr(entity.dxf, "flags", 0) or 0)
+        periodic = bool(flags & 2)
+        closed = bool(getattr(entity, "closed", False) or (flags & 1))
+
+        start_tangent = None
+        if entity.dxf.hasattr("start_tangent"):
+            st = entity.dxf.start_tangent
+            start_tangent = (float(st.x), float(st.y), float(st.z))
+
+        end_tangent = None
+        if entity.dxf.hasattr("end_tangent"):
+            et = entity.dxf.end_tangent
+            end_tangent = (float(et.x), float(et.y), float(et.z))
+    except Exception:
+        cps = []
+        approx_points = []
+        knots = []
+        weights = None
+        fit_points = None
+        flags = 0
+        periodic = False
+        closed = False
+        start_tangent = None
+        end_tangent = None
+    
+    if rev:
+        cps = list(reversed(cps))
+        if approx_points:
+            approx_points = list(reversed(approx_points))
+        if fit_points:
+            fit_points = list(reversed(fit_points))
+    
+    if not cps and not fit_points:
+        return None
+    
+    return SplineSeg(
+        degree=int(getattr(entity.dxf, "degree", 3) or 3),
+        control_points=[(p[0], p[1]) for p in cps],
+        knots=knots,
+        weights=weights,
+        approx_points=approx_points or None,
+        fit_points=fit_points,
+        closed=closed,
+        periodic=periodic,
+        flags=flags,
+        knot_tolerance=float(entity.dxf.knot_tolerance) if entity.dxf.hasattr("knot_tolerance") else None,
+        fit_tolerance=float(entity.dxf.fit_tolerance) if entity.dxf.hasattr("fit_tolerance") else None,
+        control_point_tolerance=float(entity.dxf.control_point_tolerance) if entity.dxf.hasattr("control_point_tolerance") else None,
+        start_tangent=start_tangent,
+        end_tangent=end_tangent,
+    )
 
 
-def _segment_endpoints(segment: Segment) -> tuple[tuple[float, float], tuple[float, float]]:
+def _polyline_to_primitives(entity, rev: bool = False) -> List[Segment]:
+    """Traduce LWPOLYLINE/POLYLINE in List[LineSeg | ArcSeg]."""
+    if entity.dxftype() == 'POLYLINE':
+        pts = [(v.dxf.location.x, v.dxf.location.y, getattr(v.dxf, "bulge", 0.0)) 
+               for v in entity.vertices]
+    else:
+        pts = list(entity.get_points('xyb'))
+    
+    if not pts:
+        return []
+    
+    is_closed = bool(getattr(entity, "is_closed", False) or getattr(entity, "closed", False))
+
+    if is_closed and len(pts) > 1:
+        first_xy = (pts[0][0], pts[0][1])
+        last_xy = (pts[-1][0], pts[-1][1])
+        if first_xy == last_xy:
+            pts = pts[:-1]
+
+    if rev:
+        n = len(pts)
+        new_pts = []
+        for i in range(n):
+            idx = (-i) % n
+            x, y, _ = pts[idx]
+            if is_closed:
+                prev_idx = (idx - 1) % n
+                bulge = -pts[prev_idx][2]
+            else:
+                prev_idx = idx - 1
+                bulge = -pts[prev_idx][2] if prev_idx >= 0 else 0.0
+            new_pts.append((x, y, bulge))
+        pts = new_pts
+    
+    primitives = []
+    n = len(pts)
+    edge_count = n if is_closed else max(0, n - 1)
+    for i in range(edge_count):
+        x1, y1, bulge = pts[i]
+        if is_closed:
+            x2, y2, _ = pts[(i + 1) % n]
+        else:
+            x2, y2, _ = pts[i + 1]
+        
+        if abs(bulge) > 1e-6:
+            arc = _bulge_to_arc((x1, y1), (x2, y2), bulge)
+            if arc:
+                primitives.append(arc)
+        else:
+            primitives.append(LineSeg(start=(x1, y1), end=(x2, y2)))
+    
+    return primitives
+
+
+def _bulge_to_arc(p1: Tuple[float, float], p2: Tuple[float, float], bulge: float) -> Optional[ArcSeg]:
+    """Converte bulge DXF in ArcSeg."""
+    x1, y1 = p1
+    x2, y2 = p2
+    
+    included_angle = 4 * math.atan(abs(bulge))
+    if included_angle < 1e-12:
+        return None
+    
+    chord = math.hypot(x2 - x1, y2 - y1)
+    if chord < 1e-12:
+        return None
+    
+    radius = chord / (2 * math.sin(included_angle / 2))
+    
+    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+    dx, dy = x2 - x1, y2 - y1
+    px, py = -dy / chord, dx / chord
+    dist = radius * math.cos(included_angle / 2)
+    
+    if bulge > 0:
+        cx, cy = mx + px * dist, my + py * dist
+        ccw = True
+    else:
+        cx, cy = mx - px * dist, my - py * dist
+        ccw = False
+    
+    start_angle = math.atan2(y1 - cy, x1 - cx)
+    end_angle = math.atan2(y2 - cy, x2 - cx)
+    
+    if ccw:
+        while end_angle <= start_angle:
+            end_angle += 2 * math.pi
+    else:
+        while end_angle >= start_angle:
+            end_angle -= 2 * math.pi
+    
+    return ArcSeg(
+        center=(cx, cy),
+        radius=radius,
+        start_angle=start_angle,
+        end_angle=end_angle,
+        ccw=ccw,
+    )
+
+
+def _vec3_to_tuple(point) -> Tuple[float, float, float]:
+    return (float(point[0]), float(point[1]), float(point[2] if len(point) > 2 else 0.0))
+
+
+def _segment_endpoints(segment: Segment) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    """Endpoint di un segmento Forge."""
     if isinstance(segment, LineSeg):
         return segment.start, segment.end
     if isinstance(segment, ArcSeg):
@@ -140,6 +295,7 @@ def _segment_endpoints(segment: Segment) -> tuple[tuple[float, float], tuple[flo
 
 
 def _segment_key(segment: Segment) -> tuple:
+    """Chiave univoca per deduplicazione."""
     if isinstance(segment, LineSeg):
         pts = tuple(sorted((
             (round(segment.start[0], 6), round(segment.start[1], 6)),
@@ -168,40 +324,30 @@ def _segment_key(segment: Segment) -> tuple:
             int(segment.flags),
         )
     if isinstance(segment, CircleSeg):
-        return ("CIRCLE", round(segment.center[0], 6), round(segment.center[1], 6), round(segment.radius, 6))
+        return (
+            "CIRCLE",
+            round(segment.center[0], 6),
+            round(segment.center[1], 6),
+            round(segment.radius, 6)
+        )
     return (type(segment).__name__, repr(segment))
 
 
-def entity_endpoints(entity):
+def _gap_meta_for(entity) -> dict:
+    """Metadati per gap healing."""
     t = entity.dxftype()
     if t == 'LINE':
-        return (
-            (entity.dxf.start.x, entity.dxf.start.y),
-            (entity.dxf.end.x,   entity.dxf.end.y),
-        )
+        return {
+            'start': (entity.dxf.start.x, entity.dxf.start.y),
+            'end': (entity.dxf.end.x, entity.dxf.end.y),
+        }
     if t == 'ARC':
-        return arc_endpoints(entity)
-    if t == 'SPLINE':
-        return _spline_endpoints(entity)
-    return None, None
-
-
-def _polyline_is_closed(entity) -> bool:
-    if hasattr(entity, "is_closed"):
-        try:
-            return bool(entity.is_closed)
-        except Exception:
-            pass
-    return bool(getattr(entity, "closed", False))
-
-
-def _polyline_points_xy(entity) -> list[tuple[float, float]]:
-    if entity.dxftype() == 'POLYLINE':
-        return [(v.dxf.location.x, v.dxf.location.y) for v in entity.vertices]
-    try:
-        return [(p[0], p[1]) for p in entity.get_points('xy')]
-    except Exception:
-        return [(p[0], p[1]) for p in entity.get_points()]
+        return {
+            'cx': entity.dxf.center.x,
+            'cy': entity.dxf.center.y,
+            'radius': entity.dxf.radius,
+        }
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -209,6 +355,9 @@ def _polyline_points_xy(entity) -> list[tuple[float, float]]:
 # ---------------------------------------------------------------------------
 
 class DxfAdapter(ForgeAdapter):
+    """
+    Adapter DXF che traduce entità DXF in Edge del dominio Forge.
+    """
 
     def __init__(
         self,
@@ -232,6 +381,7 @@ class DxfAdapter(ForgeAdapter):
     # ------------------------------------------------------------------
 
     def to_edges(self) -> List[Edge]:
+        """Traduce entità DXF in Edge."""
         ignore = {s.lower() for s in self.ignore_layers}
 
         def _is_excluded(entity) -> bool:
@@ -277,26 +427,26 @@ class DxfAdapter(ForgeAdapter):
                 if entity.dxf.hasattr("layer")
                 else ""
             )
-            role = _layer_to_role(layer, self._label_map)
+            role = layer_to_role(layer, self._label_map)
 
-            # CIRCLE → loop degenere (start == end)
+            # CIRCLE → CircleSeg (preservato!)
             if dtype == "CIRCLE":
-                cx, cy = entity.dxf.center.x, entity.dxf.center.y
-                pt = round_point((cx, cy), self.node_decimals)
-                edges.append(Edge(
-                    source_ref=entity,
-                    role=role,
-                    start=pt,
-                    end=pt,
-                    segment=CircleSeg(
-                        center=(cx, cy),
-                        radius=entity.dxf.radius,
-                    ),
-                ))
+                prim = entity_to_primitive(entity)
+                if isinstance(prim, CircleSeg):
+                    start, end = _segment_endpoints(prim)
+                    pt = round_point(start, self.node_decimals)
+                    if pt is not None:
+                        edges.append(Edge(
+                            source_ref=entity,
+                            role=role,
+                            start=pt,
+                            end=pt,
+                            segment=prim,
+                        ))
                 continue
 
             # SPLINE chiusa → loop degenere
-            if dtype == "SPLINE" and _spline_is_closed(entity):
+            if dtype == "SPLINE" and spline_is_closed(entity):
                 prim = entity_to_primitive(entity)
                 if isinstance(prim, SplineSeg):
                     start, _ = _segment_endpoints(prim)
@@ -328,8 +478,12 @@ class DxfAdapter(ForgeAdapter):
             if start is None or end is None:
                 continue
 
+            prim = entity_to_primitive(entity)
+            if prim is None:
+                continue
+
             start_r = round_point(start, self.node_decimals)
-            end_r   = round_point(end,   self.node_decimals)
+            end_r = round_point(end, self.node_decimals)
             if start_r is None or end_r is None:
                 continue
 
@@ -338,16 +492,15 @@ class DxfAdapter(ForgeAdapter):
                 role=role,
                 start=start_r,
                 end=end_r,
-                segment=_entity_to_segment(entity),
+                segment=prim,
             ))
 
         return edges
 
-    
     def source_context(self, ref: Any) -> str:
+        """Layer dell'entità sorgente."""
         if isinstance(ref, str):
             return ref
-
         try:
             return (
                 ref.dxf.layer
@@ -362,15 +515,17 @@ class DxfAdapter(ForgeAdapter):
     # ------------------------------------------------------------------
 
     def load_entity_lists(self) -> dict:
+        """Carica liste di entità per tipo."""
         return {
-            "lines":   list(self.msp.query("LINE")),
-            "arcs":    list(self.msp.query("ARC")),
-            "plines":  list(self.msp.query("LWPOLYLINE POLYLINE")),
+            "lines": list(self.msp.query("LINE")),
+            "arcs": list(self.msp.query("ARC")),
+            "plines": list(self.msp.query("LWPOLYLINE POLYLINE")),
             "circles": list(self.msp.query("CIRCLE")),
             "splines": list(self.msp.query("SPLINE")),
         }
 
     def to_circular_arcs(self) -> List[ArcSeg]:
+        """Estrae solo ARC come ArcSeg."""
         result = []
         for entity in self.msp:
             if entity.dxftype() != "ARC":
@@ -389,6 +544,7 @@ class DxfAdapter(ForgeAdapter):
     # ------------------------------------------------------------------
 
     def extract_free_endpoints(self, graph) -> List[GapEndpoint]:
+        """Estrae endpoint liberi per gap healing."""
         free: List[GapEndpoint] = []
 
         for entity in self.msp.query('LINE ARC SPLINE'):
@@ -412,26 +568,27 @@ class DxfAdapter(ForgeAdapter):
         return free
 
     def apply_gap_fixes(self, fixes: List[GapFix]) -> int:
+        """Applica fixes di gap healing."""
         def _apply_move(fix: MoveEndpoint) -> bool:
             entity = fix.ref
-            t      = entity.dxftype()
-            pt     = fix.new_pt
+            t = entity.dxftype()
+            pt = fix.new_pt
 
             if t == 'LINE':
                 if fix.role == 'start':
                     entity.dxf.start = (pt[0], pt[1], entity.dxf.start.z)
                 else:
-                    entity.dxf.end   = (pt[0], pt[1], entity.dxf.end.z)
+                    entity.dxf.end = (pt[0], pt[1], entity.dxf.end.z)
                 return True
 
             if t == 'ARC':
-                cx    = entity.dxf.center.x
-                cy    = entity.dxf.center.y
+                cx = entity.dxf.center.x
+                cy = entity.dxf.center.y
                 angle = math.degrees(math.atan2(pt[1] - cy, pt[0] - cx)) % 360
                 if fix.role == 'start':
                     entity.dxf.start_angle = angle
                 else:
-                    entity.dxf.end_angle   = angle
+                    entity.dxf.end_angle = angle
                 return True
 
             return False
@@ -443,14 +600,14 @@ class DxfAdapter(ForgeAdapter):
             )
             return True
 
-        _handlers = {
+        handlers = {
             MoveEndpoint: _apply_move,
-            AddSegment:   _apply_add_segment,
+            AddSegment: _apply_add_segment,
         }
 
         applied = 0
         for fix in fixes:
-            handler = _handlers.get(type(fix))
+            handler = handlers.get(type(fix))
             if handler and handler(fix):
                 applied += 1
         return applied
