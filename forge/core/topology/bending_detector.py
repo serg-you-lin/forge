@@ -31,6 +31,7 @@ class BendingDetector:
 
         candidates = [
             e for e in edges
+            if not _is_closed_polyline_ref(e.source_ref)
             if e.start in branching and e.end in branching
         ]
         if not candidates:
@@ -51,3 +52,11 @@ class BendingDetector:
                 confirmed.add(id(edge.source_ref))
 
         return confirmed
+
+
+def _is_closed_polyline_ref(ref) -> bool:
+    if ref is None or not hasattr(ref, "dxftype"):
+        return False
+    if ref.dxftype() not in ("LWPOLYLINE", "POLYLINE"):
+        return False
+    return bool(getattr(ref, "is_closed", False) or getattr(ref, "closed", False))
