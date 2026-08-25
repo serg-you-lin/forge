@@ -430,6 +430,38 @@ class TestIntegrationContours(unittest.TestCase):
                              label=label, **kwargs)
         return _read_children(out_dir)
 
+    def _spline_signature(self, spline):
+        cps = tuple((round(float(p[0]), 6), round(float(p[1]), 6), round(float(p[2]), 6))
+                    for p in spline.control_points)
+        knots = tuple(round(float(k), 9) for k in spline.knots)
+        weights = tuple(round(float(w), 9) for w in spline.weights)
+        fit_points = tuple((round(float(p[0]), 6), round(float(p[1]), 6), round(float(p[2]), 6))
+                           for p in spline.fit_points)
+        start_tangent = None
+        if spline.dxf.hasattr("start_tangent"):
+            st = spline.dxf.start_tangent
+            start_tangent = (round(float(st.x), 6), round(float(st.y), 6), round(float(st.z), 6))
+        end_tangent = None
+        if spline.dxf.hasattr("end_tangent"):
+            et = spline.dxf.end_tangent
+            end_tangent = (round(float(et.x), 6), round(float(et.y), 6), round(float(et.z), 6))
+        knot_tol = float(spline.dxf.knot_tolerance)
+        fit_tol = float(spline.dxf.fit_tolerance)
+        cp_tol = float(spline.dxf.control_point_tolerance)
+        return (
+            int(spline.dxf.degree),
+            int(spline.dxf.flags),
+            cps,
+            knots,
+            weights,
+            fit_points,
+            start_tangent,
+            end_tangent,
+            knot_tol,
+            fit_tol,
+            cp_tol,
+        )
+
     def test_001_lwpolyline_outer_chiusa(self):
         """LWPOLYLINE su OuterContour nei figli è closed=True."""
         from forge.adapters.dxf.layers import LAYER_OUTER
@@ -467,7 +499,7 @@ class TestIntegrationContours(unittest.TestCase):
                              f"trovati {len(outer_circles)}")
 
     def test_004_spline_outer_esportato(self):
-        """File con SPLINE: entità originali su OuterContour presenti nel figlio."""
+        """File con SPLINE: almeno un figlio contiene SPLINE strutturale su OuterContour."""
         from forge.adapters.dxf.layers import LAYER_OUTER
         children = self._children("intricato_doppio.dxf", "intricato_doppio")
         figli_con_outer = [
@@ -478,6 +510,28 @@ class TestIntegrationContours(unittest.TestCase):
         self.assertGreater(len(figli_con_outer), 0,
                            "Nessun figlio ha entità su OuterContour "
                            "per file con SPLINE")
+
+    def test_006_spline_parametri_preservati(self):
+        """Le SPLINE scritte nei figli preservano i parametri chiave della sorgente."""
+        from forge.adapters.dxf.layers import LAYER_OUTER
+        src_doc = ezdxf.readfile(str(EXAMPLES_DIR / "intricato_doppio.dxf"))
+        src_splines = list(src_doc.modelspace().query("SPLINE"))
+        self.assertGreater(len(src_splines), 0, "La fixture sorgente non contiene SPLINE")
+
+        src_signatures = {self._spline_signature(s) for s in src_splines}
+
+        children = self._children("intricato_doppio.dxf", "intricato_doppio")
+        out_outer_splines = []
+        for _, msp in children.items():
+            out_outer_splines.extend([e for e in msp.query("SPLINE") if e.dxf.layer == LAYER_OUTER])
+
+        self.assertGreater(len(out_outer_splines), 0,
+                           "Nessuna SPLINE su OuterContour trovata nei figli")
+
+        for out_spline in out_outer_splines:
+            sig = self._spline_signature(out_spline)
+            self.assertIn(sig, src_signatures,
+                          "SPLINE figlia non corrisponde ai parametri della sorgente")
 
     def test_005_regressione_lwpolyline_chiusa_tutti_gli_esempi(self):
         """
