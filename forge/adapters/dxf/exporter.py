@@ -94,7 +94,51 @@ def write_contour_to_msp(msp, contour, layer: str) -> Optional[object]:
             dxfattribs={"layer": layer, "color": 256}
         )
 
-    # Se c'è una Spline, non esportiamo
+    # Se è una singola SplineSeg, esporta SPLINE nativa con i dati originali.
+    if len(segments) == 1 and isinstance(segments[0], SplineSeg):
+        spline = segments[0]
+        entity = msp.add_spline(dxfattribs={"layer": layer, "color": 256})
+        entity.dxf.degree = int(spline.degree)
+
+        cps3d = [(float(x), float(y), 0.0) for x, y in spline.control_points]
+        entity.control_points = cps3d
+
+        if spline.knots:
+            entity.knots = [float(k) for k in spline.knots]
+
+        if spline.weights:
+            entity.weights = [float(w) for w in spline.weights]
+
+        if spline.fit_points:
+            entity.fit_points = [
+                (float(p[0]), float(p[1]), float(p[2]))
+                for p in spline.fit_points
+            ]
+
+        flags = int(spline.flags or 0)
+        if spline.closed:
+            flags |= 1
+        if spline.periodic:
+            flags |= 2
+        if spline.weights:
+            flags |= 4
+        entity.dxf.flags = flags
+
+        if spline.knot_tolerance is not None:
+            entity.dxf.knot_tolerance = float(spline.knot_tolerance)
+        if spline.fit_tolerance is not None:
+            entity.dxf.fit_tolerance = float(spline.fit_tolerance)
+        if spline.control_point_tolerance is not None:
+            entity.dxf.control_point_tolerance = float(spline.control_point_tolerance)
+
+        if spline.start_tangent is not None:
+            entity.dxf.start_tangent = tuple(float(v) for v in spline.start_tangent)
+        if spline.end_tangent is not None:
+            entity.dxf.end_tangent = tuple(float(v) for v in spline.end_tangent)
+
+        return entity
+
+    # Se c'è una Spline mista ad altre primitive, non esportiamo ancora.
     has_spline = any(isinstance(s, SplineSeg) for s in segments)
     if has_spline:
         return None

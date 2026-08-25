@@ -70,14 +70,62 @@ def _parse_arc(entity, rev) -> ArcSeg:
 
 def _parse_spline(entity, rev) -> SplineSeg:
     try:
-        pts = [(p[0], p[1]) for p in entity.flattening(DEFAULT_TOLERANCE)]
+        cps = [(float(p[0]), float(p[1]), float(p[2] if len(p) > 2 else 0.0)) for p in entity.control_points]
+        approx_points = [(float(p[0]), float(p[1])) for p in entity.flattening(DEFAULT_TOLERANCE)]
+        knots = [float(k) for k in entity.knots]
+        weights = [float(w) for w in entity.weights] if len(entity.weights) else None
+        fit_points = [
+            (float(p[0]), float(p[1]), float(p[2] if len(p) > 2 else 0.0))
+            for p in entity.fit_points
+        ] if len(entity.fit_points) else None
+        flags = int(getattr(entity.dxf, "flags", 0) or 0)
+        periodic = bool(flags & 2)
+        closed = bool(getattr(entity, "closed", False) or (flags & 1))
+
+        start_tangent = None
+        if entity.dxf.hasattr("start_tangent"):
+            st = entity.dxf.start_tangent
+            start_tangent = (float(st.x), float(st.y), float(st.z))
+
+        end_tangent = None
+        if entity.dxf.hasattr("end_tangent"):
+            et = entity.dxf.end_tangent
+            end_tangent = (float(et.x), float(et.y), float(et.z))
     except Exception:
-        pts = []
+        cps = []
+        approx_points = []
+        knots = []
+        weights = None
+        fit_points = None
+        flags = 0
+        periodic = False
+        closed = False
+        start_tangent = None
+        end_tangent = None
 
     if rev:
-        pts = list(reversed(pts))
+        cps = list(reversed(cps))
+        if approx_points:
+            approx_points = list(reversed(approx_points))
+        if fit_points:
+            fit_points = list(reversed(fit_points))
 
-    return SplineSeg(degree=0, control_points=pts, knots=[], weights=None)
+    return SplineSeg(
+        degree=int(getattr(entity.dxf, "degree", 3) or 3),
+        control_points=[(p[0], p[1]) for p in cps],
+        knots=knots,
+        weights=weights,
+        approx_points=approx_points or None,
+        fit_points=fit_points,
+        closed=closed,
+        periodic=periodic,
+        flags=flags,
+        knot_tolerance=float(entity.dxf.knot_tolerance) if entity.dxf.hasattr("knot_tolerance") else None,
+        fit_tolerance=float(entity.dxf.fit_tolerance) if entity.dxf.hasattr("fit_tolerance") else None,
+        control_point_tolerance=float(entity.dxf.control_point_tolerance) if entity.dxf.hasattr("control_point_tolerance") else None,
+        start_tangent=start_tangent,
+        end_tangent=end_tangent,
+    )
 
 
 def _parse_circle(entity) -> CircleSeg:
@@ -104,6 +152,16 @@ def _reverse_segment(segment):
             control_points=list(reversed(segment.control_points)),
             knots=list(segment.knots),
             weights=list(segment.weights) if segment.weights is not None else None,
+            approx_points=list(reversed(segment.approx_points)) if segment.approx_points else None,
+            fit_points=list(reversed(segment.fit_points)) if segment.fit_points else None,
+            closed=segment.closed,
+            periodic=segment.periodic,
+            flags=segment.flags,
+            knot_tolerance=segment.knot_tolerance,
+            fit_tolerance=segment.fit_tolerance,
+            control_point_tolerance=segment.control_point_tolerance,
+            start_tangent=segment.end_tangent,
+            end_tangent=segment.start_tangent,
         )
     return segment
 
