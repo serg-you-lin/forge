@@ -7,7 +7,7 @@ if __package__:
     from forge.adapters.dxf import sanitize
     from ..model.result import ForgeResult
     from ..core.topology.graph import build_node_graph
-    from ..adapters.dxf.geometry_adapter import _spline_is_closed
+    from ..adapters.dxf.geometry_adapter import spline_is_closed
     from ..adapters.dxf.sanitize import deduplicate as _deduplicate_entities
     from ..core.geometry import spline_endpoints, round_point
     from ..adapters.dxf.sanitize import _explode_inserts
@@ -16,7 +16,7 @@ else:
     from forge.adapters.dxf import sanitize
     from forge.model.result import ForgeResult
     from forge.core.topology.graph import build_node_graph
-    from forge.adapters.dxf.geometry_adapter import _spline_is_closed
+    from forge.adapters.dxf.geometry_adapter import spline_is_closed
     from forge.adapters.dxf.sanitize import deduplicate as _deduplicate_entities
     from forge.core.geometry import spline_endpoints, round_point
     from forge.adapters.dxf.sanitize import _explode_inserts

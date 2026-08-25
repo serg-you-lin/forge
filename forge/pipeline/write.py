@@ -1,10 +1,12 @@
 
+
+
 """DXF write helpers for ForgeResult materialization."""
 
 from __future__ import annotations
 
 import os
-from typing import Callable, Optional
+from typing import Callable, Optional, Set
 
 import ezdxf
 from shapely.geometry import Point
@@ -12,7 +14,7 @@ from shapely.geometry import Point
 from ..model import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..adapters.dxf.geometry_adapter import get_representative_point
 from ..adapters.dxf.exporter import write_contour_to_msp
-from ..adapters.dxf.split_materializer import materialize_entity_for_split
+from ..adapters.dxf.adapter import entity_to_primitive
 from ..model.role import ContourRole
 from ..core.primitives import CircleSeg, SplineSeg
 
@@ -34,6 +36,9 @@ _HOLE_TYPE_TO_WORK_TYPE = {
     HOLE_TYPE_THREADED:    "threaded_hole",
 }
 
+ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
+DEFAULT_MIN_PART_AREA = 50.0  # mm²
+
 
 # ---------------------------------------------------------------------------
 # API pubblica
@@ -41,13 +46,29 @@ _HOLE_TYPE_TO_WORK_TYPE = {
 
 def write(
     msp,
-    result:     ForgeResult,
+    result: ForgeResult,
     keep_trash: bool = True,
+    filter_part: Optional[Callable[[ForgePart], bool]] = None,
+    include_annotations: bool = True,
 ) -> None:
+    """
+    Scrive un ForgeResult in un modelspace DXF.
+    
+    Args:
+        msp: Modelspace di destinazione
+        result: Risultato da materializzare
+        keep_trash: Se True mantiene le entità non classificate su TRASH_LAYER
+        filter_part: Callable opzionale per filtrare quali parti scrivere
+        include_annotations: Se True include annotazioni (testi, quote, ecc.)
+    """
     entity_to_work = _build_work_index(result)
 
     # --- Materializza contorni e fori ---
     for part in result.parts:
+        # Applica il filtro se presente
+        if filter_part is not None and not filter_part(part):
+            continue
+
         for contour in [part.outer] + part.inners:
             _write_or_assign_contour(msp, contour, part, entity_to_work)
 
@@ -64,7 +85,7 @@ def write(
             continue
 
         entity_id = id(entity)
-        layer     = entity.dxf.layer
+        layer = entity.dxf.layer
         work_type = entity_to_work.get(entity_id)
 
         if work_type is not None:
@@ -82,34 +103,53 @@ def write(
         else:
             msp.delete_entity(entity)
 
+    # --- Materializza linee derivate e annotazioni ---
     for part in result.parts:
+        if filter_part is not None and not filter_part(part):
+            continue
         _materialize_derived_bending_lines(msp, part)
 
-
-ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
-DEFAULT_MIN_PART_AREA = 50.0  # mm²
+    # --- Annotazioni (solo se richieste) ---
+    if include_annotations:
+        _materialize_annotations(msp, result, filter_part)
 
 
 def split(
     msp,
-    result:              ForgeResult,
-    output_folder:       str,
-    namer:               Optional[Callable] = None,
-    keep_trash:          bool               = False,
-    include_annotations: bool               = True,
-    min_area:            float              = DEFAULT_MIN_PART_AREA,
-    exclude_types:       set                = None,
-    on_part:             Optional[Callable] = None,
+    result: ForgeResult,
+    output_folder: str,
+    namer: Optional[Callable] = None,
+    keep_trash: bool = False,
+    include_annotations: bool = True,
+    min_area: float = DEFAULT_MIN_PART_AREA,
+    exclude_types: Set[str] = None,
+    on_part: Optional[Callable] = None,
 ) -> list:
+    """
+    Divide un ForgeResult in file DXF separati, uno per parte.
+    
+    Args:
+        msp: Modelspace sorgente
+        result: Risultato da suddividere
+        output_folder: Cartella di destinazione
+        namer: Callable per generare il nome del file (i, part) -> str
+        keep_trash: Se True mantiene le entità non classificate
+        include_annotations: Se True include annotazioni
+        min_area: Area minima delle parti da includere (mm²)
+        exclude_types: Set di tipi DXF da escludere (es. {"SPLINE", "CIRCLE"})
+        on_part: Callable chiamata per ogni parte prima del salvataggio (part, doc, path)
+    
+    Returns:
+        Lista dei percorsi dei file generati
+    """
     os.makedirs(output_folder, exist_ok=True)
-
-    entity_to_work       = _build_work_index(result)
-    entity_to_structural = _build_structural_index(result)
-
     generated = []
-    src_doc   = msp.doc
+    src_doc = msp.doc
+    exclude_types = exclude_types or set()
+    excluded_upper = {t.upper() for t in exclude_types}
 
     for i, part in enumerate(result.parts):
+        # Verifica area minima
         if min_area > 0 and part.outer.polygon.area < min_area:
             result.warnings.append(
                 f"Part {i} scartato: area {part.outer.polygon.area:.2f} mm² "
@@ -117,64 +157,47 @@ def split(
             )
             continue
 
-        name     = namer(i, part) if namer else f"{part.label}_P{i + 1}"
+        # Genera nome e percorso
+        name = namer(i, part) if namer else f"{part.label}_P{i + 1}"
         out_path = os.path.join(output_folder, f"{name}.dxf")
 
+        # Crea nuovo documento
         doc_out = ezdxf.new(dxfversion="R2010")
-        doc_out.header['$INSUNITS']    = src_doc.header.get('$INSUNITS', 4)
+        doc_out.header['$INSUNITS'] = src_doc.header.get('$INSUNITS', 4)
         doc_out.header['$MEASUREMENT'] = src_doc.header.get('$MEASUREMENT', 1)
         _setup_layers(doc_out)
         msp_out = doc_out.modelspace()
 
-        _write_part_contours_to_msp(msp_out, part, entity_to_work, exclude_types=exclude_types)
-        structural_source_ids = _collect_structural_source_ids(part)
-        effective_ids = set(part.entity_ids) - structural_source_ids
+        # Filtro per scrivere solo la parte corrente
+        def filter_current_part(part_to_check: ForgePart) -> bool:
+            # Confronto per identità (o per ID se disponibile)
+            return part_to_check is part
 
-        for entity in msp:
-            if not entity.dxf.hasattr("layer"):
-                continue
-            if exclude_types and entity.dxftype() in exclude_types:
-                continue
+        # Riutilizza il writer principale con il filtro
+        write(
+            msp_out,
+            result,
+            keep_trash=keep_trash,
+            filter_part=filter_current_part,
+            include_annotations=include_annotations
+        )
 
-            is_annotation = entity.dxftype() in ANNOTATION_TYPES
-            if is_annotation:
-                if not include_annotations:
-                    continue
-                pt = get_representative_point(entity)
-                if pt is None:
-                    continue
-                if not part.outer.polygon.covers(Point(pt)):
-                    continue
-            else:
-                if id(entity) not in effective_ids:
-                    continue
+        # Ricostruisce le entità del part dal modello sorgente senza usare la
+        # copia globale: i cerchi e le spline vengono rigenerati come primitive,
+        # mentre le annotazioni sono riscritte in modo dedicato.
+        _materialize_part_entities(
+            msp,
+            msp_out,
+            part,
+            include_annotations=include_annotations,
+            excluded_upper=excluded_upper,
+        )
 
-            new_entity = materialize_entity_for_split(entity, msp_out)
-            if new_entity is None:
-                continue
+        # Rimuovi entità di tipo escluso (opzionale)
+        if exclude_types:
+            _remove_excluded_entities(msp_out, excluded_upper)
 
-            entity_id        = id(entity)
-            layer            = entity.dxf.layer
-            work_type        = entity_to_work.get(entity_id)
-            structural_layer = entity_to_structural.get(entity_id)
-
-            if structural_layer is not None:
-                new_entity.dxf.layer = structural_layer
-                new_entity.dxf.color = 256
-            elif work_type is not None:
-                target_layer, _ = WORK_TYPE_TO_LAYER.get(
-                    work_type, (TRASH_LAYER, COLOR_TRASH)
-                )
-                new_entity.dxf.layer = target_layer
-                new_entity.dxf.color = 256
-            elif layer.upper() in _STRUCTURAL_LAYER_NAMES or layer.upper() in _WORK_LAYER_NAMES:
-                new_entity.dxf.color = 256
-            elif keep_trash:
-                new_entity.dxf.layer = TRASH_LAYER
-                new_entity.dxf.color = 256
-
-        _materialize_derived_bending_lines(msp_out, part)
-
+        # Callback opzionale
         if on_part is not None:
             on_part(part, doc_out, out_path)
 
@@ -188,6 +211,60 @@ def split(
 # ---------------------------------------------------------------------------
 # Helpers interni — materializzazione
 # ---------------------------------------------------------------------------
+
+def _materialize_annotation_entity(entity, msp_out, layer: str):
+    """Riscrive un'annotazione come entità DXF dedicata, senza clone/copy."""
+    kind = entity.dxftype()
+    attribs = {"layer": layer, "color": 256}
+    if kind == "TEXT":
+        return msp_out.add_text(entity.dxf.text, dxfattribs=attribs)
+    if kind == "MTEXT":
+        return msp_out.add_mtext(entity.text, dxfattribs=attribs)
+    # Unsupported: MULTILEADER/DIMENSION non sono rigenerabili in modo sicuro
+    # senza usare una logica di dumping esplicita; per ora non vengono esportati.
+    return None
+
+
+def _materialize_part_entities(msp, msp_out, part: ForgePart,
+                              include_annotations: bool = True,
+                              excluded_upper: Set[str] | None = None) -> None:
+    """Rigenera le entità del part da sorgente, senza usare il vecchio copy adapter."""
+    excluded_upper = excluded_upper or set()
+    for entity in msp:
+        ent_type = entity.dxftype().upper()
+        if ent_type in excluded_upper:
+            continue
+
+        rep = get_representative_point(entity)
+        if rep is None:
+            continue
+        if not part.outer.polygon.covers(Point(rep)):
+            continue
+
+        if ent_type in ANNOTATION_TYPES:
+            if not include_annotations:
+                continue
+            layer = entity.dxf.layer if entity.dxf.hasattr("layer") else LAYER_OUTER
+            _materialize_annotation_entity(entity, msp_out, layer)
+            continue
+
+        if ent_type == "CIRCLE":
+            prim = entity_to_primitive(entity)
+            if not isinstance(prim, CircleSeg):
+                continue
+            layer = entity.dxf.layer if entity.dxf.hasattr("layer") else LAYER_OUTER
+            proxy = type("_P", (), {"segments": [prim]})()
+            write_contour_to_msp(msp_out, proxy, layer)
+            continue
+
+        if ent_type == "SPLINE":
+            prim = entity_to_primitive(entity)
+            if not isinstance(prim, SplineSeg):
+                continue
+            layer = entity.dxf.layer if entity.dxf.hasattr("layer") else LAYER_OUTER
+            proxy = type("_P", (), {"segments": [prim]})()
+            write_contour_to_msp(msp_out, proxy, layer)
+
 
 def _write_or_assign_contour(msp, contour, part: ForgePart, entity_to_work: dict) -> None:
     """
@@ -249,43 +326,25 @@ def _write_or_assign_hole(msp, hole: Hole, part: ForgePart, entity_to_work: dict
             entity_to_work[id(lwpoly)] = "threaded_hole"
 
 
-def _write_part_contours_to_msp(msp_out, part: ForgePart, entity_to_work: dict, exclude_types: set | None = None) -> dict:
-    """Materializza sempre i contorni strutturali del part dai segmenti Forge."""
-    excluded = {t.upper() for t in (exclude_types or set())}
-
-    def _is_excluded_contour(contour) -> bool:
-        if contour.source_ref is not None and hasattr(contour.source_ref, "dxftype"):
-            if contour.source_ref.dxftype().upper() in excluded:
-                return True
-        if len(contour.segments) == 1 and isinstance(contour.segments[0], CircleSeg):
-            return "CIRCLE" in excluded
-        if any(isinstance(seg, SplineSeg) for seg in contour.segments):
-            return "SPLINE" in excluded
-        return False
-
-    for contour in [part.outer] + part.inners:
-        if _is_excluded_contour(contour):
+def _materialize_annotations(msp, result: ForgeResult, filter_part: Optional[Callable]) -> None:
+    """Materializza le annotazioni (testi, quote, ecc.) nel modelspace."""
+    # Questa è un'implementazione di base; puoi estenderla secondo le tue esigenze
+    for part in result.parts:
+        if filter_part is not None and not filter_part(part):
             continue
-        layer = ROLE_TO_LAYER.get(contour.role, LAYER_OUTER)
-        lwpoly = write_contour_to_msp(msp_out, contour, layer)
-        if lwpoly is not None:
-            if contour.role not in (ContourRole.OUTER, ContourRole.INNER, ContourRole.UNKNOWN):
-                entity_to_work[id(lwpoly)] = contour.role.value.lower()
-            continue
+        # Qui la logica per gestire le annotazioni specifiche della parte
+        # Per ora è un placeholder
+        pass
 
-    for hole in part.holes:
-        if _is_excluded_contour(hole):
-            continue
-        layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
-        lwpoly = write_contour_to_msp(msp_out, hole, layer)
-        if lwpoly is not None:
-            if hole.hole_type == HOLE_TYPE_COUNTERSINK:
-                entity_to_work[id(lwpoly)] = "countersink"
-            elif hole.hole_type == HOLE_TYPE_THREADED:
-                entity_to_work[id(lwpoly)] = "threaded_hole"
-            continue
 
-    return {}
+def _remove_excluded_entities(msp, excluded_upper: Set[str]) -> None:
+    """Rimuove le entità di tipo escluso dal modelspace."""
+    to_delete = []
+    for entity in msp:
+        if entity.dxftype().upper() in excluded_upper:
+            to_delete.append(entity)
+    for entity in to_delete:
+        msp.delete_entity(entity)
 
 
 # ---------------------------------------------------------------------------
@@ -410,7 +469,7 @@ def _materialize_derived_bending_lines(msp_out, part: ForgePart) -> None:
         if len(coords) < 2:
             continue
         start = coords[0]
-        end   = coords[-1]
+        end = coords[-1]
         key = (round(start[0], 6), round(start[1], 6), round(end[0], 6), round(end[1], 6))
         if key in seen:
             continue
