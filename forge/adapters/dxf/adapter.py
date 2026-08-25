@@ -9,6 +9,7 @@ from ...core.primitives.segments import ArcSeg, DEFAULT_TOLERANCE
 from ...core.adapter_base import ForgeAdapter
 from .geometry_adapter import (
     arc_endpoints,
+    entity_to_primitive,
     entity_to_polygon,
     pline_to_polygon,
     _spline_is_closed,
@@ -118,6 +119,53 @@ def _entity_to_segment(entity) -> Segment:
     return LineSeg(start=(0, 0), end=(0, 0))
 
 
+def _segment_endpoints(segment: Segment) -> tuple[tuple[float, float], tuple[float, float]]:
+    if isinstance(segment, LineSeg):
+        return segment.start, segment.end
+    if isinstance(segment, ArcSeg):
+        start = (
+            segment.center[0] + segment.radius * math.cos(segment.start_angle),
+            segment.center[1] + segment.radius * math.sin(segment.start_angle),
+        )
+        end = (
+            segment.center[0] + segment.radius * math.cos(segment.end_angle),
+            segment.center[1] + segment.radius * math.sin(segment.end_angle),
+        )
+        return start, end
+    if isinstance(segment, SplineSeg):
+        if not segment.control_points:
+            return (0.0, 0.0), (0.0, 0.0)
+        return segment.control_points[0], segment.control_points[-1]
+    if isinstance(segment, CircleSeg):
+        pt = (segment.center[0] + segment.radius, segment.center[1])
+        return pt, pt
+    return (0.0, 0.0), (0.0, 0.0)
+
+
+def _segment_key(segment: Segment) -> tuple:
+    if isinstance(segment, LineSeg):
+        pts = tuple(sorted((
+            (round(segment.start[0], 6), round(segment.start[1], 6)),
+            (round(segment.end[0], 6), round(segment.end[1], 6)),
+        )))
+        return ("LINE", pts)
+    if isinstance(segment, ArcSeg):
+        return (
+            "ARC",
+            round(segment.center[0], 6),
+            round(segment.center[1], 6),
+            round(segment.radius, 6),
+            round(segment.start_angle, 6),
+            round(segment.end_angle, 6),
+            segment.ccw,
+        )
+    if isinstance(segment, SplineSeg):
+        return ("SPLINE", tuple((round(x, 6), round(y, 6)) for x, y in segment.control_points))
+    if isinstance(segment, CircleSeg):
+        return ("CIRCLE", round(segment.center[0], 6), round(segment.center[1], 6), round(segment.radius, 6))
+    return (type(segment).__name__, repr(segment))
+
+
 def entity_endpoints(entity):
     t = entity.dxftype()
     if t == 'LINE':
@@ -130,41 +178,6 @@ def entity_endpoints(entity):
     if t == 'SPLINE':
         return _spline_endpoints(entity)
     return None, None
-
-
-# def _entity_to_linestring(entity) -> LineString:
-#     t = entity.dxftype()
-
-#     if t == 'LINE':
-#         return LineString([
-#             (entity.dxf.start.x, entity.dxf.start.y),
-#             (entity.dxf.end.x,   entity.dxf.end.y),
-#         ])
-
-#     if t == 'ARC':
-#         # Usa ArcSeg.discretize() centralizzato
-#         arc = ArcSeg(
-#             center=(entity.dxf.center.x, entity.dxf.center.y),
-#             radius=entity.dxf.radius,
-#             start_angle=math.radians(entity.dxf.start_angle),
-#             end_angle=math.radians(entity.dxf.end_angle),
-#             ccw=True,
-#         )
-#         pts = arc.discretize(DEFAULT_TOLERANCE)
-#         return LineString(pts)
-
-#     if t == 'SPLINE':
-#         try:
-#             pts = [(p[0], p[1]) for p in entity.flattening(DEFAULT_TOLERANCE)]
-#             if len(pts) >= 2:
-#                 return LineString(pts)
-#         except Exception:
-#             pass
-
-#     s, e = entity_endpoints(entity)
-#     if s and e:
-#         return LineString([s, e])
-#     return LineString([(0, 0), (0, 0)])
 
 
 def _polyline_is_closed(entity) -> bool:
@@ -228,6 +241,25 @@ class DxfAdapter(ForgeAdapter):
             return any(sl in layer for sl in ignore)
 
         edges = []
+        seen_segment_keys = set()
+
+        def _append_edge(source_ref, role, segment):
+            key = _segment_key(segment)
+            if key in seen_segment_keys:
+                return
+            seen_segment_keys.add(key)
+            start, end = _segment_endpoints(segment)
+            start_r = round_point(start, self.node_decimals)
+            end_r = round_point(end, self.node_decimals)
+            if start_r is None or end_r is None:
+                return
+            edges.append(Edge(
+                source_ref=source_ref,
+                role=role,
+                start=start_r,
+                end=end_r,
+                segment=segment,
+            ))
 
         for entity in self.msp:
             if _is_excluded(entity):
@@ -280,36 +312,11 @@ class DxfAdapter(ForgeAdapter):
 
             # LWPOLYLINE / POLYLINE → segmenti
             if dtype in ("LWPOLYLINE", "POLYLINE"):
-                if _polyline_is_closed(entity):
-                    poly = pline_to_polygon(entity)
-                    if poly is not None and not poly.is_empty:
-                        coords = list(poly.exterior.coords)
-                        for i in range(len(coords) - 1):
-                            s_r = round_point(coords[i],     self.node_decimals)
-                            e_r = round_point(coords[i + 1], self.node_decimals)
-                            if s_r is None or e_r is None:
-                                continue
-                            edges.append(Edge(
-                                source_ref=entity,
-                                role=role,
-                                start=s_r,
-                                end=e_r,
-                                segment=LineSeg(start=coords[i], end=coords[i + 1]),
-                            ))
-                else:
-                    pts = _polyline_points_xy(entity)
-                    for i in range(len(pts) - 1):
-                        s_r = round_point(pts[i],     self.node_decimals)
-                        e_r = round_point(pts[i + 1], self.node_decimals)
-                        if s_r is None or e_r is None:
-                            continue
-                        edges.append(Edge(
-                            source_ref=entity,
-                            role=role,
-                            start=s_r,
-                            end=e_r,
-                            segment=LineSeg(start=pts[i], end=pts[i + 1]),
-                        ))
+                primitives = entity_to_primitive(entity) or []
+                if not isinstance(primitives, list):
+                    primitives = [primitives]
+                for segment in primitives:
+                    _append_edge(entity, role, segment)
                 continue
 
             # LINE / ARC / SPLINE aperta

@@ -16,9 +16,12 @@ def heal(msp, tolerance=0.05, ignore_layers=None, label="",
     adapter = DxfAdapter(msp, tolerance=tolerance,
                      ignore_layers={l.lower() for l in (ignore_layers or [])},
                      label_map=label_map)
-    return HealStep(adapter, msp, tolerance, label=label, source_file=source_file,
+    return HealStep(adapter, tolerance, label=label, source_file=source_file,
                     ignore_layers=ignore_layers,
                     special_layers=label_map).run()
+    # return HealStep(adapter, msp, tolerance, label=label, source_file=source_file,
+    #                 ignore_layers=ignore_layers,
+    #                 special_layers=label_map).run()
 
 def split_to_files(msp, output_folder, label="", source_file="",
                    tolerance=0.05, label_map=None,

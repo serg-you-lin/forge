@@ -1,5 +1,3 @@
-
-
 import sys
 from pathlib import Path
 
@@ -28,7 +26,6 @@ class HealStep:
     def __init__(
         self,
         adapter,
-        msp,
         tolerance,
         label="",
         source_file="",
@@ -36,7 +33,6 @@ class HealStep:
         special_layers=None,
     ):
         self.adapter         = adapter
-        self.msp             = msp
         self.tolerance       = tolerance
         self.label           = label
         self.source_file     = source_file
@@ -55,13 +51,7 @@ class HealStep:
         self.proxies = []
         self.closed_shapes = []  
 
-        self.all_lines      = []
-        self.all_arcs       = []
-        self.all_plines     = []
-        self.all_circles    = []
-        self.all_splines    = []
-        self.closed_splines = []
-        self.open_splines   = []
+        self.edges = []
 
     def run(self):
         self._load()
@@ -81,27 +71,16 @@ class HealStep:
             edges = [e for e in edges if id(e.source_ref) not in exclude_ids]
         return build_node_graph(edges)
 
-    def _load(self):
-        entities         = self.adapter.load_entity_lists()
-        self.all_lines   = entities["lines"]
-        self.all_arcs    = entities["arcs"]
-        self.all_plines  = entities["plines"]
-        self.all_circles = entities["circles"]
-        self.all_splines = entities["splines"]
 
-        if not any([self.all_lines, self.all_arcs, self.all_plines,
-                    self.all_circles, self.all_splines]):
+    def _load(self):
+        self.edges = self.adapter.to_edges()
+
+        if not self.edges:
             self.result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
             self.result.is_valid = False
             return
-
-        self.closed_splines = [s for s in self.all_splines if     _spline_is_closed(s, self.tolerance)]
-        self.open_splines   = [s for s in self.all_splines if not _spline_is_closed(s, self.tolerance)]
-
+        
     def _preprocess(self):
-        if not (self.all_lines or self.all_arcs):
-            return
-
         graph_pre = self._build_graph()
         endpoints = self.adapter.extract_free_endpoints(graph_pre)
 
@@ -111,21 +90,19 @@ class HealStep:
             fixed = self.adapter.apply_gap_fixes(fixes)
 
             if fixed:
-                entities = self.adapter.load_entity_lists()
-                self.all_lines = entities["lines"]
-                self.all_arcs  = entities["arcs"]
-                graph_pre      = None
+                self.edges = self.adapter.to_edges()
+                graph_pre  = None
 
-        if self.open_splines:
+        from ..core.primitives.segments import SplineSeg
+        open_spline_edges = [
+            e for e in self.edges
+            if isinstance(e.segment, SplineSeg) and e.start != e.end
+        ]
+        if open_spline_edges:
             if graph_pre is None:
                 graph_pre = self._build_graph()
-            for spline in self.open_splines:
-                s, e = spline_endpoints(spline)
-                if s is None or e is None:
-                    continue
-                s_r = round_point(s)
-                e_r = round_point(e)
-                if len(graph_pre.get(s_r, [])) < 2 or len(graph_pre.get(e_r, [])) < 2:
+            for edge in open_spline_edges:
+                if len(graph_pre.get(edge.start, [])) < 2 or len(graph_pre.get(edge.end, [])) < 2:
                     self.result.warnings.append(
                         "SPLINE con endpoint non connesso trovata — "
                         "gap tra SPLINE e altre entità gestito con una linea di congiunzione. "
@@ -133,35 +110,22 @@ class HealStep:
                     )
                     break
 
-    def _find_bending_candidates(self):
-        if not (self.all_lines or self.all_arcs):
-            return
 
+    def _find_bending_candidates(self):
         from ..core.topology.bending_detector import BendingDetector
         graph_full = self._build_graph()
-        edges      = self.adapter.to_edges()
 
-        raw_candidates = BendingDetector(self.tolerance).detect(graph_full, edges)
-
-        self.candidate_bending_ids = {
-            id(e)
-            for e in self.msp.query("LINE")
-            if id(e) in raw_candidates
-        }
+        self.candidate_bending_ids = BendingDetector(self.tolerance).detect(graph_full, self.edges)
 
         if self.candidate_bending_ids:
             self.result.warnings.append(
-                f"{len(self.candidate_bending_ids)} LINE candidate come bending "
+                f"{len(self.candidate_bending_ids)} candidate come bending "
                 f"escluse dal grafo (entrambi gli endpoint su nodi di branching)."
             )
-            self.all_lines = [
-                l for l in self.all_lines
-                if id(l) not in self.candidate_bending_ids
-            ]
+
 
     def _find_loops(self):
-        if not (self.all_lines or self.all_arcs or self.open_splines
-                or self.all_circles or self.all_plines or self.closed_splines):
+        if not self.edges:
             return
 
         from ..core.topology.loop_finder import LoopFinder
@@ -214,10 +178,7 @@ class HealStep:
                 self.closed_shapes.append(shape)
 
     def _reintegrate_bending(self):
-        all_lines_full = list(self.msp.query("LINE"))
-        self.all_lines = self.all_lines + [
-            l for l in all_lines_full if id(l) in self.candidate_bending_ids
-        ]
+        pass
 
     def _build_hierarchy(self):
         from ..core.topology.loop_finder import edges_to_open_shapes
@@ -276,21 +237,10 @@ def _fallback_polygonize(self):
     self.result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
     segments = []
 
-    for l in self.all_lines:
-        segments.append(LineString([
-            (l.dxf.start.x, l.dxf.start.y),
-            (l.dxf.end.x,   l.dxf.end.y),
-        ]))
-
-    for a in self.all_arcs:
-        arc = ArcSeg(
-            center=(a.dxf.center.x, a.dxf.center.y),
-            radius=a.dxf.radius,
-            start_angle=math.radians(a.dxf.start_angle),
-            end_angle=math.radians(a.dxf.end_angle),
-            ccw=True,
-        )
-        pts = arc.discretize(DEFAULT_TOLERANCE)
+    for edge in self.edges:
+        if edge.segment is None:
+            continue
+        pts = edge.segment.discretize(DEFAULT_TOLERANCE)
         if len(pts) >= 2:
             segments.append(LineString(pts))
 
@@ -303,7 +253,8 @@ def _fallback_polygonize(self):
             f"Geometria ricostruita via fallback polygonize "
             f"({len(polygons)} poligoni). Verificare il risultato."
         )
-        self.entities_in_loops = {id(e) for e in self.all_lines + self.all_arcs}
+        # self.entities_in_loops = {id(e) for e in self.all_lines + self.all_arcs}
+        self.entities_in_loops = {id(e.source_ref) for e in self.edges}
         self.result._entities_in_loops_ids = self.entities_in_loops
 
         for poly in polygons:

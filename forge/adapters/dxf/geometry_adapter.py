@@ -176,6 +176,12 @@ def entity_to_primitive(entity, rev: bool = False):
         
         is_closed = bool(getattr(entity, "is_closed", False) or getattr(entity, "closed", False))
 
+        if is_closed and len(pts) > 1:
+            first_xy = (pts[0][0], pts[0][1])
+            last_xy  = (pts[-1][0], pts[-1][1])
+            if first_xy == last_xy:
+                pts = pts[:-1]
+
         if rev:
             # Inverti e nega i bulge
             n = len(pts)
