@@ -10,7 +10,7 @@ Un edge è confermato bending se:
   2. Il centroide è interno al convex hull — non è un edge di contorno
 
 Input:  Graph, list[Edge]
-Output: set[int]  — id() degli edge confermati bending
+Output: set[int]  — id() degli Edge confermati bending
 """
 
 from shapely.geometry import MultiPoint, Point
@@ -49,7 +49,7 @@ class BendingDetector:
             centroid = Point(mid_x, mid_y)
             is_interior = hull.boundary.distance(centroid) > self.tolerance
             if is_interior:
-                confirmed.add(id(edge.source_ref))
+                confirmed.add(id(edge))
 
         return confirmed
 

@@ -40,7 +40,7 @@ class TestBendingDetector(unittest.TestCase):
         g = build_node_graph(edges)
         result = BendingDetector(tolerance=0.01).detect(g, edges)
         bending_edge = edges[-1]
-        self.assertIn(id(bending_edge.source_ref), result)
+        self.assertIn(id(bending_edge), result)
 
     def test_linea_sul_bordo_ignorata(self):
         # triangolo semplice — nessun nodo branching → nessun bending
