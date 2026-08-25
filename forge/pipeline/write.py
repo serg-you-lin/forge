@@ -10,9 +10,9 @@ import ezdxf
 from shapely.geometry import Point
 
 from ..model import ForgeResult, ForgePart, Hole, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
-from ..adapters.dxf.copy_adapter import copy_entity
 from ..adapters.dxf.geometry_adapter import get_representative_point
 from ..adapters.dxf.exporter import write_contour_to_msp
+from ..adapters.dxf.split_materializer import materialize_entity_for_split
 from ..model.role import ContourRole
 from ..core.primitives import CircleSeg, SplineSeg
 
@@ -149,7 +149,7 @@ def split(
                 if id(entity) not in effective_ids:
                     continue
 
-            new_entity = copy_entity(entity, msp_out)
+            new_entity = materialize_entity_for_split(entity, msp_out)
             if new_entity is None:
                 continue
 
