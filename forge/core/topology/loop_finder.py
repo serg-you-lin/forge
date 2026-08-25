@@ -1,5 +1,3 @@
-# forge/core/topology/loop_finder.py
-
 """
 loop_finder.py
 --------------
@@ -12,7 +10,14 @@ graph.degenerate_loops — non passano per il walking nel grafo.
 """
 
 import math
-from .graph import Graph
+from .graph import (
+    Graph, 
+    _edge_coords, 
+    _first_coord, 
+    _arrival_direction, 
+    _angular_deviation
+)
+from ..geometry import round_point
 from ...adapters.bridge.edge import Edge
 
 
@@ -51,8 +56,6 @@ class LoopFinder:
         loops = []
 
         # ── 1. Loop degeneri: CIRCLE, SPLINE chiusa ──────────────────────
-        # Ogni edge con start == end è già un contorno completo.
-        # Non ha senso fare walking — vengono aggiunti direttamente.
         for edge in pruned.degenerate_loops:
             if id(edge) not in visited_edges:
                 visited_edges.add(id(edge))
@@ -64,7 +67,7 @@ class LoopFinder:
                 if id(edge) in visited_edges:
                     continue
 
-                first_pt    = self._first_coord(edge)
+                first_pt    = _first_coord(edge)
                 is_reversed = (first_pt != start_node) if first_pt else False
 
                 chain = [(edge, is_reversed)]
@@ -81,13 +84,13 @@ class LoopFinder:
 
                     if current_node in branching and len(candidates) > 1:
                         prev_edge, prev_rev = chain[-1]
-                        arrival = self._arrival_direction(prev_edge, prev_rev)
+                        arrival = _arrival_direction(prev_edge, prev_rev)
 
                         def _score(candidate):
                             e, n = candidate
-                            first = self._first_coord(e)
+                            first = _first_coord(e)
                             rev = (first != current_node) if first else False
-                            return self._angular_deviation(arrival, e, rev)
+                            return _angular_deviation(arrival, e, rev)
 
                         next_edge, current_node = min(candidates, key=_score)
                     else:
@@ -96,10 +99,10 @@ class LoopFinder:
                     visited_edges.add(id(next_edge))
 
                     prev_edge, prev_rev = chain[-1]
-                    prev_pts   = self._edge_coords(prev_edge, prev_rev)
-                    arrive_from = self._round_point(prev_pts[-1]) if prev_pts else None
+                    prev_pts   = _edge_coords(prev_edge, prev_rev)
+                    arrive_from = round_point(prev_pts[-1]) if prev_pts else None
 
-                    next_first  = self._first_coord(next_edge)
+                    next_first  = _first_coord(next_edge)
                     ne_reversed = (next_first != arrive_from) if (arrive_from and next_first) else False
                     chain.append((next_edge, ne_reversed))
 
@@ -123,55 +126,10 @@ class LoopFinder:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _round_point(pt):
-        from ..geometry import round_point as rp
-        return rp(pt)
-
-    @staticmethod
-    def _first_coord(edge: Edge):
-        if edge.geometry is not None:
-            coords = list(edge.geometry.coords)
-            if coords:
-                return LoopFinder._round_point(coords[0])
-        return LoopFinder._round_point(edge.start)
-
-    @staticmethod
-    def _edge_coords(edge: Edge, reversed_flag: bool) -> list:
-        if edge.geometry is None:
-            pts = [edge.start, edge.end]
-        else:
-            pts = list(edge.geometry.coords)
-        if reversed_flag:
-            pts = list(reversed(pts))
-        return pts
-
-    @staticmethod
-    def _arrival_direction(edge: Edge, rev: bool):
-        coords = LoopFinder._edge_coords(edge, rev)
-        if len(coords) < 2:
-            return None
-        dx = coords[-1][0] - coords[-2][0]
-        dy = coords[-1][1] - coords[-2][1]
-        return (dx, dy)
-
-    @staticmethod
-    def _angular_deviation(arrival_dir, edge: Edge, rev: bool):
-        if arrival_dir is None:
-            return 0.0
-        coords = LoopFinder._edge_coords(edge, rev)
-        if len(coords) < 2:
-            return 0.0
-        dx = coords[1][0] - coords[0][0]
-        dy = coords[1][1] - coords[0][1]
-        cross = arrival_dir[0] * dy - arrival_dir[1] * dx
-        dot   = arrival_dir[0] * dx + arrival_dir[1] * dy
-        return abs(math.atan2(cross, dot))
-
-    @staticmethod
     def _loop_to_points(loop: list) -> list:
         pts = []
         for edge, rev in loop:
-            coords = LoopFinder._edge_coords(edge, rev)
+            coords = _edge_coords(edge, rev)
             if not coords:
                 continue
             if not pts:
@@ -214,36 +172,32 @@ def edges_to_open_shapes(edges: list, exclude_ids: set, label_map: dict) -> list
         exclude_ids: id(source_ref) già assorbiti in loop strutturali
         label_map:   {nome_layer: work_type} — tradotto in ContourRole
     """
-    from ...model.role import layer_to_role
     from ...adapters.bridge.shape import OpenShape
+
+    def _length(pts) -> float:
+        return sum(
+            math.hypot(pts[i+1][0]-pts[i][0], pts[i+1][1]-pts[i][1])
+            for i in range(len(pts)-1)
+        )
 
     shapes = []
     for edge in edges:
         if id(edge.source_ref) in exclude_ids:
             continue
         if edge.start == edge.end:
-            # loop degenere (CIRCLE, SPLINE chiusa) — non è una traccia aperta
             continue
 
-        if edge.geometry is not None:
-            pts = list(edge.geometry.coords)
-            length = edge.geometry.length
-        else:
-            pts = [edge.start, edge.end]
-            length = 0.0
-
+        pts = edge.segment.discretize() if edge.segment else [edge.start, edge.end]
         if len(pts) < 2:
             continue
 
-        # Una traccia "line" è geometricamente un segmento a 2 punti.
-        # Archi e spline sono discretizzati con più punti da to_edges().
         shape_type = "line" if len(pts) == 2 else "curve"
 
         shapes.append(OpenShape(
             pts=pts,
-            length=length,
+            length=_length(pts),
             source_ref=edge.source_ref,
-            role=layer_to_role(edge.layer, label_map),
+            role=edge.role,
             shape_type=shape_type,
         ))
 

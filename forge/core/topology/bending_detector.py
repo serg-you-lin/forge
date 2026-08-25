@@ -13,7 +13,7 @@ Input:  Graph, list[Edge]
 Output: set[int]  — id() degli edge confermati bending
 """
 
-from shapely.geometry import MultiPoint, LineString
+from shapely.geometry import MultiPoint, Point
 
 from .graph import Graph
 from ...adapters.bridge.edge import Edge
@@ -40,9 +40,12 @@ class BendingDetector:
         confirmed = set()
 
         for edge in candidates:
-            if edge.geometry is None:
+            pts = edge.segment.discretize() if edge.segment else [edge.start, edge.end]
+            if len(pts) < 2:
                 continue
-            centroid = edge.geometry.centroid
+            mid_x = sum(p[0] for p in pts) / len(pts)
+            mid_y = sum(p[1] for p in pts) / len(pts)
+            centroid = Point(mid_x, mid_y)
             is_interior = hull.boundary.distance(centroid) > self.tolerance
             if is_interior:
                 confirmed.add(id(edge.source_ref))
