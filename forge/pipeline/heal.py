@@ -53,7 +53,7 @@ class HealStep:
         self.entities_in_loops     = set()
 
         self.proxies = []
-        self.closed_shapes = []  # <-- AGGIUNTA QUI
+        self.closed_shapes = []  
 
         self.all_lines      = []
         self.all_arcs       = []
@@ -167,7 +167,7 @@ class HealStep:
         from ..core.topology.loop_finder import LoopFinder
         from ..adapters.dxf.parser import parse_loop
         from ..core.healing.hierarchy import loop_to_closed_shape
-        from ..model.role import layer_to_role
+        from ..model.role import ContourRole
 
         graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
         loops = LoopFinder().find(graph, exclude_ids=self.candidate_bending_ids)
@@ -188,8 +188,7 @@ class HealStep:
         self.result._entities_in_loops_ids = self.entities_in_loops
 
         for loop in structural_loops:
-            loop_layer = loop[0][0].layer if loop else ""
-            role = layer_to_role(loop_layer, self.result.label_map)
+            role = loop[0][0].role if loop else ContourRole.UNKNOWN
 
             first_edge, _ = loop[0]
             first_source  = getattr(first_edge, "source_ref", None)
@@ -210,7 +209,6 @@ class HealStep:
                 polygon=polygon,
                 source_ref=proxy_source_ref,
                 segments=segments,
-                origin=loop_layer,
             )
             if shape is not None:
                 self.closed_shapes.append(shape)
@@ -352,17 +350,16 @@ def _fallback_polygonize(self):
 
 
 def _loop_is_structural(loop, label_map) -> bool:
-    from ..model.role import ContourRole, layer_to_role
+    from ..model.role import ContourRole
 
     structural_roles = {
         ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE,
         ContourRole.COUNTERSINK, ContourRole.THREADED_HOLE,
     }
     for edge, _ in loop:
-        role = layer_to_role(edge.layer, label_map or {})
-        if role == ContourRole.UNKNOWN:
+        if edge.role == ContourRole.UNKNOWN:
             continue
-        if role not in structural_roles:
+        if edge.role not in structural_roles:
             return False
     return True
 

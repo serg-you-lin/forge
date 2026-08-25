@@ -122,20 +122,16 @@ def build_node_graph(edges: list) -> Graph:
 # ---------------------------------------------------------------------------
 
 def _edge_coords(edge: Edge, reversed_flag: bool) -> list:
-    if edge.geometry is None:
-        pts = [edge.start, edge.end]
-    else:
-        pts = list(edge.geometry.coords)
+    pts = edge.segment.discretize() if edge.segment else [edge.start, edge.end]
     if reversed_flag:
         pts = list(reversed(pts))
     return pts
 
 
 def _first_coord(edge: Edge):
-    if edge.geometry is not None:
-        coords = list(edge.geometry.coords)
-        if coords:
-            return round_point(coords[0])
+    pts = edge.segment.discretize() if edge.segment else [edge.start, edge.end]
+    if pts:
+        return round_point(pts[0])
     return round_point(edge.start)
 
 

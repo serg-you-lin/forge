@@ -52,6 +52,9 @@ def _load_golden_files():
 
 def _make_test(path):
 
+    def _role_value(role):
+        return getattr(role, "value", role)
+
     def _assert_shapes_match_unordered(self, actual_shapes, expected_wkts, label, kind):
         expected_polys = [shapely_wkt.loads(wkt) for wkt in expected_wkts]
         unmatched = list(range(len(expected_polys)))
@@ -231,12 +234,6 @@ def _make_test(path):
                                 act, exp, delta=0.01,
                                 msg=f"{label} hole[{j}].center[{k}]",
                             )
-                    if "origin" in exp_hole_dict:
-                        self.assertEqual(
-                            actual_dict.get("origin", ""),
-                            exp_hole_dict["origin"],
-                            msg=f"{label} hole[{j}].origin",
-                        )
                     if "outer_diameter" in exp_hole_dict:
                         self.assertAlmostEqual(
                             actual_dict.get("outer_diameter", 0),
@@ -292,12 +289,6 @@ def _make_test(path):
                         delta=TOL_AREA,
                         msg=f"{label} inner[{j}].area",
                     )
-                    if "origin" in exp_inner_dict:
-                        self.assertEqual(
-                            actual_dict.get("origin", ""),
-                            exp_inner_dict["origin"],
-                            msg=f"{label} inner[{j}].origin",
-                        )
 
             # --- bending lines ---
             if "bending_lines" in expected:
@@ -318,12 +309,11 @@ def _make_test(path):
                                 delta=0.01,
                                 msg=f"{label} bending[{j}].{key}",
                             )
-                    if "origin" in exp_bl:
-                        self.assertEqual(
-                            actual_dict.get("origin", ""),
-                            exp_bl["origin"],
-                            msg=f"{label} bending[{j}].origin",
-                        )
+                    self.assertEqual(
+                        _role_value(bl.role),
+                        exp_bl.get("role", "bending"),
+                        msg=f"{label} bending[{j}].role",
+                    )
 
             # --- engrave lines ---
             if "engrave_lines" in expected:
@@ -357,12 +347,11 @@ def _make_test(path):
                                     exp_eng[key],
                                     msg=f"{label} engrave[{j}].{key}",
                                 )
-                    if "origin" in exp_eng:
-                        self.assertEqual(
-                            actual_dict.get("origin", ""),
-                            exp_eng["origin"],
-                            msg=f"{label} engrave[{j}].origin",
-                        )
+                    self.assertEqual(
+                        _role_value(eng.role),
+                        exp_eng.get("role", "engrave"),
+                        msg=f"{label} engrave[{j}].role",
+                    )
 
             # --- custom ---
             for key, value in expected.get("custom", {}).items():

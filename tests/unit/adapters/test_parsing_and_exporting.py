@@ -22,7 +22,7 @@ from forge.adapters.dxf.exporter import (
     segments_to_pts_with_bulge,
     write_contour_to_msp,
 )
-
+from forge.model.role import ContourRole
 
 # ---------------------------------------------------------------------------
 # Helper — entità DXF mock
@@ -108,7 +108,14 @@ def make_circle(cx, cy, radius, layer="0"):
 
 
 def make_edge(entity, layer="0"):
-    return Edge(source_ref=entity, layer=layer, start=(0.0, 0.0), end=(0.0, 0.0))
+    """Crea un Edge con segmento LineSeg di default."""
+    return Edge(
+        source_ref=entity,
+        role=ContourRole.UNKNOWN,
+        start=(0.0, 0.0),
+        end=(0.0, 0.0),
+        segment=LineSeg(start=(0.0, 0.0), end=(0.0, 0.0)),
+    )
 
 
 def make_square_loop(side=100.0):
