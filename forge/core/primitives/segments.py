@@ -180,6 +180,16 @@ class SplineSeg:
     control_points: List[Point]
     knots: List[float]
     weights: Optional[List[float]] = None
+    approx_points: Optional[List[Point]] = None
+    fit_points: Optional[List[Tuple[float, float, float]]] = None
+    closed: bool = False
+    periodic: bool = False
+    flags: int = 0
+    knot_tolerance: Optional[float] = None
+    fit_tolerance: Optional[float] = None
+    control_point_tolerance: Optional[float] = None
+    start_tangent: Optional[Tuple[float, float, float]] = None
+    end_tangent: Optional[Tuple[float, float, float]] = None
 
     def discretize(self, tolerance: float = DEFAULT_TOLERANCE) -> List[Point]:
         """
@@ -189,6 +199,9 @@ class SplineSeg:
         della tolleranza. Per ora usiamo interpolazione lineare tra i
         punti di controllo come approssimazione.
         """
+        if self.approx_points:
+            return list(self.approx_points)
+
         if not self.control_points:
             return []
         

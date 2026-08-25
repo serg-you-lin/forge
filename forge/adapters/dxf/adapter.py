@@ -101,16 +101,9 @@ def _entity_to_segment(entity) -> Segment:
         )
 
     if t == 'SPLINE':
-        try:
-            pts = [(p[0], p[1]) for p in entity.flattening(DEFAULT_TOLERANCE)]
-            if len(pts) >= 2:
-                return SplineSeg(
-                    degree=entity.dxf.degree,
-                    control_points=pts,
-                    knots=[],
-                )
-        except Exception:
-            pass
+        prim = entity_to_primitive(entity)
+        if isinstance(prim, SplineSeg):
+            return prim
 
     # fallback
     s, e = entity_endpoints(entity)
@@ -133,6 +126,10 @@ def _segment_endpoints(segment: Segment) -> tuple[tuple[float, float], tuple[flo
         )
         return start, end
     if isinstance(segment, SplineSeg):
+        if segment.fit_points:
+            start = segment.fit_points[0]
+            end = segment.fit_points[-1]
+            return (start[0], start[1]), (end[0], end[1])
         if not segment.control_points:
             return (0.0, 0.0), (0.0, 0.0)
         return segment.control_points[0], segment.control_points[-1]
@@ -160,7 +157,16 @@ def _segment_key(segment: Segment) -> tuple:
             segment.ccw,
         )
     if isinstance(segment, SplineSeg):
-        return ("SPLINE", tuple((round(x, 6), round(y, 6)) for x, y in segment.control_points))
+        return (
+            "SPLINE",
+            int(segment.degree),
+            tuple((round(x, 6), round(y, 6)) for x, y in segment.control_points),
+            tuple(round(k, 9) for k in segment.knots),
+            tuple(round(w, 9) for w in (segment.weights or [])),
+            bool(segment.closed),
+            bool(segment.periodic),
+            int(segment.flags),
+        )
     if isinstance(segment, CircleSeg):
         return ("CIRCLE", round(segment.center[0], 6), round(segment.center[1], 6), round(segment.radius, 6))
     return (type(segment).__name__, repr(segment))
@@ -291,23 +297,18 @@ class DxfAdapter(ForgeAdapter):
 
             # SPLINE chiusa → loop degenere
             if dtype == "SPLINE" and _spline_is_closed(entity):
-                try:
-                    pts = [(p[0], p[1]) for p in entity.flattening(DEFAULT_TOLERANCE)]
-                    if len(pts) >= 2:
-                        pt = round_point(pts[0], self.node_decimals)
+                prim = entity_to_primitive(entity)
+                if isinstance(prim, SplineSeg):
+                    start, _ = _segment_endpoints(prim)
+                    pt = round_point(start, self.node_decimals)
+                    if pt is not None:
                         edges.append(Edge(
                             source_ref=entity,
                             role=role,
                             start=pt,
                             end=pt,
-                            segment=SplineSeg(
-                                degree=entity.dxf.degree,
-                                control_points=pts,
-                                knots=[],
-                            ),
+                            segment=prim,
                         ))
-                except Exception:
-                    pass
                 continue
 
             # LWPOLYLINE / POLYLINE → segmenti

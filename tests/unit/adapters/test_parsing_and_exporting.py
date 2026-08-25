@@ -10,6 +10,7 @@ l'esportazione primitive → DXF, e il routing parse_loop.
 import unittest
 from unittest.mock import MagicMock, patch
 import math
+from types import SimpleNamespace
 
 from forge.core.primitives import LineSeg, ArcSeg, SplineSeg
 from forge.adapters.bridge.edge import Edge
@@ -152,6 +153,28 @@ class MockMSP:
             'dxfattribs': dxfattribs
         })
         return MagicMock()
+
+    def add_spline(self, dxfattribs=None):
+        spline = MagicMock()
+        spline.dxf = SimpleNamespace(
+            degree=None,
+            flags=0,
+            knot_tolerance=None,
+            fit_tolerance=None,
+            control_point_tolerance=None,
+            layer=dxfattribs.get("layer") if dxfattribs else None,
+            color=dxfattribs.get("color") if dxfattribs else None,
+        )
+        spline.control_points = []
+        spline.knots = []
+        spline.weights = []
+        spline.fit_points = []
+        self.entities.append({
+            'type': 'SPLINE',
+            'entity': spline,
+            'dxfattribs': dxfattribs,
+        })
+        return spline
 
 
 # ===========================================================================
@@ -508,13 +531,18 @@ class TestWriteContourToMsp(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_002_segments_con_spline(self):
-        """Spline non esportabile → None."""
+        """Spline singola → esportata come SPLINE nativa."""
         contour = MagicMock()
         contour.segments = [
             SplineSeg(degree=0, control_points=[(0, 0), (10, 0)], knots=[], weights=None)
         ]
         result = write_contour_to_msp(self.msp, contour, "TEST")
-        self.assertIsNone(result)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(self.msp.entities), 1)
+        entity = self.msp.entities[0]
+        self.assertEqual(entity['type'], 'SPLINE')
+        self.assertEqual(entity['entity'].dxf.degree, 0)
+        self.assertEqual(entity['entity'].control_points, [(0.0, 0.0, 0.0), (10.0, 0.0, 0.0)])
 
     def test_003_line_segments_soli(self):
         """Solo LineSeg → LWPOLYLINE."""

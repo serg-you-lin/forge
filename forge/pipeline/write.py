@@ -273,14 +273,6 @@ def _write_part_contours_to_msp(msp_out, part: ForgePart, entity_to_work: dict, 
                 entity_to_work[id(lwpoly)] = contour.role.value.lower()
             continue
 
-        if contour.source_ref is not None and hasattr(contour.source_ref, "dxftype"):
-            src_type = contour.source_ref.dxftype().upper()
-            if src_type == "SPLINE" and src_type not in excluded:
-                copied = copy_entity(contour.source_ref, msp_out)
-                if copied is not None:
-                    copied.dxf.layer = layer
-                    copied.dxf.color = 256
-
     for hole in part.holes:
         if _is_excluded_contour(hole):
             continue
@@ -292,14 +284,6 @@ def _write_part_contours_to_msp(msp_out, part: ForgePart, entity_to_work: dict, 
             elif hole.hole_type == HOLE_TYPE_THREADED:
                 entity_to_work[id(lwpoly)] = "threaded_hole"
             continue
-
-        if hole.source_ref is not None and hasattr(hole.source_ref, "dxftype"):
-            src_type = hole.source_ref.dxftype().upper()
-            if src_type == "SPLINE" and src_type not in excluded:
-                copied = copy_entity(hole.source_ref, msp_out)
-                if copied is not None:
-                    copied.dxf.layer = layer
-                    copied.dxf.color = 256
 
     return {}
 

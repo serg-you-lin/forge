@@ -48,6 +48,10 @@ def _arc_endpoint(arc, role: str) -> Tuple[float, float]:
     return (cx + r * math.cos(rad), cy + r * math.sin(rad))
 
 
+def _vec3_to_tuple(point) -> Tuple[float, float, float]:
+    return (float(point[0]), float(point[1]), float(point[2] if len(point) > 2 else 0.0))
+
+
 def entity_endpoints(entity):
     """
     Restituisce (start, end) per LINE, ARC, SPLINE, LWPOLYLINE, POLYLINE.
@@ -144,23 +148,62 @@ def entity_to_primitive(entity, rev: bool = False):
         ]
     
     elif t == 'SPLINE':
-        # Per ora: estrai punti di controllo dal flattening
         try:
-            pts = [(p[0], p[1]) for p in entity.flattening(DEFAULT_TOLERANCE)]
+            cps = [_vec3_to_tuple(p) for p in entity.control_points]
+            approx_points = [(float(p[0]), float(p[1])) for p in entity.flattening(DEFAULT_TOLERANCE)]
+            knots = [float(k) for k in entity.knots]
+            weights = [float(w) for w in entity.weights] if len(entity.weights) else None
+            fit_points = [_vec3_to_tuple(p) for p in entity.fit_points] if len(entity.fit_points) else None
+            flags = int(getattr(entity.dxf, "flags", 0) or 0)
+            periodic = bool(flags & 2)
+            closed = bool(getattr(entity, "closed", False) or (flags & 1))
+
+            start_tangent = None
+            if entity.dxf.hasattr("start_tangent"):
+                st = entity.dxf.start_tangent
+                start_tangent = (float(st.x), float(st.y), float(st.z))
+
+            end_tangent = None
+            if entity.dxf.hasattr("end_tangent"):
+                et = entity.dxf.end_tangent
+                end_tangent = (float(et.x), float(et.y), float(et.z))
         except Exception:
-            pts = []
+            cps = []
+            approx_points = []
+            knots = []
+            weights = None
+            fit_points = None
+            flags = 0
+            periodic = False
+            closed = False
+            start_tangent = None
+            end_tangent = None
         
         if rev:
-            pts = list(reversed(pts))
+            cps = list(reversed(cps))
+            if approx_points:
+                approx_points = list(reversed(approx_points))
+            if fit_points:
+                fit_points = list(reversed(fit_points))
         
-        if not pts:
+        if not cps and not fit_points:
             return None
         
         return SplineSeg(
-            degree=0,
-            control_points=pts,
-            knots=[],
-            weights=None,
+            degree=int(getattr(entity.dxf, "degree", 3) or 3),
+            control_points=[(p[0], p[1]) for p in cps],
+            knots=knots,
+            weights=weights,
+            approx_points=approx_points or None,
+            fit_points=fit_points,
+            closed=closed,
+            periodic=periodic,
+            flags=flags,
+            knot_tolerance=float(entity.dxf.knot_tolerance) if entity.dxf.hasattr("knot_tolerance") else None,
+            fit_tolerance=float(entity.dxf.fit_tolerance) if entity.dxf.hasattr("fit_tolerance") else None,
+            control_point_tolerance=float(entity.dxf.control_point_tolerance) if entity.dxf.hasattr("control_point_tolerance") else None,
+            start_tangent=start_tangent,
+            end_tangent=end_tangent,
         )
     
     elif t in ('LWPOLYLINE', 'POLYLINE'):
