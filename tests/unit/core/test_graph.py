@@ -1,18 +1,19 @@
 # tests/unit/core/test_graph.py
 
 import unittest
-from shapely.geometry import LineString
 from forge.core.topology.graph import Graph, build_node_graph
 from forge.adapters.bridge.edge import Edge
+from forge.core.primitives.segments import LineSeg
+from forge.model.role import ContourRole
 
 
 def _make_edge(p1, p2):
     return Edge(
         source_ref=None,
-        layer="",
+        role=ContourRole.UNKNOWN,
         start=p1,
         end=p2,
-        geometry=LineString([p1, p2]),
+        segment=LineSeg(start=p1, end=p2),
     )
 
 def _triangle_edges():

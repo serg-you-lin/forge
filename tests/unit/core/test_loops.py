@@ -26,6 +26,8 @@ sys.path.insert(0, str(project_root))
 from forge.core.topology.graph import Graph, build_node_graph
 from forge.core.topology.loop_finder import LoopFinder
 from forge.adapters.bridge.edge import Edge
+from forge.core.primitives.segments import LineSeg, ArcSeg
+from forge.model.role import ContourRole
 
 
 # ---------------------------------------------------------------------------
@@ -33,23 +35,29 @@ from forge.adapters.bridge.edge import Edge
 # ---------------------------------------------------------------------------
 
 def _edge(start, end):
-    """Crea un Edge lineare con geometry Shapely."""
+    """Crea un Edge lineare."""
     return Edge(
         source_ref=None,
-        layer="0",
+        role=ContourRole.UNKNOWN,
         start=start,
         end=end,
-        geometry=LineString([start, end]),
+        segment=LineSeg(start=start, end=end),
     )
 
 def _arc_edge(start, end, arc_pts):
     """Crea un Edge che discretizza un arco (arc_pts da start a end)."""
+    # Usiamo SplineSeg per rappresentare la discretizzazione dell'arco
+    from forge.core.primitives.segments import SplineSeg
     return Edge(
         source_ref=None,
-        layer="0",
+        role=ContourRole.UNKNOWN,
         start=start,
         end=end,
-        geometry=LineString(arc_pts),
+        segment=SplineSeg(
+            degree=1,
+            control_points=arc_pts,
+            knots=[],
+        ),
     )
 
 
@@ -202,7 +210,7 @@ def _loop_to_polygon(loop) -> Polygon:
     """Converte un Loop in Polygon Shapely."""
     pts = []
     for edge, rev in loop:
-        coords = list(edge.geometry.coords)
+        coords = list(edge.segment.discretize(0.01))
         if rev:
             coords = list(reversed(coords))
         pts.append(coords[0])
@@ -231,10 +239,10 @@ class TestLoopFinderRect(unittest.TestCase):
         first_edge, first_rev = loop[0]
         last_edge,  last_rev  = loop[-1]
 
-        first_coords = list(first_edge.geometry.coords)
+        first_coords = list(first_edge.segment.discretize(0.01))
         first_start = first_coords[0] if not first_rev else first_coords[-1]
 
-        last_coords = list(last_edge.geometry.coords)
+        last_coords = list(last_edge.segment.discretize(0.01))
         last_exit = last_coords[-1] if not last_rev else last_coords[0]
 
         self.assertAlmostEqual(first_start[0], last_exit[0], places=1)
@@ -308,13 +316,6 @@ class TestLoopWithArcs(unittest.TestCase):
             ring = LinearRing(poly.exterior.coords)
             self.assertTrue(ring.is_ccw,
                             f"Loop {i+1} non è CCW (area={poly.area:.1f})")
-
-
-
-
-# ---------------------------------------------------------------------------
-# Test: dead‑end pruning
-# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------

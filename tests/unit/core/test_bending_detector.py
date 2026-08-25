@@ -1,19 +1,20 @@
 # tests/unit/core/test_bending_detector.py
 
 import unittest
-from shapely.geometry import LineString
 from forge.core.topology.graph import build_node_graph
 from forge.core.topology.bending_detector import BendingDetector
 from forge.adapters.bridge.edge import Edge
+from forge.core.primitives.segments import LineSeg
+from forge.model.role import ContourRole
 
 
 def _make_edge(p1, p2):
     return Edge(
         source_ref=object(),
-        layer="",
+        role=ContourRole.BEND,
         start=p1,
         end=p2,
-        geometry=LineString([p1, p2]),
+        segment=LineSeg(start=p1, end=p2),
     )
 
 

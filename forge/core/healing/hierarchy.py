@@ -47,16 +47,7 @@ def loop_to_closed_shape(
     polygon=None,
     source_ref=None,
     segments: list = None,
-    origin: str = "",
 ) -> Optional[ClosedShape]:
-    """
-    Converte un loop (lista di (Edge, bool)) in ClosedShape.
-
-    polygon   : poligono già calcolato, se disponibile.
-    source_ref: riferimento opaco associato al loop, se disponibile.
-
-    La funzione resta nel core e non prende decisioni di export o writeback.
-    """
     from ...core.topology.loop_finder import LoopFinder
 
     if polygon is not None:
@@ -82,14 +73,6 @@ def loop_to_closed_shape(
             if diameter is not None and diameter < MIN_SINGLE_LOOP_DIAMETER:
                 return None
 
-        resolved_origin = origin
-        if not resolved_origin and source_ref is not None:
-            dxf = getattr(source_ref, "dxf", None)
-            if dxf is not None and hasattr(dxf, "layer"):
-                resolved_origin = str(dxf.layer)
-        if not resolved_origin and role not in (None, ContourRole.UNKNOWN):
-            resolved_origin = str(role.value)
-
         return ClosedShape(
             polygon=poly,
             diameter=diameter,
@@ -97,7 +80,6 @@ def loop_to_closed_shape(
             source_ref=source_ref,
             role=role,
             segments=segments or [],
-            origin=resolved_origin,
         )
     except Exception:
         return None

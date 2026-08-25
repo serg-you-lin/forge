@@ -1,10 +1,17 @@
 """
-bridge/edge.py
+adapters/bridge/edge.py
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional, Tuple, Any
-from shapely.geometry import LineString
+from typing import Any, Tuple, Union
+
+from ...core.primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg
+from ...model.role import ContourRole
+
+Segment = Union[LineSeg, ArcSeg, SplineSeg, CircleSeg]
+
 
 @dataclass
 class Edge:
@@ -15,16 +22,17 @@ class Edge:
     Il riferimento all'entità originale non viene mai perso.
 
     Campi:
-        source_ref : riferimento all'entità ezdxf originale (LINE, ARC, SPLINE)
-        layer    : layer DXF — cached per non rileggere source_ref.dxf.layer
-        start    : endpoint arrotondato alla tolerance
-        end      : endpoint arrotondato alla tolerance
-        geometry : LineString shapely — approssimazione per calcoli topologici
-                   (mai usata per ricostruzione del file, che usa sempre source_ref)
+        source_ref : riferimento all'entità originale (LINE, ARC, SPLINE, path SVG, ...)
+        role       : ruolo semantico — assegnato dall'adapter prima di costruire l'Edge,
+                     mai derivato dal layer DXF qui dentro
+        start      : endpoint arrotondato alla tolerance
+        end        : endpoint arrotondato alla tolerance
+        segment    : primitiva geometrica nativa — mai discretizzata qui,
+                     la discretizzazione avviene nel LoopFinder via .discretize()
     """
-    source_ref:   Any
-    layer:        str
-    start:        Tuple[float, float]
-    end:          Tuple[float, float]
-    geometry:     Optional['LineString'] = None
+    source_ref: Any
+    role:       ContourRole
+    start:      Tuple[float, float]
+    end:        Tuple[float, float]
+    segment:    Segment
 
