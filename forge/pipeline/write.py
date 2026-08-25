@@ -14,6 +14,7 @@ from ..adapters.dxf.copy_adapter import copy_entity
 from ..adapters.dxf.geometry_adapter import get_representative_point
 from ..adapters.dxf.exporter import write_contour_to_msp
 from ..model.role import ContourRole
+from ..core.primitives import CircleSeg, SplineSeg
 
 from ..adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
@@ -125,8 +126,9 @@ def split(
         _setup_layers(doc_out)
         msp_out = doc_out.modelspace()
 
-        _write_part_contours_to_msp(msp_out, part, entity_to_work)
-        effective_ids = set(part.entity_ids)
+        _write_part_contours_to_msp(msp_out, part, entity_to_work, exclude_types=exclude_types)
+        structural_source_ids = _collect_structural_source_ids(part)
+        effective_ids = set(part.entity_ids) - structural_source_ids
 
         for entity in msp:
             if not entity.dxf.hasattr("layer"):
@@ -247,19 +249,40 @@ def _write_or_assign_hole(msp, hole: Hole, part: ForgePart, entity_to_work: dict
             entity_to_work[id(lwpoly)] = "threaded_hole"
 
 
-def _write_part_contours_to_msp(msp_out, part: ForgePart, entity_to_work: dict) -> dict:
-    """Materializza i contorni derivati del part senza introdurre ID virtuali."""
+def _write_part_contours_to_msp(msp_out, part: ForgePart, entity_to_work: dict, exclude_types: set | None = None) -> dict:
+    """Materializza sempre i contorni strutturali del part dai segmenti Forge."""
+    excluded = {t.upper() for t in (exclude_types or set())}
+
+    def _is_excluded_contour(contour) -> bool:
+        if contour.source_ref is not None and hasattr(contour.source_ref, "dxftype"):
+            if contour.source_ref.dxftype().upper() in excluded:
+                return True
+        if len(contour.segments) == 1 and isinstance(contour.segments[0], CircleSeg):
+            return "CIRCLE" in excluded
+        if any(isinstance(seg, SplineSeg) for seg in contour.segments):
+            return "SPLINE" in excluded
+        return False
+
     for contour in [part.outer] + part.inners:
-        if contour.source_ref is not None:
+        if _is_excluded_contour(contour):
             continue
         layer = ROLE_TO_LAYER.get(contour.role, LAYER_OUTER)
         lwpoly = write_contour_to_msp(msp_out, contour, layer)
         if lwpoly is not None:
             if contour.role not in (ContourRole.OUTER, ContourRole.INNER, ContourRole.UNKNOWN):
                 entity_to_work[id(lwpoly)] = contour.role.value.lower()
+            continue
+
+        if contour.source_ref is not None and hasattr(contour.source_ref, "dxftype"):
+            src_type = contour.source_ref.dxftype().upper()
+            if src_type == "SPLINE" and src_type not in excluded:
+                copied = copy_entity(contour.source_ref, msp_out)
+                if copied is not None:
+                    copied.dxf.layer = layer
+                    copied.dxf.color = 256
 
     for hole in part.holes:
-        if hole.source_ref is not None:
+        if _is_excluded_contour(hole):
             continue
         layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
         lwpoly = write_contour_to_msp(msp_out, hole, layer)
@@ -268,6 +291,15 @@ def _write_part_contours_to_msp(msp_out, part: ForgePart, entity_to_work: dict) 
                 entity_to_work[id(lwpoly)] = "countersink"
             elif hole.hole_type == HOLE_TYPE_THREADED:
                 entity_to_work[id(lwpoly)] = "threaded_hole"
+            continue
+
+        if hole.source_ref is not None and hasattr(hole.source_ref, "dxftype"):
+            src_type = hole.source_ref.dxftype().upper()
+            if src_type == "SPLINE" and src_type not in excluded:
+                copied = copy_entity(hole.source_ref, msp_out)
+                if copied is not None:
+                    copied.dxf.layer = layer
+                    copied.dxf.color = 256
 
     return {}
 
@@ -358,6 +390,19 @@ def _build_work_index(result: ForgeResult) -> dict:
                 part.entity_ids.add(eid)
 
     return index
+
+
+def _collect_structural_source_ids(part: ForgePart) -> set[int]:
+    ids = set()
+    for contour in [part.outer] + part.inners:
+        if contour.source_ref is not None:
+            ids.add(id(contour.source_ref))
+    for hole in part.holes:
+        if hole.source_ref is not None:
+            ids.add(id(hole.source_ref))
+        if hole.outer_source_ref is not None:
+            ids.add(id(hole.outer_source_ref))
+    return ids
 
 
 def _setup_layers(doc) -> None:

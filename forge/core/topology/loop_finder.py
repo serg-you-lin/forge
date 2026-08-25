@@ -145,10 +145,7 @@ class LoopFinder:
     def _deduplicate_loops(loops):
         seen = {}
         for loop in loops:
-            key = frozenset(
-                id(edge.source_ref) if edge.source_ref is not None else id(edge)
-                for edge, _ in loop
-            )
+            key = frozenset(id(edge) for edge, _ in loop)
             if key not in seen:
                 seen[key] = loop
         return list(seen.values())
@@ -169,7 +166,7 @@ def edges_to_open_shapes(edges: list, exclude_ids: set, label_map: dict) -> list
 
     Args:
         edges:       lista di Edge prodotta da adapter.to_edges()
-        exclude_ids: id(source_ref) già assorbiti in loop strutturali
+        exclude_ids: id(Edge) già assorbiti in loop strutturali
         label_map:   {nome_layer: work_type} — tradotto in ContourRole
     """
     from ...adapters.bridge.shape import OpenShape
@@ -182,7 +179,7 @@ def edges_to_open_shapes(edges: list, exclude_ids: set, label_map: dict) -> list
 
     shapes = []
     for edge in edges:
-        if id(edge.source_ref) in exclude_ids:
+        if id(edge) in exclude_ids:
             continue
         if edge.start == edge.end:
             continue

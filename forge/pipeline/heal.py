@@ -46,6 +46,7 @@ class HealStep:
             self.result.label_map = special_layers
 
         self.candidate_bending_ids = set()
+        self.loop_edge_ids         = set()
         self.entities_in_loops     = set()
 
         self.proxies = []
@@ -66,9 +67,9 @@ class HealStep:
         return self.result
 
     def _build_graph(self, exclude_ids=None):
-        edges = self.adapter.to_edges()
+        edges = self.edges
         if exclude_ids:
-            edges = [e for e in edges if id(e.source_ref) not in exclude_ids]
+            edges = [e for e in edges if id(e) not in exclude_ids]
         return build_node_graph(edges)
 
 
@@ -143,6 +144,11 @@ class HealStep:
         structural_loops = [
             loop for loop in loops if _loop_is_structural(loop, self.result.label_map)
         ]
+        self.loop_edge_ids = {
+            id(edge)
+            for loop in structural_loops
+            for edge, _ in loop
+        }
         self.entities_in_loops = {
             id(edge.source_ref)
             for loop in structural_loops
@@ -185,8 +191,8 @@ class HealStep:
         from ..core.healing.hierarchy import HierarchyBuilder
 
         open_proxies = edges_to_open_shapes(
-            self.adapter.to_edges(),
-            exclude_ids=self.entities_in_loops,
+            self.edges,
+            exclude_ids=self.loop_edge_ids,
             label_map=self.result.label_map,
         )
 
