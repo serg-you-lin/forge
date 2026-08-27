@@ -87,7 +87,7 @@ def run_pipeline(
 
     doc_out = None
     if do_write:
-        doc_out = forge.write(result, doc)
+        doc_out = forge.to_dxf(result, doc)
 
     output = {
         "doc": doc,
@@ -108,7 +108,7 @@ def run_pipeline(
 
         tmp.close()
 
-        (doc_out or forge.write(result, doc)).saveas(tmp.name)
+        (doc_out or forge.to_dxf(result, doc)).saveas(tmp.name)
 
         reloaded_doc = forge.load_dxf(tmp.name, explode_inserts=True, tolerance=tolerance)
 

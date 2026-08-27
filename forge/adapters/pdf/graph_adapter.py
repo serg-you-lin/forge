@@ -18,7 +18,6 @@ def map_sanitized_item_to_edge(item: tuple, decimals: int, page_idx: int) -> Edg
         s = round_point(p1, decimals)
         e = round_point(p2, decimals)
         return Edge(
-            source_ref=item,
             role=ContourRole.UNKNOWN,
             start=s,
             end=e,
@@ -36,7 +35,6 @@ def map_sanitized_item_to_edge(item: tuple, decimals: int, page_idx: int) -> Edg
             s_r = round_point(s, decimals)
             e_r = round_point(e, decimals)
             edges.append(Edge(
-                source_ref=item,
                 role=ContourRole.UNKNOWN,
                 start=s_r,
                 end=e_r,
@@ -49,7 +47,6 @@ def map_sanitized_item_to_edge(item: tuple, decimals: int, page_idx: int) -> Edg
         s = round_point(pts[0], decimals)
         e = round_point(pts[-1], decimals)
         return Edge(
-            source_ref=item,
             role=ContourRole.UNKNOWN,
             start=s,
             end=e,

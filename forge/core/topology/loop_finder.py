@@ -159,8 +159,8 @@ def edges_to_open_shapes(edges: list, exclude_ids: set, label_map: dict) -> list
     """
     Converte gli Edge non assorbiti da un loop strutturale in OpenShape.
 
-    Opera esclusivamente su Edge (source_ref opaco, layer stringa,
-    geometry Shapely) — zero dipendenze da ezdxf o altro formato.
+    Opera esclusivamente su Edge (role semantico, segmento nativo) —
+    zero dipendenze da ezdxf o altro formato.
     Sostituisce l'uso di adapter.to_open(): la classificazione geometrica
     (pts/length/role) appartiene al core, non all'adapter.
 
@@ -195,6 +195,7 @@ def edges_to_open_shapes(edges: list, exclude_ids: set, label_map: dict) -> list
             length=_length(pts),
             role=edge.role,
             shape_type=shape_type,
+            segments=[edge.segment] if edge.segment else [],
         ))
 
     return shapes

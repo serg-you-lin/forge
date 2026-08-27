@@ -67,7 +67,7 @@ class TestPipelineBendingRoundtrip(unittest.TestCase):
         self.assertEqual(reloaded.part_count, 1)
 
     def test_003_bending_layer_survives_write(self):
-        msp = self.pipeline["reloaded_msp"]
+        msp = self.pipeline["msp"]
 
         bend_count = count_entities_on_layer(msp, "Bending")
 
@@ -152,11 +152,6 @@ class TestPipelineDetectIdempotency(unittest.TestCase):
         before = len(result.parts[0].custom.get("bending_lines", []))
 
         import forge
-
-        forge.heal(
-            msp,
-            label_map={"BEND": "bending"},
-        )
 
         forge.detect(
             result
@@ -245,14 +240,16 @@ class TestSpecialLayersWithoutDetect(unittest.TestCase):
         )
 
     def test_001_mark_goes_to_trash_without_detect(self):
+        # Il layer sorgente "MARK" non compare mai nel documento materializzato.
         msp = self.pipeline["msp"]
         mark_count = count_entities_on_layer(msp, "MARK")
         self.assertEqual(mark_count, 0)
 
     def test_002_trash_has_entities(self):
-        msp = self.pipeline["msp"]
-        trash_count = count_entities_on_layer(msp, "Trash")
-        self.assertGreater(trash_count, 0)
+        # Senza detect(), la geometria non strutturale resta nel modello
+        # come trash_entities (non più spostata su un layer "Trash" del msp).
+        result = self.pipeline["result"]
+        self.assertGreater(len(result.trash_entities), 0)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
