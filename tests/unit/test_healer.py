@@ -31,6 +31,10 @@ EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 def load(name):
     return EXAMPLES_DIR / name
 
+
+def load_msp(name):
+    return ezdxf.readfile(str(EXAMPLES_DIR / name)).modelspace()
+
 # ---------------------------------------------------------------------------
 # Rettangolo 4 LINE
 # ---------------------------------------------------------------------------
@@ -38,8 +42,8 @@ def load(name):
 class TestHealerRectLines(unittest.TestCase):
 
     def setUp(self):
-        doc,msp = forge.load_dxf(load("rect_lines.dxf"))
-        self.result = forge.heal(msp)
+        doc = forge.load_dxf(load("rect_lines.dxf"))
+        self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -72,8 +76,8 @@ class TestHealerRectLines(unittest.TestCase):
 class TestHealerRectWithHole(unittest.TestCase):
 
     def setUp(self):
-        doc, msp = forge.load_dxf(load("rect_with_hole_lines.dxf"))
-        self.result = forge.heal(msp)
+        doc = forge.load_dxf(load("rect_with_hole_lines.dxf"))
+        self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -92,18 +96,18 @@ class TestHealerRectWithHole(unittest.TestCase):
 class TestHealerCleanFile(unittest.TestCase):
 
     def test_001_does_not_crash(self):
-        doc, msp = forge.load_dxf(load("pline_with_hole.dxf"))
-        result = forge.heal(msp)
+        doc = forge.load_dxf(load("pline_with_hole.dxf"))
+        result = forge.heal(doc)
         self.assertIsNotNone(result)
 
     def test_002_finds_one_part(self):
-        doc, msp = forge.load_dxf(load("pline_with_hole.dxf"))
-        result = forge.heal(msp)
+        doc = forge.load_dxf(load("pline_with_hole.dxf"))
+        result = forge.heal(doc)
         self.assertEqual(result.part_count, 1)
 
     def test_003_has_one_inner(self):
-        doc, msp = forge.load_dxf(load("pline_with_hole.dxf"))
-        result = forge.heal(msp)
+        doc = forge.load_dxf(load("pline_with_hole.dxf"))
+        result = forge.heal(doc)
         self.assertEqual(len(result.parts[0].inners), 1)
 
 
@@ -114,8 +118,8 @@ class TestHealerCleanFile(unittest.TestCase):
 class TestHealerCircleOuter(unittest.TestCase):
 
     def setUp(self):
-        doc, msp = forge.load_dxf(load("circle_outer_with_hole.dxf"))
-        self.result = forge.heal(msp)
+        doc = forge.load_dxf(load("circle_outer_with_hole.dxf"))
+        self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -131,8 +135,8 @@ class TestHealerCircleOuter(unittest.TestCase):
 class TestHealerCircleHole(unittest.TestCase):
 
     def setUp(self):
-        doc, msp = forge.load_dxf(load("rect_with_circle_hole.dxf"))
-        self.result = forge.heal(msp)
+        doc = forge.load_dxf(load("rect_with_circle_hole.dxf"))
+        self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -156,8 +160,8 @@ class TestHealerCircleHole(unittest.TestCase):
 class TestHealerCircleInner(unittest.TestCase):
 
     def setUp(self):
-        doc, msp = forge.load_dxf(load("rect_with_circle_inner.dxf"))
-        self.result = forge.heal(msp)
+        doc = forge.load_dxf(load("rect_with_circle_inner.dxf"))
+        self.result = forge.heal(doc)
 
     def test_001_inner_layer_and_color(self):
         for inner in self.result.parts[0].inners:
@@ -175,8 +179,8 @@ class TestHealerCircleInner(unittest.TestCase):
 class TestHealerCountersink(unittest.TestCase):
 
     def setUp(self):
-        doc, msp = forge.load_dxf(load("rect_with_countersink.dxf"))
-        self.result = forge.heal(msp)
+        doc = forge.load_dxf(load("rect_with_countersink.dxf"))
+        self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -199,8 +203,8 @@ class TestHealerCountersink(unittest.TestCase):
 class TestHealerInnerLoopInsideLwpolyline(unittest.TestCase):
 
     def setUp(self):
-        doc, msp = forge.load_dxf(load("rect_with_inner_mark.dxf"))
-        self.result = forge.heal(msp)
+        doc = forge.load_dxf(load("rect_with_inner_mark.dxf"))
+        self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -216,8 +220,8 @@ class TestHealerInnerLoopInsideLwpolyline(unittest.TestCase):
 class TestHealerDeduplication(unittest.TestCase):
 
     def setUp(self):
-        doc, msp = forge.load_dxf(load("rect_lines_duplicated.dxf"), explode_inserts=True)
-        self.result = forge.heal(msp)
+        doc = forge.load_dxf(load("rect_lines_duplicated.dxf"), explode_inserts=True)
+        self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -236,13 +240,11 @@ class TestHealerDeduplication(unittest.TestCase):
 class TestValidateMsp(unittest.TestCase):
 
     def test_001_detects_lines(self):
-        doc, msp = forge.load_dxf(load("rect_lines.dxf"))
-        check = forge.validate_msp(msp)
+        check = forge.validate_msp(load_msp("rect_lines.dxf"))
         self.assertGreater(len(check.warnings), 0)
 
     def test_002_clean_file_no_errors(self):
-        doc, msp = forge.load_dxf(load("pline_with_hole.dxf"))
-        check = forge.validate_msp(msp)
+        check = forge.validate_msp(load_msp("pline_with_hole.dxf"))
         self.assertEqual(len(check.errors), 0)
 
 

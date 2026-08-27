@@ -14,14 +14,13 @@ Tutte le entità del modello ereditano da qui:
 Note:
     - segments è List[LineSeg | ArcSeg | SplineSeg] — primitive pure, zero ezdxf
     - polygon è Shapely Polygon — calcolato dall'adapter, non dal core
-    - source_ref è opaco — solo adapters/dxf/ lo legge/scrive
     - role è l'unico canale semantico interno — mai leggere layer DXF nel core
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from shapely.geometry import Polygon
 

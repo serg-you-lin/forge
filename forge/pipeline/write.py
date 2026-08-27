@@ -1,13 +1,19 @@
 """
 pipeline/write.py
 -----------------
-Materializza un ForgeResult in un documento DXF NUOVO, lavorando esclusivamente
-sui segmenti del modello. Zero accesso a source_ref, entity_ids, msp sorgente.
+Materializza un ForgeResult in uno o più documenti DXF NUOVI, lavorando
+esclusivamente sui segmenti del modello. Zero accesso a source_ref, entity_ids,
+msp sorgente.
+
+- `to_dxf(result, ...)`  → un Drawing con tutte le parti (o un sottoinsieme).
+- `split(result, ...)`   → un Drawing per parte. Puro: nessun I/O su disco.
+
+L'unica funzione che tocca il disco è `pipeline.split_to_files()`, che è un
+wrapper sottile attorno a `split()`.
 """
 
 from __future__ import annotations
 
-import os
 from typing import Callable, List, Optional, Set
 
 import ezdxf
@@ -35,7 +41,7 @@ ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEAD
 # API pubblica
 # ---------------------------------------------------------------------------
 
-def write(
+def to_dxf(
     result: ForgeResult,
     source_doc: Optional[ForgeDocument] = None,
     filter_part: Optional[Callable[[ForgePart], bool]] = None,
@@ -92,42 +98,47 @@ def write(
     return doc_out
 
 
+def part_passes_min_area(part: ForgePart, min_area: float) -> bool:
+    """True se la parte supera la soglia di area minima (min_area <= 0 = nessun filtro)."""
+    return not (min_area > 0 and part.outer.polygon.area < min_area)
+
+
 def split(
     result: ForgeResult,
     source_doc: Optional[ForgeDocument] = None,
-    output_folder: str = ".",
     namer: Optional[Callable] = None,
-    keep_trash: bool = False,
     include_annotations: bool = True,
     min_area: float = DEFAULT_MIN_PART_AREA,
     exclude_types: Set[str] = None,
     on_part: Optional[Callable] = None,
-) -> list:
+) -> List["ezdxf.document.Drawing"]:
     """
-    Divide un ForgeResult in file DXF separati, uno per parte.
+    Materializza un ForgeResult in un Drawing per parte.
 
-    Per ogni parte crea un documento nuovo con write() filtrato e lo salva.
-    Non itera un msp sorgente.
+    Funzione PURA: non tocca il disco. Per salvare i file usa
+    `pipeline.split_to_files()`, o itera il risultato e chiama `.saveas(...)`.
+
+    Ritorna i Drawing nell'ordine delle parti tenute (quelle che superano
+    `min_area`). `namer(i, part)` — se passato — assegna `part.label`, così il
+    nome file resta ricavabile a valle come `f"{part.label}.dxf"`.
     """
-    os.makedirs(output_folder, exist_ok=True)
     exclude_types = exclude_types or set()
-    generated = []
+    drawings: List["ezdxf.document.Drawing"] = []
 
     for i, part in enumerate(result.parts):
-        if min_area > 0 and part.outer.polygon.area < min_area:
+        if not part_passes_min_area(part, min_area):
             result.warnings.append(
                 f"Part {i} scartato: area {part.outer.polygon.area:.2f} mm² "
                 f"sotto soglia {min_area} mm²"
             )
             continue
 
-        name = namer(i, part) if namer else f"{part.label}_P{i + 1}"
-        out_path = os.path.join(output_folder, f"{name}.dxf")
+        part.label = namer(i, part) if namer else f"{part.label}_P{i + 1}"
 
         def _only_this_part(p: ForgePart, _target=part) -> bool:
             return p is _target
 
-        doc_out = write(
+        doc_out = to_dxf(
             result,
             source_doc,
             filter_part=_only_this_part,
@@ -138,13 +149,11 @@ def split(
             _remove_excluded_entities(doc_out.modelspace(), {t.upper() for t in exclude_types})
 
         if on_part is not None:
-            on_part(part, doc_out, out_path)
+            on_part(part, doc_out)
 
-        doc_out.saveas(out_path)
-        generated.append(out_path)
-        part.label = name
+        drawings.append(doc_out)
 
-    return generated
+    return drawings
 
 
 # ---------------------------------------------------------------------------

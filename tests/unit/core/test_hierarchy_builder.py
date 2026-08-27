@@ -186,9 +186,7 @@ class TestTrash(unittest.TestCase):
         self.assertGreaterEqual(len(self.parts), 1)
 
     def test_floating_in_trash(self):
-        self.assertTrue(
-            any(getattr(t, "source_ref", None) is self.floating.source_ref for t in self.trash)
-        )
+        self.assertIn(self.floating, self.trash)
 
     def test_outer_non_in_trash(self):
         self.assertFalse(
