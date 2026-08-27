@@ -19,7 +19,7 @@ from ..model import (
     HOLE_TYPE_THREADED,
     HOLE_TYPE_UNKNOWN,
 )
-from ..model.engraving import EngravingClosed, EngravingOpen
+from ..model.engraving import Engraving
 from ..model.role import ContourRole
 from ..adapters.bridge.shape import OpenShape
 from ..core.classification.hole_detector import is_threaded_hole
@@ -38,6 +38,7 @@ _ROLE_TO_HOLE_TYPE = {
 def detect(
     result:            ForgeResult,
     bending_tolerance: float = 1.0,
+    engrave_tolerance: float = 1.0,
     deduplicate_boundary_open: bool = True,
     boundary_tolerance: float = 0.05,
 ) -> None:
@@ -45,6 +46,7 @@ def detect(
     if deduplicate_boundary_open:
         _deduplicate_boundary_open_segments(result, tolerance=boundary_tolerance)
     _detect_bending(result, bending_tolerance=bending_tolerance)
+    _detect_engrave(result, engrave_tolerance=engrave_tolerance)
     _detect_holes(result)
 
 
@@ -59,8 +61,31 @@ def _detect_labeled(result: ForgeResult) -> None:
         if proxy.role == ContourRole.UNKNOWN:
             continue
 
+        is_closed = getattr(proxy, "polygon", None) is not None
+
         if proxy.role == ContourRole.ENGRAVE:
-            _handle_engrave_open(proxy, result)
+            placed = (
+                _handle_engrave_closed_trash(proxy, result) if is_closed
+                else _handle_engrave_open(proxy, result)
+            )
+            if placed:
+                classified_ids.add(id(proxy))
+            continue
+
+        if is_closed:
+            work_type = proxy.role.value
+            data = _extract_data_from_source(work_type, polygon=proxy.polygon)
+            rep  = data.pop("representative_point", None)
+            ce = ClassifiedEntity(
+                work_type=work_type,
+                confidence=1.0,
+                source="labeled",
+                data=data,
+                polygon=proxy.polygon,
+                representative_point=rep,
+            )
+            result.classified_entities.append(ce)
+            _assign_to_part(ce, result)
             classified_ids.add(id(proxy))
             continue
 
@@ -229,10 +254,71 @@ def _detect_holes(result: ForgeResult) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Step — inferenza engrave (PLACEHOLDER)
+# ---------------------------------------------------------------------------
+
+def _detect_engrave(result: ForgeResult, engrave_tolerance: float = 1.0) -> None:
+    """
+    Inferenza geometrica delle incisioni — NON ANCORA IMPLEMENTATA.
+
+    Stesso pattern di `_detect_holes` / `_detect_bending`: le incisioni con
+    ruolo esplicito (label_map) sono già state promosse da `_detect_labeled`
+    con `source="labeled"`. Qui si guarda ciò che è rimasto non etichettato —
+    `part.inners` con role UNKNOWN e `result.trash_entities` — e si promuove a
+    `Engraving(source="geometric")` quello che geometricamente È un'incisione,
+    es.:
+      - inner contour costituito da due polilinee ~parallele a distanza
+        < engrave_tolerance → traccia di incisione, non un inner/foro
+      - coppie di segmenti aperti ravvicinati e paralleli nella trash
+
+    Finché è un placeholder non muta nulla.
+    """
+    return
+
+
+# ---------------------------------------------------------------------------
 # Engrave handlers
 # ---------------------------------------------------------------------------
 
-def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> None:
+def _engraving_from_open(proxy, part_label: str = "",
+                         source: str = "labeled", confidence: float = 1.0) -> Engraving:
+    pts = list(getattr(proxy, "pts", []) or [])
+    return Engraving(
+        role=ContourRole.ENGRAVE,
+        segments=list(getattr(proxy, "segments", []) or []),
+        length=round(getattr(proxy, "length", 0.0), 4),
+        pts=pts,
+        geometry=LineString(pts) if len(pts) >= 2 else None,
+        closed=False,
+        part_label=part_label,
+        source=source,
+        confidence=confidence,
+    )
+
+
+def _engraving_from_closed(polygon, segments, part_label: str = "",
+                           source: str = "labeled", confidence: float = 1.0) -> Engraving:
+    return Engraving(
+        role=ContourRole.ENGRAVE,
+        segments=list(segments or []),
+        length=round(polygon.exterior.length, 4),
+        pts=list(polygon.exterior.coords),
+        polygon=polygon,
+        closed=True,
+        part_label=part_label,
+        source=source,
+        confidence=confidence,
+    )
+
+
+def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> bool:
+    """
+    Smista una traccia engrave aperta per contenimento.
+
+    Dentro un part → part.engrave_lines (ritorna True).
+    Fuori da ogni part → resta trash: è geometria orfana come ogni altra
+    entità che non sta dentro un outer (ritorna False).
+    """
     if len(proxy.pts) >= 2:
         rep = (
             sum(p[0] for p in proxy.pts) / len(proxy.pts),
@@ -241,35 +327,39 @@ def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> None:
     else:
         rep = proxy.pts[0] if proxy.pts else None
 
-    engraving = EngravingOpen(
-        role=ContourRole.ENGRAVE,
-        segments=list(getattr(proxy, "segments", []) or []),
-        length=round(proxy.length, 4),
-        pts=list(proxy.pts),
-        geometry=LineString(proxy.pts) if len(proxy.pts) >= 2 else None,
-    )
-
     probe = Point(rep) if rep else None
     for part in result.parts:
         if probe and part.outer.polygon.contains(probe):
-            engraving.part_label = part.label
-            part.engrave_lines.append(engraving)
-            return
+            part.engrave_lines.append(_engraving_from_open(proxy, part_label=part.label))
+            return True
 
-    result.warnings.append(
-        "detect(): engrave open non contenuto in nessun part"
-    )
+    return False
+
+
+def _handle_engrave_closed_trash(proxy, result: ForgeResult) -> bool:
+    """
+    Come _handle_engrave_open ma per una traccia engrave già chiusa
+    (CIRCLE / SPLINE chiusa su layer engrave). Contenimento sul
+    representative point del polygon.
+    """
+    probe = proxy.polygon.representative_point()
+    for part in result.parts:
+        if part.outer.polygon.contains(probe):
+            part.engrave_lines.append(_engraving_from_closed(
+                proxy.polygon,
+                getattr(proxy, "segments", []),
+                part_label=part.label,
+            ))
+            return True
+    return False
 
 
 def _handle_engrave_closed(inner, part: ForgePart) -> None:
-    engraving = EngravingClosed(
-        role=ContourRole.ENGRAVE,
-        polygon=inner.polygon,
-        segments=list(getattr(inner, "segments", []) or []),
-        length=round(inner.polygon.exterior.length, 4),
+    part.engrave_lines.append(_engraving_from_closed(
+        inner.polygon,
+        getattr(inner, "segments", []),
         part_label=part.label,
-    )
-    part.engrave_lines.append(engraving)
+    ))
 
 
 # ---------------------------------------------------------------------------

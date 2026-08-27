@@ -55,6 +55,7 @@ class HealStep:
 
         self.proxies = []
         self.closed_shapes = []
+        self.labeled_edges = []
 
         self.edges = list(doc.edges)
 
@@ -62,6 +63,7 @@ class HealStep:
         self._load()
         if not self.result.is_valid:
             return self.result
+        self._split_labeled()
         self._preprocess()
         self.result.all_arcs = [
             e.segment for e in self.edges if isinstance(e.segment, ArcSeg)
@@ -84,6 +86,23 @@ class HealStep:
             self.result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
             self.result.is_valid = False
             return
+
+    def _split_labeled(self):
+        """
+        Estrae dal flusso topologico gli Edge il cui ruolo è già stato deciso
+        da label_map e non è strutturale (engrave, marking).
+
+        Questi non entrano nel grafo né nella ricerca loop: sono geometria di
+        marcatura, non contorno. L'unico calcolo che li riguarda è il
+        contenimento, fatto da detect(): dentro un part → feature del part,
+        fuori → trash, esattamente come ogni entità che non sta dentro l'outer.
+        """
+        from ..model.role import ContourRole
+
+        non_structural = {ContourRole.ENGRAVE, ContourRole.MARKING}
+        self.labeled_edges = [e for e in self.edges if e.role in non_structural]
+        if self.labeled_edges:
+            self.edges = [e for e in self.edges if e.role not in non_structural]
 
     def _preprocess(self):
         graph_pre = self._build_graph()
@@ -200,7 +219,55 @@ class HealStep:
         parts, trash = builder.build(all_proxies)
 
         self.result.parts          = parts
-        self.result.trash_entities = trash
+        self.result.trash_entities = trash + self._labeled_proxies()
+
+    def _labeled_proxies(self):
+        """
+        Converte gli Edge estratti da _split_labeled() in proxy (OpenShape o,
+        per tracce già degeneri come CIRCLE / SPLINE chiusa, ClosedShape).
+
+        Restano portatori del loro `role` autoritativo: detect() li smista per
+        contenimento senza mai rimetterli in discussione.
+        """
+        import math
+        from ..adapters.bridge.shape import OpenShape, ClosedShape
+        from ..core.primitives.polygon_builder import build_polygon
+        from ..core.primitives.segments import DEFAULT_TOLERANCE
+
+        proxies = []
+        for edge in self.labeled_edges:
+            seg = edge.segment
+            if seg is None:
+                continue
+            pts = seg.discretize()
+
+            if edge.start == edge.end:
+                polygon = build_polygon([seg], DEFAULT_TOLERANCE)
+                if polygon is None:
+                    continue
+                proxies.append(ClosedShape(
+                    polygon=polygon,
+                    role=edge.role,
+                    segments=[seg],
+                ))
+                continue
+
+            if len(pts) < 2:
+                continue
+
+            length = sum(
+                math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+                for i in range(len(pts) - 1)
+            )
+            proxies.append(OpenShape(
+                pts=pts,
+                length=length,
+                role=edge.role,
+                shape_type="line" if len(pts) == 2 else "curve",
+                segments=[seg],
+            ))
+
+        return proxies
 
 
 # ---------------------------------------------------------------------------
