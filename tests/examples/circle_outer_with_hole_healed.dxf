@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461193.5195949073
+2461280.738414352
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461193.5195949073
+2461280.738414352
   9
 $TDUUPDATE
  40
@@ -549,7 +549,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-35
+3D
   9
 $SURFTAB1
  70
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{A5FC4729-7114-488D-81A0-15697F87C5B6}
+{69AD5222-8324-463F-B7EB-BAD17F33B5E7}
   9
 $VERSIONGUID
   2
-{F9C8BC1A-8CA7-4CD5-953C-125A20FA5CD2}
+{358B6BC1-E24E-4297-9788-FA83BD047267}
   9
 $EXTNAMES
 290
@@ -1323,9 +1323,9 @@ ISM
   0
 CLASS
   1
-LAYOUT
+ACDBPLACEHOLDER
   2
-AcDbLayout
+AcDbPlaceHolder
   3
 ObjectDBX Classes
  90
@@ -1339,9 +1339,9 @@ ObjectDBX Classes
   0
 CLASS
   1
-ACDBPLACEHOLDER
+LAYOUT
   2
-AcDbPlaceHolder
+AcDbLayout
   3
 ObjectDBX Classes
  90
@@ -1549,7 +1549,7 @@ LAYER
 100
 AcDbSymbolTable
  70
-2
+11
   0
 LAYER
   5
@@ -1594,6 +1594,222 @@ Defpoints
 Continuous
 290
 0
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+2F
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+OuterContour
+ 70
+0
+ 62
+3
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+30
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+InnerContour
+ 70
+0
+ 62
+2
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+31
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Hole
+ 70
+0
+ 62
+6
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+32
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Bending
+ 70
+0
+ 62
+11
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+33
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Engrave
+ 70
+0
+ 62
+9
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+34
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Marking
+ 70
+0
+ 62
+8
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+35
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Countersink
+ 70
+0
+ 62
+5
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+36
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+ThreadHole
+ 70
+0
+ 62
+4
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+37
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+Trash
+ 70
+0
+ 62
+1
+  6
+Continuous
 370
 -3
 390
@@ -1683,7 +1899,7 @@ APPID
 100
 AcDbSymbolTable
  70
-4
+3
   0
 APPID
   5
@@ -1701,7 +1917,7 @@ ACAD
   0
 APPID
   5
-31
+3A
 330
 3
 100
@@ -1715,7 +1931,7 @@ HATCHBACKGROUNDCOLOR
   0
 APPID
   5
-32
+3B
 330
 3
 100
@@ -1724,20 +1940,6 @@ AcDbSymbolTableRecord
 AcDbRegAppTableRecord
   2
 EZDXF
- 70
-0
-  0
-APPID
-  5
-34
-330
-3
-100
-AcDbSymbolTableRecord
-100
-AcDbRegAppTableRecord
-  2
-FORGE
  70
 0
   0
@@ -2039,15 +2241,13 @@ ENTITIES
   0
 CIRCLE
   5
-2F
+38
 330
 17
 100
 AcDbEntity
   8
 OuterContour
- 62
-3
 100
 AcDbCircle
  10
@@ -2058,22 +2258,16 @@ AcDbCircle
 0.0
  40
 50.0
-1001
-FORGE
-1000
-{"label": "circle_outer_with_hole", "source_file": "circle_outer_with_hole.dxf", "quantity": 1, "material": "S275JR", "thickness_mm": 0.0, "bending_lines": 0, "countersink_count": 0, "threaded_holes_count": 0, "total_engrave_length_mm": 0.0, "area_mm2": 7527.7164, "holes_count": 1, "inner_contours_count": 0, "outer_perimeter_mm": 314.0331, "inner_perimeter_mm": 0, "total_perimeter_mm": 314.0331, "bbox": {"minx": -50.0, "miny": -50.0, "maxx": 50.0, "maxy": 50.0}}
   0
 CIRCLE
   5
-30
+39
 330
 17
 100
 AcDbEntity
   8
 Hole
- 62
-6
 100
 AcDbCircle
  10
@@ -3075,7 +3269,7 @@ CREATED_BY_EZDXF
   3
 WRITTEN_BY_EZDXF
 350
-33
+3C
   0
 DICTIONARYVAR
   5
@@ -3087,11 +3281,11 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-05-29T08:07:19.726967+00:00
+1.4.3 @ 2026-08-27T15:43:19.693948+00:00
   0
 DICTIONARYVAR
   5
-33
+3C
 330
 2D
 100
@@ -3099,7 +3293,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-06-01T10:28:13.757328+00:00
+1.4.3 @ 2026-08-27T15:43:19.695449+00:00
   0
 ENDSEC
   0

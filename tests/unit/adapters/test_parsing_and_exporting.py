@@ -454,10 +454,30 @@ class TestArcSegToBulge(unittest.TestCase):
         self.assertAlmostEqual(bulge, math.tan(math.pi/8), places=6)
 
     def test_002_bulge_90_cw(self):
-        """Arco 90° CW → bulge = -tan(π/8)."""
-        arc = ArcSeg(center=(0, 0), radius=10, start_angle=0, end_angle=math.pi/2, ccw=False)
+        """Arco 90° CW (da π/2 a 0) → bulge = -tan(π/8)."""
+        arc = ArcSeg(center=(0, 0), radius=10, start_angle=math.pi/2, end_angle=0, ccw=False)
         bulge = arc_seg_to_bulge(arc)
         self.assertAlmostEqual(bulge, -math.tan(math.pi/8), places=6)
+
+    def test_002b_bulge_arco_invertito_non_e_il_complemento(self):
+        """
+        Regressione: un arco CW ha per angolo spazzato il tratto reale
+        start→end percorso in orario, NON il complemento a 2π.
+
+        parse_loop produce archi con ccw=False quando orienta il loop in
+        CCW; se arc_seg_to_bulge usasse (end-start)%2π l'arco verrebbe
+        riscritto "alla rovescia" (bulge dell'arco complementare).
+        """
+        ccw_arc = ArcSeg(center=(0, 0), radius=10,
+                         start_angle=math.radians(350),
+                         end_angle=math.radians(10), ccw=True)
+        cw_arc = ArcSeg(center=(0, 0), radius=10,
+                        start_angle=math.radians(10),
+                        end_angle=math.radians(350), ccw=False)
+        # Stesso arco fisico (sweep 20°), verso opposto → bulge opposti in segno
+        # e uguali in modulo, entrambi piccoli (tan(5°) ≈ 0.087), non ~11.4.
+        self.assertAlmostEqual(arc_seg_to_bulge(ccw_arc), math.tan(math.radians(5)), places=6)
+        self.assertAlmostEqual(arc_seg_to_bulge(cw_arc), -math.tan(math.radians(5)), places=6)
 
     def test_003_bulge_180_ccw(self):
         """Arco 180° CCW → bulge = tan(π/4)."""
@@ -470,6 +490,31 @@ class TestArcSegToBulge(unittest.TestCase):
         arc = ArcSeg(center=(0, 0), radius=10, start_angle=math.pi, end_angle=0, ccw=False)
         bulge = arc_seg_to_bulge(arc)
         self.assertLess(bulge, 0)
+
+    def test_005_roundtrip_arco_invertito(self):
+        """
+        Un ArcSeg e la sua versione invertita (come la produce parse_loop
+        quando il loop è orientato CCW) devono discretizzare sullo stesso
+        insieme di punti e produrre bulge di modulo uguale: nessun arco
+        "alla rovescia" nel write-back.
+        """
+        from forge.adapters.dxf.parser import _reverse_segment
+
+        arc = ArcSeg(center=(3, -2), radius=7.5,
+                     start_angle=math.radians(20),
+                     end_angle=math.radians(140), ccw=True)
+        rev = _reverse_segment(arc)
+
+        pts_fwd = arc.discretize(0.01)
+        pts_rev = rev.discretize(0.01)
+        self.assertEqual(len(pts_fwd), len(pts_rev))
+        for (xf, yf), (xr, yr) in zip(pts_fwd, reversed(pts_rev)):
+            self.assertAlmostEqual(xf, xr, places=6)
+            self.assertAlmostEqual(yf, yr, places=6)
+
+        self.assertAlmostEqual(
+            abs(arc_seg_to_bulge(arc)), abs(arc_seg_to_bulge(rev)), places=9
+        )
 
 
 # ===========================================================================

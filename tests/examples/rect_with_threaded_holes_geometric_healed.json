@@ -2,10 +2,7 @@
   "source_file": "rect_with_threaded_holes_geometric.dxf",
   "is_valid": true,
   "part_count": 1,
-  "warnings": [
-    "Nessun loop trovato via grafo, uso polygonize come fallback.",
-    "LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta."
-  ],
+  "warnings": [],
   "errors": [],
   "parts": [
     {

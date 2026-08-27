@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/spline_line.dxf"
+input_dxf = r"tests/examples/two_rects_with_bend.dxf"
 
 tolerance = .2
 
@@ -21,6 +21,8 @@ special_layers = {
     "MARK"      : "engrave",
     "Signature"      : "engrave",
     "Filettati" : "threaded_hole",
+    "thread_holes" : "threaded_hole",
+    "THREADED" : "threaded_hole",
     "Svasati"   : "countersink",
     "Piega"     : "bending",
 }
@@ -71,7 +73,7 @@ result = forge.heal(
     source_file=file_name,
 )
 
-forge.detect(result, bending_tolerance=0.2)
+forge.detect(result, bending_tolerance=11)
 doc_out = forge.to_dxf(result, doc)
 forge.inject(result)
 

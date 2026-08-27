@@ -6,8 +6,8 @@
   "errors": [],
   "parts": [
     {
-      "label": "",
-      "source_file": "",
+      "label": "rect_with_hole_lines",
+      "source_file": "rect_with_hole_lines.dxf",
       "quantity": 1,
       "material": "S275JR",
       "thickness_mm": 0.0,

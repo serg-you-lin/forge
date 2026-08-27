@@ -3,7 +3,7 @@
   "is_valid": true,
   "part_count": 1,
   "warnings": [
-    "1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching)."
+    "1 candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching)."
   ],
   "errors": [],
   "parts": [

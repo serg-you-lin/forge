@@ -18,11 +18,16 @@ from ...core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg
 # ---------------------------------------------------------------------------
 
 def arc_seg_to_bulge(arc: ArcSeg) -> float:
-    delta = arc.end_angle - arc.start_angle
-    delta = delta % (2 * math.pi)
-    if delta == 0.0:
-        delta = 2 * math.pi
-    bulge = math.tan(delta / 4.0)
+    # L'angolo spazzato dipende dal verso: per un arco CW il tratto reale è
+    # start_angle → end_angle percorso in senso orario, NON il complemento a
+    # 2π. ArcSeg._sweep() è l'unica sede di questo calcolo — riusarla qui
+    # evita che un arco invertito (ccw=False, prodotto da parse_loop quando il
+    # loop viene orientato CCW) venga scritto con il bulge dell'arco
+    # complementare, cioè "alla rovescia".
+    sweep = arc._sweep()
+    if sweep <= 1e-12:
+        sweep = 2 * math.pi
+    bulge = math.tan(sweep / 4.0)
     if not arc.ccw:
         bulge = -bulge
     return bulge
