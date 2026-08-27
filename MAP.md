@@ -308,7 +308,8 @@ Nuovo: `_handle_engrave_closed_trash()`. Copertura:
 (`model/engraving.py`). Nessuno shim: aggiornati `model/__init__`, `model/part.py`
 (`engrave_lines: List[Engraving]`), `detect.py`, docstring di `feature.py`.
 - `Engraving` porta `segments` + `length` + `pts` + `geometry` + `polygon`
-  opzionale (solo per traccia degenere) + `closed: bool`.
+  opzionale (solo per traccia degenere). `closed` **non è un campo**: è una
+  property = `polygon is not None`, così non può desincronizzarsi.
 - Nuovi campi `source` / `confidence`, **stesso pattern di `Hole`**:
   `source="labeled"` (da label_map, confidence 1.0) vs `source="geometric"`
   (inferenza). `to_dict()` li espone (i golden confrontano solo `closed`/`length`
