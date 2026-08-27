@@ -8,8 +8,8 @@ Feature
 └── OpenFeature     — tracciato aperto, ha segments ma non polygon
 
 Tutte le entità del modello ereditano da qui:
-    Hole(ClosedFeature), ForgeContour(ClosedFeature), EngravingClosed(ClosedFeature)
-    BendingLine(OpenFeature), EngravingOpen(OpenFeature)
+    Hole(ClosedFeature), ForgeContour(ClosedFeature)
+    BendingLine(OpenFeature), Engraving(OpenFeature)
 
 Note:
     - segments è List[LineSeg | ArcSeg | SplineSeg] — primitive pure, zero ezdxf

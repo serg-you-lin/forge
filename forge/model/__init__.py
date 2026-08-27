@@ -11,7 +11,7 @@ from .classified import ClassifiedEntity, BaseInterpreter
 from .document import ForgeDocument, Annotation
 from .part import ForgeContour, ForgePart
 from .result import ForgeResult
-from .engraving import EngravingClosed, EngravingOpen
+from .engraving import Engraving
 from .bending_line import BendingLine
 from .feature import Feature, ClosedFeature, OpenFeature
 
@@ -29,8 +29,7 @@ __all__ = [
     "ForgeContour",
     "ForgePart",
     "ForgeResult",
-    "EngravingClosed",
-    "EngravingOpen",
+    "Engraving",
     "BendingLine",
     "Feature",
     "ClosedFeature",

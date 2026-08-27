@@ -277,6 +277,58 @@ engrave e basta: viene materializzato come N segmenti sul layer Engrave e non
 entra nei conteggi strutturali (fori, inner). Se serve una polilinea chiusa
 unica invece di N segmenti è solo cosmesi di output, non correttezza.
 
+### Engrave/marking fuori dalla topologia — FATTO
+
+Gli Edge con `role` ENGRAVE o MARKING (deciso da `label_map` al load) non entrano
+più nel grafo né nella ricerca loop: `HealStep._split_labeled()` li estrae da
+`self.edges` prima di `_preprocess()`. Erano prima *walkati* da `LoopFinder` e poi
+scartati da `_loop_is_structural()` — lavoro sprecato, e un loop misto
+strutturale+engrave veniva buttato intero.
+
+`HealStep._labeled_proxies()` li riconverte in proxy e li mette in
+`result.trash_entities`:
+- traccia aperta → `OpenShape(role=...)`
+- traccia già degenere (CIRCLE, SPLINE chiusa, `edge.start == edge.end`) →
+  `ClosedShape(role=...)` — **prima veniva persa in silenzio** dal guard
+  `edge.start == edge.end` di `edges_to_open_shapes`.
+
+`detect._detect_labeled()` fa l'unico calcolo che li riguarda, il contenimento:
+- dentro un part → `part.engrave_lines` (`EngravingOpen`/`EngravingClosed`) o
+  classified entity per marking;
+- fuori da ogni part → **resta in `trash_entities`**, geometria orfana come
+  qualsiasi entità non contenuta nell'outer (`_handle_engrave_open` ora ritorna
+  `bool`; niente più warning + drop).
+
+Nuovo: `_handle_engrave_closed_trash()`. Copertura:
+`test_special_layers.TestEngraveDegenerateCircle`. Suite: 445 passed.
+
+### `Engraving` unico + seam per l'inferenza — FATTO
+
+`EngravingClosed` / `EngravingOpen` collassati in un solo `Engraving(OpenFeature)`
+(`model/engraving.py`). Nessuno shim: aggiornati `model/__init__`, `model/part.py`
+(`engrave_lines: List[Engraving]`), `detect.py`, docstring di `feature.py`.
+- `Engraving` porta `segments` + `length` + `pts` + `geometry` + `polygon`
+  opzionale (solo per traccia degenere) + `closed: bool`.
+- Nuovi campi `source` / `confidence`, **stesso pattern di `Hole`**:
+  `source="labeled"` (da label_map, confidence 1.0) vs `source="geometric"`
+  (inferenza). `to_dict()` li espone (i golden confrontano solo `closed`/`length`
+  /`role`, quindi non si rompono).
+- Costruttori centralizzati: `_engraving_from_open()` / `_engraving_from_closed()`.
+
+**Perché un tipo solo:** in produzione nessuno ramificava su `EngravingClosed`
+vs `EngravingOpen` — `to_dxf` scrive `eng.segments` e `inject` somma `eng.length`
+per entrambi. La distinzione viveva solo in `to_dict()["closed"]`.
+
+**Seam per l'inferenza:** `detect._detect_engrave(result, engrave_tolerance)` —
+placeholder no-op, già inserito nella pipeline `detect()` e già con il parametro
+`engrave_tolerance`. Quando implementato: guarda `part.inners` con role UNKNOWN e
+`result.trash_entities`, promuove a `Engraving(source="geometric")` i pattern
+riconoscibili (es. inner = due polilinee ~parallele a distanza < tolerance →
+incisione, non foro/inner). Le feature — engraving, bending, countersink,
+threaded — condividono tutte il doppio binario label_map / inferenza; `Hole` è
+l'implementazione di riferimento (`hole_type` + `geometric_hint` + `source` +
+`confidence`), `Engraving` ora lo segue, `BendingLine` no (manca `source`).
+
 ## Fatto: già migrati (sessioni precedenti)
 
 `tests/integration/test_helpers.py`, `tests/real/test_golden.py`, `tests/real/test_golden_split.py`.
