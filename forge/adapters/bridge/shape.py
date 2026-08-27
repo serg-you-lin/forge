@@ -54,6 +54,10 @@ class OpenShape:
         length     : lunghezza totale in unità documento
         role       : ruolo semantico — impostato dall'adapter prima del core
         shape_type : categoria geometrica — "line" | "arc" | "polyline" | …
+        segments   : primitive native (LineSeg/ArcSeg/SplineSeg) da cui la
+                     traccia è stata discretizzata — servono a write()/to_dxf()
+                     per materializzare la geometria senza perdere fedeltà
+                     (es. engrave line su layer speciale)
     """
     pts:        List[Tuple[float, float]]
     length:     float
@@ -61,3 +65,4 @@ class OpenShape:
     shape_type: str                           = ""
     diameter:   Optional[float]               = None
     center:     Optional[Tuple[float, float]] = None
+    segments:   List                          = field(default_factory=list)

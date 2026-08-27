@@ -38,8 +38,8 @@ class TestDetectBase(unittest.TestCase):
         doc = load("rect_with_circle_hole.dxf")
         self.msp = doc.modelspace()
 
-        self.result = forge.heal(self.msp)
-        forge.detect(self.result, self.msp)
+        self.result = forge.heal(forge.document_from_msp(self.msp))
+        forge.detect(self.result)
 
     # ---------------------------------------------------------------
     # detect NON deve rompere heal
@@ -71,7 +71,7 @@ class TestDetectBase(unittest.TestCase):
         hole = self.result.parts[0].holes[0]
         first = hole.hole_type
 
-        forge.detect(self.result, self.msp)
+        forge.detect(self.result)
         second = hole.hole_type
 
         self.assertEqual(first, second)
@@ -87,8 +87,8 @@ class TestDetectCountersink(unittest.TestCase):
         doc = load("rect_with_countersink.dxf")
         self.msp = doc.modelspace()
 
-        self.result = forge.heal(self.msp)
-        forge.detect(self.result, self.msp)
+        self.result = forge.heal(forge.document_from_msp(self.msp))
+        forge.detect(self.result)
         
     def test_001_countersink_detected(self):
         holes = self.result.parts[0].holes
@@ -112,8 +112,8 @@ class TestDetectLabelMap(unittest.TestCase):
             "Svasati": "countersink"
         }
 
-        self.result = forge.heal(self.msp, label_map=label_map)
-        forge.detect(self.result, self.msp)
+        self.result = forge.heal(forge.document_from_msp(self.msp, label_map=label_map))
+        forge.detect(self.result)
 
     def test_001_label_map_override(self):
         hole = self.result.parts[0].holes[0]
@@ -132,8 +132,8 @@ class TestDetectThreaded(unittest.TestCase):
         doc = load("rect_with_threaded_holes_geometric.dxf")
         self.msp = doc.modelspace()
 
-        self.result = forge.heal(self.msp)
-        forge.detect(self.result, self.msp)
+        self.result = forge.heal(forge.document_from_msp(self.msp))
+        forge.detect(self.result)
 
     def test_001_thread_detected(self):
         holes = self.result.parts[0].holes
@@ -151,8 +151,8 @@ class TestFlangeCountersink(unittest.TestCase):
 
     def setUp(self):
         doc = load("flangia semplice.DXF")
-        self.result = forge.heal(doc.modelspace())
-        forge.detect(self.result, doc.modelspace())
+        self.result = forge.heal(forge.document_from_msp(doc.modelspace()))
+        forge.detect(self.result)
 
     def test_concentric_large_hole_is_not_countersink(self):
         part = self.result.parts[0]

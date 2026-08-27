@@ -126,7 +126,8 @@ Ordine di esecuzione
 5. elimina source_ref     — modello e bridge
 6. forge.write() riscritto — pipeline/write.py
 7. forge.split() riscritto — pipeline/write.py
-8. aggiorna i test        — tutti i test di write e split
+7bis. write→to_dxf, split ritorna list[Drawing], I/O solo in split_to_files
+8. aggiorna i test        — tutti i test di write/to_dxf e split
 Cosa NON cambia
 DxfAdapter.to_edges() — già produce Edge puri
 hierarchy.py — già lavoro su ClosedShape puri
@@ -150,6 +151,9 @@ Stesso contratto — heal(), detect(), write() non cambiano una riga.
 
 Branch: `refactor/structure`. Modifiche **non committate** (i commit li fa Federico).
 
+**Tutti i passi (1–8) completati** + fix regressione engrave `to_dxf()`.
+Suite: **441 passed / 0 failed** (2 xfail preesistenti).
+
 ## Fatto e verificato
 
 - **Passo 1** — `forge/model/document.py`: `ForgeDocument` (edges, annotations, source_meta, source_path) + `Annotation` (kind, position, data). Esportati da `forge/model/__init__.py` e `forge/__init__.py`.
@@ -163,43 +167,116 @@ Branch: `refactor/structure`. Modifiche **non committate** (i commit li fa Feder
 - Helper: `forge/core/geometry.py::node_decimals_for(tol)`, `forge/core/primitives/segments.py::segment_endpoints(seg)`.
 
 Verifica: `tests/real/test_golden.py` **48/48**, `tests/real/test_golden_split.py` **51/51**.
-Suite completa: **217 passed / 208 failed / 16 errors** (i fail sono quasi tutti Passo 8, sotto).
+Suite completa dopo il **Passo 8**: **440 passed / 0 failed / 0 errors** (2 xfail preesistenti).
 
-## Passo 5 — source_ref: quasi fatto
+## Passo 5 — source_ref: FATTO
 
 Rimosso da: `Edge`, `ClosedShape`/`OpenShape`, `Feature` e gerarchia, `Hole`, `BendingLine`,
 `ForgeContour`, `ClassifiedEntity`, `loop_finder.edges_to_open_shapes`.
 
-**Ancora da togliere** (`grep -rn source_ref forge/`):
-- `forge/adapters/pdf/graph_adapter.py` — 3 costruzioni `Edge(source_ref=...)` → rompe l'import dell'adapter PDF
-- `forge/io/text_utils.py:35` — `ForgeText(source_ref=e)`
-- `forge/model/text.py:20` — campo `source_ref: Optional[Any]`
-- commenti stantii: `loop_finder.py:162`, `feature.py:17`
+Completato in questa sessione:
+- `forge/adapters/pdf/graph_adapter.py` — rimosse le 3 costruzioni `Edge(source_ref=item)`
+- `forge/io/text_utils.py` — `extract_forge_texts()` non passa più `source_ref=e`
+- `forge/model/text.py` — rimosso il campo `source_ref` da `ForgeText` (import `Any`/`Optional` puliti)
+- commenti/docstring stantii aggiornati: `loop_finder.py`, `feature.py` (+ import `Any` rimosso),
+  `adapters/bridge/edge.py`
 
-## Passo 8 — migrazione test: DA FARE (sessione dedicata)
+`grep -rn source_ref forge/` ora trova solo prosa che spiega l'assenza del campo
+(`write.py`, `document.py`). Golden 48/48, split 51/51.
 
-Traduzione meccanica vecchia API → nuova:
+## Passo 7bis — `write`→`to_dxf` e `split` puro: FATTO
+
+- **`write` → `to_dxf`** — `forge/pipeline/write.py`. Firma invariata:
+  `to_dxf(result, source_doc=None, filter_part=None, include_annotations=True) -> Drawing`.
+  Esportato da `forge/__init__.py` (`__all__`, docstring) e `forge/pipeline/__init__.py`.
+- **`split` è puro** — ritorna `list[Drawing]` nell'ordine delle parti tenute.
+  Niente più `os` / `output_folder` / `saveas` / `keep_trash`. Parametri rimasti:
+  `namer`, `include_annotations`, `min_area`, `exclude_types`, `on_part`.
+  `namer(i, part)` assegna `part.label` (così il nome file resta ricavabile a valle).
+  `on_part` ora è `on_part(part, doc_out)` — niente più terzo arg `out_path`.
+  Nuovo helper esportato: `part_passes_min_area(part, min_area) -> bool`.
+- **`split_to_files`** (`forge/pipeline/__init__.py`) è l'unica funzione che tocca
+  il disco: `heal → detect → split → saveas`. Nome file: `f"{part.label}.dxf"`.
+  Perso il param `keep_trash`.
+- Migrati: `tests/real/test_golden_split.py` (usa `split` + `saveas` manuale,
+  importa `part_passes_min_area`/`DEFAULT_MIN_PART_AREA`),
+  `tests/integration/test_helpers.py` (`forge.write` → `forge.to_dxf`).
+- `tests/generate_golden_split.py` NON toccato: è ancora su vecchia API modello
+  (`load_dxf` che ritorna `(_, msp)`, `heal(msp)`) → va fatto nel Passo 8 insieme
+  agli script root.
+
+Verifica dopo 7bis: golden 48/48, split 51/51. Suite completa invariata:
+**217 passed / 208 failed / 16 errors** (nessuna regressione).
+
+`split` resta API esposta di prima classe: è il seam giusto per il futuro
+("isole" / disegno in tavola su più viste).
+
+NON fare: `split` come flag booleano di `to_dxf` (`to_dxf(result, split=True)`).
+Tipo di ritorno che cambia su un flag = API non tipizzabile.
+
+## Passo 8 — migrazione test: FATTO
+
+Traduzione meccanica vecchia API → nuova (nomi **post Passo 7bis**):
 - `heal(msp, ...)` / `heal(msp, label_map=...)` → `heal(forge.document_from_msp(msp, label_map=...), ...)` oppure via `load_dxf`
 - `doc, msp = load_dxf(...)` → `doc = load_dxf(...)`
-- `write(msp, result)` → `doc_out = write(result, doc)`
-- `split(msp, result, folder)` → `split(result, doc, folder)`
+- `detect(result, msp)` → `detect(result)` (non prende più il msp)
+- `write(msp, result)` → `doc_out = to_dxf(result, doc)`
+- `split(msp, result, folder)` → `docs = split(result, doc)` + `saveas`, oppure `split_to_files(doc, folder, ...)`
 - test che ispezionano `msp` dopo il write → ispezionare `doc_out.modelspace()`
+  o il modello (`result.trash_entities`, `part.engrave_lines`, ...)
 
-File da migrare: `tests/unit/test_healer.py`, `tests/integration/test_gap.py`,
-`tests/integration/test_splitter.py`, `tests/integration/test_injector.py`,
-`tests/integration/test_special_layers.py`, `tests/integration/test_pipeline.py`,
-`tests/real/test_layers.py`, `tests/unit/test_detect.py`, `tests/real/test_edge_cases.py`.
+Migrati (meccanica): `tests/unit/test_healer.py`, `tests/integration/test_gap.py`,
+`tests/integration/test_injector.py`, `tests/integration/test_special_layers.py`,
+`tests/integration/test_pipeline.py`, `tests/unit/test_detect.py`,
+`tests/real/test_edge_cases.py`.
 
-Da **riscrivere** (non migrare): `tests/integration/test_writeback.py` — testa "scrivi nel msp
-sorgente / entità su layer Trash", comportamento che non esiste più.
+Migrati + riscritte le parti su comportamento sparito (scrittura nel msp
+sorgente / layer "Trash" / `keep_trash`), ora verificano `to_dxf`/`split` o il
+modello: `tests/integration/test_writeback.py` (riscritto intero),
+`tests/integration/test_splitter.py` (helper `_split_files` locale: `split` puro
++ `saveas`), `tests/real/test_layers.py` (`_run_pipeline` → `(source_doc, doc_out,
+result)`; `TestLineetteBastarde` off `bl.source_ref`).
 
-Già rossi **prima** del refactor (vecchia API modello, non causati da noi):
-`tests/unit/test_models.py`, `tests/unit/adapters/test_parsing_and_exporting.py`,
-`tests/unit/core/test_hierarchy_builder.py`.
+Migrati per Passo 4/5 (`Edge` senza `source_ref`/`layer`/`geometry`, ora
+`role`+`segment`+`closed_path`; `Feature.role` obbligatorio; `parse_loop` non
+riparsare più l'entità): `tests/unit/test_models.py` (`TestEdge` riscritto),
+`tests/unit/adapters/test_parsing_and_exporting.py` (`make_edge` costruisce la
+primitiva reale via `DxfEntityDispatcher`), `tests/unit/core/test_hierarchy_builder.py`.
 
-Script root da aggiornare al nuovo contratto: `01_run_healer_interpreter.py` … `20_*.py`,
-`tests/generate_golden.py`, `tests/generate_golden_split.py`.
+Script aggiornati: `01_run_healer_interpreter.py` (ora `doc_out = forge.to_dxf(result, doc)`
++ `doc_out.saveas(output_dxf)` — salva davvero il DXF), `tests/generate_golden.py`,
+`tests/generate_golden_split.py`. (Gli script `02_*.py … 20_*.py` non esistono.)
 
-## Fatto: già migrati
+### Regressione engrave in `to_dxf()` — RISOLTA
+
+**Sintomo:** `to_dxf()` non materializzava le engrave line. `_handle_engrave_open`
+/ `_handle_engrave_closed` creavano `EngravingOpen`/`EngravingClosed` con
+`segments=[]`, e `to_dxf` fa `write_segments(eng.segments, ...)` → zero entità
+sul layer Engrave del documento di output.
+
+**Perché i golden non l'hanno preso:** `test_golden` / `test_golden_split`
+verificano il *modello* (`part.engrave_lines`, `total_engrave_length`, `to_dict`)
+e la geometria di outer/holes nei figli — mai una engrave line riletta da un DXF
+materializzato. Il bug viveva solo nel path `to_dxf` (documento nuovo, introdotto
+al Passo 6/7bis) che nessun golden riattraversa.
+
+**Fix:**
+- `OpenShape` ora ha un campo `segments` (come `ClosedShape`).
+- `edges_to_open_shapes` lo popola con `[edge.segment]` — la primitiva nativa,
+  non i punti discretizzati.
+- `_handle_engrave_open` / `_handle_engrave_closed` passano `segments=` al
+  costruttore di `EngravingOpen` / `EngravingClosed`.
+- Nuova copertura: `test_writeback.TestWritebackSpecialLayers.test_003_engrave_geometry_materialized`
+  e `test_special_layers.TestSpecialLayerNotTrash.test_002` rileggono il layer
+  Engrave del `doc_out`.
+
+**Comportamento voluto (non un limite):** un contorno chiuso su layer engrave
+non viene trattato come loop strutturale (`_loop_is_structural` non include
+`ENGRAVE`, giustamente). Il ruolo è deciso al load da `label_map` — a valle è
+engrave e basta: viene materializzato come N segmenti sul layer Engrave e non
+entra nei conteggi strutturali (fori, inner). Se serve una polilinea chiusa
+unica invece di N segmenti è solo cosmesi di output, non correttezza.
+
+## Fatto: già migrati (sessioni precedenti)
 
 `tests/integration/test_helpers.py`, `tests/real/test_golden.py`, `tests/real/test_golden_split.py`.

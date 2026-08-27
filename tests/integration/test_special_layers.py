@@ -39,22 +39,23 @@ def _run_pipeline(
     tolerance=0.05,
     inject=False,
 ):
+    doc = forge.document_from_msp(msp, label_map=special_layers)
+
     result = forge.heal(
-        msp,
+        doc,
         tolerance=tolerance,
-        label_map=special_layers,
     )
 
     forge.detect(
-        result,     
+        result,
     )
 
-    forge.write(msp, result)
+    doc_out = forge.to_dxf(result, doc)
 
     if inject:
         forge.inject(result)
 
-    return result
+    return result, doc_out
 
 
 def _rect_with_mark(
@@ -155,7 +156,7 @@ class TestSpecialLayerNotOuter(unittest.TestCase):
     def setUp(self):
         msp, special_layers = _rect_with_mark_loop()
 
-        self.result = _run_pipeline(
+        self.result, self.doc_out = _run_pipeline(
             msp=msp,
             special_layers=special_layers,
         )
@@ -211,7 +212,7 @@ class TestSpecialLayerNotTrash(unittest.TestCase):
             dxfattribs={'layer': 'MARK'},
         )
 
-        self.result = _run_pipeline(
+        self.result, self.doc_out = _run_pipeline(
             msp=self.msp,
             special_layers={'MARK': 'engrave'},
             inject=True,
@@ -219,7 +220,7 @@ class TestSpecialLayerNotTrash(unittest.TestCase):
 
     def test_001_mark_not_in_trash(self):
 
-        for entity in self.msp:
+        for entity in self.doc_out.modelspace():
 
             layer = (
                 entity.dxf.layer
@@ -243,15 +244,22 @@ class TestSpecialLayerNotTrash(unittest.TestCase):
                     )
 
     def test_002_mark_layer_preserved(self):
+        # La LINE su MARK deve sopravvivere come engrave: nel modello
+        # (part.engrave_lines) e materializzata sul layer Engrave del doc_out.
+        engrave = [
+            eng
+            for part in self.result.parts
+            for eng in part.engrave_lines
+        ]
+        self.assertTrue(engrave, "Nessuna engrave line rilevata dal modello")
 
-        found = any(
-            entity.dxf.layer == LAYER_ENGRAVE
-            for entity in self.msp
-        )
-
+        on_engrave = [
+            e for e in self.doc_out.modelspace()
+            if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_ENGRAVE
+        ]
         self.assertTrue(
-            found,
-            "Nessuna entità ENGRAVE trovata",
+            on_engrave,
+            "Engrave line non materializzata sul layer Engrave da to_dxf()",
         )
 
 
@@ -265,7 +273,7 @@ class TestEngraveLength(unittest.TestCase):
 
         msp, special_layers = _rect_with_mark()
 
-        self.result = _run_pipeline(
+        self.result, self.doc_out = _run_pipeline(
             msp=msp,
             special_layers=special_layers,
             inject=True,
@@ -318,7 +326,7 @@ class TestBendingLines(unittest.TestCase):
 
         msp, special_layers = _rect_with_bending()
 
-        self.result = _run_pipeline(
+        self.result, self.doc_out = _run_pipeline(
             msp=msp,
             special_layers=special_layers,
             inject=True,
@@ -388,7 +396,7 @@ class TestMixedSpecialLayers(unittest.TestCase):
             dxfattribs={'layer': 'MARCATURA'},
         )
 
-        self.result = _run_pipeline(
+        self.result, self.doc_out = _run_pipeline(
             msp=msp,
             special_layers={
                 'MARK': 'engrave',

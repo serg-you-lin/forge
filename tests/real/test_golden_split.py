@@ -48,6 +48,7 @@ from forge.adapters.dxf.layers import (
     LAYER_OUTER,
     LAYER_HOLE,
 )
+from forge.pipeline.write import part_passes_min_area, DEFAULT_MIN_PART_AREA
 
 
 MULTIPLI_DIR = project_root / "tests" / "examples" / "golden_multipli"
@@ -148,12 +149,16 @@ def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
 
     if result.is_valid and result.parts:
         forge.detect(result)
-        forge.split(
+        drawings = forge.split(
             result,
             doc,
-            output_folder=str(output_folder),
             namer=lambda i, part: f"{part.label}_P{i + 1:03d}",
         )
+        output_folder.mkdir(parents=True, exist_ok=True)
+        kept = [p for p in result.parts
+                if part_passes_min_area(p, DEFAULT_MIN_PART_AREA)]
+        for part, drawing in zip(kept, drawings):
+            drawing.saveas(str(output_folder / f"{part.label}.dxf"))
 
     part_payloads = []
     for part in result.parts if result.is_valid and result.parts else []:

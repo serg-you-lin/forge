@@ -32,7 +32,6 @@ def extract_forge_texts(msp) -> list[ForgeText]:
         result.append(ForgeText(
             content=content,
             position=pt,
-            source_ref=e,
         ))
     return result
 

@@ -108,14 +108,26 @@ def make_circle(cx, cy, radius, layer="0"):
     return e
 
 
-def make_edge(entity, layer="0"):
-    """Crea un Edge con segmento LineSeg di default."""
+def make_edge(entity, layer="0", rev=False):
+    """
+    Crea un Edge portando la primitiva reale parsata dall'entità mock.
+
+    Dopo il refactoring parse_loop() non riparsare più l'entità sorgente:
+    concatena semplicemente edge.segment. La primitiva va quindi costruita
+    qui, come fa l'adapter in fase di traduzione.
+    """
+    seg = DxfEntityDispatcher(entity).parse(rev=rev)
+    if isinstance(seg, list):
+        start = getattr(seg[0], "start", (0.0, 0.0))
+        end = getattr(seg[-1], "end", (0.0, 0.0))
+    else:
+        start = getattr(seg, "start", (0.0, 0.0))
+        end = getattr(seg, "end", (0.0, 0.0))
     return Edge(
-        source_ref=entity,
         role=ContourRole.UNKNOWN,
-        start=(0.0, 0.0),
-        end=(0.0, 0.0),
-        segment=LineSeg(start=(0.0, 0.0), end=(0.0, 0.0)),
+        start=start,
+        end=end,
+        segment=seg,
     )
 
 
@@ -374,9 +386,9 @@ class TestParseLoop(unittest.TestCase):
             (10, 0, 0.5),
             (10, 10, 0),
         ], is_closed=False)
-        loop = [(make_edge(polyline), True)]
+        loop = [(make_edge(polyline, rev=True), False)]
         result = parse_loop(loop)
-        
+
         self.assertEqual(len(result), 2)
         
         # Con reversal, l'ordine dei punti è invertito:
@@ -527,7 +539,7 @@ class TestWriteContourToMsp(unittest.TestCase):
         """Segments vuoti → None."""
         contour = MagicMock()
         contour.segments = []
-        result = write_segments(self.msp, contour, "TEST")
+        result = write_segments(contour.segments, self.msp, "TEST")
         self.assertIsNone(result)
 
     def test_002_segments_con_spline(self):
@@ -536,7 +548,7 @@ class TestWriteContourToMsp(unittest.TestCase):
         contour.segments = [
             SplineSeg(degree=0, control_points=[(0, 0), (10, 0)], knots=[], weights=None)
         ]
-        result = write_segments(self.msp, contour, "TEST")
+        result = write_segments(contour.segments, self.msp, "TEST")
         self.assertIsNotNone(result)
         self.assertEqual(len(self.msp.entities), 1)
         entity = self.msp.entities[0]
@@ -553,7 +565,7 @@ class TestWriteContourToMsp(unittest.TestCase):
             LineSeg(start=(10, 10), end=(0, 10)),
             LineSeg(start=(0, 10), end=(0, 0)),
         ]
-        result = write_segments(self.msp, contour, "TEST")
+        result = write_segments(contour.segments, self.msp, "TEST")
         self.assertIsNotNone(result)
         self.assertEqual(len(self.msp.entities), 1)
         entity = self.msp.entities[0]
@@ -569,7 +581,7 @@ class TestWriteContourToMsp(unittest.TestCase):
             LineSeg(start=(0, 10), end=(0, 0)),
             LineSeg(start=(0, 0), end=(10, 0)),
         ]
-        result = write_segments(self.msp, contour, "TEST")
+        result = write_segments(contour.segments, self.msp, "TEST")
         self.assertIsNotNone(result)
         entity = self.msp.entities[0]
         # Primo punto = inizio arco
@@ -585,7 +597,7 @@ class TestWriteContourToMsp(unittest.TestCase):
             LineSeg(start=(0, 0), end=(10, 0)),
             LineSeg(start=(10, 0), end=(10, 10)),
         ]
-        result = write_segments(self.msp, contour, "TEST")
+        result = write_segments(contour.segments, self.msp, "TEST")
         self.assertIsNotNone(result)
         entity = self.msp.entities[0]
         self.assertEqual(entity['type'], 'POLYLINE2D')

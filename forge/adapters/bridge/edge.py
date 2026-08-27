@@ -19,7 +19,7 @@ class Edge:
     Rappresentazione topologica di una entità geometrica lineare.
 
     Layer intermedio tra l'entità DXF grezza e il topology engine.
-    Il riferimento all'entità originale non viene mai perso.
+    Dati puri — nessun riferimento all'entità sorgente.
 
     Campi:
         role       : ruolo semantico — assegnato dall'adapter prima di costruire l'Edge,

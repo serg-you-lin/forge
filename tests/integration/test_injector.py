@@ -50,15 +50,15 @@ def load(name):
 
 
 def _heal_and_inject(dxf_name, label_map=None, data_injector=None, interpreter=None):
-    doc = load(dxf_name)
-    msp = doc.modelspace()
-    result = forge.heal(msp, label_map=label_map or {},)
+    doc = forge.document_from_msp(
+        load(dxf_name).modelspace(), label_map=label_map or {}
+    )
+    result = forge.heal(doc)
     forge.detect(
         result
     )
-    forge.write(msp, result)
     forge.inject(result, data_injector=data_injector)
-    return msp, result
+    return doc, result
 
 # ---------------------------------------------------------------------------
 # Caso base: result senza parts — inject non deve crashare
@@ -68,9 +68,8 @@ class TestInjectEmptyResult(unittest.TestCase):
 
     def test_001_no_parts_no_crash(self):
         """inject() su un result vuoto non deve sollevare eccezioni."""
-        doc = ezdxf.new()
-        msp = doc.modelspace()
-        result = forge.heal(msp)
+        doc = forge.document_from_msp(ezdxf.new().modelspace())
+        result = forge.heal(doc)
         # non deve esplodere
         forge.inject(result)
         self.assertEqual(result.parts, [])
@@ -193,14 +192,12 @@ class TestInjectThreadedHoles(unittest.TestCase):
 class TestInjectDataInjector(unittest.TestCase):
 
     def setUp(self):
-        self.doc = load("rect_with_special_layers.dxf")
-        self.msp = self.doc.modelspace()
-        self.result = forge.heal(
-            self.msp,
+        self.doc = forge.document_from_msp(
+            load("rect_with_special_layers.dxf").modelspace(),
             label_map={"BEND": "bending", "MARK": "engrave"},
         )
+        self.result = forge.heal(self.doc)
         forge.detect(self.result)
-        forge.write(self.msp, self.result)
 
     def test_001_data_injector_viene_chiamato(self):
         """Il data_injector deve essere chiamato e il risultato finire in custom."""

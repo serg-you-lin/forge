@@ -37,12 +37,12 @@ class TestEdgeCases(unittest.TestCase):
 
 def _make_test(dxf_path):
     def test_method(self):
-        doc = ezdxf.readfile(str(dxf_path))
-        msp = doc.modelspace()
+        msp = ezdxf.readfile(str(dxf_path)).modelspace()
 
-        result = forge.heal(msp)
+        forge_doc = forge.document_from_msp(msp)
+        result = forge.heal(forge_doc)
         forge.detect(result)
-        forge.write(msp, result)
+        doc_out = forge.to_dxf(result, forge_doc)
         forge.inject(result)
 
         self.assertIsNotNone(result)
@@ -53,7 +53,7 @@ def _make_test(dxf_path):
 
         self.assertGreater(result.part_count, 0)
 
-        healed_vertices = _extract_pline_vertices(msp)
+        healed_vertices = _extract_pline_vertices(doc_out.modelspace())
         self.assertGreater(len(healed_vertices), 0)
 
     test_method.__name__ = f"test_{dxf_path.stem}"

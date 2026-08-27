@@ -52,7 +52,9 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.pipeline.write import split, ANNOTATION_TYPES, DEFAULT_MIN_PART_AREA
+from forge.pipeline.write import (
+    split, ANNOTATION_TYPES, DEFAULT_MIN_PART_AREA, part_passes_min_area,
+)
 from forge.adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, TRASH_LAYER,
@@ -83,8 +85,9 @@ def _make_via_heal(points: list[tuple], extra_entities=None):
     if extra_entities:
         for fn in extra_entities:
             fn(msp)
-    result = forge.heal(msp, label="fixture")
-    return msp, result
+    doc = forge.document_from_msp(msp)
+    result = forge.heal(doc, label="fixture")
+    return doc, result
 
 
 def _rect(w=200, h=100) -> list[tuple]:
@@ -100,6 +103,20 @@ def _read_children(out_dir: str) -> dict[str, object]:
     }
 
 
+
+def _split_files(result, source_doc, out_dir, *, min_area=DEFAULT_MIN_PART_AREA, **kwargs):
+    """split() puro + saveas su disco — riproduce a path il vecchio contratto."""
+    os.makedirs(out_dir, exist_ok=True)
+    drawings = split(result, source_doc, min_area=min_area, **kwargs)
+    kept = [p for p in result.parts if part_passes_min_area(p, min_area)]
+    paths = []
+    for part, drawing in zip(kept, drawings):
+        path = os.path.join(out_dir, f"{part.label}.dxf")
+        drawing.saveas(path)
+        paths.append(path)
+    return paths
+
+
 # ---------------------------------------------------------------------------
 # UNIT TEST — writeback.split()
 # ---------------------------------------------------------------------------
@@ -112,7 +129,7 @@ class TestUnitSplitOutput(unittest.TestCase):
 
     def setUp(self):
         self.out_dir = tempfile.mkdtemp()
-        self.msp, self.result = _make_via_heal(_rect())
+        self.doc, self.result = _make_via_heal(_rect())
 
     def _assert_heal_found_parts(self):
         self.assertGreater(
@@ -123,7 +140,7 @@ class TestUnitSplitOutput(unittest.TestCase):
     def test_001_genera_un_file(self):
         """split() genera almeno un file .dxf."""
         self._assert_heal_found_parts()
-        generated = split(self.msp, self.result, output_folder=self.out_dir)
+        generated = _split_files(self.result, self.doc, self.out_dir)
         files = list(Path(self.out_dir).glob("*.dxf"))
         self.assertGreater(len(files), 0, "Nessun file .dxf generato")
         self.assertEqual(len(generated), len(files),
@@ -132,7 +149,7 @@ class TestUnitSplitOutput(unittest.TestCase):
     def test_002_file_leggibile(self):
         """I file generati sono DXF validi leggibili da ezdxf."""
         self._assert_heal_found_parts()
-        generated = split(self.msp, self.result, output_folder=self.out_dir)
+        generated = _split_files(self.result, self.doc, self.out_dir)
         for path in generated:
             try:
                 ezdxf.readfile(path)
@@ -142,7 +159,7 @@ class TestUnitSplitOutput(unittest.TestCase):
     def test_003_namer_default_formato(self):
             """Il namer default produce un nome del tipo 'label_P1'."""
             self._assert_heal_found_parts()
-            generated = split(self.msp, self.result, output_folder=self.out_dir)
+            generated = _split_files(self.result, self.doc, self.out_dir)
             
             self.assertTrue(len(generated) > 0)
             nome = Path(generated[0]).stem
@@ -154,7 +171,7 @@ class TestUnitSplitOutput(unittest.TestCase):
         """Un namer custom viene rispettato."""
         self._assert_heal_found_parts()
         namer = lambda i, part: f"pezzo_{i + 1}"
-        generated = split(self.msp, self.result, output_folder=self.out_dir,
+        generated = _split_files(self.result, self.doc, self.out_dir,
                           namer=namer)
         self.assertTrue(len(generated) > 0)
         self.assertEqual(Path(generated[0]).stem, "pezzo_1")
@@ -162,7 +179,7 @@ class TestUnitSplitOutput(unittest.TestCase):
     def test_005_part_label_aggiornata(self):
         """Dopo split(), part.label corrisponde al nome file usato."""
         self._assert_heal_found_parts()
-        generated = split(self.msp, self.result, output_folder=self.out_dir)
+        generated = _split_files(self.result, self.doc, self.out_dir)
         nome_file = Path(generated[0]).stem
         self.assertEqual(self.result.parts[0].label, nome_file)
 
@@ -170,7 +187,7 @@ class TestUnitSplitOutput(unittest.TestCase):
         """Part con area sotto min_area vengono scartati e producono un warning."""
         self._assert_heal_found_parts()
         # 200x100 = 20_000 mm²; soglia altissima → scartato
-        generated = split(self.msp, self.result, output_folder=self.out_dir,
+        generated = _split_files(self.result, self.doc, self.out_dir,
                           min_area=999_999)
         self.assertEqual(len(generated), 0, "Part sotto soglia non scartato")
         self.assertTrue(len(self.result.warnings) > 0,
@@ -180,7 +197,7 @@ class TestUnitSplitOutput(unittest.TestCase):
         """split() crea la cartella di output se non esiste."""
         self._assert_heal_found_parts()
         new_dir = os.path.join(self.out_dir, "sub", "nuovo")
-        split(self.msp, self.result, output_folder=new_dir)
+        _split_files(self.result, self.doc, new_dir)
         self.assertTrue(os.path.isdir(new_dir))
 
 
@@ -204,7 +221,7 @@ class TestUnitSplitFilters(unittest.TestCase):
             })
             msp.add_circle((100, 50), 10, dxfattribs={"layer": "0"})
 
-        self.msp, self.result = _make_via_heal(
+        self.doc, self.result = _make_via_heal(
             _rect(), extra_entities=[_add_annotations]
         )
         self.assertTrue(
@@ -215,8 +232,7 @@ class TestUnitSplitFilters(unittest.TestCase):
     def _child_msp(self, **split_kwargs):
         """Esegue split() e ritorna il modelspace del primo figlio."""
         out_dir = tempfile.mkdtemp()
-        generated = split(self.msp, self.result,
-                          output_folder=out_dir, **split_kwargs)
+        generated = _split_files(self.result, self.doc, out_dir, **split_kwargs)
         self.assertTrue(len(generated) > 0, "Nessun file generato")
         return ezdxf.readfile(generated[0]).modelspace()
 
@@ -243,12 +259,12 @@ class TestUnitSplitFilters(unittest.TestCase):
                 "insert": (30, 30), "char_height": 5, "layer": "0"
             })
 
-        msp, result = _make_via_heal(
+        doc, result = _make_via_heal(
             _rect(), extra_entities=[_add_mtext]
         )
         out_dir = tempfile.mkdtemp()
-        generated = split(msp, result, output_folder=out_dir,
-                          include_annotations=False)
+        generated = _split_files(result, doc, out_dir,
+                                 include_annotations=False)
         self.assertTrue(len(generated) > 0)
         out_msp = ezdxf.readfile(generated[0]).modelspace()
         for ann_type in ANNOTATION_TYPES:
@@ -270,12 +286,10 @@ class TestUnitSplitFilters(unittest.TestCase):
         self.assertEqual(len(list(out_msp.query("TEXT"))), 0)
         self.assertEqual(len(list(out_msp.query("CIRCLE"))), 0)
 
-    def test_006_keep_trash_false_non_causa_eccezioni(self):
-        """keep_trash=False (default) non causa eccezioni."""
-        try:
-            self._child_msp(keep_trash=False)
-        except Exception as e:
-            self.fail(f"split() con keep_trash=False ha sollevato: {e}")
+    def test_006_split_senza_source_doc(self):
+        """split() materializza anche senza source_doc (modello puro)."""
+        drawings = split(self.result, None)
+        self.assertGreater(len(drawings), 0)
 
 
 class TestUnitSplitLayers(unittest.TestCase):
@@ -288,13 +302,13 @@ class TestUnitSplitLayers(unittest.TestCase):
 
     def setUp(self):
         self.out_dir = tempfile.mkdtemp()
-        self.msp, self.result = _make_via_heal(_rect())
+        self.doc, self.result = _make_via_heal(_rect())
         self.assertTrue(
             len(self.result.parts) > 0,
             "heal() non ha trovato parti — verifica la fixture"
         )
-        self.generated = split(self.msp, self.result,
-                               output_folder=self.out_dir)
+        self.generated = _split_files(self.result, self.doc,
+                                      self.out_dir)
         self.assertTrue(len(self.generated) > 0,
                         "split() non ha generato file")
 
@@ -345,7 +359,8 @@ class TestIntegrationPipeline(unittest.TestCase):
         out_dir = tempfile.mkdtemp()
         doc = ezdxf.readfile(str(EXAMPLES_DIR / dxf_name))
         result = forge.split_to_files(
-            doc.modelspace(), output_folder=out_dir, label=label, **kwargs
+            forge.document_from_msp(doc.modelspace()),
+            output_folder=out_dir, label=label, **kwargs
         )
         return result, out_dir
 
@@ -387,7 +402,7 @@ class TestIntegrationPipeline(unittest.TestCase):
         msp.add_text("NOTA", dxfattribs={
             "insert": (50, 50), "height": 5, "layer": "0"
         })
-        forge.split_to_files(msp, output_folder=out_dir, label="test",
+        forge.split_to_files(forge.document_from_msp(msp), output_folder=out_dir, label="test",
                              include_annotations=False)
         for f in Path(out_dir).glob("*.dxf"):
             out_msp = ezdxf.readfile(str(f)).modelspace()
@@ -399,7 +414,7 @@ class TestIntegrationPipeline(unittest.TestCase):
         out_dir = tempfile.mkdtemp()
         doc = ezdxf.readfile(str(EXAMPLES_DIR / "two_parts.dxf"))
         namer = lambda i, part: f"custom_{i + 1:02d}"
-        forge.split_to_files(doc.modelspace(), output_folder=out_dir,
+        forge.split_to_files(forge.document_from_msp(doc.modelspace()), output_folder=out_dir,
                              label="two_parts", namer=namer)
         names = {f.stem for f in Path(out_dir).glob("*.dxf")}
         self.assertIn("custom_01", names,
@@ -409,7 +424,7 @@ class TestIntegrationPipeline(unittest.TestCase):
         """msp vuoto → nessun file generato."""
         out_dir = tempfile.mkdtemp()
         doc = ezdxf.new("R2010")
-        forge.split_to_files(doc.modelspace(), output_folder=out_dir,
+        forge.split_to_files(forge.document_from_msp(doc.modelspace()), output_folder=out_dir,
                              label="empty")
         files = list(Path(out_dir).glob("*.dxf"))
         self.assertEqual(len(files), 0,
@@ -426,7 +441,7 @@ class TestIntegrationContours(unittest.TestCase):
         out_dir = tempfile.mkdtemp()
         doc = ezdxf.readfile(str(EXAMPLES_DIR / dxf_name))
         print([ (e.dxftype(), e.dxf.layer) for e in doc.modelspace() ])
-        forge.split_to_files(doc.modelspace(), output_folder=out_dir,
+        forge.split_to_files(forge.document_from_msp(doc.modelspace()), output_folder=out_dir,
                              label=label, **kwargs)
         return _read_children(out_dir)
 
@@ -546,7 +561,7 @@ class TestIntegrationContours(unittest.TestCase):
             out_dir = tempfile.mkdtemp()
             try:
                 doc = ezdxf.readfile(str(src))
-                forge.split_to_files(doc.modelspace(),
+                forge.split_to_files(forge.document_from_msp(doc.modelspace()),
                                      output_folder=out_dir, label=src.stem)
                 for child in Path(out_dir).glob("*.dxf"):
                     child_doc = ezdxf.readfile(str(child))
@@ -570,7 +585,7 @@ class TestIntegrationLayers(unittest.TestCase):
     def setUp(self):
         self.out_dir = tempfile.mkdtemp()
         doc = ezdxf.readfile(str(EXAMPLES_DIR / "two_parts.dxf"))
-        forge.split_to_files(doc.modelspace(),
+        forge.split_to_files(forge.document_from_msp(doc.modelspace()),
                              output_folder=self.out_dir, label="test")
         self.files = list(Path(self.out_dir).glob("*.dxf"))
         self.assertTrue(len(self.files) > 0,

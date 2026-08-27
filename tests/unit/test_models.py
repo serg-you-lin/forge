@@ -32,6 +32,7 @@ from forge.model import (
 )
 
 from forge.model.role import ContourRole
+from forge.core.primitives.segments import LineSeg
 
 # ---------------------------------------------------------------------------
 # Fake entity minimale — isola i test da ezdxf
@@ -62,10 +63,10 @@ class TestForgeContour(unittest.TestCase):
         print(f"[ForgeContour] bbox={contour.bbox}")
         self.assertEqual(contour.bbox, (0, 0, 10, 10))
 
-    def test_003_role_default(self):
-        """role default è stringa vuota."""
+    def test_003_role_unknown_preserved(self):
+        """role UNKNOWN è un valore valido e viene preservato."""
         poly = Polygon([(0,0), (10,0), (10,10), (0,10)])
-        contour = ForgeContour(polygon=poly)
+        contour = ForgeContour(role=ContourRole.UNKNOWN, polygon=poly)
         self.assertEqual(contour.role, ContourRole.UNKNOWN)
 
     def test_004_role_inner(self):
@@ -127,7 +128,7 @@ class TestHole(unittest.TestCase):
         """hole_type default è UNKNOWN."""
         r = 5.0
         poly = Point((0, 0)).buffer(r, resolution=64)
-        hole = Hole(polygon=poly, diameter=10.0, center=(0, 0))
+        hole = Hole(role=ContourRole.HOLE, polygon=poly, diameter=10.0, center=(0, 0))
         self.assertEqual(hole.hole_type, HOLE_TYPE_UNKNOWN)
 
     def test_005_to_dict_keys(self):
@@ -166,14 +167,14 @@ class TestHole(unittest.TestCase):
         """confidence default è 0.0."""
         r = 5.0
         poly = Point((0, 0)).buffer(r, resolution=64)
-        hole = Hole(polygon=poly, diameter=10.0, center=(0, 0))
+        hole = Hole(role=ContourRole.HOLE, polygon=poly, diameter=10.0, center=(0, 0))
         self.assertEqual(hole.confidence, 0.0)
 
     def test_010_source_default(self):
         """source default è stringa vuota."""
         r = 5.0
         poly = Point((0, 0)).buffer(r, resolution=64)
-        hole = Hole(polygon=poly, diameter=10.0, center=(0, 0))
+        hole = Hole(role=ContourRole.HOLE, polygon=poly, diameter=10.0, center=(0, 0))
         self.assertEqual(hole.source, "")
 
 
@@ -182,54 +183,56 @@ class TestHole(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestEdge(unittest.TestCase):
+    """
+    Dopo il refactoring Edge è dati puri: role + start/end + segment
+    (primitiva nativa) + closed_path. Nessun source_ref, layer o geometry.
+    """
+
+    def _seg(self, start=(0.0, 0.0), end=(100.0, 0.0)):
+        return LineSeg(start=start, end=end)
 
     def test_001_construction(self):
         """Edge costruito correttamente con campi minimi."""
-        entity = _FakeEntity()
+        seg = self._seg()
         edge = Edge(
-            source_ref=entity,
-            layer="TAGLIO",
+            role=ContourRole.OUTER,
             start=(0.0, 0.0),
             end=(100.0, 0.0),
+            segment=seg,
         )
-        print(f"\n[Edge] start={edge.start} end={edge.end} layer={edge.layer}")
+        print(f"\n[Edge] start={edge.start} end={edge.end} role={edge.role}")
         self.assertEqual(edge.start, (0.0, 0.0))
         self.assertEqual(edge.end, (100.0, 0.0))
-        self.assertEqual(edge.layer, "TAGLIO")
+        self.assertEqual(edge.role, ContourRole.OUTER)
 
-    def test_002_entity_reference_preserved(self):
-        """Riferimento all'entità originale non viene perso."""
-        entity = _FakeEntity()
-        edge = Edge(source_ref=entity, layer="0", start=(0, 0), end=(1, 1))
-        self.assertIs(edge.source_ref, entity)
+    def test_002_segment_reference_preserved(self):
+        """La primitiva geometrica passata non viene sostituita."""
+        seg = self._seg()
+        edge = Edge(role=ContourRole.UNKNOWN, start=(0, 0), end=(1, 1), segment=seg)
+        self.assertIs(edge.segment, seg)
 
-    def test_003_geometry_optional(self):
-        """geometry è None di default."""
-        edge = Edge(source_ref=_FakeEntity(), layer="0", start=(0, 0), end=(1, 1))
-        self.assertIsNone(edge.geometry)
+    def test_003_closed_path_default_false(self):
+        """closed_path è False di default."""
+        edge = Edge(role=ContourRole.UNKNOWN, start=(0, 0), end=(1, 1),
+                    segment=self._seg((0, 0), (1, 1)))
+        self.assertFalse(edge.closed_path)
 
-    def test_004_geometry_linestring(self):
-        """geometry può essere un LineString shapely."""
-        geom = LineString([(0, 0), (100, 0)])
-        edge = Edge(
-            source_ref=_FakeEntity(),
-            layer="0",
-            start=(0.0, 0.0),
-            end=(100.0, 0.0),
-            geometry=geom,
-        )
-        print(f"[Edge] geometry length={edge.geometry.length}")
-        self.assertIsInstance(edge.geometry, LineString)
-        self.assertAlmostEqual(edge.geometry.length, 100.0, places=4)
+    def test_004_closed_path_flag(self):
+        """closed_path segnala geometria proveniente da un percorso chiuso."""
+        edge = Edge(role=ContourRole.OUTER, start=(0, 0), end=(1, 1),
+                    segment=self._seg((0, 0), (1, 1)), closed_path=True)
+        self.assertTrue(edge.closed_path)
 
-    def test_005_layer_preserved(self):
-        """Layer cached sull'Edge — non rileggere entity.dxf.layer."""
-        edge = Edge(source_ref=_FakeEntity(), layer="PIEGA", start=(0, 0), end=(1, 0))
-        self.assertEqual(edge.layer, "PIEGA")
+    def test_005_role_preserved(self):
+        """role cached sull'Edge — assegnato dall'adapter, mai dal layer DXF."""
+        edge = Edge(role=ContourRole.BEND, start=(0, 0), end=(1, 0),
+                    segment=self._seg((0, 0), (1, 0)))
+        self.assertEqual(edge.role, ContourRole.BEND)
 
     def test_006_start_end_are_tuples(self):
         """start e end sono tuple (x, y)."""
-        edge = Edge(source_ref=_FakeEntity(), layer="0", start=(5.0, 10.0), end=(15.0, 20.0))
+        edge = Edge(role=ContourRole.UNKNOWN, start=(5.0, 10.0), end=(15.0, 20.0),
+                    segment=self._seg((5.0, 10.0), (15.0, 20.0)))
         self.assertEqual(len(edge.start), 2)
         self.assertEqual(len(edge.end), 2)
 
@@ -247,7 +250,7 @@ class TestBendingLine(unittest.TestCase):
         dy = end[1] - start[1]
         angle = math.degrees(math.atan2(dy, dx)) % 180.0
         return BendingLine(
-            source_ref=_FakeEntity(),
+            role=ContourRole.BEND,
             geometry=geom,
             length=geom.length,
             angle_deg=angle,
@@ -301,7 +304,7 @@ class TestForgePart(unittest.TestCase):
     def _make_outer(self, coords=None):
         if coords is None:
             coords = [(0,0), (100,0), (100,100), (0,100)]
-        return ForgeContour(polygon=Polygon(coords))
+        return ForgeContour(role=ContourRole.OUTER, polygon=Polygon(coords))
 
     def test_001_no_holes_area(self):
         """Area corretta senza fori."""
@@ -319,7 +322,7 @@ class TestForgePart(unittest.TestCase):
         import math
         outer = self._make_outer()
         hole_poly = Point((50, 50)).buffer(5.0, resolution=64)
-        hole = Hole(polygon=hole_poly, diameter=10.0, center=(50, 50))
+        hole = Hole(role=ContourRole.HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
         part = ForgePart(outer=outer, holes=[hole])
         expected = 10000.0 - math.pi * 25.0
         print(f"\n[ForgePart with hole] area={part.area:.4f} expected≈{expected:.4f}")
@@ -329,7 +332,7 @@ class TestForgePart(unittest.TestCase):
         """polygon_with_holes restituisce Polygon Shapely con foro."""
         outer = self._make_outer()
         hole_poly = Point((50, 50)).buffer(5.0, resolution=64)
-        hole = Hole(polygon=hole_poly, diameter=10.0, center=(50, 50))
+        hole = Hole(role=ContourRole.HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
         part = ForgePart(outer=outer, holes=[hole])
         result_poly = part.polygon_with_holes
         print(f"[ForgePart] interiors={len(list(result_poly.interiors))}")
@@ -347,11 +350,11 @@ class TestForgePart(unittest.TestCase):
         self.assertIsInstance(part.bending_lines, list)
         self.assertEqual(len(part.bending_lines), 0)
 
-    def test_007_entity_ids_default_empty(self):
-        """entity_ids è set vuoto di default."""
+    def test_007_engrave_lines_default_empty(self):
+        """engrave_lines è lista vuota di default."""
         part = ForgePart(outer=self._make_outer())
-        self.assertIsInstance(part.entity_ids, set)
-        self.assertEqual(len(part.entity_ids), 0)
+        self.assertIsInstance(part.engrave_lines, list)
+        self.assertEqual(len(part.engrave_lines), 0)
 
     def test_008_custom_default_empty(self):
         """custom è dict vuoto di default."""
@@ -364,7 +367,7 @@ class TestForgePart(unittest.TestCase):
         p1 = ForgePart(outer=self._make_outer())
         p2 = ForgePart(outer=self._make_outer())
         inner_poly = Polygon([(10,10), (20,10), (20,20), (10,20)])
-        p1.inners.append(ForgeContour(polygon=inner_poly))
+        p1.inners.append(ForgeContour(role=ContourRole.INNER, polygon=inner_poly))
         print(f"[ForgePart] p1.inners={len(p1.inners)} p2.inners={len(p2.inners)}")
         self.assertEqual(len(p2.inners), 0)
 
@@ -377,7 +380,7 @@ class TestForgeResult(unittest.TestCase):
 
     def _make_result(self):
         outer_poly = Polygon([(0,0), (50,0), (50,50), (0,50)])
-        outer = ForgeContour(polygon=outer_poly)
+        outer = ForgeContour(role=ContourRole.OUTER, polygon=outer_poly)
         part  = ForgePart(outer=outer, label="pezzo_1", source_file="test.dxf")
         return ForgeResult(parts=[part], source_file="test.dxf")
 

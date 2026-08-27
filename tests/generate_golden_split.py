@@ -71,8 +71,8 @@ def generate(force: bool = False, only: str = None):
         tolerance = config.get("tolerance", DEFAULT_TOLERANCE)
 
         try:
-            _, msp = forge.load_dxf(parent_path, upgrade=True, explode_inserts=True)
-            result = forge.heal(msp, tolerance=tolerance)
+            doc = forge.load_dxf(parent_path, upgrade=True, explode_inserts=True)
+            result = forge.heal(doc, tolerance=tolerance)
 
             if not result.is_valid or not result.parts:
                 print(f"  SKIP (non valido): {parent_path.name}")
@@ -80,15 +80,12 @@ def generate(force: bool = False, only: str = None):
                 continue
 
             forge.detect(result)
-            forge.write(msp, result)
 
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                forge.split(
-                    msp,
-                    result,
-                    output_folder=tmp_dir,
-                    namer=lambda i, part: f"{part.label}_P{i + 1:03d}",
-                )
+            forge.split(
+                result,
+                doc,
+                namer=lambda i, part: f"{part.label}_P{i + 1:03d}",
+            )
 
             print(f"  {parent_path.name} → {len(result.parts)} parti")
 

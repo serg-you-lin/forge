@@ -90,12 +90,14 @@ def generate(force: bool = False, only: str = None):
             label_map = {**GLOBAL_LABEL_MAP, **config.get("label_map", {})}
 
 
-            doc, msp = forge.load_dxf(dxf_path, explode_inserts=True, flatten_z_flag=True, verbose=False)
+            doc = forge.load_dxf(
+                dxf_path, explode_inserts=True, flatten_z_flag=True,
+                verbose=False, label_map=label_map,
+            )
 
             result = forge.heal(
-                msp,
+                doc,
                 tolerance=tolerance,
-                label_map=label_map,
             )
 
             forge.detect(result)

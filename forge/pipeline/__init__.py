@@ -1,9 +1,11 @@
 
 from __future__ import annotations
 
+import os
+
 from .heal import HealStep
 from .detect import detect
-from .write import write, split, DEFAULT_MIN_PART_AREA
+from .write import to_dxf, split, part_passes_min_area, DEFAULT_MIN_PART_AREA
 from .inject import inject
 from ..model.result import ForgeResult
 from ..model.document import ForgeDocument
@@ -29,18 +31,30 @@ def heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeR
 
 
 def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
-                   tolerance=None, namer=None, keep_trash=False,
+                   tolerance=None, namer=None,
                    include_annotations=True,
                    min_area=DEFAULT_MIN_PART_AREA,
                    exclude_types=None) -> ForgeResult:
+    """
+    Pipeline completa multi-pezzo + salvataggio su disco.
+
+    heal → detect → split → `.saveas()` per parte. È l'unica funzione della
+    pipeline che tocca il filesystem: `split()` resta puro.
+    Il nome file è `f"{part.label}.dxf"` (part.label lo assegna `namer`).
+    """
     result = heal(doc, tolerance=tolerance, label=label, source_file=source_file)
 
     if not result.is_valid or not result.parts:
         return result
 
     detect(result)
-    split(result, doc, output_folder=output_folder, namer=namer,
-          keep_trash=keep_trash, include_annotations=include_annotations,
-          min_area=min_area, exclude_types=exclude_types)
+    drawings = split(result, doc, namer=namer,
+                     include_annotations=include_annotations,
+                     min_area=min_area, exclude_types=exclude_types)
+
+    os.makedirs(output_folder, exist_ok=True)
+    kept = [p for p in result.parts if part_passes_min_area(p, min_area)]
+    for part, drawing in zip(kept, drawings):
+        drawing.saveas(os.path.join(output_folder, f"{part.label}.dxf"))
 
     return result

@@ -13,7 +13,7 @@ Workflow consigliato (file singolo):
 
     result = forge.heal(doc, label="pezzo", source_file="pezzo.dxf")
     forge.detect(result)
-    doc_out = forge.write(result, doc)
+    doc_out = forge.to_dxf(result, doc)
     forge.inject(result)
     doc_out.saveas("pezzo_healed.dxf")
     forge.save_json(result, "pezzo.json")
@@ -28,14 +28,19 @@ Workflow multi-pezzo:
     forge.save_json(result, "batch.json")
 
 load_dxf() restituisce un ForgeDocument (edges + annotations + source_meta):
-dopo di essa ezdxf non viene più toccato fino a write().
+dopo di essa ezdxf non viene più toccato fino a to_dxf().
+
+Materializzazione in DXF:
+    doc_out       = forge.to_dxf(result, doc)      # un Drawing, tutte le parti
+    docs          = forge.split(result, doc)       # un Drawing per parte (puro)
+    forge.split_to_files(doc, "output/")           # split + saveas su disco
 """
 
 from .adapters.dxf.loader import load_dxf, document_from_msp
 from .adapters.pdf.loader import load_pdf
 from .pipeline            import heal, split_to_files
 from .pipeline.inject   import inject
-from .pipeline.write  import write, split
+from .pipeline.write  import to_dxf, split
 from .pipeline.detect  import detect
 from .rules.validator     import validate, validate_msp
 from .io.exporter         import (
@@ -63,7 +68,7 @@ __all__ = [
     # Workflow
     "heal",
     "detect",
-    "write",
+    "to_dxf",
     "split",
     "inject",
     "split_to_files",

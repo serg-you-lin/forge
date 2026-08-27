@@ -36,20 +36,24 @@ SPECIAL_LAYERS = {
 
 
 def _run_pipeline(dxf_path: Path) -> tuple:
-    """Esegue heal → detect → write e restituisce (doc, msp, result)."""
+    """Esegue heal → detect → to_dxf e restituisce (source_doc, doc_out, result).
 
-    doc, msp = forge.load_dxf(dxf_path, explode_inserts=True)
+    `doc_out` è il documento materializzato da to_dxf(): è lì che vivono i
+    layer forge e le entità routate. `source_doc` serve solo a split().
+    """
+    source_doc = forge.load_dxf(
+        dxf_path, explode_inserts=True, label_map=SPECIAL_LAYERS,
+    )
     result = forge.heal(
-        msp,
+        source_doc,
         tolerance=1,
-        label_map=SPECIAL_LAYERS,
         label=dxf_path.stem,
         source_file=dxf_path.name,
     )
     forge.detect(result, bending_tolerance=0.2)
-    forge.write(msp, result)
+    doc_out = forge.to_dxf(result, source_doc)
 
-    return doc, msp, result
+    return source_doc, doc_out, result
 
 
 class TestLayerTable(unittest.TestCase):
@@ -59,7 +63,8 @@ class TestLayerTable(unittest.TestCase):
     def setUpClass(cls):
         if not MULTIFEATURE.exists():
             raise unittest.SkipTest(f"File non trovato: {MULTIFEATURE}")
-        cls.doc, cls.msp, cls.result = _run_pipeline(MULTIFEATURE)
+        cls.src_doc, cls.doc, cls.result = _run_pipeline(MULTIFEATURE)
+        cls.msp = cls.doc.modelspace()
 
     def test_tutti_i_layer_forge_presenti(self):
         """Ogni layer forge deve esistere nella tabella layer del doc."""
@@ -93,7 +98,8 @@ class TestEntitaBylayer(unittest.TestCase):
     def setUpClass(cls):
         if not MULTIFEATURE.exists():
             raise unittest.SkipTest(f"File non trovato: {MULTIFEATURE}")
-        cls.doc, cls.msp, cls.result = _run_pipeline(MULTIFEATURE)
+        cls.src_doc, cls.doc, cls.result = _run_pipeline(MULTIFEATURE)
+        cls.msp = cls.doc.modelspace()
         cls.forge_layer_names = {name.upper() for name in ALL_FORGE_LAYERS}
 
     def test_entita_su_layer_forge_hanno_bylayer(self):
@@ -150,9 +156,15 @@ class TestLayerSplit(unittest.TestCase):
         if not MULTIFEATURE.exists():
             raise unittest.SkipTest(f"File non trovato: {MULTIFEATURE}")
         
-        cls.doc, cls.msp, cls.result = _run_pipeline(MULTIFEATURE)
+        cls.src_doc, cls.doc, cls.result = _run_pipeline(MULTIFEATURE)
+        cls.msp = cls.doc.modelspace()
         cls.output_dir = tempfile.mkdtemp()
-        cls.generated = forge.split(cls.msp, cls.result, cls.output_dir)
+        drawings = forge.split(cls.result, cls.src_doc)
+        cls.generated = []
+        for i, drawing in enumerate(drawings):
+            path = str(Path(cls.output_dir) / f"child_{i:03d}.dxf")
+            drawing.saveas(path)
+            cls.generated.append(path)
 
     def test_file_figli_generati(self):
         self.assertGreater(len(self.generated), 0, "split() non ha generato file")
@@ -178,9 +190,9 @@ class TestLayerSplit(unittest.TestCase):
         """Nei file figli le entità forge devono avere color=256."""
         forge_layer_names = {name.upper() for name in ALL_FORGE_LAYERS}
         for path in self.generated:
-            doc_out, msp_out = forge.load_dxf(path, explode_inserts=True)
+            msp_out = ezdxf.readfile(path).modelspace()
             violazioni = []
-            
+
             for entity in msp_out:
                 if not entity.dxf.hasattr("layer"):
                     continue
@@ -212,15 +224,15 @@ class TestLineetteBastarde(unittest.TestCase):
         if not cls.dxf_path.exists():
             raise unittest.SkipTest(f"File non trovato: {cls.dxf_path}")
 
-        doc, cls.msp = forge.load_dxf(cls.dxf_path, explode_inserts=True)
+        src_doc = forge.load_dxf(cls.dxf_path, explode_inserts=True)
         cls.result = forge.heal(
-            cls.msp,
+            src_doc,
             tolerance=1,
             label=cls.dxf_path.stem,
             source_file=cls.dxf_path.name,
         )
         forge.detect(cls.result)
-        forge.write(cls.msp, cls.result)
+        cls.msp = forge.to_dxf(cls.result, src_doc).modelspace()
 
     def test_un_solo_part(self):
         self.assertEqual(self.result.part_count, 1, "Atteso 1 part")
@@ -233,28 +245,44 @@ class TestLineetteBastarde(unittest.TestCase):
         bending = [e for e in self.msp if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_BENDING]
         self.assertEqual(len(bending), 2, f"Attese 2 entità su Bending, trovate {len(bending)}")
 
-    def test_quattro_entita_su_trash(self):
-        trash = [e for e in self.msp if e.dxf.hasattr("layer") and e.dxf.layer == TRASH_LAYER]
-        self.assertEqual(len(trash), 4, f"Attese 4 entità su Trash, trovate {len(trash)}")
-
-    def test_nessuna_line_su_bending(self):
-        """Nessuna LINE deve finire su Bending se non è una BendingLine riconosciuta."""
-        part = self.result.parts[0]
-        bend_ids = {id(bl.source_ref) for bl in part.bending_lines}
-        
-        linee_bastarde = [
-            e for e in self.msp
-            if e.dxftype() == "LINE"
-            and e.dxf.hasattr("layer")
-            and e.dxf.layer == LAYER_BENDING
-            and id(e) not in bend_ids
-        ]
-        
-        self.assertEqual(
-            linee_bastarde,
-            [],
-            msg=f"{len(linee_bastarde)} LINE su Bending non presenti in bending_lines",
+    def test_linee_spurie_in_trash(self):
+        """Le LINE non riconosciute come piega non vengono perse: restano nel
+        modello come trash_entities (non più spostate su un layer 'Trash').
+        Con 2 sole pieghe reali riconosciute, il resto finisce in trash."""
+        self.assertEqual(len(self.result.parts[0].bending_lines), 2)
+        self.assertGreaterEqual(
+            len(self.result.trash_entities), 4,
+            f"trash_entities inatteso: {len(self.result.trash_entities)}",
         )
+
+    def test_nessuna_line_spuria_su_bending(self):
+        """Ogni LINE materializzata su Bending deve corrispondere, per coordinate,
+        a una bending line del modello — nessuna LINE bastarda."""
+        part = self.result.parts[0]
+
+        def _key(a, b):
+            pa, pb = sorted([(round(a[0], 3), round(a[1], 3)),
+                             (round(b[0], 3), round(b[1], 3))])
+            return (pa, pb)
+
+        model_keys = set()
+        for bl in part.bending_lines:
+            if bl.geometry is None:
+                continue
+            coords = list(bl.geometry.coords)
+            model_keys.add(_key(coords[0], coords[-1]))
+
+        spurie = []
+        for e in self.msp:
+            if e.dxftype() != "LINE":
+                continue
+            if not e.dxf.hasattr("layer") or e.dxf.layer != LAYER_BENDING:
+                continue
+            k = _key((e.dxf.start.x, e.dxf.start.y), (e.dxf.end.x, e.dxf.end.y))
+            if k not in model_keys:
+                spurie.append(k)
+
+        self.assertEqual(spurie, [], msg=f"LINE su Bending non nel modello: {spurie}")
 
 
 class TestGambaTavoloSplit(unittest.TestCase):
@@ -269,10 +297,10 @@ class TestGambaTavoloSplit(unittest.TestCase):
         if not cls.dxf_path.exists():
             raise unittest.SkipTest(f"File non trovato: {cls.dxf_path}")
         
-        doc, cls.msp = forge.load_dxf(cls.dxf_path, explode_inserts=True)
+        src_doc = forge.load_dxf(cls.dxf_path, explode_inserts=True)
         cls.output_dir = tempfile.mkdtemp()
         cls.result = forge.split_to_files(
-            cls.msp,
+            src_doc,
             output_folder=cls.output_dir,
             label=cls.dxf_path.stem,
             source_file=cls.dxf_path.name,
@@ -286,7 +314,7 @@ class TestGambaTavoloSplit(unittest.TestCase):
     def test_tutti_i_figli_hanno_outer_su_layer_corretto(self):
         """Ogni figlio deve avere almeno una LWPOLYLINE su OuterContour."""
         for path in self.generated:
-            doc_out, msp_out = forge.load_dxf(path, explode_inserts=True)
+            msp_out = ezdxf.readfile(path).modelspace()
             outer_entities = [
                 e for e in msp_out
                 if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_OUTER
@@ -302,7 +330,7 @@ class TestGambaTavoloSplit(unittest.TestCase):
         """Nessun figlio deve avere LWPOLYLINE su layer non-forge come contorno esterno."""
         forge_layer_names = {name.upper() for name in ALL_FORGE_LAYERS}
         for path in self.generated:
-            doc_out, msp_out = forge.load_dxf(path, explode_inserts=True)
+            msp_out = ezdxf.readfile(path).modelspace()
             spuri = [
                 e for e in msp_out
                 if e.dxftype() == "LWPOLYLINE"

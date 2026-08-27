@@ -243,6 +243,7 @@ def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> None:
 
     engraving = EngravingOpen(
         role=ContourRole.ENGRAVE,
+        segments=list(getattr(proxy, "segments", []) or []),
         length=round(proxy.length, 4),
         pts=list(proxy.pts),
         geometry=LineString(proxy.pts) if len(proxy.pts) >= 2 else None,
@@ -264,6 +265,7 @@ def _handle_engrave_closed(inner, part: ForgePart) -> None:
     engraving = EngravingClosed(
         role=ContourRole.ENGRAVE,
         polygon=inner.polygon,
+        segments=list(getattr(inner, "segments", []) or []),
         length=round(inner.polygon.exterior.length, 4),
         part_label=part.label,
     )
