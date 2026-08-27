@@ -14,11 +14,10 @@ class ForgeResult:
     È quello che forge.heal() restituisce al chiamante.
 
     Campi:
-        label_map         : dict {nome_layer: tipo_lavorazione} passato a detect().
-                                 Salvato qui da detect() — inject() e write()
-                                 lo leggono senza che il chiamante lo ripassi.
-                                 Non serializzato in to_dict(): è configurazione di sessione.
-        _entities_in_loops_ids : id() di LINE/ARC assorbite in loop — eliminate da write().
+        label_map : dict {nome_layer: tipo_lavorazione} passato a detect().
+                    Salvato qui da detect() — inject() e write()
+                    lo leggono senza che il chiamante lo ripassi.
+                    Non serializzato in to_dict(): è configurazione di sessione.
     """
     parts:               List[ForgePart]        = field(default_factory=list)
     source_file:         str                    = ""
@@ -28,9 +27,8 @@ class ForgeResult:
     trash_entities:      List[Any]              = field(default_factory=list)
     classified_entities: List[ClassifiedEntity] = field(default_factory=list)
     label_map:           dict                   = field(default_factory=dict)
-    all_arcs: List[Any] = field(default_factory=list)
-    _entities_in_loops_ids: Set[int] = field(default_factory=set)
-    _open_shapes: List[Any] = field(default_factory=list)
+    all_arcs:            List[Any]              = field(default_factory=list)
+    _open_shapes:        List[Any]              = field(default_factory=list)
 
     @property
     def part_count(self) -> int:

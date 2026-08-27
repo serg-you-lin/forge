@@ -143,15 +143,14 @@ def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
     output_folder = Path(tempfile.mkdtemp(prefix=f"golden_split_{parent_path.stem}_"))
     atexit.register(shutil.rmtree, output_folder, ignore_errors=True)
 
-    doc, msp = forge.load_dxf(parent_path, explode_inserts=True)
-    result = forge.heal(msp, tolerance=tolerance)
+    doc = forge.load_dxf(parent_path, explode_inserts=True, tolerance=tolerance)
+    result = forge.heal(doc, tolerance=tolerance)
 
     if result.is_valid and result.parts:
         forge.detect(result)
-        forge.write(msp, result)
         forge.split(
-            msp,
             result,
+            doc,
             output_folder=str(output_folder),
             namer=lambda i, part: f"{part.label}_P{i + 1:03d}",
         )

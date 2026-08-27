@@ -18,34 +18,12 @@ from forge.model.engraving import EngravingClosed, EngravingOpen
 
 @dataclass
 class ForgeContour(ClosedFeature):
-    origin: str = ""
-
-    def __post_init__(self):
-        pass  # role arriva già settato dall'adapter
-
-    def source_layer(self) -> str:
-        if self.origin:
-            return self.origin
-        try:
-            if self.source_ref is not None and self.source_ref.dxf.hasattr("layer"):
-                layer = self.source_ref.dxf.layer
-                if layer:
-                    return str(layer)
-        except Exception:
-            pass
-        if self.role is not None and self.role != ContourRole.UNKNOWN:
-            return self.role.value
-        return ""
 
     def to_dict(self) -> dict:
-        d = {
+        return {
             "role": self.role,
             "area": round(self.area, 4),
         }
-        layer = self.source_layer()
-        if layer:
-            d["origin"] = layer
-        return d
 
 
 @dataclass
@@ -58,7 +36,6 @@ class ForgePart:
     label:         str                                     = ""
     source_file:   str                                     = ""
     custom:        dict                                    = field(default_factory=dict)
-    entity_ids:    Set[int]                                = field(default_factory=set)
 
     @property
     def polygon_with_holes(self) -> Polygon:
