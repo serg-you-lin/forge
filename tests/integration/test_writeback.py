@@ -27,6 +27,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
+from forge.adapters.dxf.geometry_adapter import entity_to_polygon
 from forge.adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     LAYER_COUNTERSINK, LAYER_BENDING, LAYER_ENGRAVE,
@@ -221,6 +222,54 @@ class TestWritebackTrash(unittest.TestCase):
         trash = [e for e in msp
                  if e.dxf.hasattr("layer") and e.dxf.layer == "Trash"]
         self.assertEqual(len(trash), 0)
+
+
+# ---------------------------------------------------------------------------
+# Round-trip geometrico — la geometria SCRITTA deve coincidere col modello
+# ---------------------------------------------------------------------------
+
+class TestWritebackArcRoundTrip(unittest.TestCase):
+    """
+    Regressione archi: to_dxf() deve materializzare l'outer con la stessa
+    area del modello. Prima del fix a arc_seg_to_bulge gli archi invertiti
+    (loop orientato CCW → ccw=False) venivano scritti con il bulge dell'arco
+    complementare, cioè "alla rovescia", falsando l'area di migliaia di mm².
+    """
+
+    ARC_EXAMPLES = [
+        "archi_bastardi.dxf",
+        "arco convesso.dxf",
+        "maniglia.dxf",
+        "flangia_scantonata.dxf",
+        "rettangolo_raggiato.dxf",
+    ]
+
+    def _written_outer_area(self, msp):
+        area = 0.0
+        for e in msp:
+            if not e.dxf.hasattr("layer") or e.dxf.layer != LAYER_OUTER:
+                continue
+            if e.dxftype() not in ("LWPOLYLINE", "POLYLINE", "CIRCLE"):
+                continue
+            poly = entity_to_polygon(e)
+            if poly is not None:
+                area += poly.area
+        return area
+
+    def test_outer_area_matches_model(self):
+        for name in self.ARC_EXAMPLES:
+            path = EXAMPLES_DIR / name
+            if not path.exists():
+                continue
+            with self.subTest(example=name):
+                result, msp = _pipeline(name, detect=True)
+                model_area = sum(p.outer.polygon.area for p in result.parts)
+                written_area = self._written_outer_area(msp)
+                self.assertAlmostEqual(
+                    written_area, model_area, delta=max(1.0, model_area * 1e-4),
+                    msg=f"{name}: outer scritto {written_area:.3f} vs "
+                        f"modello {model_area:.3f}",
+                )
 
 
 if __name__ == "__main__":
