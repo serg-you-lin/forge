@@ -15,16 +15,15 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-import numpy as np
-
 from ..adapters.bridge.edge import Edge
+from .geometry import node_decimals_for
 
 
 class ForgeAdapter(ABC):
 
     def __init__(self, tolerance: float = 0.05):
         self.tolerance = tolerance
-        self.node_decimals = max(round(-np.log10(tolerance * 2)), 1)
+        self.node_decimals = node_decimals_for(tolerance)
 
     @abstractmethod
     def to_edges(self) -> list[Edge]:

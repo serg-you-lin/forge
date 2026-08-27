@@ -37,7 +37,6 @@ from forge.model.role import ContourRole
 def _edge(start, end):
     """Crea un Edge lineare."""
     return Edge(
-        source_ref=None,
         role=ContourRole.UNKNOWN,
         start=start,
         end=end,
@@ -49,7 +48,6 @@ def _arc_edge(start, end, arc_pts):
     # Usiamo SplineSeg per rappresentare la discretizzazione dell'arco
     from forge.core.primitives.segments import SplineSeg
     return Edge(
-        source_ref=None,
         role=ContourRole.UNKNOWN,
         start=start,
         end=end,

@@ -1,13 +1,13 @@
-# forge/core/healing/bending_detector.py
-
 """
 bending_detector.py
 -------------------
 Rileva gli edge candidati come linee di piega.
 
 Un edge è confermato bending se:
-  1. Entrambi gli endpoint sono nodi branching nel grafo (degree > 2)
-  2. Il centroide è interno al convex hull — non è un edge di contorno
+  1. Non proviene da un percorso già chiuso (closed_path) — quella è
+     geometria di contorno per definizione, mai una piega
+  2. Entrambi gli endpoint sono nodi branching nel grafo (degree > 2)
+  3. Il centroide è interno al convex hull — non è un edge di contorno
 
 Input:  Graph, list[Edge]
 Output: set[int]  — id() degli Edge confermati bending
@@ -31,7 +31,7 @@ class BendingDetector:
 
         candidates = [
             e for e in edges
-            if not _is_closed_polyline_ref(e.source_ref)
+            if not getattr(e, "closed_path", False)
             if e.start in branching and e.end in branching
         ]
         if not candidates:
@@ -52,11 +52,3 @@ class BendingDetector:
                 confirmed.add(id(edge))
 
         return confirmed
-
-
-def _is_closed_polyline_ref(ref) -> bool:
-    if ref is None or not hasattr(ref, "dxftype"):
-        return False
-    if ref.dxftype() not in ("LWPOLYLINE", "POLYLINE"):
-        return False
-    return bool(getattr(ref, "is_closed", False) or getattr(ref, "closed", False))

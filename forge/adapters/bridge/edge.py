@@ -22,17 +22,19 @@ class Edge:
     Il riferimento all'entità originale non viene mai perso.
 
     Campi:
-        source_ref : riferimento all'entità originale (LINE, ARC, SPLINE, path SVG, ...)
         role       : ruolo semantico — assegnato dall'adapter prima di costruire l'Edge,
                      mai derivato dal layer DXF qui dentro
         start      : endpoint arrotondato alla tolerance
         end        : endpoint arrotondato alla tolerance
         segment    : primitiva geometrica nativa — mai discretizzata qui,
                      la discretizzazione avviene nel LoopFinder via .discretize()
+        closed_path: True se il segmento proviene da un percorso già chiuso
+                     (LWPOLYLINE/POLYLINE closed). Geometria strutturale di
+                     contorno per definizione — non può essere una linea di piega.
     """
-    source_ref: Any
-    role:       ContourRole
-    start:      Tuple[float, float]
-    end:        Tuple[float, float]
-    segment:    Segment
+    role:        ContourRole
+    start:       Tuple[float, float]
+    end:         Tuple[float, float]
+    segment:     Segment
+    closed_path: bool = False
 

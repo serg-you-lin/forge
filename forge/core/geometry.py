@@ -26,6 +26,16 @@ def round_point(pt, decimals: int = 1) -> Tuple:
     return (round(float(pt[0]), decimals), round(float(pt[1]), decimals))
 
 
+def node_decimals_for(tolerance: float) -> int:
+    """
+    Numero di decimali a cui arrotondare gli endpoint per la topologia.
+
+    Unica fonte di verità — usata da ForgeAdapter e da HealStep perché
+    producano nodi coerenti a parità di tolleranza.
+    """
+    return max(round(-math.log10(tolerance * 2)), 1)
+
+
 # ---------------------------------------------------------------------------
 # Archi e bulge
 # ---------------------------------------------------------------------------

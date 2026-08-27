@@ -233,6 +233,47 @@ class SplineSeg:
         return result
 
 
+def segment_endpoints(segment) -> Tuple[Point, Point]:
+    """
+    (start, end) di un segmento primitivo, in coordinate XY non arrotondate.
+
+    Unica sede di questo calcolo — usata dall'adapter per costruire gli Edge e
+    dal gap solver per lavorare su geometria pura.
+    """
+    if isinstance(segment, LineSeg):
+        return segment.start, segment.end
+
+    if isinstance(segment, ArcSeg):
+        start = (
+            segment.center[0] + segment.radius * math.cos(segment.start_angle),
+            segment.center[1] + segment.radius * math.sin(segment.start_angle),
+        )
+        end = (
+            segment.center[0] + segment.radius * math.cos(segment.end_angle),
+            segment.center[1] + segment.radius * math.sin(segment.end_angle),
+        )
+        return start, end
+
+    if isinstance(segment, SplineSeg):
+        # approx_points = risultato del flattening: sono i punti reali sulla
+        # curva, quindi gli endpoint più affidabili.
+        if segment.approx_points:
+            s, e = segment.approx_points[0], segment.approx_points[-1]
+            return (s[0], s[1]), (e[0], e[1])
+        if segment.fit_points:
+            s, e = segment.fit_points[0], segment.fit_points[-1]
+            return (s[0], s[1]), (e[0], e[1])
+        if segment.control_points:
+            return segment.control_points[0], segment.control_points[-1]
+        return (0.0, 0.0), (0.0, 0.0)
+
+    if isinstance(segment, CircleSeg):
+        pt = (segment.center[0] + segment.radius, segment.center[1])
+        return pt, pt
+
+    return (0.0, 0.0), (0.0, 0.0)
+
+
 @dataclass
 class CircleSeg:
     """Cerchio geometrico puro."""

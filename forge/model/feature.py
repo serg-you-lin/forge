@@ -37,7 +37,6 @@ class Feature:
     Non istanziare direttamente — usare ClosedFeature o OpenFeature.
     """
     role:       ContourRole
-    source_ref: Any = field(default=None, repr=False)
 
 
 @dataclass

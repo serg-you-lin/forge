@@ -63,14 +63,18 @@ def run_pipeline(
 
     path = load(dxf_name)
 
-    doc, msp = forge.load_dxf(path, explode_inserts=True)
+    doc = forge.load_dxf(
+        path,
+        explode_inserts=True,
+        tolerance=tolerance,
+        label_map=special_layers or {},
+    )
 
     result = forge.heal(
-        msp,
+        doc,
         tolerance=tolerance,
         label=Path(dxf_name).stem,
         source_file=dxf_name,
-        label_map=special_layers or {},
     )
 
     if do_detect:
@@ -81,12 +85,14 @@ def run_pipeline(
     if do_inject:
         forge.inject(result)
 
+    doc_out = None
     if do_write:
-        forge.write(msp, result)
+        doc_out = forge.write(result, doc)
 
     output = {
         "doc": doc,
-        "msp": msp,
+        "doc_out": doc_out,
+        "msp": doc_out.modelspace() if doc_out is not None else None,
         "result": result,
         "reloaded_doc": None,
         "reloaded_msp": None,
@@ -102,19 +108,19 @@ def run_pipeline(
 
         tmp.close()
 
-        doc.saveas(tmp.name)
+        (doc_out or forge.write(result, doc)).saveas(tmp.name)
 
-        reloaded_doc, reloaded_msp = forge.load_dxf(tmp.name, explode_inserts=True)
+        reloaded_doc = forge.load_dxf(tmp.name, explode_inserts=True, tolerance=tolerance)
 
         reloaded_result = forge.heal(
-            reloaded_msp,
+            reloaded_doc,
             tolerance=tolerance,
             label=f"{Path(dxf_name).stem}_reloaded",
             source_file=tmp.name,
         )
 
         output["reloaded_doc"]    = reloaded_doc
-        output["reloaded_msp"]    = reloaded_msp
+        output["reloaded_msp"]    = None
         output["reloaded_result"] = reloaded_result
 
     return output

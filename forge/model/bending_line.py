@@ -27,28 +27,12 @@ class BendingLine(OpenFeature):
         if self.role == ContourRole.UNKNOWN:
             self.role = ContourRole.BEND
 
-    def source_layer(self) -> str:
-        try:
-            if self.source_ref is not None and self.source_ref.dxf.hasattr("layer"):
-                layer = self.source_ref.dxf.layer
-                if layer:
-                    return str(layer)
-        except Exception:
-            pass
-        if self.role is not None and self.role != ContourRole.UNKNOWN:
-            return self.role.value
-        return ""
-
     def to_dict(self) -> dict:
         coords = list(self.geometry.coords)
-        d = {
+        return {
             "start":      coords[0],
             "end":        coords[-1],
             "length":     round(self.length, 4),
             "angle_deg":  round(self.angle_deg, 4),
             "part_label": self.part_label,
         }
-        layer = self.source_layer()
-        if layer:
-            d["origin"] = layer
-        return d

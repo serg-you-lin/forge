@@ -1,65 +1,71 @@
 import sys
 from pathlib import Path
 
-import numpy as np
-
 if __package__:
-    from forge.adapters.dxf import sanitize
     from ..model.result import ForgeResult
+    from ..model.document import ForgeDocument
     from ..core.topology.graph import build_node_graph
-    from ..adapters.dxf.geometry_adapter import spline_is_closed
-    from ..adapters.dxf.sanitize import deduplicate as _deduplicate_entities
-    from ..core.geometry import spline_endpoints, round_point
-    from ..adapters.dxf.sanitize import _explode_inserts
+    from ..core.geometry import node_decimals_for
+    from ..core.primitives.segments import ArcSeg, SplineSeg
+    from ..core.healing.gap_solver import (
+        free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes,
+    )
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from forge.adapters.dxf import sanitize
     from forge.model.result import ForgeResult
+    from forge.model.document import ForgeDocument
     from forge.core.topology.graph import build_node_graph
-    from forge.adapters.dxf.geometry_adapter import spline_is_closed
-    from forge.adapters.dxf.sanitize import deduplicate as _deduplicate_entities
-    from forge.core.geometry import spline_endpoints, round_point
-    from forge.adapters.dxf.sanitize import _explode_inserts
+    from forge.core.geometry import node_decimals_for
+    from forge.core.primitives.segments import ArcSeg, SplineSeg
+    from forge.core.healing.gap_solver import (
+        free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes,
+    )
 
 
 class HealStep:
+    """
+    Esegue l'healing su un ForgeDocument — zero ezdxf.
+
+    Lavora su doc.edges: gap closing (puro), individuazione bending,
+    ricerca loop, costruzione gerarchia.
+    """
+
     def __init__(
         self,
-        adapter,
+        doc: ForgeDocument,
         tolerance,
         label="",
         source_file="",
-        ignore_layers=None,
-        special_layers=None,
     ):
-        self.adapter         = adapter
+        self.doc             = doc
         self.tolerance       = tolerance
         self.label           = label
         self.source_file     = source_file
-        self.ignore_layers   = {l.lower() for l in (ignore_layers or [])}
-        self.special_layer_names = {k.lower() for k in (special_layers or {})}
 
-        self.node_decimals = self.adapter.node_decimals
+        self.node_decimals = node_decimals_for(tolerance)
         self.result        = ForgeResult(source_file=source_file)
 
-        if special_layers:
-            self.result.label_map = special_layers
+        label_map = doc.source_meta.get("label_map") or {}
+        if label_map:
+            self.result.label_map = label_map
 
         self.candidate_bending_ids = set()
         self.loop_edge_ids         = set()
         self.entities_in_loops     = set()
 
         self.proxies = []
-        self.closed_shapes = []  
+        self.closed_shapes = []
 
-        self.edges = []
+        self.edges = list(doc.edges)
 
     def run(self):
         self._load()
         if not self.result.is_valid:
             return self.result
         self._preprocess()
-        self.result.all_arcs = self.adapter.to_circular_arcs()
+        self.result.all_arcs = [
+            e.segment for e in self.edges if isinstance(e.segment, ArcSeg)
+        ]
         self._find_bending_candidates()
         self._find_loops()
         self._reintegrate_bending()
@@ -74,27 +80,21 @@ class HealStep:
 
 
     def _load(self):
-        self.edges = self.adapter.to_edges()
-
         if not self.edges:
             self.result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
             self.result.is_valid = False
             return
-        
+
     def _preprocess(self):
         graph_pre = self._build_graph()
-        endpoints = self.adapter.extract_free_endpoints(graph_pre)
+        endpoints = free_endpoints_from_edges(self.edges, graph_pre)
 
         if endpoints:
-            from ..core.healing.gap_solver import compute_gap_fixes
             fixes = compute_gap_fixes(endpoints, self.tolerance)
-            fixed = self.adapter.apply_gap_fixes(fixes)
-
-            if fixed:
-                self.edges = self.adapter.to_edges()
+            if fixes:
+                self.edges = apply_gap_fixes(self.edges, fixes, self.node_decimals)
                 graph_pre  = None
 
-        from ..core.primitives.segments import SplineSeg
         open_spline_edges = [
             e for e in self.edges
             if isinstance(e.segment, SplineSeg) and e.start != e.end
@@ -103,7 +103,7 @@ class HealStep:
             if graph_pre is None:
                 graph_pre = self._build_graph()
             for edge in open_spline_edges:
-                if len(graph_pre.get(edge.start, [])) < 2 or len(graph_pre.get(edge.end, [])) < 2:
+                if graph_pre.degree(edge.start) < 2 or graph_pre.degree(edge.end) < 2:
                     self.result.warnings.append(
                         "SPLINE con endpoint non connesso trovata — "
                         "gap tra SPLINE e altre entità gestito con una linea di congiunzione. "
@@ -149,23 +149,11 @@ class HealStep:
             for loop in structural_loops
             for edge, _ in loop
         }
-        self.entities_in_loops = {
-            id(edge.source_ref)
-            for loop in structural_loops
-            for edge, _ in loop
-            if edge.source_ref is not None
-        }
-        self.result._entities_in_loops_ids = self.entities_in_loops
 
         for loop in structural_loops:
             role = loop[0][0].role if loop else ContourRole.UNKNOWN
 
-            first_edge, _ = loop[0]
-            first_source  = getattr(first_edge, "source_ref", None)
-            is_durable    = len(loop) == 1 and first_source is not None
-
-            segments         = parse_loop(loop)
-            proxy_source_ref = first_source if is_durable else None
+            segments = parse_loop(loop)
 
             from ..core.primitives.polygon_builder import build_polygon
             from ..core.primitives.segments import DEFAULT_TOLERANCE
@@ -177,7 +165,6 @@ class HealStep:
                 loop,
                 role=role,
                 polygon=polygon,
-                source_ref=proxy_source_ref,
                 segments=segments,
             )
             if shape is not None:
@@ -259,9 +246,6 @@ def _fallback_polygonize(self):
             f"Geometria ricostruita via fallback polygonize "
             f"({len(polygons)} poligoni). Verificare il risultato."
         )
-        # self.entities_in_loops = {id(e) for e in self.all_lines + self.all_arcs}
-        self.entities_in_loops = {id(e.source_ref) for e in self.edges}
-        self.result._entities_in_loops_ids = self.entities_in_loops
 
         for poly in polygons:
             if not poly.is_valid:
@@ -277,7 +261,6 @@ def _fallback_polygonize(self):
                 [],
                 role=ContourRole.OUTER,
                 polygon=poly,
-                source_ref=None,
                 segments=fallback_segments,
             )
             if shape is not None:
@@ -294,7 +277,6 @@ def _fallback_polygonize(self):
                     [],
                     role=ContourRole.INNER,
                     polygon=inner_poly,
-                    source_ref=None,
                     segments=inner_segments,
                 )
                 if shape_i is not None:
@@ -304,7 +286,6 @@ def _fallback_polygonize(self):
             "LINE/ARC non formano loop chiusi — "
             "potrebbero essere marcature o geometria aperta."
         )
-
 
 def _loop_is_structural(loop, label_map) -> bool:
     from ..model.role import ContourRole

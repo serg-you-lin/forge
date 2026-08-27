@@ -7,12 +7,11 @@ from __future__ import annotations
 import math
 from typing import Optional
 
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, Point
 
 from ..model import (
     ForgeResult,
     ForgePart,
-    Hole,
     BendingLine,
     ClassifiedEntity,
     HOLE_TYPE_PLAIN,
@@ -22,7 +21,7 @@ from ..model import (
 )
 from ..model.engraving import EngravingClosed, EngravingOpen
 from ..model.role import ContourRole
-from ..adapters.bridge.shape import OpenShape, ClosedShape
+from ..adapters.bridge.shape import OpenShape
 from ..core.classification.hole_detector import is_threaded_hole
 from ..rules.thresholds import STRUCTURAL_ROLES
 
@@ -50,7 +49,7 @@ def detect(
 
 
 # ---------------------------------------------------------------------------
-# Step 1 — labeled shapes (certezza 1.0)
+# Step 1 — labeled shapes
 # ---------------------------------------------------------------------------
 
 def _detect_labeled(result: ForgeResult) -> None:
@@ -69,7 +68,6 @@ def _detect_labeled(result: ForgeResult) -> None:
         data = _extract_data(proxy, work_type)
         rep  = data.pop("representative_point", None)
         ce   = ClassifiedEntity(
-            source_ref=proxy.source_ref,
             work_type=work_type,
             confidence=1.0,
             source="labeled",
@@ -104,12 +102,9 @@ def _detect_labeled(result: ForgeResult) -> None:
                 continue
 
             work_type = inner.role.value
-            data = _extract_data_from_source(
-                inner.source_ref, work_type, polygon=inner.polygon
-            )
+            data = _extract_data_from_source(work_type, polygon=inner.polygon)
             rep  = data.pop("representative_point", None)
             ce = ClassifiedEntity(
-                source_ref=inner.source_ref,
                 work_type=work_type,
                 confidence=1.0,
                 source="labeled",
@@ -127,16 +122,10 @@ def _detect_labeled(result: ForgeResult) -> None:
 # ---------------------------------------------------------------------------
 
 def _deduplicate_boundary_open_segments(result: ForgeResult, tolerance: float = 0.05) -> None:
-    """
-    Rimuove da trash_entities i segmenti aperti appoggiati al bordo outer.
-
-    Questa deduplica e' conservativa: agisce solo su proxy lineari con almeno
-    due punti e solo se il segmento e' coperto dalla fascia del boundary.
-    """
     if not result.parts or not result.trash_entities:
         return
 
-    kept = []
+    kept    = []
     removed = 0
 
     for proxy in result.trash_entities:
@@ -145,14 +134,13 @@ def _deduplicate_boundary_open_segments(result: ForgeResult, tolerance: float = 
             continue
 
         segment = LineString([proxy.pts[0], proxy.pts[-1]])
-        on_outer_boundary = False
+        on_boundary = False
         for part in result.parts:
-            boundary_band = part.outer.polygon.boundary.buffer(tolerance)
-            if boundary_band.covers(segment):
-                on_outer_boundary = True
+            if part.outer.polygon.boundary.buffer(tolerance).covers(segment):
+                on_boundary = True
                 break
 
-        if on_outer_boundary:
+        if on_boundary:
             removed += 1
         else:
             kept.append(proxy)
@@ -166,12 +154,8 @@ def _deduplicate_boundary_open_segments(result: ForgeResult, tolerance: float = 
 
 
 def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None:
-    classified_ids = {id(ce.source_ref) for ce in result.classified_entities}
-
     for proxy in result.trash_entities:
         if proxy.shape_type != "line":
-            continue
-        if id(proxy.source_ref) in classified_ids:
             continue
         if len(proxy.pts) < 2:
             continue
@@ -191,11 +175,9 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                     (proxy.pts[0][1] + proxy.pts[-1][1]) / 2,
                 )
                 if outer.contains(midpoint):
-                    geom = LineString([proxy.pts[0], proxy.pts[-1]])
                     part.bending_lines.append(BendingLine(
                         role=ContourRole.BEND,
-                        source_ref=proxy.source_ref,
-                        geometry=geom,
+                        geometry=LineString([proxy.pts[0], proxy.pts[-1]]),
                         length=proxy.length,
                         angle_deg=math.degrees(math.atan2(
                             proxy.pts[-1][1] - proxy.pts[0][1],
@@ -207,7 +189,7 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
 
 
 # ---------------------------------------------------------------------------
-# Step 3 — promozione fori da geometric_hint
+# Step 3 — promozione fori
 # ---------------------------------------------------------------------------
 
 def _detect_holes(result: ForgeResult) -> None:
@@ -236,7 +218,7 @@ def _detect_holes(result: ForgeResult) -> None:
                 hole.source     = "geometric"
                 continue
 
-            if hole.source_ref is not None and threaded:
+            if threaded:
                 hole.hole_type  = HOLE_TYPE_THREADED
                 hole.confidence = 0.80
                 hole.source     = "geometric"
@@ -251,7 +233,6 @@ def _detect_holes(result: ForgeResult) -> None:
 # ---------------------------------------------------------------------------
 
 def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> None:
-    """Proxy da trash_entities — traccia aperta."""
     if len(proxy.pts) >= 2:
         rep = (
             sum(p[0] for p in proxy.pts) / len(proxy.pts),
@@ -263,7 +244,6 @@ def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> None:
     engraving = EngravingOpen(
         role=ContourRole.ENGRAVE,
         length=round(proxy.length, 4),
-        source_ref=proxy.source_ref,
         pts=list(proxy.pts),
         geometry=LineString(proxy.pts) if len(proxy.pts) >= 2 else None,
     )
@@ -276,18 +256,16 @@ def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> None:
             return
 
     result.warnings.append(
-        f"detect(): engrave open non contenuto in nessun part (source_ref={proxy.source_ref})"
+        "detect(): engrave open non contenuto in nessun part"
     )
 
 
 def _handle_engrave_closed(inner, part: ForgePart) -> None:
-    """Inner da part.inners — contorno chiuso."""
     engraving = EngravingClosed(
         role=ContourRole.ENGRAVE,
         polygon=inner.polygon,
         length=round(inner.polygon.exterior.length, 4),
         part_label=part.label,
-        source_ref=inner.source_ref,
     )
     part.engrave_lines.append(engraving)
 
@@ -308,14 +286,7 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
             continue
 
         if work_type == "bending":
-            part.bending_lines.append(_bending_line_from_data(ce.data, ce.source_ref, part.label))
-            if (
-                ce.source_ref is not None
-                and hasattr(ce.source_ref, "dxftype")
-                and ce.source_ref.dxftype() == "LINE"
-            ):
-                # Solo le LINE native sono copiabili 1:1 da source_ref.
-                part.entity_ids.add(id(ce.source_ref))
+            part.bending_lines.append(_bending_line_from_data(ce.data, part.label))
 
         _write_custom(ce, part)
         return
@@ -386,12 +357,10 @@ def _extract_data(proxy: OpenShape, work_type: str) -> dict:
             "representative_point": rep,
         }
 
-    return {
-        "representative_point": rep,
-    }
+    return {"representative_point": rep}
 
 
-def _extract_data_from_source(source_ref, work_type: str, polygon=None) -> dict:
+def _extract_data_from_source(work_type: str, polygon=None) -> dict:
     work_type = work_type.lower()
 
     rep = None
@@ -400,25 +369,20 @@ def _extract_data_from_source(source_ref, work_type: str, polygon=None) -> dict:
         rep = (c.x, c.y)
 
     if work_type == "marking":
-        length = None
-        if polygon is not None:
-            length = round(polygon.exterior.length, 4)
+        length = round(polygon.exterior.length, 4) if polygon is not None else None
         return {
             "length":               length,
             "representative_point": rep,
         }
 
-    return {
-        "representative_point": rep,
-    }
+    return {"representative_point": rep}
 
 
-def _bending_line_from_data(data: dict, source_ref, part_label: str) -> BendingLine:
+def _bending_line_from_data(data: dict, part_label: str) -> BendingLine:
     start = data["start"]
     end   = data["end"]
     return BendingLine(
-        role=ContourRole.BEND,       # aggiunto
-        source_ref=source_ref,
+        role=ContourRole.BEND,
         geometry=LineString([start, end]),
         length=data["length"],
         angle_deg=data["angle_deg"],

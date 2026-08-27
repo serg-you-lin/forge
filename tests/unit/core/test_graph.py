@@ -9,7 +9,6 @@ from forge.model.role import ContourRole
 
 def _make_edge(p1, p2):
     return Edge(
-        source_ref=None,
         role=ContourRole.UNKNOWN,
         start=p1,
         end=p2,

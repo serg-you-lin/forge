@@ -32,26 +32,11 @@ class Hole(ClosedFeature):
     source:         str                       = ""
     origin:         str                       = ""
     outer_diameter:   Optional[float]         = None
-    outer_source_ref: Any                     = None
     is_hole:          bool                    = True
 
     def __post_init__(self):
         if self.role == ContourRole.UNKNOWN:
             self.role = ContourRole.HOLE
-
-    def source_layer(self) -> str:
-        if self.origin:
-            return self.origin
-        try:
-            if self.source_ref is not None and self.source_ref.dxf.hasattr("layer"):
-                layer = self.source_ref.dxf.layer
-                if layer:
-                    return str(layer)
-        except Exception:
-            pass
-        if self.role is not None and self.role != ContourRole.UNKNOWN:
-            return self.role.value
-        return ""
 
     def to_dict(self) -> dict:
         d = {
@@ -62,9 +47,7 @@ class Hole(ClosedFeature):
             "confidence": round(self.confidence, 4),
             "source":     self.source,
         }
-        layer = self.source_layer()
-        if layer:
-            d["origin"] = layer
+
         if self.outer_diameter is not None:
             d["outer_diameter"] = round(self.outer_diameter, 4)
         return d

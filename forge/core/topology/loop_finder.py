@@ -193,7 +193,6 @@ def edges_to_open_shapes(edges: list, exclude_ids: set, label_map: dict) -> list
         shapes.append(OpenShape(
             pts=pts,
             length=_length(pts),
-            source_ref=edge.source_ref,
             role=edge.role,
             shape_type=shape_type,
         ))

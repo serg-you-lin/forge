@@ -98,9 +98,10 @@ def _make_test(path):
                 upgrade=True,
                 explode_inserts=True,
                 flatten_z_flag=True,
-            )[1],
+                tolerance=config.get("tolerance", DEFAULT_TOLERANCE),
+                label_map=label_map,
+            ),
             tolerance=config.get("tolerance", DEFAULT_TOLERANCE),
-            label_map=label_map,
         )
 
         forge.detect(result)

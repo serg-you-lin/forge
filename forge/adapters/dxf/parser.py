@@ -166,32 +166,6 @@ def _reverse_segment(segment):
     return segment
 
 
-def _is_placeholder_segment(edge) -> bool:
-    """
-    Riconosce Edge di test costruiti con segmenti dummy (0,0)->(0,0).
-
-    In produzione gli Edge hanno segment coerente con start/end reali; nei
-    test unitari storici make_edge() usa un LineSeg placeholder da sostituire
-    con il parsing della source_ref.
-    """
-    seg = getattr(edge, "segment", None)
-    src = getattr(edge, "source_ref", None)
-    if seg is None or src is None or not hasattr(src, "dxftype"):
-        return False
-
-    if not isinstance(seg, LineSeg):
-        return False
-
-    if seg.start != seg.end:
-        return False
-
-    return (
-        getattr(edge, "start", None) == getattr(edge, "end", None)
-        and getattr(edge, "start", None) == seg.start
-        and src.dxftype() in {"LINE", "ARC", "SPLINE", "LWPOLYLINE", "POLYLINE"}
-    )
-
-
 def _parse_polyline(entity, rev) -> list:
     if entity.dxftype() == "POLYLINE":
         points = [
@@ -234,31 +208,11 @@ def _parse_polyline(entity, rev) -> list:
 # ---------------------------------------------------------------------------
 
 def parse_loop(loop) -> List:
-    """
-    Converte un loop di (Edge, rev) in lista di primitive geometriche pure.
-    Restituisce List[LineSeg | ArcSeg | SplineSeg].
-    """
-    has_spline = any(
-        isinstance(edge.segment, SplineSeg)
-        or (edge.source_ref is not None and edge.source_ref.dxftype() == "SPLINE")
-        for edge, _ in loop
-    )
     primitives = []
-
     for edge, rev in loop:
-        if edge.segment is not None and not _is_placeholder_segment(edge):
-            segment = _reverse_segment(edge.segment) if rev else edge.segment
-            primitives.append(segment)
+        segment = _reverse_segment(edge.segment) if rev else edge.segment
+        if isinstance(segment, list):
+            primitives.extend(segment)
         else:
-            entity = edge.source_ref
-            if entity is None:
-                continue
-            parsed = DxfEntityDispatcher(entity).parse(rev=rev, has_spline=has_spline)
-            if parsed is None:
-                continue
-            if isinstance(parsed, list):
-                primitives.extend(parsed)
-            else:
-                primitives.append(parsed)
-
+            primitives.append(segment)
     return primitives

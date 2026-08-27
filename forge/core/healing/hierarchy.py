@@ -1,8 +1,6 @@
 # forge/core/healing/hierarchy.py
 
 from typing import Optional
-
-import math
 from shapely.geometry import Polygon
 
 from ...adapters.bridge.shape import ClosedShape, OpenShape
@@ -20,21 +18,17 @@ MIN_SINGLE_LOOP_DIAMETER = 0.05
 # Conversione loop → ClosedShape
 # ---------------------------------------------------------------------------
 
-
 def _single_loop_geometry(loop, poly):
-    """Estrae diametro e centro da un loop degenerato."""
     if len(loop) != 1:
         return None, None
     if poly is None or poly.is_empty:
         return None, None
 
     minx, miny, maxx, maxy = poly.bounds
-    width = maxx - minx
+    width  = maxx - minx
     height = maxy - miny
     if width <= 0 or height <= 0:
         return None, None
-
-    # Verifica che sia circolare
     if abs(width - height) / max(width, height) > 0.15:
         return None, None
 
@@ -45,7 +39,6 @@ def loop_to_closed_shape(
     loop,
     role: ContourRole = ContourRole.UNKNOWN,
     polygon=None,
-    source_ref=None,
     segments: list = None,
 ) -> Optional[ClosedShape]:
     from ...core.topology.loop_finder import LoopFinder
@@ -67,7 +60,7 @@ def loop_to_closed_shape(
             return None
 
         diameter = None
-        center = None
+        center   = None
         if len(loop) == 1:
             diameter, center = _single_loop_geometry(loop, poly)
             if diameter is not None and diameter < MIN_SINGLE_LOOP_DIAMETER:
@@ -77,7 +70,6 @@ def loop_to_closed_shape(
             polygon=poly,
             diameter=diameter,
             center=center,
-            source_ref=source_ref,
             role=role,
             segments=segments or [],
         )
@@ -86,7 +78,7 @@ def loop_to_closed_shape(
 
 
 # ---------------------------------------------------------------------------
-# Helper privati - albero di contenimento
+# Albero di contenimento
 # ---------------------------------------------------------------------------
 
 def _place(proxy: ClosedShape, nodes: list) -> bool:
@@ -98,7 +90,7 @@ def _place(proxy: ClosedShape, nodes: list) -> bool:
     return False
 
 
-def _build_tree(proxies: list[ClosedShape]) -> list:
+def _build_tree(proxies: list) -> list:
     proxies_sorted = sorted(proxies, key=lambda p: round(p.polygon.area, 6), reverse=True)
     roots = []
     for proxy in proxies_sorted:
@@ -108,29 +100,8 @@ def _build_tree(proxies: list[ClosedShape]) -> list:
 
 
 # ---------------------------------------------------------------------------
-# Helper privati - costruzione semantica
+# Costruzione semantica
 # ---------------------------------------------------------------------------
-
-def _proxy_origin(proxy: ClosedShape) -> str:
-    """Return the original provenance for a contour; if there is no source entity use the semantic role as fallback."""
-    value = getattr(proxy, "origin", "")
-    if value:
-        return str(value)
-
-    source_ref = getattr(proxy, "source_ref", None)
-    if source_ref is not None:
-        dxf = getattr(source_ref, "dxf", None)
-        if dxf is not None and hasattr(dxf, "layer") and dxf.layer:
-            return str(dxf.layer)
-        origin = getattr(source_ref, "origin", "")
-        if origin:
-            return str(origin)
-
-    role = getattr(proxy, "role", None)
-    if role is not None and role != ContourRole.UNKNOWN:
-        return str(role.value)
-    return ""
-
 
 def _make_hole(
     proxy: ClosedShape,
@@ -138,110 +109,56 @@ def _make_hole(
     outer_proxy: Optional[ClosedShape] = None,
 ) -> Hole:
     role = proxy.role if proxy.role != ContourRole.UNKNOWN else (
-        ContourRole.HOLE if proxy.diameter < HOLE_DIAMETER_THRESHOLD else ContourRole.INNER
+        ContourRole.HOLE if proxy.diameter is not None and proxy.diameter < HOLE_DIAMETER_THRESHOLD
+        else ContourRole.INNER
     )
     return Hole(
         polygon=proxy.polygon,
-        diameter=proxy.diameter,
-        center=proxy.center,
+        diameter=proxy.diameter or 0.0,
+        center=proxy.center or (0.0, 0.0),
         hole_type=HOLE_TYPE_UNKNOWN,
         geometric_hint=geometric_hint,
         role=role,
-        source_ref=proxy.source_ref,
-        origin=_proxy_origin(proxy),
         outer_diameter=outer_proxy.diameter if outer_proxy else None,
-        outer_source_ref=outer_proxy.source_ref if outer_proxy else None,
         segments=list(proxy.segments),
     )
 
 
 def _make_inner(proxy: ClosedShape, parent_role: ContourRole = ContourRole.UNKNOWN) -> ForgeContour:
-    role = proxy.role if proxy.role not in (ContourRole.UNKNOWN, ContourRole.INNER) else \
-           parent_role if parent_role not in (ContourRole.UNKNOWN, ContourRole.INNER) else \
-           ContourRole.INNER
+    role = (
+        proxy.role if proxy.role not in (ContourRole.UNKNOWN, ContourRole.INNER)
+        else parent_role if parent_role not in (ContourRole.UNKNOWN, ContourRole.INNER)
+        else ContourRole.INNER
+    )
     return ForgeContour(
         polygon=proxy.polygon,
         role=role,
-        source_ref=proxy.source_ref,
-        origin=_proxy_origin(proxy),
         segments=list(proxy.segments),
     )
-
-
-def _register(proxy: ClosedShape, classified_entity_ids: set):
-    if proxy.source_ref is not None:
-        classified_entity_ids.add(id(proxy.source_ref))
-
-
-def _collect_entity_ids(father_proxy, children) -> set:
-    ids = set()
-
-    src = father_proxy.source_ref
-    if src is not None:
-        ids.add(id(src))
-    if hasattr(src, 'loop'):
-        for edge, _ in src.loop:
-            if edge.source_ref is not None:
-                ids.add(id(edge.source_ref))
-
-    for child_proxy, grandchildren in children:
-        child_src = child_proxy.source_ref
-        if child_src is not None:
-            ids.add(id(child_src))
-        if hasattr(child_src, 'loop'):
-            for edge, _ in child_src.loop:
-                if edge.source_ref is not None:
-                    ids.add(id(edge.source_ref))
-
-        for gc_proxy, _ in grandchildren:
-            gc_src = gc_proxy.source_ref
-            if gc_src is not None:
-                ids.add(id(gc_src))
-            if hasattr(gc_src, 'loop'):
-                for edge, _ in gc_src.loop:
-                    if edge.source_ref is not None:
-                        ids.add(id(edge.source_ref))
-
-    return ids
 
 
 def _process_children(
     children: list,
     holes: list,
     inners: list,
-    classified_entity_ids: set,
+    classified_proxies: set,
     parent_role: ContourRole = ContourRole.UNKNOWN,
 ):
-    for child_node in children:
-        child_proxy, grandchildren = child_node
+    for child_proxy, grandchildren in children:
+        classified_proxies.add(id(child_proxy.polygon))
 
         if grandchildren:
-            _register(child_proxy, classified_entity_ids)
-
-            for gc_node in grandchildren:
-                gc_proxy, _ = gc_node
-
+            for gc_proxy, _ in grandchildren:
+                classified_proxies.add(id(gc_proxy.polygon))
                 if gc_proxy.diameter is not None:
-                    holes.append(_make_hole(
-                        gc_proxy,
-                        geometric_hint="countersink",
-                        outer_proxy=child_proxy,
-                    ))
+                    holes.append(_make_hole(gc_proxy, geometric_hint="countersink", outer_proxy=child_proxy))
                 else:
                     inners.append(_make_inner(gc_proxy, parent_role=parent_role))
-
-                _register(gc_proxy, classified_entity_ids)
-
         else:
-            is_hole = child_proxy.diameter is not None
-            if is_hole:
-                obj = _make_hole(child_proxy)
-                holes.append(obj)
+            if child_proxy.diameter is not None:
+                holes.append(_make_hole(child_proxy))
             else:
-                obj = _make_inner(child_proxy, parent_role=parent_role)
-                inners.append(obj)
-
-            _register(child_proxy, classified_entity_ids)
+                inners.append(_make_inner(child_proxy, parent_role=parent_role))
 
 
 # ---------------------------------------------------------------------------
@@ -249,42 +166,20 @@ def _process_children(
 # ---------------------------------------------------------------------------
 
 class HierarchyBuilder:
-    """
-    Costruisce la gerarchia ForgePart da una lista piatta di ClosedShape.
-
-    Non ha dipendenze da HealStep né da adapter DXF - riceve tutto ciò
-    che gli serve nel costruttore e lavora solo su ClosedShape e Polygon.
-    """
-
-    def __init__(
-        self,
-        label: str,
-        source_file: str,
-        label_map: dict,
-        entities_in_loops: set,
-    ):
-        self.label = label
+    def __init__(self, label: str, source_file: str, label_map: dict, entities_in_loops: set = None):
+        self.label       = label
         self.source_file = source_file
-        self.label_map = label_map
-        self.entities_in_loops = entities_in_loops
+        self.label_map   = label_map
+        # entities_in_loops tenuto temporaneamente per compatibilità — non usato
 
     def build(self, proxies: list) -> tuple[list[ForgePart], list]:
-        """
-        Restituisce (parts, trash).
-
-        proxies : lista mista di ClosedShape e OpenShape - tutto ciò che
-                  il pipeline ha prodotto dopo il loop-finding.
-
-        parts : lista di ForgePart, ordinata per area outer decrescente
-        trash : proxy non classificati in nessuna part (ClosedShape o OpenShape)
-        """
-        self._classified_entity_ids: set = set()
+        self._classified_proxies: set[int] = set()
 
         valid = [p for p in proxies if getattr(p, "polygon", None) is not None]
         if not valid:
             return [], self._collect_trash(proxies)
 
-        tree = _build_tree(valid)
+        tree  = _build_tree(valid)
         parts = self._build_parts(tree)
         trash = self._collect_trash(proxies)
 
@@ -300,33 +195,13 @@ class HierarchyBuilder:
             outer = ForgeContour(
                 polygon=father_proxy.polygon,
                 role=ContourRole.OUTER,
-                source_ref=father_proxy.source_ref,
-                origin=_proxy_origin(father_proxy),
                 segments=list(father_proxy.segments),
             )
+            self._classified_proxies.add(id(father_proxy.polygon))
 
-            _register(father_proxy, self._classified_entity_ids)
-
-            holes = []
+            holes  = []
             inners = []
-
-            _process_children(
-                children,
-                holes,
-                inners,
-                self._classified_entity_ids,
-                parent_role=father_proxy.role,
-            )
-
-            entity_ids = _collect_entity_ids(father_proxy, children)
-            for hole in holes:
-                if hole.source_ref is not None:
-                    entity_ids.add(id(hole.source_ref))
-                if hole.outer_source_ref is not None:
-                    entity_ids.add(id(hole.outer_source_ref))
-            for inner in inners:
-                if inner.source_ref is not None:
-                    entity_ids.add(id(inner.source_ref))
+            _process_children(children, holes, inners, self._classified_proxies, parent_role=father_proxy.role)
 
             part = ForgePart(
                 outer=outer,
@@ -335,24 +210,15 @@ class HierarchyBuilder:
                 label=self.label,
                 source_file=self.source_file,
                 custom={},
-                entity_ids=entity_ids,
             )
             parts.append(part)
 
         return parts
 
-    def _collect_trash(self, proxies: list[ClosedShape | OpenShape]) -> list[ClosedShape | OpenShape]:
-        STRUCTURAL_ROLES = {
-            ContourRole.OUTER,
-            ContourRole.INNER,
-            ContourRole.HOLE,
-        }
+    def _collect_trash(self, proxies: list) -> list:
+        STRUCTURAL_ROLES = {ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE}
         return [
-            proxy for proxy in proxies
-            if (proxy.source_ref is None or id(proxy.source_ref) not in self._classified_entity_ids)
-            and proxy.role not in STRUCTURAL_ROLES
-            and (
-                proxy.role != ContourRole.UNKNOWN
-                or (proxy.source_ref is not None and id(proxy.source_ref) not in self.entities_in_loops)
-            )
+            p for p in proxies
+            if id(getattr(p, "polygon", None)) not in self._classified_proxies
+            and getattr(p, "role", ContourRole.UNKNOWN) not in STRUCTURAL_ROLES
         ]

@@ -40,7 +40,6 @@ class _FakeEntity:
 def _make_proxy(polygon, *, diameter=None, center=None, role=ContourRole.UNKNOWN):
     return ClosedShape(
         polygon=polygon,
-        source_ref=_FakeEntity(),
         role=role,
         shape_type="polyline",
         diameter=diameter,
@@ -56,7 +55,6 @@ def _make_open_proxy(pts, *, role=ContourRole.UNKNOWN):
     return OpenShape(
         pts=pts,
         length=length,
-        source_ref=_FakeEntity(),
         role=role,
         shape_type="line",
     )

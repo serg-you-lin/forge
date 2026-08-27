@@ -5,13 +5,21 @@ adapters/dxf/loader.py
 Punto di ingresso unico per aprire un file DXF o DWG.
 
 Funzioni pubbliche:
-    load_dxf — apre, audita, upgradia, sanitizza → (doc, msp)
+    load_dxf — apre, audita, upgradia, sanitizza, traduce → ForgeDocument
+
+load_dxf è l'UNICO punto in cui ezdxf viene toccato per la lettura: dopo di essa
+il documento ezdxf sorgente sparisce e heal()/detect()/write() lavorano solo sul
+ForgeDocument restituito.
 """
 
 import os
 import ezdxf
 from ezdxf.addons import odafc
+
 from .sanitize import sanitize, _explode_inserts, deduplicate
+from .adapter import DxfAdapter
+from .annotation_extractor import DxfAnnotationExtractor
+from ...model.document import ForgeDocument
 
 ODA_PATH = os.environ.get(
     "ODA_PATH"
@@ -114,9 +122,12 @@ def load_dxf(
     explode_inserts: bool = False,
     flatten_z_flag: bool = True,
     verbose: bool = False,
-) -> tuple:
+    tolerance: float = 0.05,
+    label_map: dict = None,
+    ignore_layers=None,
+) -> ForgeDocument:
     """
-    Apre un documento DXF o DWG e lo prepara per heal().
+    Apre un documento DXF o DWG e lo traduce in un ForgeDocument.
 
     Sequenza:
         1. se DWG → conversione via odafc (ODA File Converter)
@@ -125,20 +136,23 @@ def load_dxf(
         4. upgrade R2010 se necessario o richiesto
         5. explode INSERT se richiesto
         6. sanitize (normalize_ocs + flatten_z)
+        7. traduzione: DxfAdapter.to_edges() + DxfAnnotationExtractor.extract()
 
     Args:
-        path:           percorso del file .dxf o .dwg
-        upgrade:        se True, forza upgrade a R2010
+        path:            percorso del file .dxf o .dwg
+        upgrade:         se True, forza upgrade a R2010
         explode_inserts: se True, esplode INSERT in entità primitive
-        flatten_z_flag: passa flatten_z a sanitize()
-        verbose:        se True, stampa dettaglio entità in sanitize
+        flatten_z_flag:  passa flatten_z a sanitize()
+        verbose:         se True, stampa dettaglio entità in sanitize
+        tolerance:       tolleranza di arrotondamento dei nodi topologici;
+                         viene ripresa da heal() se non specificata lì
+        label_map:       {nome_layer: work_type} — assegna il ruolo semantico
+                         agli Edge in fase di traduzione
+        ignore_layers:   layer da escludere dalla geometria
 
     Returns:
-        (doc, msp) pronti per heal()
-
-    # TODO: logging audit su file
+        ForgeDocument (edges + annotations + source_meta) — pronto per heal()
     """
-    # if path.lower().endswith('.dwg'):
     if str(path).lower().endswith('.dwg'):
         doc = _read_dwg(path)
     else:
@@ -169,7 +183,67 @@ def load_dxf(
         print(f"Rimosse {removed} entità duplicate dal msp.")
     sanitize(msp, flatten_z_flag=flatten_z_flag, verbose=verbose)
 
-    return doc, msp
+    label_map = label_map or {}
+    ignore = {s.lower() for s in (ignore_layers or [])}
+
+    edges = DxfAdapter(
+        msp,
+        tolerance=tolerance,
+        ignore_layers=ignore,
+        label_map=label_map,
+    ).to_edges()
+    annotations = DxfAnnotationExtractor(msp).extract()
+
+    meta = {
+        "$INSUNITS":     doc.header.get("$INSUNITS", 4),
+        "$MEASUREMENT":  doc.header.get("$MEASUREMENT", 1),
+        "tolerance":     tolerance,
+        "label_map":     label_map,
+        "ignore_layers": sorted(ignore),
+    }
+
+    return ForgeDocument(
+        edges=edges,
+        annotations=annotations,
+        source_meta=meta,
+        source_path=str(path),
+    )
+
+
+def document_from_msp(
+    msp,
+    tolerance: float = 0.05,
+    label_map: dict = None,
+    ignore_layers=None,
+    source_path: str = "",
+) -> ForgeDocument:
+    """
+    Costruisce un ForgeDocument da un modelspace ezdxf già aperto.
+
+    Utile quando il msp non viene da un file (test, geometria generata a mano)
+    o è già stato preparato altrove. Non fa audit/upgrade/sanitize: si assume
+    che il msp sia già pronto.
+    """
+    label_map = label_map or {}
+    ignore = {s.lower() for s in (ignore_layers or [])}
+
+    edges = DxfAdapter(
+        msp, tolerance=tolerance, ignore_layers=ignore, label_map=label_map,
+    ).to_edges()
+    annotations = DxfAnnotationExtractor(msp).extract()
+
+    header = getattr(getattr(msp, "doc", None), "header", None)
+    meta = {
+        "$INSUNITS":     header.get("$INSUNITS", 4) if header else 4,
+        "$MEASUREMENT":  header.get("$MEASUREMENT", 1) if header else 1,
+        "tolerance":     tolerance,
+        "label_map":     label_map,
+        "ignore_layers": sorted(ignore),
+    }
+    return ForgeDocument(
+        edges=edges, annotations=annotations,
+        source_meta=meta, source_path=source_path,
+    )
 
 
 
