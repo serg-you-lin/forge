@@ -206,8 +206,11 @@ class TestWritebackDeduplication(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Trash — ora vive nel modello, non su un layer del msp
+# Trash — vive nel modello E viene materializzato sul layer Trash del doc_out
 # ---------------------------------------------------------------------------
+
+from forge.adapters.dxf.layers import TRASH_LAYER
+
 
 class TestWritebackTrash(unittest.TestCase):
 
@@ -215,13 +218,31 @@ class TestWritebackTrash(unittest.TestCase):
         result, _ = _pipeline("rect_with_trash.dxf")
         self.assertGreater(len(result.trash_entities), 0)
 
-    def test_002_trash_not_written_to_dxf(self):
-        # to_dxf() non materializza la geometria trash: nessuna entità
-        # finisce su un layer "Trash" del documento di output.
-        _, msp = _pipeline("rect_with_trash.dxf")
+    def test_002_trash_materialized_on_trash_layer(self):
+        # Regressione: to_dxf() DEVE riportare ogni entità non classificata sul
+        # layer Trash — un operatore CAM deve vedere tutto il disegno di
+        # partenza, non solo le parti pulite.
+        result, msp = _pipeline("rect_with_trash.dxf")
         trash = [e for e in msp
-                 if e.dxf.hasattr("layer") and e.dxf.layer == "Trash"]
+                 if e.dxf.hasattr("layer") and e.dxf.layer == TRASH_LAYER]
+        self.assertEqual(len(trash), len(result.trash_entities))
+
+    def test_003_include_trash_false_omits_trash(self):
+        doc = forge.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf", label_map={})
+        result = forge.heal(doc)
+        msp = forge.to_dxf(result, doc, include_trash=False).modelspace()
+        trash = [e for e in msp
+                 if e.dxf.hasattr("layer") and e.dxf.layer == TRASH_LAYER]
         self.assertEqual(len(trash), 0)
+
+    def test_004_open_trash_not_closed(self):
+        # Le tracce aperte non devono essere chiuse: una LWPOLYLINE trash
+        # con flag closed falserebbe la forma.
+        result, msp = _pipeline("arc_open.dxf")
+        self.assertGreater(len(result.trash_entities), 0)
+        for e in msp.query("LWPOLYLINE"):
+            if e.dxf.layer == TRASH_LAYER:
+                self.assertFalse(e.closed)
 
 
 # ---------------------------------------------------------------------------
