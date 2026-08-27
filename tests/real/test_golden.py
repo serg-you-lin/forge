@@ -18,6 +18,10 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
+from forge.adapters.dxf.layers import (
+    LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING,
+    LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
+)
 
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
@@ -34,6 +38,24 @@ TOL_SHAPE = 1.0
 GLOBAL_LABEL_MAP = {
     "MARK": "engrave",
     "Signature": "engrave",
+}
+
+# Rimappa i layer prodotti da forge in output sui rispettivi work_type, così
+# il round-trip (to_dxf → reload → heal) ricostruisce gli stessi ruoli.
+ROUNDTRIP_LABEL_MAP = {
+    LAYER_BENDING:       "bending",
+    LAYER_ENGRAVE:       "engrave",
+    LAYER_MARKING:       "marking",
+    LAYER_COUNTERSINK:   "countersink",
+    LAYER_THREADED_HOLE: "threaded_hole",
+}
+
+# Fixture che l'exporter non sa ancora materializzare senza perdita: contorni
+# che mischiano SplineSeg e altri segmenti → write_segments() restituisce None
+# e la parte sparisce nel write-back. Vedi forge/adapters/dxf/exporter.py.
+ROUNDTRIP_KNOWN_LOSSY = {
+    "poly_spline_part.DXF",
+    "spline_line_gap.dxf",
 }
 
 
@@ -375,6 +397,109 @@ for golden in _load_golden_files():
         TestGolden,
         f"test_{golden.stem}",
         _make_test(golden),
+    )
+
+
+def _make_roundtrip_test(path):
+    """
+    Round-trip dell'exporter: heal → to_dxf → reload → heal.
+
+    Le asserzioni di TestGolden si fermano al modello in memoria e NON
+    vedono mai la geometria scritta da to_dxf(): un bug dell'exporter
+    (es. archi materializzati invertiti, contorni persi) passa inosservato.
+    Qui la geometria SCRITTA viene ricaricata e ri-processata: deve
+    riprodurre lo stesso modello che TestGolden ha già validato contro il
+    golden. Confrontiamo quindi rt_result con result, non con il JSON —
+    così il match delle parti è indipendente dall'ordine.
+    """
+
+    def test(self):
+        golden = json.loads(path.read_text(encoding="utf-8"))
+        dxf_path = GOLDEN_DXF_DIR / golden["source_file"]
+
+        if not dxf_path.exists():
+            self.skipTest(str(dxf_path))
+        if golden["source_file"] in ROUNDTRIP_KNOWN_LOSSY:
+            self.skipTest(f"{golden['source_file']}: write-back lossy noto (spline miste)")
+
+        config = _load_config(dxf_path)
+        tol = config.get("tolerance", DEFAULT_TOLERANCE)
+        label_map = {**GLOBAL_LABEL_MAP, **config.get("label_map", {})}
+
+        def _pipeline(doc):
+            r = forge.heal(doc, tolerance=tol)
+            forge.detect(r)
+            return r
+
+        result = _pipeline(
+            forge.load_dxf(
+                str(dxf_path), upgrade=True, explode_inserts=True,
+                flatten_z_flag=True, tolerance=tol, label_map=label_map,
+            )
+        )
+        source_doc = forge.load_dxf(
+            str(dxf_path), upgrade=True, explode_inserts=True,
+            flatten_z_flag=True, tolerance=tol, label_map=label_map,
+        )
+        doc_out = forge.to_dxf(result, source_doc)
+        rt_result = _pipeline(
+            forge.document_from_msp(
+                doc_out.modelspace(), tolerance=tol, label_map=ROUNDTRIP_LABEL_MAP,
+            )
+        )
+
+        src = golden["source_file"]
+        self.assertEqual(
+            rt_result.part_count, result.part_count,
+            msg=f"{src} round-trip part_count "
+                f"(l'exporter ha perso o inventato una parte)",
+        )
+
+        unmatched = list(rt_result.parts)
+        for i, part in enumerate(result.parts):
+            match = min(
+                unmatched,
+                key=lambda p: p.outer.polygon.centroid.distance(
+                    part.outer.polygon.centroid
+                ),
+                default=None,
+            )
+            self.assertIsNotNone(match, msg=f"{src} parte {i+1} senza corrispondenza")
+            unmatched.remove(match)
+            label = f"{src} round-trip parte {i+1}"
+
+            self.assertAlmostEqual(
+                match.area, part.area, delta=TOL_AREA, msg=f"{label} area",
+            )
+            self.assertAlmostEqual(
+                match.outer.polygon.exterior.length,
+                part.outer.polygon.exterior.length,
+                delta=TOL_PERIMETER, msg=f"{label} outer perimeter",
+            )
+            self.assertLess(
+                match.outer.polygon.symmetric_difference(part.outer.polygon).area,
+                TOL_SHAPE, msg=f"{label} outer shape",
+            )
+            self.assertEqual(
+                len(match.holes), len(part.holes), msg=f"{label} holes count",
+            )
+            self.assertEqual(
+                len(match.inners), len(part.inners), msg=f"{label} inners count",
+            )
+
+    test.__name__ = f"test_roundtrip_{path.stem}"
+    return test
+
+
+class TestGoldenWriteBack(unittest.TestCase):
+    pass
+
+
+for golden in _load_golden_files():
+    setattr(
+        TestGoldenWriteBack,
+        f"test_roundtrip_{golden.stem}",
+        _make_roundtrip_test(golden),
     )
 
 

@@ -39,6 +39,20 @@ def _arc_start_point(arc: ArcSeg) -> tuple:
     return (x, y)
 
 
+def _arc_end_point(arc: ArcSeg) -> tuple:
+    x = arc.center[0] + arc.radius * math.cos(arc.end_angle)
+    y = arc.center[1] + arc.radius * math.sin(arc.end_angle)
+    return (x, y)
+
+
+def _seg_end_point(seg) -> Optional[tuple]:
+    if isinstance(seg, LineSeg):
+        return (seg.end[0], seg.end[1])
+    if isinstance(seg, ArcSeg):
+        return _arc_end_point(seg)
+    return None
+
+
 def segments_to_pts_with_bulge(segments: list) -> list:
     pts = []
     for seg in segments:
@@ -140,3 +154,63 @@ def write_segments(segments: List, msp, layer: str) -> Optional[object]:
             dxfattribs={"layer": layer, "color": 256},
             close=True,
         )
+
+
+# ---------------------------------------------------------------------------
+# Write-back — tracce APERTE (trash, frammenti di profilo, centerline, ...)
+# ---------------------------------------------------------------------------
+
+def write_open_segments(segments: List, msp, layer: str) -> List[object]:
+    """
+    Materializza una lista di segmenti puri come geometria APERTA su msp.
+
+    A differenza di `write_segments` non chiude il contorno: serve per le
+    entità che il pipeline lascia non classificate (`result.trash_entities`),
+    dove chiudere il loop falserebbe la forma. Ogni segmento resta fedele:
+
+      - LineSeg / ArcSeg → una LWPOLYLINE aperta con bulge
+      - SplineSeg        → SPLINE nativa (una per spline)
+      - CircleSeg        → CIRCLE
+
+    Restituisce la lista delle entità create (vuota se non c'è nulla da
+    scrivere).
+    """
+    if not segments:
+        return []
+
+    created: List[object] = []
+    poly_run: List = []
+
+    def _flush_poly_run():
+        if not poly_run:
+            return
+        pts = segments_to_pts_with_bulge(poly_run)
+        if pts:
+            end = _seg_end_point(poly_run[-1])
+            if end is not None:
+                pts.append((end[0], end[1], 0.0, 0.0, 0.0))
+            created.append(msp.add_lwpolyline(
+                pts,
+                format="xyseb",
+                dxfattribs={"layer": layer, "color": 256},
+                close=False,
+            ))
+        poly_run.clear()
+
+    for seg in segments:
+        if isinstance(seg, (LineSeg, ArcSeg)):
+            poly_run.append(seg)
+            continue
+        _flush_poly_run()
+        if isinstance(seg, CircleSeg):
+            created.append(msp.add_circle(
+                center=seg.center, radius=seg.radius,
+                dxfattribs={"layer": layer, "color": 256},
+            ))
+        elif isinstance(seg, SplineSeg):
+            ent = write_segments([seg], msp, layer)
+            if ent is not None:
+                created.append(ent)
+
+    _flush_poly_run()
+    return created

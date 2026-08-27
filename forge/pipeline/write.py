@@ -22,7 +22,7 @@ from ..model import ForgeResult, ForgePart
 from ..model.document import ForgeDocument, Annotation
 from ..model.hole import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..model.role import ContourRole
-from ..adapters.dxf.exporter import write_segments
+from ..adapters.dxf.exporter import write_segments, write_open_segments
 from ..adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     TRASH_LAYER,
@@ -46,6 +46,7 @@ def to_dxf(
     source_doc: Optional[ForgeDocument] = None,
     filter_part: Optional[Callable[[ForgePart], bool]] = None,
     include_annotations: bool = True,
+    include_trash: bool = True,
 ) -> "ezdxf.document.Drawing":
     """
     Crea un documento DXF nuovo (R2010) e vi materializza il ForgeResult.
@@ -53,6 +54,12 @@ def to_dxf(
     Itera i parts del modello e scrive i segmenti puri di ogni contorno/hole.
     Non legge entità DXF esistenti — se passato, `source_doc` serve solo per
     riportare gli header ($INSUNITS, $MEASUREMENT) e riscrivere le annotazioni.
+
+    Con `include_trash=True` (default) le entità che il pipeline non ha
+    classificato (`result.trash_entities`) vengono materializzate sul layer
+    `Trash`: un operatore CAM deve poter vedere OGNI entità del disegno di
+    partenza, anche archi spuri, frammenti di profilo, centerline. Ometterle
+    silenziosamente è una regressione.
 
     Restituisce il documento ezdxf: sta al chiamante fare doc.saveas(...).
     """
@@ -91,6 +98,12 @@ def to_dxf(
         for eng in part.engrave_lines:
             layer_name, _ = WORK_TYPE_TO_LAYER.get("engrave", (TRASH_LAYER, COLOR_TRASH))
             write_segments(eng.segments, msp, layer_name)
+
+    if include_trash and result.trash_entities:
+        _write_trash(
+            msp, result, written_parts, result.parts,
+            restrict_to_written=filter_part is not None,
+        )
 
     if include_annotations and source_doc is not None and source_doc.annotations:
         _write_annotations(msp, source_doc.annotations, written_parts)
@@ -199,6 +212,72 @@ def _write_annotations(msp, annotations: List[Annotation], parts: List[ForgePart
                 "rotation": ann.data.get("rotation") or 0.0,
                 "insert": ann.position,
             })
+
+
+# ---------------------------------------------------------------------------
+# Trash — entità non classificate, sempre riportate sul layer Trash
+# ---------------------------------------------------------------------------
+
+def _trash_probe_point(trash) -> Optional[tuple]:
+    """Punto rappresentativo di un'entità trash, per assegnarla a una parte."""
+    pts = getattr(trash, "pts", None)
+    if pts:
+        mid = pts[len(pts) // 2]
+        return (mid[0], mid[1])
+    for seg in getattr(trash, "segments", []) or []:
+        start = getattr(seg, "start", None) or getattr(seg, "center", None)
+        if start is not None:
+            return (start[0], start[1])
+    return None
+
+
+def _write_trash(
+    msp,
+    result: ForgeResult,
+    written_parts: List[ForgePart],
+    all_parts: List[ForgePart],
+    restrict_to_written: bool,
+) -> None:
+    """
+    Materializza `result.trash_entities` sul layer Trash.
+
+    In `to_dxf()` (documento intero) le riporta tutte. In `split()` — un file
+    per parte — assegna ogni entità trash alla parte più vicina fra TUTTE le
+    parti e la scrive solo nel file di quella parte, così non viene duplicata
+    in ogni file.
+    """
+    from shapely.geometry import Point
+
+    written_set = set(id(p) for p in written_parts)
+    ref_polys = [
+        (p, p.outer.polygon)
+        for p in all_parts
+        if p.outer is not None and p.outer.polygon is not None
+    ]
+
+    for trash in result.trash_entities:
+        if restrict_to_written and ref_polys:
+            probe = _trash_probe_point(trash)
+            if probe is not None:
+                nearest = min(
+                    ref_polys,
+                    key=lambda pp: pp[1].distance(Point(probe)),
+                )[0]
+                if id(nearest) not in written_set:
+                    continue
+
+        segments = list(getattr(trash, "segments", []) or [])
+        if segments:
+            write_open_segments(segments, msp, TRASH_LAYER)
+            continue
+
+        pts = getattr(trash, "pts", None)
+        if pts and len(pts) >= 2:
+            msp.add_lwpolyline(
+                [(x, y) for x, y in pts],
+                dxfattribs={"layer": TRASH_LAYER, "color": 256},
+                close=False,
+            )
 
 
 # ---------------------------------------------------------------------------
