@@ -9,31 +9,29 @@ Non devi importare i moduli interni direttamente.
 Workflow consigliato (file singolo):
     import forge
 
-    doc, msp = forge.load_dxf("pezzo.dxf")
+    doc = forge.load_dxf("pezzo.dxf", label_map={"Piega": "bending"})
 
-    check = forge.validate_msp(msp)
-    if not check.is_valid:
-        print(check.errors)
-        exit()
-
-    result = forge.heal(msp, label="pezzo", source_file="pezzo.dxf")
+    result = forge.heal(doc, label="pezzo", source_file="pezzo.dxf")
     forge.detect(result)
-    forge.write(msp, result)
-    forge.inject(msp, result)
-    doc.saveas("pezzo_healed.dxf")
+    doc_out = forge.write(result, doc)
+    forge.inject(result)
+    doc_out.saveas("pezzo_healed.dxf")
     forge.save_json(result, "pezzo.json")
 
 Workflow multi-pezzo:
-    doc, msp = forge.load_dxf("batch.dxf", upgrade=True)
+    doc = forge.load_dxf("batch.dxf", upgrade=True)
     result = forge.split_to_files(
-        msp, "output/",
+        doc, "output/",
         label="batch",
         source_file="batch.dxf",
     )
     forge.save_json(result, "batch.json")
+
+load_dxf() restituisce un ForgeDocument (edges + annotations + source_meta):
+dopo di essa ezdxf non viene più toccato fino a write().
 """
 
-from .adapters.dxf.loader import load_dxf
+from .adapters.dxf.loader import load_dxf, document_from_msp
 from .adapters.pdf.loader import load_pdf
 from .pipeline            import heal, split_to_files
 from .pipeline.inject   import inject
@@ -49,7 +47,7 @@ from .io.exporter         import (
     read_metadata_from_dxf,
     set_schema,
 )
-from .model         import ForgeResult, ForgePart, ForgeContour
+from .model         import ForgeResult, ForgePart, ForgeContour, ForgeDocument, Annotation
 from .io.text_utils       import extract_texts_from_msp
 
 __version__ = "0.5.1"
@@ -57,6 +55,7 @@ __version__ = "0.5.1"
 __all__ = [
     # Apertura file
     "load_dxf",
+    "document_from_msp",
     "load_pdf",
     # Validazione
     "validate",
@@ -83,4 +82,6 @@ __all__ = [
     "ForgeResult",
     "ForgePart",
     "ForgeContour",
+    "ForgeDocument",
+    "Annotation",
 ]

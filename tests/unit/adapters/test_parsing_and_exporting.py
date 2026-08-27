@@ -21,7 +21,7 @@ from forge.adapters.dxf.parser import (
 from forge.adapters.dxf.exporter import (
     arc_seg_to_bulge,
     segments_to_pts_with_bulge,
-    write_contour_to_msp,
+    write_segments,
 )
 from forge.model.role import ContourRole
 
@@ -527,7 +527,7 @@ class TestWriteContourToMsp(unittest.TestCase):
         """Segments vuoti → None."""
         contour = MagicMock()
         contour.segments = []
-        result = write_contour_to_msp(self.msp, contour, "TEST")
+        result = write_segments(self.msp, contour, "TEST")
         self.assertIsNone(result)
 
     def test_002_segments_con_spline(self):
@@ -536,7 +536,7 @@ class TestWriteContourToMsp(unittest.TestCase):
         contour.segments = [
             SplineSeg(degree=0, control_points=[(0, 0), (10, 0)], knots=[], weights=None)
         ]
-        result = write_contour_to_msp(self.msp, contour, "TEST")
+        result = write_segments(self.msp, contour, "TEST")
         self.assertIsNotNone(result)
         self.assertEqual(len(self.msp.entities), 1)
         entity = self.msp.entities[0]
@@ -553,7 +553,7 @@ class TestWriteContourToMsp(unittest.TestCase):
             LineSeg(start=(10, 10), end=(0, 10)),
             LineSeg(start=(0, 10), end=(0, 0)),
         ]
-        result = write_contour_to_msp(self.msp, contour, "TEST")
+        result = write_segments(self.msp, contour, "TEST")
         self.assertIsNotNone(result)
         self.assertEqual(len(self.msp.entities), 1)
         entity = self.msp.entities[0]
@@ -569,7 +569,7 @@ class TestWriteContourToMsp(unittest.TestCase):
             LineSeg(start=(0, 10), end=(0, 0)),
             LineSeg(start=(0, 0), end=(10, 0)),
         ]
-        result = write_contour_to_msp(self.msp, contour, "TEST")
+        result = write_segments(self.msp, contour, "TEST")
         self.assertIsNotNone(result)
         entity = self.msp.entities[0]
         # Primo punto = inizio arco
@@ -585,7 +585,7 @@ class TestWriteContourToMsp(unittest.TestCase):
             LineSeg(start=(0, 0), end=(10, 0)),
             LineSeg(start=(10, 0), end=(10, 10)),
         ]
-        result = write_contour_to_msp(self.msp, contour, "TEST")
+        result = write_segments(self.msp, contour, "TEST")
         self.assertIsNotNone(result)
         entity = self.msp.entities[0]
         self.assertEqual(entity['type'], 'POLYLINE2D')

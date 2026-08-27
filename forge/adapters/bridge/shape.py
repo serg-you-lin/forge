@@ -28,17 +28,12 @@ class ClosedShape:
     Campi:
         polygon    : Polygon shapely — forma chiusa già calcolata
         role       : ruolo semantico — impostato dall'adapter prima del core
-        source_ref : oggetto originale (entità ezdxf, DxfWriteContext, …)
-                     — serve per traceability e writeback; se None la forma è
-                     stata ricostruita dal core e non corrisponde ad una singola
-                     entità sorgente
         shape_type : categoria geometrica — "circle" | "polyline" |
                      "spline" | "ellipse"
         diameter   : diametro in unità documento — solo per cerchi, None altrimenti
         center     : centro (x, y) — solo per cerchi, None altrimenti
     """
     polygon:    Polygon
-    source_ref: Any
     role:       ContourRole                   = field(default=ContourRole.UNKNOWN)
     shape_type: str                           = ""
     diameter:   Optional[float]               = None
@@ -58,12 +53,10 @@ class OpenShape:
         pts        : lista di vertici (x, y) nell'ordine della traccia
         length     : lunghezza totale in unità documento
         role       : ruolo semantico — impostato dall'adapter prima del core
-        source_ref : oggetto originale — serve per traceability e writeback
         shape_type : categoria geometrica — "line" | "arc" | "polyline" | …
     """
     pts:        List[Tuple[float, float]]
     length:     float
-    source_ref: Any
     role:       ContourRole                   = field(default=ContourRole.UNKNOWN)
     shape_type: str                           = ""
     diameter:   Optional[float]               = None

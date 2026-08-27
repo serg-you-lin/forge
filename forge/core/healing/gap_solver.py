@@ -21,16 +21,21 @@ Funzioni pubbliche:
 """
 
 from __future__ import annotations
+import math
 from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple, Union
 
 from ..geometry import (
+    round_point,
     _distance,
     _line_intersection,
     _circle_line_intersections,
     _circle_circle_intersections,
     _closest_to,
 )
+from ..primitives.segments import LineSeg, ArcSeg, SplineSeg, segment_endpoints
+from ...adapters.bridge.edge import Edge
+from ...model.role import ContourRole
 
 Point2D = Tuple[float, float]
 
@@ -222,3 +227,117 @@ def compute_gap_fixes(
             fixes.extend(solver(ep_a, ep_b))
 
     return fixes
+
+
+# ---------------------------------------------------------------------------
+# Ponte Edge <-> GapFix — geometria pura, zero formato sorgente
+# ---------------------------------------------------------------------------
+
+_KIND_BY_SEGMENT = {LineSeg: "line", ArcSeg: "arc", SplineSeg: "spline"}
+
+
+def _endpoint_meta(segment) -> dict:
+    """Dati che il solver usa per calcolare l'intersezione, per tipo di segmento."""
+    if isinstance(segment, LineSeg):
+        return {"start": segment.start, "end": segment.end}
+    if isinstance(segment, ArcSeg):
+        return {"cx": segment.center[0], "cy": segment.center[1], "radius": segment.radius}
+    return {}
+
+
+def free_endpoints_from_edges(edges: List[Edge], graph) -> List[GapEndpoint]:
+    """
+    Estrae gli endpoint liberi (grado < 2 nel grafo) dagli Edge.
+
+    Sostituisce DxfAdapter.extract_free_endpoints: lavora su geometria pura,
+    il `ref` di ogni GapEndpoint è l'Edge stesso.
+    Considera solo LINE / ARC / SPLINE — i loop degeneri (CIRCLE, SPLINE chiusa)
+    non hanno endpoint liberi per definizione.
+    """
+    free: List[GapEndpoint] = []
+
+    for edge in edges:
+        if edge.start == edge.end:
+            continue
+        kind = _KIND_BY_SEGMENT.get(type(edge.segment))
+        if kind is None:
+            continue
+
+        meta = _endpoint_meta(edge.segment)
+        # pt: coordinate reali non arrotondate (il solver ne ha bisogno per
+        # calcolare l'intersezione); il grado si valuta sui nodi arrotondati.
+        raw_start, raw_end = segment_endpoints(edge.segment)
+
+        if graph.degree(edge.start) < 2:
+            free.append(GapEndpoint(pt=raw_start, ref=edge, role="start", kind=kind, meta=meta))
+        if graph.degree(edge.end) < 2:
+            free.append(GapEndpoint(pt=raw_end, ref=edge, role="end", kind=kind, meta=meta))
+
+    return free
+
+
+def _moved_segment(segment, role: str, new_pt: Point2D):
+    """Nuovo segmento con l'endpoint `role` spostato su `new_pt`. None se non gestito."""
+    if isinstance(segment, LineSeg):
+        if role == "start":
+            return LineSeg(start=(new_pt[0], new_pt[1]), end=segment.end)
+        return LineSeg(start=segment.start, end=(new_pt[0], new_pt[1]))
+
+    if isinstance(segment, ArcSeg):
+        angle = math.atan2(new_pt[1] - segment.center[1], new_pt[0] - segment.center[0])
+        if role == "start":
+            return ArcSeg(center=segment.center, radius=segment.radius,
+                          start_angle=angle, end_angle=segment.end_angle, ccw=segment.ccw)
+        return ArcSeg(center=segment.center, radius=segment.radius,
+                      start_angle=segment.start_angle, end_angle=angle, ccw=segment.ccw)
+
+    return None
+
+
+def apply_gap_fixes(edges: List[Edge], fixes: List[GapFix], node_decimals: int = 1) -> List[Edge]:
+    """
+    Applica i GapFix restituendo una NUOVA lista di Edge — `edges` non viene mutata.
+
+    Sostituisce DxfAdapter.apply_gap_fixes: invece di mutare entità ezdxf,
+    ricostruisce gli Edge coinvolti (MoveEndpoint) e ne aggiunge di nuovi
+    (AddSegment, sempre una LINE di congiunzione).
+    """
+    replacements: dict = {}   # id(edge_originale) -> Edge aggiornato
+    added: List[Edge] = []
+
+    for fix in fixes:
+        if isinstance(fix, MoveEndpoint):
+            base = replacements.get(id(fix.ref), fix.ref)
+            if not isinstance(base, Edge):
+                continue
+            # Il segmento conserva il punto reale (il poligono si costruisce da
+            # qui); solo il nodo topologico dell'Edge viene arrotondato.
+            new_seg = _moved_segment(base.segment, fix.role, fix.new_pt)
+            if new_seg is None:
+                continue
+            node = round_point(fix.new_pt, node_decimals)
+            replacements[id(fix.ref)] = Edge(
+                role=base.role,
+                start=node if fix.role == "start" else base.start,
+                end=node if fix.role == "end" else base.end,
+                segment=new_seg,
+                closed_path=getattr(base, "closed_path", False),
+            )
+        elif isinstance(fix, AddSegment):
+            a = (float(fix.pt_a[0]), float(fix.pt_a[1]))
+            b = (float(fix.pt_b[0]), float(fix.pt_b[1]))
+            if round_point(a, node_decimals) == round_point(b, node_decimals):
+                continue
+            added.append(Edge(
+                role=ContourRole.UNKNOWN,
+                start=round_point(a, node_decimals),
+                end=round_point(b, node_decimals),
+                segment=LineSeg(start=a, end=b),
+            ))
+
+    if not replacements and not added:
+        return list(edges)
+
+    out = [replacements.get(id(e), e) for e in edges]
+    out.extend(added)
+    return out

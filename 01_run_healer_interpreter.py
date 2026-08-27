@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/intricato_doppio.dxf"
+input_dxf = r"tests/examples/spline_line_gap.dxf"
 
 tolerance = .2
 

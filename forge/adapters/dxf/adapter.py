@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from ...core.primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg, DEFAULT_TOLERANCE
 from ...core.adapter_base import ForgeAdapter
 from ...core.geometry import round_point
-from ...core.healing.gap_solver import GapEndpoint, MoveEndpoint, AddSegment, GapFix
 from ..bridge.edge import Edge, Segment
 from ...model.role import WORK_TYPE_TO_ROLE, layer_to_role
 
@@ -32,12 +31,6 @@ from .geometry_adapter import (
 # ---------------------------------------------------------------------------
 
 _SUPPORTED_TYPES = frozenset({'LINE', 'ARC', 'SPLINE'})
-
-_GAP_KIND_MAP = {
-    'LINE': 'line',
-    'ARC': 'arc',
-    'SPLINE': 'spline',
-}
 
 
 # ---------------------------------------------------------------------------
@@ -333,23 +326,6 @@ def _segment_key(segment: Segment) -> tuple:
     return (type(segment).__name__, repr(segment))
 
 
-def _gap_meta_for(entity) -> dict:
-    """Metadati per gap healing."""
-    t = entity.dxftype()
-    if t == 'LINE':
-        return {
-            'start': (entity.dxf.start.x, entity.dxf.start.y),
-            'end': (entity.dxf.end.x, entity.dxf.end.y),
-        }
-    if t == 'ARC':
-        return {
-            'cx': entity.dxf.center.x,
-            'cy': entity.dxf.center.y,
-            'radius': entity.dxf.radius,
-        }
-    return {}
-
-
 # ---------------------------------------------------------------------------
 # DxfAdapter
 # ---------------------------------------------------------------------------
@@ -399,7 +375,7 @@ class DxfAdapter(ForgeAdapter):
         edges = []
         seen_segment_keys = set()
 
-        def _append_edge(source_ref, role, segment):
+        def _append_edge(role, segment, closed_path=False):
             key = _segment_key(segment)
             if key in seen_segment_keys:
                 return
@@ -410,11 +386,11 @@ class DxfAdapter(ForgeAdapter):
             if start_r is None or end_r is None:
                 return
             edges.append(Edge(
-                source_ref=source_ref,
                 role=role,
                 start=start_r,
                 end=end_r,
                 segment=segment,
+                closed_path=closed_path,
             ))
 
         for entity in self.msp:
@@ -437,7 +413,6 @@ class DxfAdapter(ForgeAdapter):
                     pt = round_point(start, self.node_decimals)
                     if pt is not None:
                         edges.append(Edge(
-                            source_ref=entity,
                             role=role,
                             start=pt,
                             end=pt,
@@ -453,7 +428,6 @@ class DxfAdapter(ForgeAdapter):
                     pt = round_point(start, self.node_decimals)
                     if pt is not None:
                         edges.append(Edge(
-                            source_ref=entity,
                             role=role,
                             start=pt,
                             end=pt,
@@ -466,8 +440,12 @@ class DxfAdapter(ForgeAdapter):
                 primitives = entity_to_primitive(entity) or []
                 if not isinstance(primitives, list):
                     primitives = [primitives]
+                poly_closed = bool(
+                    getattr(entity, "is_closed", False)
+                    or getattr(entity, "closed", False)
+                )
                 for segment in primitives:
-                    _append_edge(entity, role, segment)
+                    _append_edge(role, segment, closed_path=poly_closed)
                 continue
 
             # LINE / ARC / SPLINE aperta
@@ -488,7 +466,6 @@ class DxfAdapter(ForgeAdapter):
                 continue
 
             edges.append(Edge(
-                source_ref=entity,
                 role=role,
                 start=start_r,
                 end=end_r,
@@ -510,104 +487,3 @@ class DxfAdapter(ForgeAdapter):
         except AttributeError:
             return ""
 
-    # ------------------------------------------------------------------
-    # Metodi specifici DXF
-    # ------------------------------------------------------------------
-
-    def load_entity_lists(self) -> dict:
-        """Carica liste di entità per tipo."""
-        return {
-            "lines": list(self.msp.query("LINE")),
-            "arcs": list(self.msp.query("ARC")),
-            "plines": list(self.msp.query("LWPOLYLINE POLYLINE")),
-            "circles": list(self.msp.query("CIRCLE")),
-            "splines": list(self.msp.query("SPLINE")),
-        }
-
-    def to_circular_arcs(self) -> List[ArcSeg]:
-        """Estrae solo ARC come ArcSeg."""
-        result = []
-        for entity in self.msp:
-            if entity.dxftype() != "ARC":
-                continue
-            result.append(ArcSeg(
-                center=(entity.dxf.center.x, entity.dxf.center.y),
-                radius=entity.dxf.radius,
-                start_angle=math.radians(entity.dxf.start_angle),
-                end_angle=math.radians(entity.dxf.end_angle),
-                ccw=True,
-            ))
-        return result
-
-    # ------------------------------------------------------------------
-    # Gap healing
-    # ------------------------------------------------------------------
-
-    def extract_free_endpoints(self, graph) -> List[GapEndpoint]:
-        """Estrae endpoint liberi per gap healing."""
-        free: List[GapEndpoint] = []
-
-        for entity in self.msp.query('LINE ARC SPLINE'):
-            kind = _GAP_KIND_MAP.get(entity.dxftype())
-            if kind is None:
-                continue
-
-            s, e = entity_endpoints(entity)
-            if s is None or e is None:
-                continue
-
-            s_r = round_point(s, self.node_decimals)
-            e_r = round_point(e, self.node_decimals)
-            meta = _gap_meta_for(entity)
-
-            if len(graph.get(s_r, [])) < 2:
-                free.append(GapEndpoint(pt=s, ref=entity, role='start', kind=kind, meta=meta))
-            if len(graph.get(e_r, [])) < 2:
-                free.append(GapEndpoint(pt=e, ref=entity, role='end', kind=kind, meta=meta))
-
-        return free
-
-    def apply_gap_fixes(self, fixes: List[GapFix]) -> int:
-        """Applica fixes di gap healing."""
-        def _apply_move(fix: MoveEndpoint) -> bool:
-            entity = fix.ref
-            t = entity.dxftype()
-            pt = fix.new_pt
-
-            if t == 'LINE':
-                if fix.role == 'start':
-                    entity.dxf.start = (pt[0], pt[1], entity.dxf.start.z)
-                else:
-                    entity.dxf.end = (pt[0], pt[1], entity.dxf.end.z)
-                return True
-
-            if t == 'ARC':
-                cx = entity.dxf.center.x
-                cy = entity.dxf.center.y
-                angle = math.degrees(math.atan2(pt[1] - cy, pt[0] - cx)) % 360
-                if fix.role == 'start':
-                    entity.dxf.start_angle = angle
-                else:
-                    entity.dxf.end_angle = angle
-                return True
-
-            return False
-
-        def _apply_add_segment(fix: AddSegment) -> bool:
-            self.msp.add_line(
-                (fix.pt_a[0], fix.pt_a[1], 0.0),
-                (fix.pt_b[0], fix.pt_b[1], 0.0),
-            )
-            return True
-
-        handlers = {
-            MoveEndpoint: _apply_move,
-            AddSegment: _apply_add_segment,
-        }
-
-        applied = 0
-        for fix in fixes:
-            handler = handlers.get(type(fix))
-            if handler and handler(fix):
-                applied += 1
-        return applied
