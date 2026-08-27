@@ -8,6 +8,7 @@ Un solo tipo: `Engraving`. Un'incisione è concettualmente una traccia aperta
 riassemblato in un loop unico — resta N segmenti separati (scelta di progetto).
 `polygon` è valorizzato solo quando la traccia era già degenere in origine
 (CIRCLE, SPLINE chiusa): serve al contenimento, non è un loop strutturale.
+`closed` non è uno stato a sé: è `polygon is not None`, esposto come property.
 
 Doppio binario di provenienza, identico a Hole:
     source="labeled"   → ruolo assegnato da label_map al load   (confidence 1.0)
@@ -32,13 +33,17 @@ class Engraving(OpenFeature):
     pts:        List[Tuple[float, float]] = field(default_factory=list)
     geometry:   Optional[LineString]     = None
     polygon:    Optional[Polygon]        = None
-    closed:     bool                     = False
     confidence: float                    = 1.0
     source:     str                      = "labeled"
 
     def __post_init__(self):
         if self.role == ContourRole.UNKNOWN:
             self.role = ContourRole.ENGRAVE
+
+    @property
+    def closed(self) -> bool:
+        """Traccia già chiusa in origine (CIRCLE / SPLINE chiusa) ⇔ ha un polygon."""
+        return self.polygon is not None
 
     def to_dict(self) -> dict:
         d = {
