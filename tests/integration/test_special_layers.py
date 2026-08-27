@@ -360,6 +360,62 @@ class TestBendingLines(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Test: engrave degenere (CIRCLE su layer mark) — non deve andare perso
+# ---------------------------------------------------------------------------
+
+class TestEngraveDegenerateCircle(unittest.TestCase):
+    """
+    Un CIRCLE su layer engrave è una traccia già chiusa (loop degenere).
+    Non passa dalla ricerca loop: l'unico calcolo è il contenimento.
+    Dentro il part → Engraving(closed=True), mai un foro. Fuori → trash.
+    """
+
+    def setUp(self):
+        doc = ezdxf.new('R2010')
+        msp = doc.modelspace()
+
+        msp.add_line((0, 0), (100, 0))
+        msp.add_line((100, 0), (100, 50))
+        msp.add_line((100, 50), (0, 50))
+        msp.add_line((0, 50), (0, 0))
+
+        # CIRCLE engrave DENTRO il part
+        msp.add_circle((50, 25), 5, dxfattribs={'layer': 'MARK'})
+        # LINE engrave FUORI dal part
+        msp.add_line((200, 200), (220, 200), dxfattribs={'layer': 'MARK'})
+
+        self.result, self.doc_out = _run_pipeline(
+            msp=msp,
+            special_layers={'MARK': 'engrave'},
+        )
+
+    def test_001_circle_is_not_a_hole(self):
+        part = self.result.parts[0]
+        self.assertEqual(len(part.holes), 0)
+        self.assertEqual(len(part.inners), 0)
+
+    def test_002_circle_becomes_engraving(self):
+        part = self.result.parts[0]
+        self.assertEqual(len(part.engrave_lines), 1)
+        self.assertAlmostEqual(part.engrave_lines[0].length, 2 * 3.14159 * 5, delta=0.5)
+
+    def test_003_circle_materialized_on_engrave_layer(self):
+        on_engrave = [
+            e for e in self.doc_out.modelspace()
+            if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_ENGRAVE
+        ]
+        self.assertTrue(on_engrave)
+
+    def test_004_orphan_engrave_stays_trash(self):
+        # la LINE engrave fuori dal part non è una engrave line del part
+        part = self.result.parts[0]
+        self.assertEqual(len(part.engrave_lines), 1)
+        # ed è rimasta come trash, non promossa a nulla
+        roles = [getattr(t, "role", None) for t in self.result.trash_entities]
+        self.assertIn("engrave", [getattr(r, "value", r) for r in roles])
+
+
+# ---------------------------------------------------------------------------
 # Test: mix engrave + bending
 # ---------------------------------------------------------------------------
 

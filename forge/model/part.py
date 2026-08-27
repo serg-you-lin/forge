@@ -13,7 +13,7 @@ from forge.model.feature import ClosedFeature
 from forge.model.role import ContourRole
 from forge.model.hole import Hole
 from forge.model.bending_line import BendingLine
-from forge.model.engraving import EngravingClosed, EngravingOpen
+from forge.model.engraving import Engraving
 
 
 @dataclass
@@ -32,7 +32,7 @@ class ForgePart:
     holes:         List[Hole]                              = field(default_factory=list)
     inners:        List[ForgeContour]                      = field(default_factory=list)
     bending_lines: List[BendingLine]                       = field(default_factory=list)
-    engrave_lines: List[EngravingClosed | EngravingOpen]   = field(default_factory=list)
+    engrave_lines: List[Engraving]                         = field(default_factory=list)
     label:         str                                     = ""
     source_file:   str                                     = ""
     custom:        dict                                    = field(default_factory=dict)
