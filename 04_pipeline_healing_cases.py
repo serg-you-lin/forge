@@ -2,209 +2,105 @@
 run_healer_batch.py
 -------------------
 
-Batch healer per tutti i DXF in una cartella.
+Heal all DXF files in a folder using the current Forge API.
 
-Regole:
-- ignora i file *_healed.dxf
-- processa solo file base
-- sovrascrive output healed
-- aggiunge detect + write + inject
-
-Output:
-    nomefile_healed.dxf
-    nomefile_healed_metadata.json / xml
+Skips files whose name ends with "_healed.dxf".
 """
 
-import ezdxf
-import forge
-from forge.dxf_inspect import DxfInspector
 from pathlib import Path
 
-
-# ------------------------------------------------
-# CARTELLA DA PROCESSARE
-# ------------------------------------------------
-
-input_dir = Path(r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\dxf-forge\tests\examples").resolve()
-
-tolerance = 5
+import forge
 
 
-# ------------------------------------------------
-# INSPECTOR CONFIG
-# ------------------------------------------------
+# ---------------------------------------------------------------------------
+# CONFIGURATION
+# ---------------------------------------------------------------------------
 
-inspector = DxfInspector(
-    summary=False,
-    lines=False,
-    arcs=False,
-    polylines=False,
-    circles=False,
-    splines=False,
-    graph=False,
+input_dir = Path(
+    r"C:\Users\FEDERICO\Documents\Python_Scripts\Projects\GitHub\dxf-forge\tests\examples"
+).resolve()
+
+tolerance = 0.2
+
+special_layers = {
+    "MARK": "engrave",
+    "Signature": "engrave",
+    "Filettati": "threaded_hole",
+    "Svasati": "countersink",
+    "Piega": "bending",
+}
+
+
+# ---------------------------------------------------------------------------
+# BATCH
+# ---------------------------------------------------------------------------
+
+dxf_files = sorted(
+    path
+    for path in input_dir.glob("*.dxf")
+    if path.is_file() and not path.stem.endswith("_healed")
 )
 
-print(f"\nCartella analizzata: {input_dir}\n")
-
-
-# ------------------------------------------------
-# TROVA FILE DXF
-# ------------------------------------------------
-
-dxf_files = [
-    f for f in input_dir.glob("*.dxf")
-    if f.is_file()
-]
-
 if not dxf_files:
-    print("Nessun file DXF trovato.")
+    print("No DXF files found.")
     raise SystemExit(0)
 
-print(f"Trovati {len(dxf_files)} file\n")
 
-
-# ------------------------------------------------
-# PROCESSAMENTO
-# ------------------------------------------------
+failed = []
 
 for input_dxf in dxf_files:
-
-    # anti-loop: skip già processati
-    if input_dxf.stem.endswith("_healed"):
-        continue
-
     base_name = input_dxf.stem
 
     output_dxf = input_dxf.parent / f"{base_name}_healed.dxf"
-    output_json = input_dxf.parent / f"{base_name}_healed_metadata.json"
-    output_xml = input_dxf.parent / f"{base_name}_healed_metadata.xml"
-
-    print("\n===================================")
-    print(f"Apertura: {input_dxf.name}")
+    output_json = input_dxf.parent / f"{base_name}_healed.json"
 
     try:
-        doc = ezdxf.readfile(input_dxf)
-
-        if doc.dxfversion < "AC1015":
-            doc = forge.upgrade_to_r2010(doc)
-
-        msp = doc.modelspace()
-
-        inspector.analyze(msp, title=str(input_dxf.name))
-
-        # ---------------- VALIDAZIONE ----------------
-
-        print("\n--- VALIDAZIONE ---")
-
-        check = forge.validate_msp(msp)
-
-        for w in check.warnings:
-            print(f"  WARN: {w}")
-
-        for e in check.errors:
-            print(f"  ERROR: {e}")
-
-        if not check.errors:
-            print("  OK: nessun errore bloccante")
-
-        # ---------------- HEAL ----------------
-
-        print("\n--- HEALING ---")
+        doc = forge.load_dxf(
+            str(input_dxf),
+            explode_inserts=True,
+            flatten_z_flag=True,
+            label_map=special_layers,
+            verbose=False,
+        )
 
         result = forge.heal(
-            msp,
+            doc,
             tolerance=tolerance,
-            explode_inserts=True,
-            special_layers={
-                "MARK": "engrave",
-                "MARCATURA": "bending",
-            },
             label=base_name,
-            source_file=Path(input_dxf).name,
-)
-        
-        # result = forge.heal(
-        #     msp,
-        #     tolerance=tolerance,
-        #     write_to_msp=True,
-        #     label=base_name,
-        #     source_file=Path(input_dxf).name,
-        #     special_layers={
-        #         "MARK": "engrave",
-        #         "MARCATURA": "bending",
-        #     }
-        # )
-
-        # ---------------- DETECT ----------------
+            source_file=input_dxf.name,
+        )
 
         forge.detect(
             result,
-            msp,
-
+            bending_tolerance=0.2,
         )
 
-        # ---------------- WRITE + INJECT ----------------
+        doc_out = forge.to_dxf(result, doc)
 
-        forge.write(msp, result)
-        forge.inject(msp, result)
-
-        # ---------------- METADATA ----------------
-
-        for part in result.parts:
-            forge.write_metadata_to_dxf(doc, part)
+        forge.inject(result)
 
         forge.save_json(result, str(output_json))
-        forge.save_xml(result, str(output_xml))
-
-        # debug XDATA
-        for entity in msp:
-            try:
-                xdata = entity.get_xdata("FORGE")
-                if xdata:
-                    print(f"  XDATA su: {entity.dxftype()} layer={entity.dxf.layer}")
-            except Exception:
-                pass
-
-        print(f"\n  Pezzi trovati : {result.part_count}")
-        print(f"  Valido        : {result.is_valid}")
-
-        for w in result.warnings:
-            print(f"  WARN: {w}")
-
-        for e in result.errors:
-            print(f"  ERROR: {e}")
-
-        for i, part in enumerate(result.parts):
-            print(f"\n  Pezzo {i+1}:")
-            print(f"    Area outer : {part.outer.area:.1f}")
-            print(f"    Fori       : {len(part.inners)}")
-            print(f"    Bbox       : {part.bbox}")
-
-        # ---------------- SAVE DXF ----------------
 
         if not result.is_valid:
-            print("File non valido — non salvato.")
+            failed.append((input_dxf.name, "invalid result"))
             continue
 
-        doc.saveas(output_dxf)
+        doc_out.saveas(str(output_dxf))
 
-        print(f"\nSalvato: {output_dxf.name}")
+        print(f"OK  {input_dxf.name} -> {output_dxf.name}")
 
-        # ---------------- DEBUG OUTPUT ----------------
-
-        print("\n--- OUTPUT INSPECT ---")
-
-        inspector_out = DxfInspector(polylines=True, summary=False)
-        saved_doc = ezdxf.readfile(output_dxf)
-
-        inspector_out.analyze(
-            saved_doc.modelspace(),
-            title=str(output_dxf.name)
-        )
-
-    except Exception as e:
-        print(f"\nERRORE su {input_dxf.name}")
-        print(e)
+    except Exception as exc:
+        failed.append((input_dxf.name, str(exc)))
 
 
-print("\nBatch completato.\n")
+# ---------------------------------------------------------------------------
+# SUMMARY
+# ---------------------------------------------------------------------------
+
+print(f"\nProcessed: {len(dxf_files)}")
+print(f"Failed:    {len(failed)}")
+
+if failed:
+    print("\nFailures:")
+    for filename, error in failed:
+        print(f"  {filename}: {error}")
