@@ -68,18 +68,63 @@ def segments_to_pts_with_bulge(segments: list) -> list:
 # Write-back — unico punto che tocca ezdxf per le forme chiuse
 # ---------------------------------------------------------------------------
 
+def _add_spline(spline: SplineSeg, msp, layer: str) -> object:
+    """
+    Materializza una SplineSeg come SPLINE nativa, ricostruita dalla primitiva
+    (control points / knots / weights / degree / tangenti) — non è una copia
+    dell'entità sorgente, è la stessa curva riespressa. Identico trattamento a
+    quello della spline chiusa singola.
+    """
+    entity = msp.add_spline(dxfattribs={"layer": layer, "color": 256})
+    entity.dxf.degree = int(spline.degree)
+
+    cps3d = [(float(x), float(y), 0.0) for x, y in spline.control_points]
+    entity.control_points = cps3d
+
+    if spline.knots:
+        entity.knots = [float(k) for k in spline.knots]
+    if spline.weights:
+        entity.weights = [float(w) for w in spline.weights]
+    if spline.fit_points:
+        entity.fit_points = [
+            (float(p[0]), float(p[1]), float(p[2]))
+            for p in spline.fit_points
+        ]
+
+    flags = int(spline.flags or 0)
+    if spline.closed:    flags |= 1
+    if spline.periodic:  flags |= 2
+    if spline.weights:   flags |= 4
+    entity.dxf.flags = flags
+
+    if spline.knot_tolerance is not None:
+        entity.dxf.knot_tolerance = float(spline.knot_tolerance)
+    if spline.fit_tolerance is not None:
+        entity.dxf.fit_tolerance = float(spline.fit_tolerance)
+    if spline.control_point_tolerance is not None:
+        entity.dxf.control_point_tolerance = float(spline.control_point_tolerance)
+    if spline.start_tangent is not None:
+        entity.dxf.start_tangent = tuple(float(v) for v in spline.start_tangent)
+    if spline.end_tangent is not None:
+        entity.dxf.end_tangent = tuple(float(v) for v in spline.end_tangent)
+
+    return entity
+
+
 def write_segments(segments: List, msp, layer: str) -> Optional[object]:
     """
     Materializza una lista di segmenti puri su msp.
 
     - CircleSeg → CIRCLE
     - SplineSeg singola → SPLINE nativa
-    - SplineSeg mista ad altro → None (non supportato)
+    - SplineSeg mista a linee/archi → SPLINE native + LWPOLYLINE aperte che
+      condividono gli endpoint (il loop chiuso è dato dall'insieme delle
+      entità, non discretizziamo mai la spline in polilinea). Restituisce la
+      lista delle entità create.
     - LineSeg / ArcSeg → LWPOLYLINE (o POLYLINE2D per R12)
 
-    Restituisce l'entità creata, o None se:
-      - segments è vuoto
-      - tutti i segmenti sono SplineSeg misti
+    Restituisce l'entità creata (o la lista, per i contorni misti), o None se
+    non c'è nulla da scrivere.
     """
     if not segments:
         return None
@@ -93,44 +138,15 @@ def write_segments(segments: List, msp, layer: str) -> Optional[object]:
         )
 
     if len(segments) == 1 and isinstance(segments[0], SplineSeg):
-        spline = segments[0]
-        entity = msp.add_spline(dxfattribs={"layer": layer, "color": 256})
-        entity.dxf.degree = int(spline.degree)
-
-        cps3d = [(float(x), float(y), 0.0) for x, y in spline.control_points]
-        entity.control_points = cps3d
-
-        if spline.knots:
-            entity.knots = [float(k) for k in spline.knots]
-        if spline.weights:
-            entity.weights = [float(w) for w in spline.weights]
-        if spline.fit_points:
-            entity.fit_points = [
-                (float(p[0]), float(p[1]), float(p[2]))
-                for p in spline.fit_points
-            ]
-
-        flags = int(spline.flags or 0)
-        if spline.closed:    flags |= 1
-        if spline.periodic:  flags |= 2
-        if spline.weights:   flags |= 4
-        entity.dxf.flags = flags
-
-        if spline.knot_tolerance is not None:
-            entity.dxf.knot_tolerance = float(spline.knot_tolerance)
-        if spline.fit_tolerance is not None:
-            entity.dxf.fit_tolerance = float(spline.fit_tolerance)
-        if spline.control_point_tolerance is not None:
-            entity.dxf.control_point_tolerance = float(spline.control_point_tolerance)
-        if spline.start_tangent is not None:
-            entity.dxf.start_tangent = tuple(float(v) for v in spline.start_tangent)
-        if spline.end_tangent is not None:
-            entity.dxf.end_tangent = tuple(float(v) for v in spline.end_tangent)
-
-        return entity
+        return _add_spline(segments[0], msp, layer)
 
     if any(isinstance(s, SplineSeg) for s in segments):
-        return None
+        # Contorno misto: nessuna entità DXF singola può contenere insieme una
+        # spline e una polilinea. Lo materializziamo come più entità native
+        # (SPLINE + LWPOLYLINE aperte) con endpoint coincidenti — il grafo di
+        # reload ricuce il loop. Mai discretizzare la spline.
+        created = write_open_segments(segments, msp, layer)
+        return created or None
 
     pts = segments_to_pts_with_bulge(segments)
     if not pts:
@@ -208,9 +224,7 @@ def write_open_segments(segments: List, msp, layer: str) -> List[object]:
                 dxfattribs={"layer": layer, "color": 256},
             ))
         elif isinstance(seg, SplineSeg):
-            ent = write_segments([seg], msp, layer)
-            if ent is not None:
-                created.append(ent)
+            created.append(_add_spline(seg, msp, layer))
 
     _flush_poly_run()
     return created

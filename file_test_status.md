@@ -9,17 +9,13 @@ maniglia.dxf/  --> stesso problema di flangia_scantonata.dxf, threaded hole sens
 maniglia_no_raccordi.dxf  --> identico discorso di maniglia.dxf
 multifeature.dxf  --> un file con tutti i tipi di feature, generato apposta per poter testare i vari comportamenti.  le entità sono modificate, difatt il e linee tratteggiate non sono più tratteggiate. imho la tipologia di linea deve essere gestita, e mantenuta nel dxf output. Teniamo conto hce il role dovrà poter esesre individuato acnhe da tipo linea e colore, quindi direi che è roba che serve e a quel punto prendiamo due piccioni con una fava. E c'è anceh qui il problema degli engrave
     [A-bis v2] quote e frecce di sezione RECUPERATE: le 16 DIMENSION le cancellava l'auditor di ezdxf (nessun blocco geometria) -> ora estratte prima di audit() + ricostruite dai def-point; i 4 LEADER non avevano repr point -> posizione dal bbox. Restano fuori scope: linetype tratteggiati (Cluster E), engrave (Cluster D).
-poly_spline_part.dxf  --> nesuna entità presente nel file dxf esportato. questa cosa succede con tute le spline che non sono autochiuse, questo è un bug grosso. il fatto è che il json ha i dati corretti, i clacoli vengono effettuati giusti, c'è una parte, le areee e tutto, quindi i fiel golden non falliscono. non so perchè pèerò, in teoria i wkt dovrebbero controllare....
+
 rect_special_conutersink.dxf --> il countersink viene rilevato e il foro è sul layer corretto,  non è presente nel dxf esportato. capire se si può opzionalmente fare in modo che i benedetti esterni del foro possano opzionalmente essere messi su un layer a parte, di modo che se uno vuole trattarli in CAM in modo diverso può farlo ma è opzionale e non bloccante
 rect_with_secial_layers.dxf --> ci sono 3 linee, 2 su bend e 1 su mark. ho runnato con special_layers = 
     "MARK"      : "engrave" eccetera, le linee di bend NON vanno in bend, vano in trash, è una regressione recente, quella di mark non c'è, non è presente e non capsico il motivo. bisognerebeb indagare un giorno, perhèc potrebbe essere messa tra le candidate bend a mio parere dato che va da parte a parte....
 rect_with_threadad_holes_geometric.dxf --> fori rilevati correttamente e posti sul layer giusto, archi in trash. Capire se con la rilevazione semantica non sia bello piazzare l'arco esterno per unificarlo a livello di disegno, un reverse-geometric feature. Non bloccante e forse non necessario, solo un'ipotesi.
 
-scritta.py  --> il file ha una scritta interna che deve andatre totalmetne negli innrer, non è testo, sono delle entità normali. Questo file è rotto molto, si vedono la metà degli inner che ci dovrebbero essere, tutto il resto è sparito, presumo che vada a finire in trash e non si presenti nel dxf in output
-    [parziale] INSERT ora esploso di default: il modello è OK (1 outer + 15 inner). Restano 6/15 inner nell'output perché write_segments scarta i contorni misti line+spline -> spostato a Cluster B.
-spline_line.dxf  --> come dicevamo quando ci sono spline non chiuse non si chiude il loop mi sa, il file è vuoto.
-spline_line_gap.dxf  --> idem come sopra, qui bisogna anche verificare se il gap fixer funziona (aggiunta di segmento che va a chiudere)
-spline_line_fori.dxf   -->  Outer assente. la cosa interessante è che inner e foro sono presenti, e sono rilevati nella gerarchia, quindi c'è qualcosa che non va. non capisco come possa essere che finiscono in trash, se il hierarchy li vede come outer. una voltache sono outer, sono outer, punto, non lo so mi convince poco questa cosa, non ha senso, se non si chiiude il loop come può essere individuato come outer?
+
 two_rects_with_bend.dxf   --> uno dei due rect ha una bl interna i cui ep non combaciano con l'outer per 10mm. ho prevato a fare il detect aumentando la bending tol a 11, ma non viene comunque individuata come bending, quella entità. entità in trash.
 
 
