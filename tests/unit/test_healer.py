@@ -234,18 +234,20 @@ class TestHealerDeduplication(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Validate msp
+# Validate input (ForgeDocument)
 # ---------------------------------------------------------------------------
 
-class TestValidateMsp(unittest.TestCase):
+class TestValidateInput(unittest.TestCase):
 
-    def test_001_detects_lines(self):
-        check = forge.validate_msp(load_msp("rect_lines.dxf"))
+    def test_001_detects_open_lines(self):
+        check = forge.validate(forge.load_dxf(load("rect_lines.dxf")))
         self.assertGreater(len(check.warnings), 0)
+        self.assertTrue(check.is_valid)
 
     def test_002_clean_file_no_errors(self):
-        check = forge.validate_msp(load_msp("pline_with_hole.dxf"))
+        check = forge.validate(forge.load_dxf(load("pline_with_hole.dxf")))
         self.assertEqual(len(check.errors), 0)
+        self.assertTrue(check.is_valid)
 
 
 if __name__ == "__main__":

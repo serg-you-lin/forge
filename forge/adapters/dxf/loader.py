@@ -41,7 +41,15 @@ DWG_VERSIONS = {
 # DWG → doc via odafc
 # ---------------------------------------------------------------------------
 
-def _read_dwg(path: str):
+def _emit(sink: list, msg: str, verbose: bool = False) -> None:
+    """Aggiunge `msg` al canale warnings; lo stampa solo se verbose."""
+    if sink is not None:
+        sink.append(msg)
+    if verbose:
+        print(f"[loader] {msg}")
+
+
+def _read_dwg(path: str, sink: list = None, verbose: bool = False):
     """
     Legge un file DWG usando ezdxf.addons.odafc.
     Richiede ODA File Converter installato e ODA_PATH settato.
@@ -55,15 +63,13 @@ def _read_dwg(path: str):
     with open(path, 'rb') as f:
         version_code = f.read(6).decode('ascii', errors='ignore')
     version_name = DWG_VERSIONS.get(version_code, version_code)
-    print(f"[loader] DWG rilevato: {version_name} ({version_code})")
+    _emit(sink, f"DWG rilevato: {version_name} ({version_code}), convertito via odafc", verbose)
 
     if not ODA_PATH:
         raise EnvironmentError(
             "[loader] ODA_PATH non settato.\n"
             "Installa ODA File Converter e setta la variabile d'ambiente ODA_PATH."
         )
-
-    # odafc.win_exec_path = ODA_PATH
 
     ezdxf.options.set("odafc-addon", "win_exec_path", ODA_PATH)
 
@@ -72,14 +78,13 @@ def _read_dwg(path: str):
     except Exception as ex:
         raise RuntimeError(f"[loader] Conversione DWG fallita: {ex}")
 
-    print(f"[loader] DWG convertito correttamente")
     return doc
 
 # ---------------------------------------------------------------------------
 # Upgrade R12 → R2010
 # ---------------------------------------------------------------------------
 
-def _upgrade_to_r2010(doc) -> object:
+def _upgrade_to_r2010(doc, sink: list = None, verbose: bool = False) -> object:
     """
     Converte un documento DXF legacy in R2010.
     Esplode INSERT e POLYLINE in place, poi copia tutto nel nuovo doc.
@@ -87,6 +92,8 @@ def _upgrade_to_r2010(doc) -> object:
     """
     if doc.dxfversion >= 'AC1015':
         return doc
+
+    _emit(sink, f"file legacy {doc.dxfversion}: upgrade a R2010", verbose)
 
     new_doc = ezdxf.new('R2010')
     new_msp = new_doc.modelspace()
@@ -96,13 +103,13 @@ def _upgrade_to_r2010(doc) -> object:
         try:
             entity.explode()
         except Exception as ex:
-            print(f"  [WARN] upgrade: explode INSERT fallito — {ex}")
+            _emit(sink, f"upgrade: explode INSERT fallito — {ex}", verbose)
 
     for entity in list(old_msp.query('POLYLINE')):
         try:
             entity.explode()
         except Exception as ex:
-            print(f"  [WARN] upgrade: explode POLYLINE fallito — {ex}")
+            _emit(sink, f"upgrade: explode POLYLINE fallito — {ex}", verbose)
 
     for entity in old_msp:
         # Le entità devono essere copiate nel nuovo documento: non è lecito
@@ -151,37 +158,51 @@ def load_dxf(
         ignore_layers:   layer da escludere dalla geometria
 
     Returns:
-        ForgeDocument (edges + annotations + source_meta) — pronto per heal()
+        ForgeDocument (edges + annotations + source_meta + warnings) — pronto
+        per heal(). La diagnostica sul file grezzo (audit, INSERT non esplosi,
+        Z != 0 riportate sul piano, duplicati rimossi) finisce in
+        `doc.warnings`; con verbose=True viene anche stampata.
+        `forge.validate(doc)` rilancia queste warnings.
     """
+    warnings: list = []
+
     if str(path).lower().endswith('.dwg'):
-        doc = _read_dwg(path)
+        doc = _read_dwg(path, sink=warnings, verbose=verbose)
     else:
         doc = ezdxf.readfile(path)
 
     auditor = doc.audit()
     if auditor.errors:
-        print(f"[loader] audit: {len(auditor.errors)} problemi trovati")
-        for err in auditor.errors:
-            print(f"  [audit] {err}")
+        _emit(warnings, f"audit: {len(auditor.errors)} problemi rilevati dal reader ezdxf", verbose)
+        for err in auditor.errors[:5]:
+            _emit(warnings, f"audit — {err}", verbose)
 
     if upgrade or doc.dxfversion < 'AC1015':
-        doc = _upgrade_to_r2010(doc)
+        doc = _upgrade_to_r2010(doc, sink=warnings, verbose=verbose)
 
     msp = doc.modelspace()
 
     inserts_found = list(msp.query("INSERT"))
     if inserts_found:
         if explode_inserts:
-            n = _explode_inserts(msp)
+            n = _explode_inserts(msp, sink=warnings)
             if n:
-                print(f"[loader] {n} INSERT esplosi.")
+                _emit(warnings, f"{n} INSERT esplosi in entità primitive", verbose)
         else:
-            print(f"[loader] Trovati {len(inserts_found)} INSERT non esplosi — usa explode_inserts=True in load_dxf() per includerli.")
+            _emit(
+                warnings,
+                f"{len(inserts_found)} INSERT non esplosi ignorati — "
+                "usa explode_inserts=True in load_dxf() per includerli",
+                verbose,
+            )
 
     removed = deduplicate(msp)
     if removed > 0:
-        print(f"Rimosse {removed} entità duplicate dal msp.")
-    sanitize(msp, flatten_z_flag=flatten_z_flag, verbose=verbose)
+        _emit(warnings, f"{removed} entità duplicate rimosse dal modelspace", verbose)
+
+    flattened = sanitize(msp, flatten_z_flag=flatten_z_flag, verbose=verbose)
+    if flattened:
+        _emit(warnings, f"{flattened} entità con Z != 0 riportate sul piano", verbose)
 
     label_map = label_map or {}
     ignore = {s.lower() for s in (ignore_layers or [])}
@@ -207,6 +228,7 @@ def load_dxf(
         annotations=annotations,
         source_meta=meta,
         source_path=str(path),
+        warnings=warnings,
     )
 
 
