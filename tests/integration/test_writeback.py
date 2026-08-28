@@ -238,12 +238,27 @@ class TestWritebackTrash(unittest.TestCase):
 
     def test_004_open_trash_not_closed(self):
         # Le tracce aperte non devono essere chiuse: una LWPOLYLINE trash
-        # con flag closed falserebbe la forma.
-        result, msp = _pipeline("arc_open.dxf")
-        self.assertGreater(len(result.trash_entities), 0)
-        for e in msp.query("LWPOLYLINE"):
-            if e.dxf.layer == TRASH_LAYER:
-                self.assertFalse(e.closed)
+        # con flag closed falserebbe la forma. two_rects_with_bend ha una
+        # bending line interna che il detector non promuove (endpoint a ~10 mm
+        # dall'outer) → finisce in trash come traccia aperta.
+        result, msp = _pipeline("two_rects_with_bend.dxf")
+        trash_pl = [e for e in msp.query("LWPOLYLINE")
+                    if e.dxf.layer == TRASH_LAYER]
+        self.assertGreater(len(trash_pl), 0)
+        for e in trash_pl:
+            self.assertFalse(e.closed)
+
+    def test_005_no_output_when_no_closed_outer(self):
+        # Nessun contorno esterno chiuso (arc_open a tolleranza default: gap
+        # arco/arco di ~0.26 mm > 0.05) → heal() invalida il risultato e
+        # to_dxf() si rifiuta di materializzare un file di sola trash.
+        doc = forge.load_dxf(EXAMPLES_DIR / "arc_open.dxf", label_map={})
+        result = forge.heal(doc)
+        self.assertFalse(result.is_valid)
+        self.assertEqual(result.part_count, 0)
+        self.assertTrue(result.errors)
+        with self.assertRaises(ValueError):
+            forge.to_dxf(result, doc)
 
 
 # ---------------------------------------------------------------------------
