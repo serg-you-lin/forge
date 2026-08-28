@@ -103,14 +103,7 @@ def _parse_spline(entity, rev) -> SplineSeg:
         start_tangent = None
         end_tangent = None
 
-    if rev:
-        cps = list(reversed(cps))
-        if approx_points:
-            approx_points = list(reversed(approx_points))
-        if fit_points:
-            fit_points = list(reversed(fit_points))
-
-    return SplineSeg(
+    seg = SplineSeg(
         degree=int(getattr(entity.dxf, "degree", 3) or 3),
         control_points=[(p[0], p[1]) for p in cps],
         knots=knots,
@@ -126,6 +119,7 @@ def _parse_spline(entity, rev) -> SplineSeg:
         start_tangent=start_tangent,
         end_tangent=end_tangent,
     )
+    return seg.reversed() if rev else seg
 
 
 def _parse_circle(entity) -> CircleSeg:
@@ -147,22 +141,7 @@ def _reverse_segment(segment):
             ccw=not segment.ccw,
         )
     if isinstance(segment, SplineSeg):
-        return SplineSeg(
-            degree=segment.degree,
-            control_points=list(reversed(segment.control_points)),
-            knots=list(segment.knots),
-            weights=list(segment.weights) if segment.weights is not None else None,
-            approx_points=list(reversed(segment.approx_points)) if segment.approx_points else None,
-            fit_points=list(reversed(segment.fit_points)) if segment.fit_points else None,
-            closed=segment.closed,
-            periodic=segment.periodic,
-            flags=segment.flags,
-            knot_tolerance=segment.knot_tolerance,
-            fit_tolerance=segment.fit_tolerance,
-            control_point_tolerance=segment.control_point_tolerance,
-            start_tangent=segment.end_tangent,
-            end_tangent=segment.start_tangent,
-        )
+        return segment.reversed()
     return segment
 
 

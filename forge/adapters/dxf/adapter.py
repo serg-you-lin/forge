@@ -132,17 +132,10 @@ def _spline_to_primitive(entity, rev: bool = False) -> Optional[SplineSeg]:
         start_tangent = None
         end_tangent = None
     
-    if rev:
-        cps = list(reversed(cps))
-        if approx_points:
-            approx_points = list(reversed(approx_points))
-        if fit_points:
-            fit_points = list(reversed(fit_points))
-    
     if not cps and not fit_points:
         return None
-    
-    return SplineSeg(
+
+    seg = SplineSeg(
         degree=int(getattr(entity.dxf, "degree", 3) or 3),
         control_points=[(p[0], p[1]) for p in cps],
         knots=knots,
@@ -158,6 +151,7 @@ def _spline_to_primitive(entity, rev: bool = False) -> Optional[SplineSeg]:
         start_tangent=start_tangent,
         end_tangent=end_tangent,
     )
+    return seg.reversed() if rev else seg
 
 
 def _polyline_to_primitives(entity, rev: bool = False) -> List[Segment]:

@@ -73,17 +73,51 @@ Test: `test_writeback.py` `TestWritebackAnnotations` (001–008 + 003b),
 Coperti: gamba_tavolo, rect_with_trash, Multifeature (16 quote block-less + 4
 leader di sezione). `scritta.dxf` → Cluster B.
 
-## Cluster B — spline non chiuse / miste → DXF vuoto  ⬜ DA FARE
+## Cluster B — spline non chiuse / miste → DXF vuoto  ✅ FATTO (`refactor/structure`, non committato)
 
 poly_spline_part, spline_line, spline_line_gap, spline_line_fori, **scritta.dxf**.
-Due sotto-bug: (1) `write_segments` ritorna `None` per contorni misti SplineSeg+Line/Arc
-→ parte persa; (2) spline aperta non chiude il loop → outer non riconosciuto.
-Il round-trip (`test_golden.py` `TestGoldenWriteBack`) lo becca (1 parte → 0).
-`spline_line_fori`: capire perché inner/foro sono in gerarchia ma outer no.
-**scritta.dxf**: il modello è corretto (1 outer + 15 inner, lettere fatte di
-line+spline), ma `to_dxf` scrive solo i 6 inner di sole `LineSeg`; i 9 misti
-line+spline vengono scartati dal sotto-bug (1). NON è un problema di annotazioni:
-la "scritta" è geometria esplosa, tutti gli inner.
+
+**Diagnosi:** il sotto-bug (1) era l'unica causa reale per 4 file su 5. Il
+modello (heal + detect) era già corretto in tutti — `to_dxf` perdeva la parte
+perché `write_segments()` ritornava `None` sui contorni che mischiano
+`SplineSeg` con `LineSeg`/`ArcSeg` (o con più di una spline). Il sotto-bug (2)
+("spline aperta non chiude il loop") **non si riproduce più** su spline_line /
+spline_line_fori / poly_spline_part: heal li chiude tutti. Il sospetto del piano
+su spline_line_fori ("inner/foro in gerarchia ma outer no") era superato:
+l'outer c'è nel modello, lo perdeva solo l'exporter.
+
+**Fix (Federico: "polilinea discretizzata mai; spline come primitiva nativa,
+non copiata"):** `forge/adapters/dxf/exporter.py` — `write_segments()` sui
+contorni misti non ritorna più `None` ma delega a `write_open_segments()`:
+emette ogni `SplineSeg` come SPLINE nativa (ricostruita da control points /
+knots / weights / degree / tangenti — stesso trattamento della spline chiusa
+singola, `_add_spline()` estratto e condiviso) e i tratti line/arc come
+LWPOLYLINE aperte con bulge. Gli endpoint coincidono: il loop chiuso è dato
+dall'insieme delle entità, il grafo di reload lo ricuce (round-trip verificato:
+area/perimetro/holes/inners identici su tutti e 5).
+
+`test_golden.py::ROUNDTRIP_KNOWN_LOSSY` ora è vuoto (era
+`{poly_spline_part, spline_line_gap}`). Suite: 516 passed / 2 xfail.
+
+**Secondo bug trovato (Federico: "in alcuni casi la spline non è identica"):**
+l'inversione di una B-spline per orientare il loop invertiva i soli control
+point, non il vettore nodi né i pesi. Risultato: `SPLINE` emessa deformata
+all'interno (endpoint ok perché una spline clamped interpola primo/ultimo CP),
+deviazione fino a ~0.66 mm su `scritta`. Gli `approx_points` del modello erano
+invertiti bene → area/perimetro/golden non lo vedevano. Fix: nuovo
+`SplineSeg.reversed()` in `core/primitives/segments.py` che rimappa i nodi
+(`U'[i] = a + b - U[m-i]`) e inverte pesi/tangenti; i 3 punti che invertivano
+spline a mano (`parser._reverse_segment`, `parser._parse_spline`,
+`adapter._spline_to_primitive`) ora passano tutti da lì. Verifica: ogni spline
+ricostruita coincide con la sorgente entro 3e-7 (era 0.66); round-trip di
+`scritta` ora esatto (area 38791.157 identica).
+
+**spline_line_gap — nota:** heal a `tolerance` default 0.05 dà 0 parti perché il
+gap reale è 0.2 mm fine-spline `(0, 49.8)` ↔ fine-linea `(0, 50)`, cioè 4× la
+tolleranza. A `tolerance ≥ 0.2` (i golden usano 0.5) heala pulito. Il gap-fixer
+funziona: `compute_gap_fixes` filtra sul gate `distance <= tolerance` come per
+line/line, quindi non autochiude un buco 4× la tolleranza — comportamento
+coerente, non un bug. Se serve, l'utente alza `tolerance`.
 
 ## Cluster C — threaded hole falsi positivi  ⬜ DA FARE
 
