@@ -191,10 +191,53 @@ class SplineSeg:
     start_tangent: Optional[Tuple[float, float, float]] = None
     end_tangent: Optional[Tuple[float, float, float]] = None
 
+    def reversed(self) -> "SplineSeg":
+        """
+        Spline con la parametrizzazione invertita — stesso luogo geometrico
+        percorso al contrario.
+
+        Invertire una B-spline NON è solo invertire i punti di controllo:
+        va invertito anche il vettore dei nodi e rimappato sul dominio
+        originale ``U'[i] = a + b - U[m-i]`` (con ``a = U[0]``, ``b = U[-1]``),
+        e vanno invertiti i pesi. Invertire i soli control point lascia la
+        curva accoppiata a un vettore nodi sbagliato: la curva emessa in DXF
+        risulta deformata all'interno (gli endpoint combaciano lo stesso
+        perché una spline clamped interpola il primo e l'ultimo CP).
+
+        `approx_points` / `fit_points` sono solo campioni: si invertono e basta.
+        Le tangenti si scambiano E si negano (la tangente entrante all'inizio
+        diventa quella uscente alla fine, con verso opposto).
+        """
+        if self.knots:
+            a, b = self.knots[0], self.knots[-1]
+            new_knots = [a + b - k for k in reversed(self.knots)]
+        else:
+            new_knots = []
+
+        def _neg(v):
+            return None if v is None else (-v[0], -v[1], -v[2])
+
+        return SplineSeg(
+            degree=self.degree,
+            control_points=list(reversed(self.control_points)),
+            knots=new_knots,
+            weights=list(reversed(self.weights)) if self.weights else None,
+            approx_points=list(reversed(self.approx_points)) if self.approx_points else None,
+            fit_points=list(reversed(self.fit_points)) if self.fit_points else None,
+            closed=self.closed,
+            periodic=self.periodic,
+            flags=self.flags,
+            knot_tolerance=self.knot_tolerance,
+            fit_tolerance=self.fit_tolerance,
+            control_point_tolerance=self.control_point_tolerance,
+            start_tangent=_neg(self.end_tangent),
+            end_tangent=_neg(self.start_tangent),
+        )
+
     def discretize(self, tolerance: float = DEFAULT_TOLERANCE) -> List[Point]:
         """
         Discretizza la spline in polilinea.
-        
+
         FASE 3: implementare valutazione BSpline corretta con controllo
         della tolleranza. Per ora usiamo interpolazione lineare tra i
         punti di controllo come approssimazione.

@@ -50,13 +50,10 @@ ROUNDTRIP_LABEL_MAP = {
     LAYER_THREADED_HOLE: "threaded_hole",
 }
 
-# Fixture che l'exporter non sa ancora materializzare senza perdita: contorni
-# che mischiano SplineSeg e altri segmenti → write_segments() restituisce None
-# e la parte sparisce nel write-back. Vedi forge/adapters/dxf/exporter.py.
-ROUNDTRIP_KNOWN_LOSSY = {
-    "poly_spline_part.DXF",
-    "spline_line_gap.dxf",
-}
+# Contorni misti SplineSeg + linee/archi: materializzati come SPLINE native +
+# LWPOLYLINE aperte con endpoint coincidenti (mai discretizzati). Il round-trip
+# li ricuce via grafo — nessuna perdita nota al momento.
+ROUNDTRIP_KNOWN_LOSSY = set()
 
 
 def _load_config(dxf_path):
