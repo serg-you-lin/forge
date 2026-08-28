@@ -234,7 +234,7 @@ def write_metadata_to_dxf(doc, part: ForgePart):
     Supporta LWPOLYLINE, POLYLINE e CIRCLE su layer OuterContour.
     """
     try:
-        from ..rules.layers import LAYER_OUTER
+        from ..adapters.dxf.layers import LAYER_OUTER
         msp = doc.modelspace()
 
         outer_entity = None
@@ -277,7 +277,7 @@ def read_metadata_from_dxf(doc) -> dict:
         dict con i metadati secondo schema — o dict vuoto.
     """
     try:
-        from ..rules.layers import LAYER_OUTER
+        from ..adapters.dxf.layers import LAYER_OUTER
         msp = doc.modelspace()
 
         outer_entity = None

@@ -4,7 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "forge"
-version = "0.4.4"
+# Unica fonte di verità della versione. forge.__version__ la legge da qui via
+# importlib.metadata — non duplicarla nel codice (MAP.md D11).
+version = "0.5.1"
 description = "DXF geometry preprocessing for manufacturing pipelines"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,7 +31,7 @@ dependencies = [
 raster = ["opencv-python", "Pillow"]
 pdf    = ["PyMuPDF"]
 dev    = ["pytest", "pytest-cov"]
-all    = ["dxf-forge[raster,pdf]"]
+all    = ["forge[raster,pdf]"]
 
 [tool.setuptools.packages.find]
 where = ["."]

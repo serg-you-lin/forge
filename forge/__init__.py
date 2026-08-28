@@ -37,6 +37,10 @@ Materializzazione in DXF:
 """
 
 from .adapters.dxf.loader import load_dxf, document_from_msp
+# load_pdf: SPERIMENTALE, fuori dal contratto pubblico (vedi MAP.md D10).
+# Ritorna list[Edge], non un ForgeDocument — NON passabile a forge.heal().
+# Resta importabile come forge.load_pdf per chi ci lavora sopra, ma non è in
+# __all__ e non è documentato: l'API può cambiare o sparire senza preavviso.
 from .adapters.pdf.loader import load_pdf
 from .pipeline            import heal, split_to_files
 from .pipeline.inject   import inject
@@ -54,14 +58,23 @@ from .io.exporter         import (
 )
 from .model         import ForgeResult, ForgePart, ForgeContour, ForgeDocument, Annotation
 from .io.text_utils       import extract_texts_from_msp
+from .inspect             import (
+    inspect_dxf, inspect_document, inspect_result, inspect_file,
+)
 
-__version__ = "0.5.1"
+try:
+    from importlib.metadata import version as _pkg_version, PackageNotFoundError
+    try:
+        __version__ = _pkg_version("forge")
+    except PackageNotFoundError:
+        __version__ = "0.0.0+dev"
+except ImportError:  # pragma: no cover
+    __version__ = "0.0.0+dev"
 
 __all__ = [
     # Apertura file
     "load_dxf",
     "document_from_msp",
-    "load_pdf",
     # Validazione
     "validate",
     "validate_result",
@@ -83,6 +96,11 @@ __all__ = [
     "set_schema",
     # Utilità
     "extract_texts_from_msp",
+    # Ispezione / debug (3 livelli: DXF grezzo → ForgeDocument → ForgeResult)
+    "inspect_dxf",
+    "inspect_document",
+    "inspect_result",
+    "inspect_file",
     # Modelli
     "ForgeResult",
     "ForgePart",
