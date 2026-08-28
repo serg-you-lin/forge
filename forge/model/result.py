@@ -18,6 +18,11 @@ class ForgeResult:
                     Salvato qui da detect() — inject() e write()
                     lo leggono senza che il chiamante lo ripassi.
                     Non serializzato in to_dict(): è configurazione di sessione.
+        annotations : testi e quote della sorgente (list[Annotation]), copiati
+                    qui da heal() dal ForgeDocument. Sono dati di dominio
+                    indipendenti dal formato: ogni renderer (to_dxf, un
+                    futuro to_svg/to_pdf) li disegna dal modello, senza
+                    rileggere la sorgente.
     """
     parts:               List[ForgePart]        = field(default_factory=list)
     source_file:         str                    = ""
@@ -25,6 +30,7 @@ class ForgeResult:
     warnings:            List[str]              = field(default_factory=list)
     errors:              List[str]              = field(default_factory=list)
     trash_entities:      List[Any]              = field(default_factory=list)
+    annotations:         List[Any]              = field(default_factory=list)
     classified_entities: List[ClassifiedEntity] = field(default_factory=list)
     label_map:           dict                   = field(default_factory=dict)
     all_arcs:            List[Any]              = field(default_factory=list)
