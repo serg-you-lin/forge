@@ -119,11 +119,35 @@ funziona: `compute_gap_fixes` filtra sul gate `distance <= tolerance` come per
 line/line, quindi non autochiude un buco 4× la tolleranza — comportamento
 coerente, non un bug. Se serve, l'utente alza `tolerance`.
 
-## Cluster C — threaded hole falsi positivi  ⬜ DA FARE
+## Cluster C — threaded hole falsi positivi  ✅ FATTO (`refactor/structure`, non committato)
 
 flangia_scantonata, maniglia, maniglia_no_raccordi.
-(a) escludere archi dell'outer dal conteggio anello filettato;
-(b) tolleranza preforo↔arco: arco molto più grande del foro ⇒ non è threaded.
+
+**Diagnosi:** `is_threaded_hole` cercava un arco a ~270° concentrico al foro con
+raggio *qualsiasi* purché maggiore. Su questi 3 file l'arco che matchava era
+geometria dell'outer, non un anello filettato:
+- flangia_scantonata: foro Ø160, bordo esterno = arco Ø360 a 293° concentrico
+  (rapporto raggi 2.25);
+- maniglia / maniglia_no_raccordi: foro Ø29.6 all'estremità raggiata del
+  profilo, arco di raccordo Ø95 a ~275° concentrico (rapporto 3.2).
+
+**Fix — solo la tolleranza (b), la (a) non è servita:** l'anello di cresta di
+una filettatura reale ha raggio di *poco* maggiore del preforo — per le
+filettature metriche il rapporto Ø-nominale/Ø-preforo è ~1.1–1.3 (M6:
+6.0/5.0 = 1.2) e scala con la misura. Nuova costante
+`THREADED_ARC_MAX_RADIUS_RATIO = 1.6` in `rules/thresholds.py`; `is_threaded_hole`
+ora accetta l'arco solo se `radius < arc.radius <= radius * max_radius_ratio`.
+Tutti e 3 i falsi positivi hanno rapporto ≥ 2.25, quindi cadono; il vero
+positivo geometrico (`rect_with_threaded_holes_geometric`, rapporto 1.2) resta.
+Escludere gli archi dell'outer dalla lista (fix a) avrebbe richiesto di
+propagare il ruolo dentro `result.all_arcs` e non è necessario: se un file
+reale mostrasse un anello filettato a ridosso di un raccordo dell'outer entro
+1.6×, si riprende la (a) come difesa aggiuntiva.
+
+Golden rigenerati: flangia_scantonata, maniglia, maniglia_no_raccordi
+(threaded → plain; i golden portavano anche `origin`, campo rimosso da
+`Hole.to_dict()` nel refactor — riallineato). Unit: `test_geometry.py`
+`TestIsThreadedHole` 013–014. Suite: 516 passed / 2 xfail.
 
 ## Cluster D — engrave esportati come punti, non edge  ⬜ DA FARE
 

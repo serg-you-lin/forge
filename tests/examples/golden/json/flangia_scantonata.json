@@ -18,16 +18,15 @@
       ],
       "holes": [
         {
-          "hole_type": "threaded",
+          "hole_type": "plain",
           "diameter": 160.0,
           "center": [
             0.0,
             0.0
           ],
           "role": "inner",
-          "confidence": 0.8,
-          "source": "geometric",
-          "origin": "0"
+          "confidence": 1.0,
+          "source": "geometric"
         },
         {
           "hole_type": "plain",
@@ -38,8 +37,7 @@
           ],
           "role": "hole",
           "confidence": 1.0,
-          "source": "geometric",
-          "origin": "0"
+          "source": "geometric"
         },
         {
           "hole_type": "plain",
@@ -50,8 +48,7 @@
           ],
           "role": "hole",
           "confidence": 1.0,
-          "source": "geometric",
-          "origin": "0"
+          "source": "geometric"
         },
         {
           "hole_type": "plain",
@@ -62,8 +59,7 @@
           ],
           "role": "hole",
           "confidence": 1.0,
-          "source": "geometric",
-          "origin": "0"
+          "source": "geometric"
         },
         {
           "hole_type": "plain",
@@ -74,8 +70,7 @@
           ],
           "role": "hole",
           "confidence": 1.0,
-          "source": "geometric",
-          "origin": "0"
+          "source": "geometric"
         }
       ],
       "inners_count": 0,
@@ -87,8 +82,7 @@
       "engrave_lines_count": 0,
       "engrave_lines": [],
       "custom": {
-        "threaded_holes_count": 1,
-        "plain_holes_count": 4
+        "plain_holes_count": 5
       }
     }
   ]
