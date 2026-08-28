@@ -2,11 +2,10 @@ arc_open.dxf --> Entità materializzate, ma gap non colmato. Bisogna improvare i
 
 archi_si_no.dxf  --> in teoria dovrebbe riconoscere gli archi come profilo outer e mettere il percorso 'lungo'  che ora è outer in trash. Ok, è complicato ed è da raginarci, può essere una cosa opzionale? lasciamolo li per ora,m accettiamolo così. Occho perchp sefacciamo come dico io abbiamo le regressioni con le bending line, perchè il grafo gira prima.
 F6.dxf  --> caso edge, va gestito con le tolleranze. con il validator e i cech si nodi ambigui che abbiamo aggiunto di recente mi aspettavo qualche warning, come faccio ad ottenerlo con quello che ho ora? comunque caso buono se si vuole creare un'interfaccia.
-flangia_scantonata.dxf --> Il foro centrale della flangia viene considerato treaded in quanto c'è un arco intorno ad esso, ma l'arco è l'outer che è tondo scantonato. non ha senso, l'outer non deve essere un conteggaitore valido per i fori filettati. imho oltretutto ci deve essere una tolleranza a riguardo del preforo per capire se is trheadaad arc è true, per esempio, il prefolro da 5mm ha l'arc da 6.. è vero che molti allargano i fori, ma il comportamento attuale non ha alcun senso e se un arco è così più grande non può essere un treaded arc.
+
 Fu.dxf --> Le linee di engraving non si vedono, si vedono solo i punti. vengono esportati solo i punti al posto degli edge? inoltre, verificare se la lunghezza degli elementi engrave siano conteggiati per i metadati
 la_104.dxf  --> vedere fu.dxf
-maniglia.dxf/  --> stesso problema di flangia_scantonata.dxf, threaded hole sensa senso
-maniglia_no_raccordi.dxf  --> identico discorso di maniglia.dxf
+
 multifeature.dxf  --> un file con tutti i tipi di feature, generato apposta per poter testare i vari comportamenti.  le entità sono modificate, difatt il e linee tratteggiate non sono più tratteggiate. imho la tipologia di linea deve essere gestita, e mantenuta nel dxf output. Teniamo conto hce il role dovrà poter esesre individuato acnhe da tipo linea e colore, quindi direi che è roba che serve e a quel punto prendiamo due piccioni con una fava. E c'è anceh qui il problema degli engrave
     [A-bis v2] quote e frecce di sezione RECUPERATE: le 16 DIMENSION le cancellava l'auditor di ezdxf (nessun blocco geometria) -> ora estratte prima di audit() + ricostruite dai def-point; i 4 LEADER non avevano repr point -> posizione dal bbox. Restano fuori scope: linetype tratteggiati (Cluster E), engrave (Cluster D).
 

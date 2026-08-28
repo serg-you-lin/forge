@@ -101,6 +101,17 @@ class TestIsThreadedHole(unittest.TestCase):
         arc = make_arc(2.0, 0, 6, 0, 270)
         self.assertFalse(is_threaded_hole((0, 0), 5, [arc], tolerance_center=1.0))
 
+    def test_013_arco_molto_piu_grande_non_filettato(self):
+        # Arco concentrico a 270° ma raggio 3x il foro: bordo di flangia
+        # scantonata / estremita raggiata di un profilo, non un anello filettato.
+        arc = make_arc(0, 0, 16, 0, 270)
+        self.assertFalse(is_threaded_hole((0, 0), 5, [arc]))
+
+    def test_014_rapporto_raggi_custom(self):
+        arc = make_arc(0, 0, 9, 0, 270)   # ratio 1.8
+        self.assertFalse(is_threaded_hole((0, 0), 5, [arc]))
+        self.assertTrue(is_threaded_hole((0, 0), 5, [arc], max_radius_ratio=2.0))
+
 
 # ---------------------------------------------------------------------------
 # is_countersink_outer
