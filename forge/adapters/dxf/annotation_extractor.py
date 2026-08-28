@@ -167,11 +167,15 @@ def _rendered_annotation(entity, position) -> Optional[Annotation]:
         if syn_text is not None:
             texts.append(syn_text)
 
+    # Campi semantici (indipendenti dal formato): valore misurato e tipo quota.
+    # Servono al render vettoriale futuro e agli usi lato loader (check scala).
+    semantic = _dimension_semantics(entity) if entity.dxftype() == "DIMENSION" else {}
+
     if not strokes and not fills and not texts:
         content = _dimension_text(entity) if entity.dxftype() == "DIMENSION" else ""
         if not content or position is None:
             return None
-        data = {"layer": entity.dxf.get("layer", "0"), "content": content}
+        data = {"layer": entity.dxf.get("layer", "0"), "content": content, **semantic}
         return Annotation(kind=entity.dxftype(), position=position, data=data)
 
     if position is None:
@@ -188,8 +192,27 @@ def _rendered_annotation(entity, position) -> Optional[Annotation]:
             "strokes": strokes,
             "fills": fills,
             "texts": texts,
+            **semantic,
         },
     )
+
+
+def _dimension_semantics(entity) -> dict:
+    """`value` (misura) + `dim_kind` di una DIMENSION, per usi non-DXF."""
+    kinds = {0: "linear", 1: "aligned", 2: "angular", 3: "diameter",
+             4: "radius", 5: "angular3p", 6: "ordinate"}
+    try:
+        dim_kind = kinds.get(int(entity.dxf.get("dimtype", 0)) & 7, "linear")
+    except (TypeError, ValueError):
+        dim_kind = "linear"
+    out = {"dim_kind": dim_kind}
+    try:
+        m = entity.get_measurement()
+        if isinstance(m, (int, float)):
+            out["value"] = float(m)
+    except Exception:
+        pass
+    return out
 
 
 def _synthesize_dimension(entity):

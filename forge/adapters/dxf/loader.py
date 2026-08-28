@@ -56,6 +56,27 @@ def _merge_annotations(base: list, extra: list) -> None:
             base.append(ann)
 
 
+# Tipi che forge sa ri-materializzare in to_dxf(): geometria di taglio +
+# annotazioni. Tutto il resto viene perso nel write-back.
+_ROUNDTRIP_TYPES = frozenset({
+    "LINE", "ARC", "CIRCLE", "ELLIPSE", "SPLINE", "LWPOLYLINE", "POLYLINE",
+    "POINT", "TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER", "INSERT",
+})
+
+
+def _warn_non_roundtrip_types(msp, sink: list, verbose: bool = False) -> None:
+    """Avvisa sui tipi di entità che to_dxf() non riscrive (HATCH, IMAGE, …)."""
+    lost = sorted({
+        e.dxftype() for e in msp if e.dxftype() not in _ROUNDTRIP_TYPES
+    })
+    if lost:
+        _emit(
+            sink,
+            f"tipi non riportati in output da to_dxf(): {', '.join(lost)}",
+            verbose,
+        )
+
+
 def _emit(sink: list, msg: str, verbose: bool = False) -> None:
     """Aggiunge `msg` al canale warnings; lo stampa solo se verbose."""
     if sink is not None:
@@ -243,6 +264,8 @@ def load_dxf(
     # le aggiungiamo a quelle catturate pre-audit, senza duplicare.
     if inserts_found and explode_inserts:
         _merge_annotations(annotations, DxfAnnotationExtractor(msp).extract())
+
+    _warn_non_roundtrip_types(msp, warnings, verbose)
 
     meta = {
         "$INSUNITS":     doc.header.get("$INSUNITS", 4),

@@ -42,23 +42,36 @@ Decisioni prese con l'utente:
 - **`explode_inserts` ora è `True` di default** in `load_dxf()`: un INSERT non
   esploso faceva sparire tutta la geometria (footgun).
 
+### Architettura decisa (dopo discussione col dubbio "stiamo tornando indietro?")
+
+Il **prodotto è il modello di fabbricazione** (`ForgeResult`). I `to_*` sono
+renderer del modello; un futuro `to_svg` / `to_pdf` disegna lo stesso modello
+senza rileggere la sorgente. **Nulla si perde** (riferimento dell'utente:
+SigmaNest importa TUTTO — quote e spazzatura). Per non perdere, il modello è
+abbastanza ricco:
+
+- **Geometria classificata** → parti / fori / feature / bending / engrave.
+- **Geometria non classificata** → `result.trash_entities` (segmenti puri,
+  formato-indipendenti). È il concetto generale di "resto": ogni loader lo
+  alimenta, ogni renderer sceglie se disegnarlo. NON è roba dell'adapter DXF.
+- **Testi e quote** → `result.annotations` (list[Annotation]), **oggetto di
+  dominio** (deciso dall'utente). `heal()` le copia dal ForgeDocument.
+  Ogni `Annotation` porta sia i campi semantici (`value`, `dim_kind` per le
+  quote — utili anche lato loader per il check scala/unità) sia la forma
+  renderizzata (`strokes`/`fills`/`texts`, primitive pure) come fallback
+  disegnabile in qualsiasi formato. `to_dxf` NON usa più `source_doc` per le
+  annotazioni.
+
+Whitelist residua: `to_dxf` ri-emette solo i tipi che forge modella; entità
+fuori vocabolario (HATCH, IMAGE, TABLE, 3DFACE, XLINE…) restano fuori.
+`load_dxf._warn_non_roundtrip_types()` emette un warning che le elenca —
+niente più perdite silenziose. Passthrough generico: solo se un file reale lo
+richiede.
+
 Test: `test_writeback.py` `TestWritebackAnnotations` (001–008 + 003b),
 `TestWritebackInsertExplodedByDefault`.
-
-Coperti: gamba_tavolo (7 quote + MTEXT), rect_with_trash (testo),
-Multifeature (16 quote block-less + 4 leader di sezione).
-`scritta.dxf` → spostato a Cluster B (vedi sotto).
-
-### Aperto — passthrough entità non modellate
-
-`to_dxf()` è una whitelist: ri-emette solo ciò che forge modella (parti, fori,
-feature, bending, engrave, trash-geometria, testo/quote/leader). Entità fuori
-vocabolario (HATCH, WIPEOUT, IMAGE, TABLE, 3DFACE, POINT, XLINE/RAY…) vengono
-perse silenziosamente. Il vecchio `write()` mutava il modelspace sul posto e non
-perdeva nulla "per caso". Da decidere: (a) accettare la copertura attuale — per
-DXF di lamiera il vocabolario è di fatto completo; (b) passthrough generico
-(copiare le entità sconosciute dal source doc in `to_dxf`); (c) almeno un
-**warning** in `load_dxf` che elenca i tipi che non faranno round-trip.
+Coperti: gamba_tavolo, rect_with_trash, Multifeature (16 quote block-less + 4
+leader di sezione). `scritta.dxf` → Cluster B.
 
 ## Cluster B — spline non chiuse / miste → DXF vuoto  ⬜ DA FARE
 
