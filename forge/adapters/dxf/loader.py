@@ -41,6 +41,21 @@ DWG_VERSIONS = {
 # DWG → doc via odafc
 # ---------------------------------------------------------------------------
 
+def _annotation_signature(ann) -> tuple:
+    return (ann.kind, round(ann.position[0], 3), round(ann.position[1], 3),
+            ann.data.get("content", ""))
+
+
+def _merge_annotations(base: list, extra: list) -> None:
+    """Aggiunge a `base` le annotazioni di `extra` non già presenti (per firma)."""
+    seen = {_annotation_signature(a) for a in base}
+    for ann in extra:
+        sig = _annotation_signature(ann)
+        if sig not in seen:
+            seen.add(sig)
+            base.append(ann)
+
+
 def _emit(sink: list, msg: str, verbose: bool = False) -> None:
     """Aggiunge `msg` al canale warnings; lo stampa solo se verbose."""
     if sink is not None:
@@ -126,7 +141,7 @@ def _upgrade_to_r2010(doc, sink: list = None, verbose: bool = False) -> object:
 def load_dxf(
     path: str,
     upgrade: bool = False,
-    explode_inserts: bool = False,
+    explode_inserts: bool = True,
     flatten_z_flag: bool = True,
     verbose: bool = False,
     tolerance: float = 0.05,
@@ -148,7 +163,10 @@ def load_dxf(
     Args:
         path:            percorso del file .dxf o .dwg
         upgrade:         se True, forza upgrade a R2010
-        explode_inserts: se True, esplode INSERT in entità primitive
+        explode_inserts: se True (default), esplode gli INSERT in entità
+                         primitive. Passa False solo se vuoi ignorare i blocchi
+                         di proposito: un INSERT non esploso viene scartato e la
+                         sua geometria sparisce dall'output.
         flatten_z_flag:  passa flatten_z a sanitize()
         verbose:         se True, stampa dettaglio entità in sanitize
         tolerance:       tolleranza di arrotondamento dei nodi topologici;
@@ -171,14 +189,21 @@ def load_dxf(
     else:
         doc = ezdxf.readfile(path)
 
+    if upgrade or doc.dxfversion < 'AC1015':
+        doc = _upgrade_to_r2010(doc, sink=warnings, verbose=verbose)
+
+    # Le annotazioni vanno estratte PRIMA di doc.audit(): l'auditor di ezdxf
+    # cancella le DIMENSION che referenziano un blocco geometria non definito
+    # (dims salvate senza pre-rendering) — sono comunque annotazioni valide da
+    # riportare in output. `_dimension_text()` / `virtual_entities()` non hanno
+    # bisogno del documento auditato.
+    annotations = DxfAnnotationExtractor(doc.modelspace()).extract()
+
     auditor = doc.audit()
     if auditor.errors:
         _emit(warnings, f"audit: {len(auditor.errors)} problemi rilevati dal reader ezdxf", verbose)
         for err in auditor.errors[:5]:
             _emit(warnings, f"audit — {err}", verbose)
-
-    if upgrade or doc.dxfversion < 'AC1015':
-        doc = _upgrade_to_r2010(doc, sink=warnings, verbose=verbose)
 
     msp = doc.modelspace()
 
@@ -213,7 +238,11 @@ def load_dxf(
         ignore_layers=ignore,
         label_map=label_map,
     ).to_edges()
-    annotations = DxfAnnotationExtractor(msp).extract()
+
+    # Dopo explode possono affiorare TEXT/MTEXT che stavano dentro i blocchi:
+    # le aggiungiamo a quelle catturate pre-audit, senza duplicare.
+    if inserts_found and explode_inserts:
+        _merge_annotations(annotations, DxfAnnotationExtractor(msp).extract())
 
     meta = {
         "$INSUNITS":     doc.header.get("$INSUNITS", 4),

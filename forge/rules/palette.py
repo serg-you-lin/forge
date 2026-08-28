@@ -29,6 +29,7 @@ COLOR_MARKING       = 8    # grigio scuro
 COLOR_COUNTERSINK   = 5    # blu
 COLOR_THREADED_HOLE = 4    # ciano
 COLOR_TRASH         = 1    # rosso
+COLOR_ANNOTATION    = 7    # bianco/nero (foreground) — testi e quote
 
 # ---------------------------------------------------------------------------
 # ContourRole → colore semantico
