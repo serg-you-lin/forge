@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461280.809814815
+2461281.530902778
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461280.809814815
+2461281.530902778
   9
 $TDUUPDATE
  40
@@ -549,7 +549,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-56
+57
   9
 $SURFTAB1
  70
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{5F5F210E-D52B-4D2C-A276-CA2B16D16297}
+{0BF9C131-1D64-48EB-A130-CB66CE68276A}
   9
 $VERSIONGUID
   2
-{588B55AF-C5D6-4C8A-97A0-022D5636409E}
+{00DB18B9-1D42-4B62-AAE3-B5CCF8C077EA}
   9
 $EXTNAMES
 290
@@ -1323,9 +1323,9 @@ ISM
   0
 CLASS
   1
-ACDBPLACEHOLDER
+LAYOUT
   2
-AcDbPlaceHolder
+AcDbLayout
   3
 ObjectDBX Classes
  90
@@ -1339,9 +1339,9 @@ ObjectDBX Classes
   0
 CLASS
   1
-LAYOUT
+ACDBPLACEHOLDER
   2
-AcDbLayout
+AcDbPlaceHolder
   3
 ObjectDBX Classes
  90
@@ -1549,7 +1549,7 @@ LAYER
 100
 AcDbSymbolTable
  70
-11
+12
   0
 LAYER
   5
@@ -1803,6 +1803,30 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
+Annotation
+ 70
+0
+ 62
+7
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+38
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
 Trash
  70
 0
@@ -1917,7 +1941,7 @@ ACAD
   0
 APPID
   5
-53
+54
 330
 3
 100
@@ -1931,7 +1955,7 @@ HATCHBACKGROUNDCOLOR
   0
 APPID
   5
-54
+55
 330
 3
 100
@@ -2241,38 +2265,6 @@ ENTITIES
   0
 LWPOLYLINE
   5
-38
-330
-17
-100
-AcDbEntity
-  8
-OuterContour
-100
-AcDbPolyline
- 90
-4
- 70
-1
- 10
-624.9979999999996
- 20
-200.0
- 10
-0.0
- 20
-200.0
- 10
-0.0
- 20
-50.0
- 10
-624.9979999999996
- 20
-50.0
-  0
-LWPOLYLINE
-  5
 39
 330
 17
@@ -2287,6 +2279,38 @@ AcDbPolyline
  70
 1
  10
+624.9979999999996
+ 20
+200.0
+ 10
+0.0
+ 20
+200.0
+ 10
+0.0
+ 20
+50.0
+ 10
+624.9979999999996
+ 20
+50.0
+  0
+LWPOLYLINE
+  5
+3A
+330
+17
+100
+AcDbEntity
+  8
+OuterContour
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
 0.0
  20
 420.0
@@ -2305,7 +2329,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-3A
+3B
 330
 17
 100
@@ -2337,7 +2361,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-3B
+3C
 330
 17
 100
@@ -2357,7 +2381,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-3C
+3D
 330
 17
 100
@@ -2377,7 +2401,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-3D
+3E
 330
 17
 100
@@ -2397,7 +2421,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-3E
+3F
 330
 17
 100
@@ -2417,26 +2441,6 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-3F
-330
-17
-100
-AcDbEntity
-  8
-Engrave
-100
-AcDbPolyline
- 90
-1
- 70
-1
- 10
-302.6239999999998
- 20
-21.0
-  0
-LWPOLYLINE
-  5
 40
 330
 17
@@ -2451,7 +2455,7 @@ AcDbPolyline
  70
 1
  10
-308.1239999999998
+302.6239999999998
  20
 21.0
   0
@@ -2471,9 +2475,9 @@ AcDbPolyline
  70
 1
  10
-309.6239999999998
+308.1239999999998
  20
-19.5
+21.0
   0
 LWPOLYLINE
   5
@@ -2493,11 +2497,31 @@ AcDbPolyline
  10
 309.6239999999998
  20
-2.5
+19.5
   0
 LWPOLYLINE
   5
 43
+330
+17
+100
+AcDbEntity
+  8
+Engrave
+100
+AcDbPolyline
+ 90
+1
+ 70
+1
+ 10
+309.6239999999998
+ 20
+2.5
+  0
+LWPOLYLINE
+  5
+44
 330
 17
 100
@@ -2517,7 +2541,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-44
+45
 330
 17
 100
@@ -2537,7 +2561,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-45
+46
 330
 17
 100
@@ -2557,7 +2581,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-46
+47
 330
 17
 100
@@ -2577,7 +2601,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-47
+48
 330
 17
 100
@@ -2597,26 +2621,6 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-48
-330
-17
-100
-AcDbEntity
-  8
-Engrave
-100
-AcDbPolyline
- 90
-1
- 70
-1
- 10
-338.8739999999998
- 20
-1.0
-  0
-LWPOLYLINE
-  5
 49
 330
 17
@@ -2631,7 +2635,7 @@ AcDbPolyline
  70
 1
  10
-330.3739999999998
+338.8739999999998
  20
 1.0
   0
@@ -2651,9 +2655,9 @@ AcDbPolyline
  70
 1
  10
-328.8739999999998
+330.3739999999998
  20
-2.5
+1.0
   0
 LWPOLYLINE
   5
@@ -2673,11 +2677,31 @@ AcDbPolyline
  10
 328.8739999999998
  20
-9.5
+2.5
   0
 LWPOLYLINE
   5
 4C
+330
+17
+100
+AcDbEntity
+  8
+Engrave
+100
+AcDbPolyline
+ 90
+1
+ 70
+1
+ 10
+328.8739999999998
+ 20
+9.5
+  0
+LWPOLYLINE
+  5
+4D
 330
 17
 100
@@ -2697,7 +2721,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-4D
+4E
 330
 17
 100
@@ -2717,7 +2741,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-4E
+4F
 330
 17
 100
@@ -2737,7 +2761,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-4F
+50
 330
 17
 100
@@ -2757,7 +2781,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-50
+51
 330
 17
 100
@@ -2777,7 +2801,7 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-51
+52
 330
 17
 100
@@ -2809,13 +2833,13 @@ AcDbPolyline
   0
 TEXT
   5
-52
+53
 330
 17
 100
 AcDbEntity
   8
-Signature
+Annotation
 100
 AcDbText
  10
@@ -3821,7 +3845,7 @@ CREATED_BY_EZDXF
   3
 WRITTEN_BY_EZDXF
 350
-55
+56
   0
 DICTIONARYVAR
   5
@@ -3833,11 +3857,11 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-27T17:26:08.071310+00:00
+1.4.3 @ 2026-08-28T10:44:30.092869+00:00
   0
 DICTIONARYVAR
   5
-55
+56
 330
 2D
 100
@@ -3845,7 +3869,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-27T17:26:08.073812+00:00
+1.4.3 @ 2026-08-28T10:44:30.096873+00:00
   0
 ENDSEC
   0

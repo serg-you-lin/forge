@@ -25,6 +25,7 @@ from ..model.role import ContourRole
 from ..adapters.dxf.exporter import write_segments, write_open_segments
 from ..adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
+    LAYER_ANNOTATION,
     TRASH_LAYER,
     WORK_TYPE_TO_LAYER,
     ALL_FORGE_LAYERS,
@@ -47,6 +48,7 @@ def to_dxf(
     filter_part: Optional[Callable[[ForgePart], bool]] = None,
     include_annotations: bool = True,
     include_trash: bool = True,
+    annotation_layer: Optional[str] = LAYER_ANNOTATION,
 ) -> "ezdxf.document.Drawing":
     """
     Crea un documento DXF nuovo (R2010) e vi materializza il ForgeResult.
@@ -61,6 +63,14 @@ def to_dxf(
     partenza, anche archi spuri, frammenti di profilo, centerline. Ometterle
     silenziosamente è una regressione.
 
+    `annotation_layer` decide dove finiscono testi e quote della sorgente:
+      - `"Annotation"` (default) → layer forge dedicato, non di taglio
+      - `"Trash"` (o altro nome)  → quel layer
+      - `None`                    → il layer originale della sorgente
+    In ogni caso nessuna annotazione viene scartata: quelle non coperte da
+    alcuna parte vengono comunque scritte (in `split()` assegnate alla parte
+    più vicina, come il trash).
+
     Restituisce il documento ezdxf: sta al chiamante fare doc.saveas(...).
     """
     doc_out = ezdxf.new(dxfversion="R2010")
@@ -70,6 +80,8 @@ def to_dxf(
 
     msp = doc_out.modelspace()
     _setup_layers(doc_out)
+    if annotation_layer and annotation_layer not in doc_out.layers:
+        doc_out.layers.new(annotation_layer)
 
     written_parts: List[ForgePart] = []
 
@@ -106,7 +118,11 @@ def to_dxf(
         )
 
     if include_annotations and source_doc is not None and source_doc.annotations:
-        _write_annotations(msp, source_doc.annotations, written_parts)
+        _write_annotations(
+            msp, source_doc.annotations, written_parts, result.parts,
+            annotation_layer,
+            restrict_to_written=filter_part is not None,
+        )
 
     return doc_out
 
@@ -124,6 +140,7 @@ def split(
     min_area: float = DEFAULT_MIN_PART_AREA,
     exclude_types: Set[str] = None,
     on_part: Optional[Callable] = None,
+    annotation_layer: Optional[str] = LAYER_ANNOTATION,
 ) -> List["ezdxf.document.Drawing"]:
     """
     Materializza un ForgeResult in un Drawing per parte.
@@ -156,6 +173,7 @@ def split(
             source_doc,
             filter_part=_only_this_part,
             include_annotations=include_annotations,
+            annotation_layer=annotation_layer,
         )
 
         if exclude_types:
@@ -173,45 +191,95 @@ def split(
 # Annotazioni
 # ---------------------------------------------------------------------------
 
-def _write_annotations(msp, annotations: List[Annotation], parts: List[ForgePart]) -> None:
+def _write_annotations(
+    msp,
+    annotations: List[Annotation],
+    written_parts: List[ForgePart],
+    all_parts: List[ForgePart],
+    annotation_layer: Optional[str],
+    restrict_to_written: bool,
+) -> None:
     """
     Riscrive le annotazioni testuali della sorgente nel documento di output.
 
-    Un'annotazione viene scritta solo se la sua posizione ricade dentro
-    l'outer di una delle parti scritte (così split() filtra automaticamente).
-    Se non ci sono parti scritte, le annotazioni vengono tutte riportate.
+    Nessuna annotazione viene scartata. In `to_dxf()` (documento intero) le
+    riporta tutte; in `split()` — un file per parte — ogni annotazione è
+    assegnata alla parte che la contiene o, se nessuna la contiene, alla parte
+    più vicina, e scritta solo nel file di quella parte (stessa logica del
+    trash).
+
+    Il layer di destinazione è `annotation_layer`; se `None` si tiene il layer
+    originale della sorgente.
     """
     from shapely.geometry import Point
 
-    polygons = [p.outer.polygon for p in parts if p.outer and p.outer.polygon is not None]
+    written_set = set(id(p) for p in written_parts)
+    ref_polys = [
+        (p, p.outer.polygon)
+        for p in all_parts
+        if p.outer is not None and p.outer.polygon is not None
+    ]
 
     for ann in annotations:
-        if polygons:
+        if restrict_to_written and ref_polys:
             probe = Point(ann.position)
-            if not any(poly.covers(probe) for poly in polygons):
+            covering = [p for p, poly in ref_polys if poly.covers(probe)]
+            target = covering[0] if covering else min(
+                ref_polys, key=lambda pp: pp[1].distance(probe)
+            )[0]
+            if id(target) not in written_set:
                 continue
 
-        content = ann.data.get("content", "")
-        layer = ann.data.get("layer", "0")
-        attribs = {"layer": layer, "color": 256}
+        _emit_annotation(msp, ann, annotation_layer)
 
-        if ann.kind == "MTEXT":
-            entity = msp.add_mtext(content, dxfattribs={
-                **attribs,
-                "char_height": ann.data.get("height") or 2.5,
-                "rotation": ann.data.get("rotation") or 0.0,
-            })
-            entity.set_location(ann.position)
-        else:
-            # TEXT come default anche per DIMENSION/LEADER senza geometria di quota
+
+def _emit_annotation(msp, ann: Annotation, annotation_layer: Optional[str]) -> None:
+    layer = annotation_layer if annotation_layer is not None else ann.data.get("layer", "0")
+    attribs = {"layer": layer, "color": 256}
+
+    strokes = ann.data.get("strokes")
+    fills = ann.data.get("fills")
+    texts = ann.data.get("texts")
+    if strokes or fills or texts:
+        # Quota / direttrice: immagine già appiattita in primitive pure.
+        for pts in strokes or []:
+            if len(pts) >= 2:
+                msp.add_lwpolyline(pts, dxfattribs=attribs, close=False)
+        for pts in fills or []:
+            if len(pts) >= 2:
+                msp.add_lwpolyline(pts, dxfattribs=attribs, close=True)
+        for item in texts or []:
+            content = item.get("content", "")
             if not content:
                 continue
             msp.add_text(content, dxfattribs={
                 **attribs,
-                "height": ann.data.get("height") or 2.5,
-                "rotation": ann.data.get("rotation") or 0.0,
-                "insert": ann.position,
+                "height": item.get("height") or 2.5,
+                "rotation": item.get("rotation") or 0.0,
+                "insert": item.get("position", ann.position),
             })
+        return
+
+    content = ann.data.get("content", "")
+    if not content:
+        return
+
+    if ann.kind == "MTEXT":
+        entity = msp.add_mtext(content, dxfattribs={
+            **attribs,
+            "char_height": ann.data.get("height") or 2.5,
+            "rotation": ann.data.get("rotation") or 0.0,
+        })
+        entity.set_location(ann.position)
+    else:
+        # TEXT anche per DIMENSION/LEADER: la geometria di quota non è nel
+        # modello, ne materializziamo il valore come testo alla sua posizione.
+        msp.add_text(content, dxfattribs={
+            **attribs,
+            "height": ann.data.get("height") or 2.5,
+            "rotation": ann.data.get("rotation") or 0.0,
+            "insert": ann.position,
+        })
 
 
 # ---------------------------------------------------------------------------

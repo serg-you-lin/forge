@@ -19,6 +19,7 @@ Poi lancia:
 """
 
 import unittest
+from collections import Counter
 from pathlib import Path
 import sys
 import ezdxf
@@ -243,6 +244,111 @@ class TestWritebackTrash(unittest.TestCase):
         for e in msp.query("LWPOLYLINE"):
             if e.dxf.layer == TRASH_LAYER:
                 self.assertFalse(e.closed)
+
+
+# ---------------------------------------------------------------------------
+# Annotazioni — testi e quote mai scartati, routing su layer dedicato
+# ---------------------------------------------------------------------------
+
+from forge.adapters.dxf.layers import LAYER_ANNOTATION
+
+
+class TestWritebackAnnotations(unittest.TestCase):
+
+    def _texts(self, msp):
+        return list(msp.query("TEXT")) + list(msp.query("MTEXT"))
+
+    def test_001_dimensions_and_text_materialized(self):
+        # gamba_tavolo: 7 DIMENSION + 1 MTEXT nella sorgente. Nessuna parte le
+        # copre → prima sparivano tutte. Ora ognuna è un TEXT/MTEXT scritto.
+        result, msp = _pipeline("gamba_tavolo.dxf")
+        texts = self._texts(msp)
+        self.assertEqual(len(texts), 8)
+
+    def test_002_annotations_on_dedicated_layer_by_default(self):
+        result, msp = _pipeline("gamba_tavolo.dxf")
+        for e in self._texts(msp):
+            self.assertEqual(e.dxf.layer, LAYER_ANNOTATION)
+
+    def test_003_dimension_carries_measured_value(self):
+        # La quota non porta geometria nel modello: ne materializziamo il valore.
+        result, msp = _pipeline("gamba_tavolo.dxf")
+        values = {e.dxf.text for e in msp.query("TEXT")}
+        self.assertIn("50", values)
+
+    def test_003b_dimension_geometry_rendered_not_just_number(self):
+        # Regressione: la quota deve uscire con le sue linee (direttrici, linea
+        # di misura, frecce), non solo un numero piazzato a caso.
+        result, msp = _pipeline("gamba_tavolo.dxf")
+        dim_geom = [e for e in msp.query("LWPOLYLINE")
+                    if e.dxf.layer == LAYER_ANNOTATION]
+        # 7 quote → parecchie polilinee (≈ 2 direttrici + linea misura + frecce)
+        self.assertGreater(len(dim_geom), 7 * 3)
+
+    def test_004_text_covered_by_part_also_routed_to_annotation(self):
+        # rect_with_trash: il TEXT è dentro l'outer, prima restava sul layer
+        # sorgente "TESTO". Col default va comunque sul layer Annotation.
+        result, msp = _pipeline("rect_with_trash.dxf")
+        texts = self._texts(msp)
+        self.assertEqual(len(texts), 1)
+        self.assertEqual(texts[0].dxf.layer, LAYER_ANNOTATION)
+
+    def test_005_annotation_layer_none_keeps_source_layer(self):
+        doc = forge.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf")
+        result = forge.heal(doc)
+        msp = forge.to_dxf(result, doc, annotation_layer=None).modelspace()
+        texts = list(msp.query("TEXT"))
+        self.assertEqual(len(texts), 1)
+        self.assertEqual(texts[0].dxf.layer, "TESTO")
+
+    def test_006_annotation_layer_custom_routes_there(self):
+        doc = forge.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf")
+        result = forge.heal(doc)
+        msp = forge.to_dxf(result, doc, annotation_layer=TRASH_LAYER).modelspace()
+        texts = list(msp.query("TEXT"))
+        self.assertEqual(texts[0].dxf.layer, TRASH_LAYER)
+
+    def test_007_dims_and_leaders_survive_audit(self):
+        # Multifeature: 16 DIMENSION (senza blocco geometria → l'auditor di
+        # ezdxf le cancellava) + 4 LEADER (frecce di sezione, senza repr point).
+        # Devono arrivare tutte in output.
+        name = "Multifeature.dxf"
+        if not (EXAMPLES_DIR / name).exists():
+            self.skipTest(name)
+        doc = forge.load_dxf(EXAMPLES_DIR / name)
+        kinds = Counter(a.kind for a in doc.annotations)
+        self.assertEqual(kinds["DIMENSION"], 16)
+        self.assertEqual(kinds["LEADER"], 4)
+        result = forge.heal(doc)
+        forge.detect(result)
+        msp = forge.to_dxf(result, doc).modelspace()
+        ann_geom = [e for e in msp.query("LWPOLYLINE")
+                    if e.dxf.layer == LAYER_ANNOTATION]
+        # direttrici delle quote lineari + frecce dei leader
+        self.assertGreater(len(ann_geom), 20)
+
+    def test_008_annotation_layer_ignored_on_reload(self):
+        # La geometria che forge scrive sul layer Annotation non deve essere
+        # riletta come geometria di parte in un round-trip.
+        from forge.adapters.dxf.adapter import _NON_STRUCTURAL_LAYERS
+        self.assertIn(LAYER_ANNOTATION.lower(), _NON_STRUCTURAL_LAYERS)
+        self.assertIn(TRASH_LAYER.lower(), _NON_STRUCTURAL_LAYERS)
+
+
+# ---------------------------------------------------------------------------
+# INSERT — esplosi di default: un blocco non deve far sparire la geometria
+# ---------------------------------------------------------------------------
+
+class TestWritebackInsertExplodedByDefault(unittest.TestCase):
+
+    def test_001_block_geometry_survives_without_flag(self):
+        # scritta.dxf è un solo INSERT che avvolge 93 LINE + 23 SPLINE (lettere).
+        # Senza esplodere, load_dxf scartava tutto. Ora è il default.
+        doc = forge.load_dxf(EXAMPLES_DIR / "scritta.dxf")
+        self.assertGreater(len(doc.edges), 50)
+        result = forge.heal(doc)
+        self.assertEqual(result.part_count, 1)
+        self.assertGreater(len(result.parts[0].inners), 6)
 
 
 # ---------------------------------------------------------------------------

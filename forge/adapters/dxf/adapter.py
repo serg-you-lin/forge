@@ -32,6 +32,11 @@ from .geometry_adapter import (
 
 _SUPPORTED_TYPES = frozenset({'LINE', 'ARC', 'SPLINE'})
 
+# Layer che forge produce in output per contenuti NON di taglio: se un file già
+# passato da forge viene riletto (round-trip, ri-heal), la loro geometria non è
+# geometria di parte e va sempre ignorata, senza doverlo chiedere al chiamante.
+_NON_STRUCTURAL_LAYERS = frozenset({'trash', 'annotation'})
+
 
 # ---------------------------------------------------------------------------
 # TRADUZIONE DXF → PRIMITIVE (UNICO PUNTO)
@@ -363,13 +368,15 @@ class DxfAdapter(ForgeAdapter):
         def _is_excluded(entity) -> bool:
             if id(entity) in self.exclude_ids:
                 return True
-            if not ignore:
-                return False
             layer = (
                 entity.dxf.layer.lower()
                 if entity.dxf.hasattr("layer")
                 else ""
             )
+            if layer in _NON_STRUCTURAL_LAYERS:
+                return True
+            if not ignore:
+                return False
             return any(sl in layer for sl in ignore)
 
         edges = []

@@ -15,6 +15,7 @@ from ...rules.palette import (
     COLOR_OUTER, COLOR_INNER, COLOR_HOLE,
     COLOR_BENDING, COLOR_ENGRAVE, COLOR_MARKING,
     COLOR_COUNTERSINK, COLOR_THREADED_HOLE, COLOR_TRASH,
+    COLOR_ANNOTATION,
 )
 
 # ---------------------------------------------------------------------------
@@ -28,6 +29,7 @@ LAYER_ENGRAVE       = "Engrave"
 LAYER_MARKING       = "Marking"
 LAYER_COUNTERSINK   = "Countersink"
 LAYER_THREADED_HOLE = "ThreadHole"
+LAYER_ANNOTATION    = "Annotation"
 TRASH_LAYER         = "Trash"
 
 # ---------------------------------------------------------------------------
@@ -43,6 +45,7 @@ ALL_FORGE_LAYERS: dict[str, int] = {
     LAYER_MARKING:       COLOR_MARKING,
     LAYER_COUNTERSINK:   COLOR_COUNTERSINK,
     LAYER_THREADED_HOLE: COLOR_THREADED_HOLE,
+    LAYER_ANNOTATION:    COLOR_ANNOTATION,
     TRASH_LAYER:         COLOR_TRASH,
 }
 

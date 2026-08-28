@@ -13,7 +13,7 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/two_rects_with_bend.dxf"
+input_dxf = r"tests/examples/F6.DXF"
 
 tolerance = .2
 
@@ -53,7 +53,11 @@ doc = forge.load_dxf(input_dxf, explode_inserts=True, flatten_z_flag=True, label
 # Validazione
 # ---------------------------------------------------------------------------
 
-# print("\n--- VALIDAZIONE ---")
+# make validation with new api in validator.py
+print("\n--- VALIDAZIONE ---")
+result = forge.validate(doc)
+
+
 # check = forge.validate_msp(doc.modelspace())
 # for w in check.warnings:
 #     print(f"  WARN: {w}")
@@ -101,5 +105,13 @@ if not result.is_valid:
     print("\nFile non valido — non salvato.")
     raise SystemExit(1)
 
+res = forge.validate_result(result)
+if res.errors:      
+    for e in res.errors:
+        print(f"  ERROR: {e}")
+    for w in res.warnings:
+        print(f"  WARN: {w}")
+        raise SystemExit(1)
+    
 doc_out.saveas(output_dxf)
 print(f"DXF salvato : {output_dxf}")

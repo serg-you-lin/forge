@@ -6,6 +6,7 @@ import os
 from .heal import HealStep
 from .detect import detect
 from .write import to_dxf, split, part_passes_min_area, DEFAULT_MIN_PART_AREA
+from ..adapters.dxf.layers import LAYER_ANNOTATION
 from .inject import inject
 from ..model.result import ForgeResult
 from ..model.document import ForgeDocument
@@ -40,7 +41,8 @@ def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
                    tolerance=None, namer=None,
                    include_annotations=True,
                    min_area=DEFAULT_MIN_PART_AREA,
-                   exclude_types=None) -> ForgeResult:
+                   exclude_types=None,
+                   annotation_layer=LAYER_ANNOTATION) -> ForgeResult:
     """
     Pipeline completa multi-pezzo + salvataggio su disco.
 
@@ -56,7 +58,8 @@ def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
     detect(result)
     drawings = split(result, doc, namer=namer,
                      include_annotations=include_annotations,
-                     min_area=min_area, exclude_types=exclude_types)
+                     min_area=min_area, exclude_types=exclude_types,
+                     annotation_layer=annotation_layer)
 
     os.makedirs(output_folder, exist_ok=True)
     kept = [p for p in result.parts if part_passes_min_area(p, min_area)]
