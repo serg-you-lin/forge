@@ -22,7 +22,9 @@ from ..model import ForgeResult, ForgePart
 from ..model.document import ForgeDocument, Annotation
 from ..model.hole import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..model.role import ContourRole
-from ..adapters.dxf.exporter import write_segments, write_open_segments
+from ..adapters.dxf.exporter import (
+    write_segments, write_open_segments, write_engrave_segments,
+)
 from ..adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     LAYER_ANNOTATION,
@@ -107,10 +109,14 @@ def to_dxf(
         # Bending lines (geometria pura)
         _write_bending_lines(msp, part)
 
-        # Engrave lines
+        # Engrave lines — geometria nativa, una entità DXF per primitiva
+        # (LINE / ARC / SPLINE / CIRCLE), mai LWPOLYLINE. `write_segments`
+        # (che chiude il contorno) emetteva una polilinea col solo punto di
+        # start di ogni segmento → in output si vedeva un punto al posto della
+        # linea.
         for eng in part.engrave_lines:
             layer_name, _ = WORK_TYPE_TO_LAYER.get("engrave", (TRASH_LAYER, COLOR_TRASH))
-            write_segments(eng.segments, msp, layer_name)
+            write_engrave_segments(eng.segments, msp, layer_name)
 
     if include_trash and result.trash_entities:
         _write_trash(

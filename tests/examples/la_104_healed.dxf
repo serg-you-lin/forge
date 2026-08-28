@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461281.5875462964
+2461281.633425926
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461281.5875462964
+2461281.633425926
   9
 $TDUUPDATE
  40
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{631D603D-71B0-4756-8121-A6348FF8A240}
+{257DDA20-C664-412F-98DD-E6B91B1C061A}
   9
 $VERSIONGUID
   2
-{B2DE3875-5E6D-4C2B-88F9-F8FA29552BD4}
+{8FA33E02-32D9-48B2-9D83-21EFB4506866}
   9
 $EXTNAMES
 290
@@ -2339,7 +2339,7 @@ AcDbCircle
  40
 9.0
   0
-LWPOLYLINE
+LINE
   5
 3C
 330
@@ -2349,17 +2349,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 29.703000000000003
  20
 10.0
+ 30
+0.0
+ 11
+29.703000000000003
+ 21
+21.36
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 3D
 330
@@ -2369,17 +2373,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 29.703000000000003
  20
 21.36
+ 30
+0.0
+ 11
+33.963
+ 21
+21.36
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 3E
 330
@@ -2389,17 +2397,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 33.963
  20
 21.36
+ 30
+0.0
+ 11
+35.383
+ 21
+19.939999999999998
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 3F
 330
@@ -2409,17 +2421,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 35.383
  20
 19.939999999999998
+ 30
+0.0
+ 11
+35.383
+ 21
+17.1
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 40
 330
@@ -2429,17 +2445,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 35.383
  20
 17.1
+ 30
+0.0
+ 11
+33.963
+ 21
+15.68
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 41
 330
@@ -2449,17 +2469,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 33.963
  20
 15.68
+ 30
+0.0
+ 11
+29.703000000000003
+ 21
+15.68
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 42
 330
@@ -2469,17 +2493,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 38.223
  20
 10.0
+ 30
+0.0
+ 11
+38.223
+ 21
+21.36
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 43
 330
@@ -2489,17 +2517,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 38.223
  20
 21.36
+ 30
+0.0
+ 11
+42.483
+ 21
+21.36
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 44
 330
@@ -2509,17 +2541,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 42.483
  20
 21.36
+ 30
+0.0
+ 11
+43.903
+ 21
+19.939999999999998
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 45
 330
@@ -2529,17 +2565,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 43.903
  20
 19.939999999999998
+ 30
+0.0
+ 11
+43.903
+ 21
+17.1
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 46
 330
@@ -2549,17 +2589,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 43.903
  20
 17.1
+ 30
+0.0
+ 11
+42.483
+ 21
+15.68
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 47
 330
@@ -2569,17 +2613,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 42.483
  20
 15.68
+ 30
+0.0
+ 11
+38.223
+ 21
+15.68
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 48
 330
@@ -2589,17 +2637,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 42.483
  20
 15.68
+ 30
+0.0
+ 11
+43.903
+ 21
+14.26
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 49
 330
@@ -2609,17 +2661,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 43.903
  20
 14.26
+ 30
+0.0
+ 11
+43.903
+ 21
+11.42
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 4A
 330
@@ -2629,17 +2685,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 43.903
  20
 11.42
+ 30
+0.0
+ 11
+42.483
+ 21
+10.0
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 4B
 330
@@ -2649,17 +2709,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 42.483
  20
 10.0
+ 30
+0.0
+ 11
+38.223
+ 21
+10.0
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 4C
 330
@@ -2669,17 +2733,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 46.743
  20
 15.68
+ 30
+0.0
+ 11
+50.151
+ 21
+15.68
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 4D
 330
@@ -2689,17 +2757,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 54.69500000000001
  20
 10.0
+ 30
+0.0
+ 11
+54.69500000000001
+ 21
+21.36
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 4E
 330
@@ -2709,17 +2781,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 60.375
  20
 10.852
+ 30
+0.0
+ 11
+60.375
+ 21
+20.508
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 4F
 330
@@ -2729,17 +2805,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 60.375
  20
 20.508
+ 30
+0.0
+ 11
+61.227
+ 21
+21.36
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 50
 330
@@ -2749,17 +2829,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 61.227
  20
 21.36
+ 30
+0.0
+ 11
+64.351
+ 21
+21.36
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 51
 330
@@ -2769,17 +2853,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 64.351
  20
 21.36
+ 30
+0.0
+ 11
+65.203
+ 21
+20.508
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 52
 330
@@ -2789,17 +2877,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 65.203
  20
 20.508
+ 30
+0.0
+ 11
+65.203
+ 21
+10.852
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 53
 330
@@ -2809,17 +2901,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 65.203
  20
 10.852
+ 30
+0.0
+ 11
+64.351
+ 21
+10.0
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 54
 330
@@ -2829,17 +2925,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 64.351
  20
 10.0
+ 30
+0.0
+ 11
+61.227
+ 21
+10.0
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 55
 330
@@ -2849,17 +2949,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 61.227
  20
 10.0
+ 30
+0.0
+ 11
+60.375
+ 21
+10.852
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 56
 330
@@ -2869,17 +2973,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 60.375
  20
 10.852
+ 30
+0.0
+ 11
+65.203
+ 21
+20.508
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 57
 330
@@ -2889,17 +2997,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 67.617
  20
 21.36
+ 30
+0.0
+ 11
+67.617
+ 21
+16.532
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 58
 330
@@ -2909,17 +3021,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 67.617
  20
 16.532
+ 30
+0.0
+ 11
+68.46900000000001
+ 21
+15.68
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 59
 330
@@ -2929,17 +3045,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 68.46900000000001
  20
 15.68
+ 30
+0.0
+ 11
+73.297
+ 21
+15.68
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 5A
 330
@@ -2949,17 +3069,21 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 73.297
  20
 15.68
+ 30
+0.0
+ 11
+73.297
+ 21
+21.36
+ 31
+0.0
   0
-LWPOLYLINE
+LINE
   5
 5B
 330
@@ -2969,15 +3093,19 @@ AcDbEntity
   8
 Engrave
 100
-AcDbPolyline
- 90
-1
- 70
-1
+AcDbLine
  10
 73.297
  20
 21.36
+ 30
+0.0
+ 11
+73.297
+ 21
+10.0
+ 31
+0.0
   0
 ENDSEC
   0
@@ -3981,7 +4109,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-28T12:06:04.719177+00:00
+1.4.3 @ 2026-08-28T13:12:08.313603+00:00
   0
 DICTIONARYVAR
   5
@@ -3993,7 +4121,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-28T12:06:04.721179+00:00
+1.4.3 @ 2026-08-28T13:12:08.315604+00:00
   0
 ENDSEC
   0

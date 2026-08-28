@@ -173,6 +173,59 @@ def write_segments(segments: List, msp, layer: str) -> Optional[object]:
 
 
 # ---------------------------------------------------------------------------
+# Write-back — incisioni (engrave / marking)
+# ---------------------------------------------------------------------------
+
+def write_engrave_segments(segments: List, msp, layer: str) -> List[object]:
+    """
+    Materializza un'incisione come geometria NATIVA, una entità DXF per
+    primitiva — mai LWPOLYLINE, nemmeno per un run di linee/archi contigui e
+    nemmeno se in ingresso era una polilinea.
+
+    Un'incisione è concettualmente N segmenti separati (scelta di modello,
+    vedi `model/engraving.py`): il rendering fedele è una entità per segmento.
+    È anche coerente con le bending line (emesse come `LINE`) e con quello che
+    un CAM si aspetta di trovare sul layer di marcatura.
+
+      - LineSeg   → LINE
+      - ArcSeg    → ARC
+      - SplineSeg → SPLINE nativa (mai discretizzata)
+      - CircleSeg → CIRCLE
+
+    Restituisce la lista delle entità create.
+    """
+    created: List[object] = []
+    attribs = {"layer": layer, "color": 256}
+
+    for seg in segments or []:
+        if isinstance(seg, LineSeg):
+            created.append(msp.add_line(seg.start, seg.end, dxfattribs=attribs))
+        elif isinstance(seg, ArcSeg):
+            # In DXF un ARC è sempre percorso CCW da start_angle a end_angle.
+            # Un ArcSeg CW copre lo stesso luogo geometrico se lo si legge
+            # CCW da end_angle a start_angle: basta scambiare gli angoli.
+            if seg.ccw:
+                sa, ea = seg.start_angle, seg.end_angle
+            else:
+                sa, ea = seg.end_angle, seg.start_angle
+            created.append(msp.add_arc(
+                center=seg.center,
+                radius=seg.radius,
+                start_angle=math.degrees(sa),
+                end_angle=math.degrees(ea),
+                dxfattribs=attribs,
+            ))
+        elif isinstance(seg, CircleSeg):
+            created.append(msp.add_circle(
+                center=seg.center, radius=seg.radius, dxfattribs=attribs,
+            ))
+        elif isinstance(seg, SplineSeg):
+            created.append(_add_spline(seg, msp, layer))
+
+    return created
+
+
+# ---------------------------------------------------------------------------
 # Write-back — tracce APERTE (trash, frammenti di profilo, centerline, ...)
 # ---------------------------------------------------------------------------
 

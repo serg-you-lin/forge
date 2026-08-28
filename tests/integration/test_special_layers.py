@@ -262,6 +262,32 @@ class TestSpecialLayerNotTrash(unittest.TestCase):
             "Engrave line non materializzata sul layer Engrave da to_dxf()",
         )
 
+    def test_003_engrave_materialized_as_native_line_not_point(self):
+        # Regressione Cluster D: l'incisione va scritta come geometria nativa
+        # (qui una LINE), NON come LWPOLYLINE. Prima usava write_segments (che
+        # chiude il contorno) e finiva una LWPOLYLINE con il solo punto di
+        # start → in output si vedeva un punto al posto della linea.
+        on_engrave = [
+            e for e in self.doc_out.modelspace()
+            if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_ENGRAVE
+        ]
+        self.assertEqual(len(on_engrave), 1)
+        line = on_engrave[0]
+        self.assertEqual(line.dxftype(), "LINE")
+        endpoints = {
+            (round(line.dxf.start.x, 3), round(line.dxf.start.y, 3)),
+            (round(line.dxf.end.x, 3), round(line.dxf.end.y, 3)),
+        }
+        self.assertEqual(endpoints, {(10.0, 25.0), (30.0, 25.0)})
+
+    def test_004_no_lwpolyline_on_engrave_layer(self):
+        pl = [
+            e for e in self.doc_out.modelspace()
+            if e.dxftype() == "LWPOLYLINE"
+            and e.dxf.hasattr("layer") and e.dxf.layer == LAYER_ENGRAVE
+        ]
+        self.assertEqual(pl, [], "le incisioni non devono uscire come LWPOLYLINE")
+
 
 # ---------------------------------------------------------------------------
 # Test: total_engrave_length
@@ -413,6 +439,49 @@ class TestEngraveDegenerateCircle(unittest.TestCase):
         # ed è rimasta come trash, non promossa a nulla
         roles = [getattr(t, "role", None) for t in self.result.trash_entities]
         self.assertIn("engrave", [getattr(r, "value", r) for r in roles])
+
+
+# ---------------------------------------------------------------------------
+# Test: engrave ad arco → ARC nativo, non LWPOLYLINE
+# ---------------------------------------------------------------------------
+
+class TestEngraveArcNative(unittest.TestCase):
+    """Cluster D: un'incisione ad arco esce come ARC nativo, geometria esatta."""
+
+    def setUp(self):
+        doc = ezdxf.new('R2010')
+        msp = doc.modelspace()
+        msp.add_line((0, 0), (100, 0))
+        msp.add_line((100, 0), (100, 50))
+        msp.add_line((100, 50), (0, 50))
+        msp.add_line((0, 50), (0, 0))
+        msp.add_arc(
+            center=(50, 25), radius=8, start_angle=0, end_angle=120,
+            dxfattribs={'layer': 'MARK'},
+        )
+        self.result, self.doc_out = _run_pipeline(
+            msp=msp, special_layers={'MARK': 'engrave'},
+        )
+
+    def test_001_arc_is_native_arc(self):
+        on_engrave = [
+            e for e in self.doc_out.modelspace()
+            if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_ENGRAVE
+        ]
+        self.assertEqual(len(on_engrave), 1)
+        self.assertEqual(on_engrave[0].dxftype(), "ARC")
+
+    def test_002_arc_geometry_preserved(self):
+        arc = next(
+            e for e in self.doc_out.modelspace()
+            if e.dxftype() == "ARC"
+            and e.dxf.hasattr("layer") and e.dxf.layer == LAYER_ENGRAVE
+        )
+        self.assertAlmostEqual(arc.dxf.center.x, 50.0, places=3)
+        self.assertAlmostEqual(arc.dxf.center.y, 25.0, places=3)
+        self.assertAlmostEqual(arc.dxf.radius, 8.0, places=3)
+        self.assertAlmostEqual(arc.dxf.start_angle % 360, 0.0, places=3)
+        self.assertAlmostEqual(arc.dxf.end_angle % 360, 120.0, places=3)
 
 
 # ---------------------------------------------------------------------------
