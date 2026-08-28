@@ -13,9 +13,9 @@ import os
 # CAMBIA QUI
 # ---------------------------------------------------------------------------
 
-input_dxf = r"tests/examples/spline_line_gap_qcad.dxf"
+input_dxf = r"tests/examples/rect_3sides.dxf"
 
-tolerance = .25
+tolerance = .2
 
 special_layers = {
     "MARK"      : "engrave",

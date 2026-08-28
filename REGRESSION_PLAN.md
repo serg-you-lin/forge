@@ -217,14 +217,60 @@ Fixture rigenerate con modifica semantica (rimozione LWPOLYLINE Trash duplicate)
 `Linee_piegatura_healed.dxf`, `linee_di_piegatura_interne_healed.dxf`,
 `rect_with_special_layers_healed.dxf`.
 
-### F2 — limiti noti (⬜ non bloccanti, servono dati/decisione cliente)
+### F2 — lineette_bastarde: i 4 monconi da 0.3 mm  ✅ NON È PIÙ UN BUG (`refactor/structure`, non committato)
+
+L'appunto diceva che i 4 segmenti-leaf da 0.344 mm sugli angoli raccordati
+finivano su `Bending` invece che in trash. **Sul branch attuale non è più
+così:** il file dà `1 outer + 2 bending line (corde da 303.6 mm) + 4 monconi in
+`trash_entities``, esattamente l'esito voluto — lo ha sistemato F1 (commit
+`5570dec`). L'utente vedeva 6 entità su Bending perché stava guardando
+`6200012964_lineette_bastarde_healed.*`, artefatti locali generati prima di F1 e
+mai rigenerati (nessun test li legge; provenivano da una API morta
+`dxf_forge.io.exporter`). Ora rigenerati / rimossi.
+
+`tests/real/test_layers.py::TestLineetteBastarde` è il guard vero (2 bending + 4
+trash) ed è verde.
+
+**Collegato — `test_loops.py::TestSplitArcStubs`:** i due `@unittest.expectedFailure`
+erano fuorvianti. `test_un_solo_loop` faceva `self.assertEqual(len(self.outer), 1)`
+con `self.outer` mai assegnato → xfallava per `AttributeError`, non testava nulla.
+Il `LoopFinder` nudo sul grafo esatto *davvero* non pota gli stub di grado 3 (0
+loop) — ma è un limite del solo loop finder: la pipeline completa lo recupera
+(clustering endpoint + riparazione angoli). Test riscritto per verificare
+l'esito del prodotto: `forge.heal(ForgeDocument(edges=...))` → 1 part, area
+corretta, 4 stub in `trash_entities`. `@expectedFailure` rimossi.
+
+### F3 — nessun contorno esterno chiuso = risultato invalido  ✅ FATTO (`refactor/structure`, non committato)
+
+**Decisione utente:** se il file non compone nessun outer chiuso (endpoint che
+non si congiungono entro tolleranza, anche dopo il ponte retto di fallback), il
+risultato **non è un pezzo** — va dichiarato invalido, come il modelspace vuoto,
+e nessun file va generato.
+
+**Fix:**
+- `HealStep._build_hierarchy`: dopo `builder.build()`, se `not parts` →
+  `errors.append(...)` + `is_valid = False`. La trash resta popolata per la
+  diagnostica.
+- `to_dxf()` / `split()`: `raise ValueError` se `not result.is_valid` — niente
+  più output di sola spazzatura. `split_to_files()` già usciva presto su
+  `not result.is_valid`.
+
+Effetto: `arc_open` a tolleranza default (gap arco/arco ~0.26 mm > 0.05) →
+invalido, `to_dxf` solleva. A `tolerance ≥ 0.3` il gap si chiude, 1 part
+regolare (`_solve_arc_arc` prolunga entrambi gli archi all'intersezione dei
+cerchi — già funzionava). `rect_3sides` (3 lati di un rettangolo, aperto per
+costruzione) ora è invalido, come atteso.
+
+Test: `test_writeback.py::TestWritebackTrash::test_005_no_output_when_no_closed_outer`.
+`test_004_open_trash_not_closed` spostato su `two_rects_with_bend` (che ha una
+traccia trash aperta con una parte valida). Suite: 526 passed / 0 xfail.
+
+### F4 — limiti noti (⬜ non bloccanti, servono dati/decisione cliente)
 
 - **two_rects_with_bend** — BL interna con endpoint a ~10 mm dall'outer: mai
   detectata. `_detect_bending` vuole entrambi gli endpoint a `< 1.0` dal bordo
   (hard-coded); `bending_tolerance` filtra solo la lunghezza minima, non la
   distanza dal bordo. Alzare `bending_tolerance` non recupera il caso.
-- **lineette_bastarde** — i 4 segmenti-leaf da 0.3 mm sugli archi finiscono in Bendinng, dovrbebero finire in trsh. Non so il motivo per cui tu le conteggi in trash, io a cad le ho in Bending, non ho trash in questo file. E' letteralmente i test di test_loops.py con expected fail, a questo punto mi chiedo se davver ocontrolliamo questa cosa.
-  (lunghezza sotto soglia + un solo endpoint su nodo branching / attacco ad arco).
 
 `AMBIGUO`: le 8 `bending_lines` sono **corrette** (confermato dall'utente), non è
 over-detection.
@@ -235,7 +281,12 @@ over-detection.
 - F6: edge case, gestibile con tolleranze/interfaccia.
 - rect_special_countersink / rect_with_threaded_holes_geometric: anello esterno del
   foro su layer dedicato opzionale; reverse-geometric feature via detection semantica. Ipotesi.
-- arc_open: archi di un outer che si intersecano dovrebbero dare "invalido" e non generare il file.
+- **arc/arc oltre tolleranza**: `compute_gap_fixes` scarta ogni coppia con
+  `distance > tolerance`, archi come le linee. Esentare gli archi i cui cerchi
+  si intersecano davvero è una scelta di design ("perché gli archi sì e le
+  linee no") — si rivede con un file reale. Workaround: alzare `tolerance`.
+- **archi auto-intersecanti / che non si toccano nemmeno prolungati**: fuori
+  scope; oggi assorbiti da F3 (nessun loop → invalido).
 
 
 

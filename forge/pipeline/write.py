@@ -75,7 +75,16 @@ def to_dxf(
     più vicina, come il trash).
 
     Restituisce il documento ezdxf: sta al chiamante fare doc.saveas(...).
+
+    Se `result` non è valido (es. nessun contorno esterno chiuso → zero parti)
+    solleva `ValueError`: non si genera un file di sola trash. Il chiamante deve
+    controllare `result.is_valid` / `result.errors` prima.
     """
+    if not result.is_valid:
+        raise ValueError(
+            "to_dxf(): il ForgeResult non è valido, nessun output generato. "
+            + " ".join(result.errors)
+        )
     doc_out = ezdxf.new(dxfversion="R2010")
     if source_doc is not None:
         doc_out.header["$INSUNITS"]    = source_doc.source_meta.get("$INSUNITS", 4)
@@ -158,7 +167,13 @@ def split(
     Ritorna i Drawing nell'ordine delle parti tenute (quelle che superano
     `min_area`). `namer(i, part)` — se passato — assegna `part.label`, così il
     nome file resta ricavabile a valle come `f"{part.label}.dxf"`.
+    Come `to_dxf()`, solleva `ValueError` se `result` non è valido.
     """
+    if not result.is_valid:
+        raise ValueError(
+            "split(): il ForgeResult non è valido, nessun output generato. "
+            + " ".join(result.errors)
+        )
     exclude_types = exclude_types or set()
     drawings: List["ezdxf.document.Drawing"] = []
 

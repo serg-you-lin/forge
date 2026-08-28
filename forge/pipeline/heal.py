@@ -317,6 +317,19 @@ class HealStep:
         self.result.parts          = parts
         self.result.trash_entities = trash + self._labeled_proxies()
 
+        if not parts:
+            # La geometria non compone nessun contorno esterno chiuso: il
+            # prolungamento dei segmenti (anche via ponte retto) non arriva a
+            # un loop. Il risultato NON è un pezzo — è un file non lavorabile.
+            # Va dichiarato invalido, come quando il modelspace è vuoto: la
+            # trash resta popolata per la diagnostica, ma to_dxf() si rifiuta
+            # di materializzare un output di sola spazzatura.
+            self.result.errors.append(
+                "Nessun contorno esterno chiuso: nessuna parte generabile dal file. "
+                "Gli endpoint liberi non si congiungono entro la tolleranza richiesta."
+            )
+            self.result.is_valid = False
+
     def _labeled_proxies(self):
         """
         Converte gli Edge estratti da _split_labeled() in proxy (OpenShape o,
