@@ -9,6 +9,7 @@ if __package__:
     from ..core.primitives.segments import ArcSeg, SplineSeg
     from ..core.healing.gap_solver import (
         free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes,
+        gap_endpoints_at_nodes,
     )
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -19,6 +20,7 @@ else:
     from forge.core.primitives.segments import ArcSeg, SplineSeg
     from forge.core.healing.gap_solver import (
         free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes,
+        gap_endpoints_at_nodes,
     )
 
 
@@ -74,12 +76,53 @@ class HealStep:
         self._build_hierarchy()
         return self.result
 
-    def _build_graph(self, exclude_ids=None):
+    def _build_graph(self, exclude_ids=None, epsilon: float = 0.0):
         edges = self.edges
         if exclude_ids:
             edges = [e for e in edges if id(e) not in exclude_ids]
-        return build_node_graph(edges)
+        return build_node_graph(edges, epsilon=epsilon)
 
+
+    def _repair_merged_corners(self, graph_c):
+        """
+        Chiude gli angoli individuati dal clustering degli endpoint.
+
+        Per ogni cluster in cui il clustering ha fuso endpoint distinti
+        (`graph_c.merged_clusters()`) — cioè ogni angolo dove il grafo esatto
+        vedeva un buco — raccoglie i due estremi in gioco e li porta alla loro
+        intersezione reale col solver dei gap (`MoveEndpoint`). Muta
+        `self.edges`.
+
+        Ripara solo i cluster con esattamente due estremi (un angolo semplice
+        line/line, line/arc, arc/arc). I cluster con tre o più estremi
+        (diramazioni) restano intatti: là l'intersezione a due non è definita.
+
+        Ritorna: (n_angoli_riparati, [coordinate_cluster_saltati]).
+        """
+        merged = graph_c.merged_clusters()
+        if not merged:
+            return 0, []
+
+        all_fixes = []
+        repaired = 0
+        skipped = []
+        for canon, members in merged:
+            eps = gap_endpoints_at_nodes(self.edges, set(members))
+            if len(eps) != 2:
+                skipped.append(canon)
+                continue
+            fixes = compute_gap_fixes(eps, tolerance=float("inf"))
+            if fixes:
+                all_fixes.extend(fixes)
+                repaired += 1
+            else:
+                skipped.append(canon)
+
+        if all_fixes:
+            self.edges = apply_gap_fixes(
+                self.edges, all_fixes, self.node_decimals
+            )
+        return repaired, skipped
 
     def _load(self):
         if not self.edges:
@@ -157,8 +200,57 @@ class HealStep:
         loops = LoopFinder().find(graph, exclude_ids=self.candidate_bending_ids)
 
         if not loops:
-            self._fallback_polygonize()
-            return
+            # Il grafo esatto non chiude nessun contorno. Individua col
+            # clustering degli endpoint gli angoli dove due lati si toccano
+            # quasi (separati solo da un arrotondamento al confine di cella),
+            # poi CHIUDILI DAVVERO estendendo i due segmenti alla loro
+            # intersezione reale — stessa matematica di _preprocess, ma su
+            # endpoint che il filtro sul grado non vede. Dopo la riparazione
+            # si riprova sul grafo esatto: la geometria di output è cucita
+            # esatta, non solo tollerata.
+            graph_c = self._build_graph(
+                exclude_ids=self.candidate_bending_ids,
+                epsilon=self.tolerance,
+            )
+            n_rep, skipped = self._repair_merged_corners(graph_c)
+            if n_rep:
+                self.result.all_arcs = [
+                    e.segment for e in self.edges if isinstance(e.segment, ArcSeg)
+                ]
+                graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
+                loops = LoopFinder().find(graph, exclude_ids=self.candidate_bending_ids)
+                self.result.warnings.append(
+                    f"{n_rep} angoli chiusi all'intersezione reale dopo "
+                    f"detection via clustering (epsilon={self.tolerance})."
+                )
+
+            if not loops:
+                # Ultima spiaggia prima di polygonize: loop sul grafo
+                # clusterizzato "tollerante" (segmenti nativi, ruoli
+                # preservati; discrepanza residua agli angoli non fusi).
+                graph_c = self._build_graph(
+                    exclude_ids=self.candidate_bending_ids,
+                    epsilon=self.tolerance,
+                )
+                loops = LoopFinder().find(
+                    graph_c, exclude_ids=self.candidate_bending_ids
+                )
+                if loops:
+                    corners = [c for c, _ in graph_c.merged_clusters()]
+                    self.result.warnings.append(
+                        "Loop trovati solo dopo clustering tollerante "
+                        f"(epsilon={self.tolerance}); angoli non riparati: "
+                        f"{corners[:8]}. La discrepanza sopravvive nell'output."
+                    )
+                else:
+                    open_pts = graph_c.open_nodes()
+                    if open_pts:
+                        self.result.warnings.append(
+                            f"Grafo con {len(open_pts)} estremi liberi dopo "
+                            f"clustering (prime coordinate: {open_pts[:8]})."
+                        )
+                    self._fallback_polygonize()
+                    return
 
         structural_loops = [
             loop for loop in loops if _loop_is_structural(loop, self.result.label_map)

@@ -42,7 +42,7 @@ from .pipeline            import heal, split_to_files
 from .pipeline.inject   import inject
 from .pipeline.write  import to_dxf, split
 from .pipeline.detect  import detect
-from .rules.validator     import validate, validate_msp
+from .rules.validator     import validate, validate_result
 from .io.exporter         import (
     to_json,
     save_json,
@@ -64,7 +64,7 @@ __all__ = [
     "load_pdf",
     # Validazione
     "validate",
-    "validate_msp",
+    "validate_result",
     # Workflow
     "heal",
     "detect",

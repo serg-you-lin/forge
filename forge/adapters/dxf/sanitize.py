@@ -26,10 +26,13 @@ def normalize_ocs(msp, verbose: bool = False) -> None:
         print("[sanitize] normalize_ocs: vettori di estrusione normalizzati")
 
 
-def flatten_z(msp, verbose: bool = False) -> None:
+def flatten_z(msp, verbose: bool = False) -> int:
     """
     Porta a 0 tutte le coordinate Z != 0 per LINE, ARC, CIRCLE,
     LWPOLYLINE e ELLIPSE.
+
+    Restituisce il numero di entità corrette — il chiamante decide se
+    stamparlo o metterlo nel canale warnings del ForgeDocument.
     """
     fixed = 0
     skipped_types = set()
@@ -76,14 +79,13 @@ def flatten_z(msp, verbose: bool = False) -> None:
                 if verbose:
                     print(f"  [sanitize] ELLIPSE Z!=0 corretta su layer '{entity.dxf.layer}'")
 
-    # sempre — summary compatto
-    if fixed:
-        print(f"[sanitize] flatten_z: {fixed} entità corrette")
     if skipped_types and verbose:
         print(f"[sanitize] flatten_z: tipi ignorati — {sorted(skipped_types)}")
 
+    return fixed
 
-def sanitize(msp, flatten_z_flag: bool = True, verbose: bool = False) -> None:
+
+def sanitize(msp, flatten_z_flag: bool = True, verbose: bool = False) -> int:
     """
     Esegue tutti i sanitizer in sequenza sul modelspace ricevuto.
     Il chiamante è responsabile di aprire e salvare il documento.
@@ -92,15 +94,22 @@ def sanitize(msp, flatten_z_flag: bool = True, verbose: bool = False) -> None:
         msp:            modelspace ezdxf
         flatten_z_flag: se True, esegue flatten_z
         verbose:        se True, stampa dettaglio per ogni entità corretta
+
+    Restituisce il numero di entità con Z != 0 riportate sul piano
+    (0 se flatten_z_flag è False).
     """
     normalize_ocs(msp, verbose=verbose)
     if flatten_z_flag:
-        flatten_z(msp, verbose=verbose)
+        return flatten_z(msp, verbose=verbose)
+    return 0
 
-def _explode_inserts(msp) -> int:
+def _explode_inserts(msp, sink: list = None) -> int:
     """
     Esplode tutti gli INSERT (blocchi) nel modelspace in entità primitive.
     Restituisce il numero di INSERT esplosi.
+
+    Se `sink` è una lista, i fallimenti di esplosione ci vengono aggiunti
+    invece di essere stampati.
     """
     inserts = list(msp.query('INSERT'))
     if not inserts:
@@ -110,7 +119,11 @@ def _explode_inserts(msp) -> int:
         try:
             insert.explode()
         except Exception as ex:
-            print(f"  [WARN] Esplosione INSERT fallita: {ex}")
+            msg = f"esplosione INSERT fallita: {ex}"
+            if sink is not None:
+                sink.append(msg)
+            else:
+                print(f"  [WARN] {msg}")
 
     return len(inserts)
 

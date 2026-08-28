@@ -276,6 +276,36 @@ def free_endpoints_from_edges(edges: List[Edge], graph) -> List[GapEndpoint]:
     return free
 
 
+def gap_endpoints_at_nodes(edges: List[Edge], nodes: set) -> List[GapEndpoint]:
+    """
+    GapEndpoint per gli endpoint che cadono su uno dei `nodes` — tuple di
+    coordinate già arrotondate — **a prescindere dal grado nel grafo**.
+
+    Complementare a free_endpoints_from_edges: quello prende solo gli endpoint
+    liberi (grado < 2), questo prende un insieme di nodi deciso da un'altra
+    logica. Serve a riparare gli angoli individuati dal clustering degli
+    endpoint (build_node_graph con epsilon > 0): lì i due lati si toccano
+    quasi — grado >= 2 — quindi il filtro sul grado non li vede, ma la
+    geometria va comunque portata all'intersezione reale.
+
+    Considera solo LINE / ARC / SPLINE.
+    """
+    out: List[GapEndpoint] = []
+    for edge in edges:
+        if edge.start == edge.end:
+            continue
+        kind = _KIND_BY_SEGMENT.get(type(edge.segment))
+        if kind is None:
+            continue
+        meta = _endpoint_meta(edge.segment)
+        raw_start, raw_end = segment_endpoints(edge.segment)
+        if edge.start in nodes:
+            out.append(GapEndpoint(pt=raw_start, ref=edge, role="start", kind=kind, meta=meta))
+        if edge.end in nodes:
+            out.append(GapEndpoint(pt=raw_end, ref=edge, role="end", kind=kind, meta=meta))
+    return out
+
+
 def _moved_segment(segment, role: str, new_pt: Point2D):
     """Nuovo segmento con l'endpoint `role` spostato su `new_pt`. None se non gestito."""
     if isinstance(segment, LineSeg):

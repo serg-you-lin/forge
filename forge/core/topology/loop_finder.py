@@ -11,13 +11,11 @@ graph.degenerate_loops — non passano per il walking nel grafo.
 
 import math
 from .graph import (
-    Graph, 
-    _edge_coords, 
-    _first_coord, 
-    _arrival_direction, 
-    _angular_deviation
+    Graph,
+    _edge_coords,
+    _arrival_direction,
+    _angular_deviation,
 )
-from ..geometry import round_point
 from ...adapters.bridge.edge import Edge
 
 
@@ -45,6 +43,7 @@ class LoopFinder:
                     e for e in graph.degenerate_loops
                     if id(e) not in exclude_ids
                 ],
+                node_map=graph.node_map,
             )
         else:
             filtered = graph
@@ -62,13 +61,15 @@ class LoopFinder:
                 loops.append([(edge, False)])
 
         # ── 2. Walking topologico standard ───────────────────────────────
+        # L'identità di un nodo passa sempre da pruned.canonical(): con il
+        # grafo clusterizzato l'endpoint arrotondato dell'edge non coincide
+        # con la chiave del nodo (che è il rappresentante del cluster).
         for start_node in pruned.nodes:
             for (edge, next_node) in pruned.nodes[start_node]:
                 if id(edge) in visited_edges:
                     continue
 
-                first_pt    = _first_coord(edge)
-                is_reversed = (first_pt != start_node) if first_pt else False
+                is_reversed = pruned.canonical(edge.start) != start_node
 
                 chain = [(edge, is_reversed)]
                 visited_edges.add(id(edge))
@@ -82,14 +83,15 @@ class LoopFinder:
                     if not candidates:
                         break
 
+                    from_node = current_node
+
                     if current_node in branching and len(candidates) > 1:
                         prev_edge, prev_rev = chain[-1]
                         arrival = _arrival_direction(prev_edge, prev_rev)
 
-                        def _score(candidate):
+                        def _score(candidate, _from=from_node):
                             e, n = candidate
-                            first = _first_coord(e)
-                            rev = (first != current_node) if first else False
+                            rev = pruned.canonical(e.start) != _from
                             return _angular_deviation(arrival, e, rev)
 
                         next_edge, current_node = min(candidates, key=_score)
@@ -98,12 +100,7 @@ class LoopFinder:
 
                     visited_edges.add(id(next_edge))
 
-                    prev_edge, prev_rev = chain[-1]
-                    prev_pts   = _edge_coords(prev_edge, prev_rev)
-                    arrive_from = round_point(prev_pts[-1]) if prev_pts else None
-
-                    next_first  = _first_coord(next_edge)
-                    ne_reversed = (next_first != arrive_from) if (arrive_from and next_first) else False
+                    ne_reversed = pruned.canonical(next_edge.start) != from_node
                     chain.append((next_edge, ne_reversed))
 
                 if current_node != start_node:

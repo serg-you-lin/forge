@@ -11,6 +11,9 @@ non viene più toccato fino a write().
     annotations : testi, quote, leader — dati puri, input per write()
     source_meta : header rilevanti del file sorgente ($INSUNITS, $MEASUREMENT, …)
     source_path : percorso del file aperto
+    warnings    : diagnostica raccolta da load_dxf() sul file grezzo — audit,
+                  INSERT non esplosi, entità con Z != 0 riportate sul piano,
+                  duplicati rimossi. forge.validate(doc) le rilancia.
 
 Nessun campo porta un riferimento a ezdxf: edges e annotations sono dati puri
 prodotti dall'adapter, source_meta è un dizionario di primitivi.
@@ -55,3 +58,4 @@ class ForgeDocument:
     annotations: List[Annotation]    = field(default_factory=list)
     source_meta: Dict[str, Any]      = field(default_factory=dict)
     source_path: str                 = ""
+    warnings:    List[str]           = field(default_factory=list)
