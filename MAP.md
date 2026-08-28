@@ -333,3 +333,171 @@ l'implementazione di riferimento (`hole_type` + `geometric_hint` + `source` +
 ## Fatto: già migrati (sessioni precedenti)
 
 `tests/integration/test_helpers.py`, `tests/real/test_golden.py`, `tests/real/test_golden_split.py`.
+
+
+# Fasi per rendere pubblicabile la repo:
+
+Fase 1 — igiene (1 giorno):
+1. git rm -r --cached .venv, .gitignore serio
+2. spostare i 21 script root → examples/ (o cancellare i morti)
+3. cancellare _archive/, _split_debug/, PNG, .dxf scratch, dict, particci.md, le_bestemmie...
+4. cartelle vuote svg/, workflow/ → via
+5. fix import rotto #1, allineare versione e nome pacchetto, aggiungere LICENSE
+
+Fase 2 — documentazione (1-2 giorni):
+6. README nuovo: cos'è, install, esempio minimo (10 righe), esempio multi-pezzo, tabella layer output, limiti noti
+7. docs/API.md: ogni funzione di forge.__all__ — firma, cosa prende, cosa ritorna, cosa muta, quando solleva. Con esempi copiabili. Questo è il documento che ti serve per "spiegarlo a qualcuno".
+8. docs/ARCHITECTURE.md: il diagramma load → ForgeDocument → heal → detect → render, spiegato a parole. Metà di MAP.md è già questo, va solo ripulito dal linguaggio di sessione.
+
+Fase 3 — decisioni (mezza giornata di discussione):
+9. PDF: finire o congelare?
+10. SVG: solo to_svg in uscita, o anche in ingresso?
+11. detect() inferenza engrave: serve davvero o label_map basta?
+
+Fase 4 — consolidamento modello (2-3 giorni, opzionale ma paga):
+12. fondere ClosedShape/OpenShape con ClosedFeature/OpenFeature
+13. un solo dispatcher entità→primitiva negli adapter
+14. ridurre inject alla parte non ridondante
+
+Dopo la Fase 2 il progetto è spiegabile e usabile da un terzo. Fase 1+2 sono ~3 giorni.
+
+
+---
+
+# DECISIONI CHIUSE — 2026-08-28
+
+Prese in conversazione con Federico. Non si riaprono: se una va rimessa in
+discussione, si dice "stiamo riaprendo la decisione N", non la si re-decide da capo.
+
+### D1 — Nome libieria: resta `forge` (per ora)
+`heal` come nome package è stato valutato e scartato (`from heal import heal`
+suona male). `dxf-forge` è fuorviante (troppo legato al formato) ma il rename si
+rimanda. Package importabile resta `forge`.
+
+### D2 — Funzione pipeline comune: `heal_and_detect(doc)`
+Nuova funzione top-level che fa `heal → detect` e ritorna il `ForgeResult`. È la
+via del 90% dei chiamanti, va nel README. `heal()` e `detect()` restano funzioni
+separate e pubbliche (un renderer o un nesting tool possono volere la sola
+topologia). Nome esplicito e un po' goffo di proposito — scelta umana, non
+"process".
+
+### D3 — `detect()` ritorna il result
+`detect()` smette di ritornare `None`. Ritorna il `ForgeResult` (lo stesso
+oggetto, mutato) così la catena è esplicita: `result = forge.detect(result)`.
+Stesso trattamento dove ha senso in `inject()`.
+
+### D4 — `OpenShape` / `ClosedShape` (bridge): ELIMINATI
+`heal` produce direttamente `OpenFeature` / `ClosedFeature`. `bridge/shape.py`
+sparisce. `OpenFeature` / `ClosedFeature` (model/feature.py) si TENGONO: la
+distinzione "ha polygon / non ce l'ha" è onesta e dà `area`/`bbox` gratis.
+
+### D5 — Le 4 feature tipate si tengono tutte
+`Hole`, `Engraving`, `BendingLine`, `ClassifiedEntity` restano. Sono 4 intenti di
+fabbricazione con consumatori diversi (nesting / piega / marcatura / catch-all).
+La "coerenza" tra loro = **2 campi soli**: `source: str` e `confidence: float`,
+stessi nomi / default / chiave in `to_dict()`. Oggi mancano a `BendingLine` — si
+allineano tutti e 4. NIENTE gerarchia con ereditarietà multipla per condividerli:
+convenzione + un test, non una torre di classi. `ClassifiedEntity` resta fuori
+dalla gerarchia `Feature` per scelta (è la via di fuga dict-based per work_type
+senza classe dedicata).
+
+Struttura finale del modello:
+```
+Feature (role)
+├── ClosedFeature (polygon, segments) → ForgeContour, Hole
+└── OpenFeature   (segments)          → Engraving, BendingLine
+ClassifiedEntity  → catch-all dict-based, fuori gerarchia per scelta
+feature "rilevate" → campi source + confidence identici (Hole/Engraving/BendingLine[/ClassifiedEntity])
+```
+
+### D6 — `parse_loop`: rinominare e spostare
+`parse_loop` NON parsa entità: prende segmenti già parsati (da `edge.segment`),
+li orienta e li mette in fila. → rinominare `segments_from_loop` (o `orient_loop`),
+spostare da `adapters/dxf/parser.py` a `core/topology/`. È logica di dominio pura.
+`_reverse_segment` → diventa metodo `.reversed()` su ogni primitiva (`SplineSeg`
+ce l'ha già).
+
+### D7 — Un solo dispatcher entità→primitiva
+`parser.py::DxfEntityDispatcher` e `adapter.py::entity_to_primitive` sono due
+copie quasi identiche della stessa traduzione. Quella di `adapter.py` la usa la
+produzione, quella di `parser.py` solo i test. → una copia sola
+(`DxfEntityDispatcher`), usata da produzione E test. `entity_to_primitive`,
+`_spline_to_primitive`, `_polyline_to_primitives`, `_bulge_to_arc` esistono in un
+posto solo. Target: `adapters/dxf/` da ~2900 a ~2100 righe.
+
+### D8 — `inject()` sgonfiato
+La parte che conta fori/pieghe/incisioni e le ricopia in `part.custom` è
+ridondante (i numeri sono già nelle liste tipate). → spostare in una property
+derivata (`part.summary`), non stato salvato. `inject()` resta solo per il suo
+lavoro unico: passare i testi dentro l'outer al `data_injector` esterno
+(codice / materiale / spessore).
+
+### D9 — L'inspector diventa strumento a 3 livelli
+`dxf_inspect.py` → `forge/inspect.py`, esportato. Oggi è mezzo rotto
+(`edges_from_msp`, `dxf_forge.core.graph`, `entity.layer` — API morte). Va fixato
+e potenziato per stampare TRE livelli:
+1. entità DXF grezze (già fa) — "cosa c'è nel file"
+2. primitive / edge / grafo dopo `load_dxf` — "cosa ha capito l'adapter"
+3. il modello dopo `heal`/`detect` — parti, fori tipati, pieghe, incisioni,
+   trash, annotazioni — "cosa ha prodotto forge"
+Serve per lavorare su file reali (es. quando si implementerà `detect_engrave`).
+
+### D10 — `load_pdf` congelato
+Ritorna `list[Edge]`, non un `ForgeDocument` → `forge.heal()` lo rifiuta. Si
+toglie da `__all__` e si marca `_experimental`. Il codice NON si tocca. PDF si
+riprende più avanti (o mai).
+
+### D11 — Versione: unico punto = `pyproject.toml`
+`forge.__version__` la legge con `importlib.metadata.version(...)`. Non si
+aggiorna più niente a mano tranne il `pyproject`.
+
+### D12 — SVG: solo in uscita, spline discretizzate
+`to_svg(result)` renderer del modello, spline flattenate a polilinea (accettabile
+per SVG — serve per una futura interfaccia, non per il taglio). NIENTE
+`SvgAdapter` in ingresso finché non arriva un file SVG reale. Cartella
+`adapters/svg/` vuota → si toglie finché non c'è dentro qualcosa.
+
+### D13 — `detect_engrave`: rimandato
+`_detect_engrave` resta placeholder no-op. Federico lo implementerà dopo aver
+fatto ordine. Il seam nella pipeline `detect()` c'è già.
+
+### D14 — Script numerati alla radice: restano
+Federico li usa. Al massimo si aggiunge `.gitignore` per i loro output
+(`*_healed.dxf`, `*.png`, `pipeline_output/`, `_split_debug/`).
+
+---
+
+## ORDINE DI ESECUZIONE CONCORDATO
+
+**Fase 1 — igiene** ✅ FATTO (non committato — commit li fa Federico):
+- (a) versione unica (D11): `pyproject.toml` = `0.5.1` (unica fonte);
+      `forge.__version__` la legge via `importlib.metadata.version("forge")`
+      con fallback `0.0.0+dev`. Editable reinstallato come `forge 0.5.1`,
+      rimosso lo stale `dxf-forge 0.3.0` + `dxf_forge.egg-info`. `.gitignore`
+      già a posto, `.venv` non era tracciato. `LICENSE`: rimandato (scelta utente).
+- (b) ✅ fix import rotto `write_metadata_to_dxf` / `read_metadata_from_dxf`
+      (`from ..rules.layers` → `from ..adapters.dxf.layers`) in `io/exporter.py`.
+      Nuovo test `tests/unit/test_metadata_xdata.py` (2 test).
+- (c) ✅ `load_pdf` fuori da `__all__`, commento SPERIMENTALE (D10). Resta
+      importabile come `forge.load_pdf` (lo usa lo script `18_pdf_healing.py`).
+- (d) ✅ inspector a 3 livelli (D9): `forge/dxf_inspect.py` (morto, import
+      rotti) eliminato → nuovo `forge/inspect.py`. Funzioni: `inspect_dxf`
+      (livello 1), `inspect_document` (livello 2: edge + primitive + grafo),
+      `inspect_result` (livello 3: il modello), `inspect_file` (orchestratore).
+      Esportate in `__all__`. Smoke test `tests/unit/test_inspect.py` (3 test).
+
+Suite dopo Fase 1: **531 passed / 0 failed** (era 526).
+
+Script già rotti su API vecchia, NON toccati (fuori scope, D14): `14_preprocessing_healing.py`,
+`18_pdf_healing.py` (usano `forge.validate_msp`, `forge.heal(msp, ...)`,
+`forge.detect(result, msp)`, `forge.write(msp, ...)`, `edge.geometry` — tutta API
+morta). Da sistemare o cestinare quando Federico ci torna sopra.
+
+**Fase 2 — documentazione:** README nuovo, `docs/API.md`, `docs/ARCHITECTURE.md`.
+
+**Fase 3 — API surface:** `heal_and_detect` (D2), `detect` ritorna result (D3).
+
+**Fase 4 — consolidamento:** D4, D6, D7, D8 (modello + adapter). D5 (campi
+`source`/`confidence` su `BendingLine`) va con la Fase 4.
+
+**Dopo:** `to_svg` (D12), poi `detect_engrave` (D13) quando Federico decide.
