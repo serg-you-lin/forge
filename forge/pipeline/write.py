@@ -55,7 +55,8 @@ def to_dxf(
 
     Itera i parts del modello e scrive i segmenti puri di ogni contorno/hole.
     Non legge entità DXF esistenti — se passato, `source_doc` serve solo per
-    riportare gli header ($INSUNITS, $MEASUREMENT) e riscrivere le annotazioni.
+    riportare gli header ($INSUNITS, $MEASUREMENT). Testi e quote arrivano da
+    `result.annotations` (il modello), non dalla sorgente.
 
     Con `include_trash=True` (default) le entità che il pipeline non ha
     classificato (`result.trash_entities`) vengono materializzate sul layer
@@ -117,9 +118,9 @@ def to_dxf(
             restrict_to_written=filter_part is not None,
         )
 
-    if include_annotations and source_doc is not None and source_doc.annotations:
+    if include_annotations and result.annotations:
         _write_annotations(
-            msp, source_doc.annotations, written_parts, result.parts,
+            msp, result.annotations, written_parts, result.parts,
             annotation_layer,
             restrict_to_written=filter_part is not None,
         )
