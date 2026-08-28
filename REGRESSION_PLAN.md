@@ -149,10 +149,35 @@ Golden rigenerati: flangia_scantonata, maniglia, maniglia_no_raccordi
 `Hole.to_dict()` nel refactor — riallineato). Unit: `test_geometry.py`
 `TestIsThreadedHole` 013–014. Suite: 516 passed / 2 xfail.
 
-## Cluster D — engrave esportati come punti, non edge  ⬜ DA FARE
+## Cluster D — engrave esportati come punti, non edge  ✅ FATTO (`refactor/structure`, non committato)
 
-Fu, la_104, multifeature. Verificare anche che la lunghezza engrave arrivi nei metadati.
-NB: `to_dxf` scrive engrave con `write_segments(close=True)` → probabile causa.
+Fu, la_104, multifeature.
+
+**Diagnosi:** confermata l'ipotesi del piano. `to_dxf` scriveva ogni incisione con
+`write_segments()`, che chiude il contorno e delega a `segments_to_pts_with_bulge()`:
+questa emette il *solo punto di start* di ogni segmento (per un loop chiuso l'endpoint
+di ognuno è lo start del successivo, e la chiusura riporta all'inizio). Su una traccia
+APERTA di un segmento l'endpoint finale non c'è → `add_lwpolyline([un punto], close=True)`
+→ in CAD si vede un punto al posto della linea. Riprodotto su tutti e 3 i file con
+`label_map={"MARK": "engrave"}`: 9/32/9 incisioni tutte come LWPOLYLINE `npts=1`.
+
+**Fix:** nuovo `write_engrave_segments()` in `forge/adapters/dxf/exporter.py`; il loop
+su `part.engrave_lines` in `write.py` lo usa al posto di `write_segments()`. Emette
+**geometria nativa, una entità DXF per primitiva** — `LineSeg→LINE`, `ArcSeg→ARC`
+(scambiando gli angoli per un ArcSeg CW, dato che in DXF l'ARC è sempre CCW),
+`SplineSeg→SPLINE` nativa, `CircleSeg→CIRCLE`. **Mai LWPOLYLINE**, nemmeno per un run
+di segmenti contigui e nemmeno se in ingresso era una polilinea (decisione utente:
+"le polilinee non hanno senso per le incisioni"). Coerente con le bending line (emesse
+come `LINE`) e con la scelta di modello "un'incisione è N segmenti separati". Arco
+verificato: round-trip esatto (center/radius/angoli identici).
+
+**Metadati:** `total_engrave_length` era **già corretto** — `inject._compute_part_metrics`
+somma `eng.length` e lo mette in `part.custom["total_engrave_length"]`, presente in
+`part.to_dict()` (FU 73.14, la_104 148.43, multifeature 29.57). Nessuna modifica.
+
+Test: `test_special_layers.py` — `TestSpecialLayerNotTrash::test_003_*` /
+`test_004_no_lwpolyline_on_engrave_layer`, nuova classe `TestEngraveArcNative`.
+Suite: 522 passed / 2 xfail. Golden invariati.
 
 ## Cluster E — preservare linetype + colore nell'output  ⬜ DA FARE (nuovo, da multifeature)
 
