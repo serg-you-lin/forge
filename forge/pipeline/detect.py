@@ -179,6 +179,8 @@ def _deduplicate_boundary_open_segments(result: ForgeResult, tolerance: float = 
 
 
 def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None:
+    promoted_ids: set[int] = set()
+
     for proxy in result.trash_entities:
         if proxy.shape_type != "line":
             continue
@@ -210,7 +212,16 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                         )) % 180,
                         part_label=part.label,
                     ))
+                    promoted_ids.add(id(proxy))
                     break
+
+    # La linea promossa a bending NON deve restare anche in trash: `to_dxf`
+    # la scriverebbe due volte (LINE su Bending + LWPOLYLINE su Trash,
+    # sovrapposte). Stesso pattern di `_detect_labeled`.
+    if promoted_ids:
+        result.trash_entities = [
+            p for p in result.trash_entities if id(p) not in promoted_ids
+        ]
 
 
 # ---------------------------------------------------------------------------
