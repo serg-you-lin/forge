@@ -27,7 +27,13 @@ def heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeR
         )
 
     tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
-    return HealStep(doc, tol, label=label, source_file=source_file).run()
+    result = HealStep(doc, tol, label=label, source_file=source_file).run()
+
+    if result.is_valid and result.parts:
+        from ..rules.validator import validate_result
+        validate_result(result)
+
+    return result
 
 
 def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
