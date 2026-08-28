@@ -1,6 +1,6 @@
 # Piano regressioni — triage di `file_test_status.md`
 
-Stato al 2026-08-27. Le descrizioni per-file stanno in `file_test_status.md`.
+Stato al 2026-08-28. Le descrizioni per-file stanno in `file_test_status.md`.
 
 ## Cluster A — trash non materializzato  ✅ FATTO (commit + push su `refactor/structure`)
 
@@ -149,7 +149,7 @@ Golden rigenerati: flangia_scantonata, maniglia, maniglia_no_raccordi
 `Hole.to_dict()` nel refactor — riallineato). Unit: `test_geometry.py`
 `TestIsThreadedHole` 013–014. Suite: 516 passed / 2 xfail.
 
-## Cluster D — engrave esportati come punti, non edge  ✅ FATTO (`refactor/structure`, non committato)
+## Cluster D — engrave esportati come punti, non edge  ✅ FATTO (`refactor/structure`, committato)
 
 Fu, la_104, multifeature.
 
@@ -185,6 +185,50 @@ Le linee tratteggiate escono continue. L'utente vuole che tipo-linea e colore si
 mantenuti nel DXF di output, e in prospettiva che il role possa essere dedotto anche
 da linetype/colore. "Due piccioni con una fava."
 
+## Cluster F — bending detection  🟡 IN CORSO
+
+### F1 — bending line scritte due volte (Bending + Trash)  ✅ FATTO (`refactor/structure`, non committato)
+
+**Sintomo (il caso che ha fatto perdere 2 ore all'utente):** su
+`6200012964_lineette_bastarde.dxf` le 2 bending line da parte a parte *sono*
+detectate e scritte su layer `Bending`, **ma la stessa geometria resta anche in
+`result.trash_entities`** e `to_dxf` la riscrive come LWPOLYLINE su `Trash`.
+A CAD si vedevano solo le entità Trash, sovrapposte alle Bending.
+
+Verifica sul modello: le 2 corde da 303.6 mm comparivano identiche in
+`part.bending_lines` **e** in `result.trash_entities`.
+
+**Causa:** `pipeline/detect.py::_detect_bending` promuoveva il proxy con
+`part.bending_lines.append(...)` **senza rimuoverlo da `result.trash_entities`**.
+La lane label_map (`_detect_labeled`) traccia `classified_ids` e filtra la trash
+alla fine; la lane geometrica no.
+
+**Perché sembrava "regressione recente":** il doppione nel modello è vecchio
+(latente). Prima del **Cluster A** la trash non veniva materializzata in output,
+quindi non si vedeva. Cluster A ha iniziato a scriverla → il doppione è diventato
+visibile. Non c'entra né l'epsilon (`0f2ed5c`, isolato dietro `if not loops:`) né
+il refactor di struttura.
+
+**Fix:** `_detect_bending` raccoglie gli `id()` dei proxy promossi e li toglie da
+`result.trash_entities` alla fine — stesso pattern di `_detect_labeled`.
+`6200012964`: trash 6→4 (restano i 4 segmenti-leaf da 0.3 mm sugli archi),
+nessuna entità doppia in output. Suite: 522 passed / 2 xfail (invariata).
+Fixture rigenerate con modifica semantica (rimozione LWPOLYLINE Trash duplicate):
+`Linee_piegatura_healed.dxf`, `linee_di_piegatura_interne_healed.dxf`,
+`rect_with_special_layers_healed.dxf`.
+
+### F2 — limiti noti (⬜ non bloccanti, servono dati/decisione cliente)
+
+- **two_rects_with_bend** — BL interna con endpoint a ~10 mm dall'outer: mai
+  detectata. `_detect_bending` vuole entrambi gli endpoint a `< 1.0` dal bordo
+  (hard-coded); `bending_tolerance` filtra solo la lunghezza minima, non la
+  distanza dal bordo. Alzare `bending_tolerance` non recupera il caso.
+- **lineette_bastarde** — i 4 segmenti-leaf da 0.3 mm sugli archi finiscono in Bendinng, dovrbebero finire in trsh. Non so il motivo per cui tu le conteggi in trash, io a cad le ho in Bending, non ho trash in questo file. E' letteralmente i test di test_loops.py con expected fail, a questo punto mi chiedo se davver ocontrolliamo questa cosa.
+  (lunghezza sotto soglia + un solo endpoint su nodo branching / attacco ad arco).
+
+`AMBIGUO`: le 8 `bending_lines` sono **corrette** (confermato dall'utente), non è
+over-detection.
+
 ## Non bloccanti / accettati così
 
 - archi_si_no: accettato com'è (riconoscere archi come outer romperebbe le bending, il grafo gira prima).
@@ -196,16 +240,4 @@ da linetype/colore. "Due piccioni con una fava."
 
 
 
-
-
-
-
- 
-
-  Sulla tua domanda keep_annotation: ricordi mezzo giusto. Esisteva keep_trash (per la geometria trash), non
-  keep_annotation. Il vecchio write() mutava il modelspace sorgente sul posto, quindi testo e quote restavano
-  semplicemente perché nessuno li cancellava. Col nuovo to_dxf() che ricostruisce da zero, le annotazioni passano solo
-  da _write_annotations, che le tiene solo se coperte da una parte. Quindi la decisione da prendere domani (Cluster
-  A-bis) è: le annotazioni non coperte → sempre scritte, su layer originale o su Trash? Il tuo istinto ("finivano in
-  trash") è coerente con come si comportava prima di fatto.
 
