@@ -124,7 +124,6 @@ def _make_test(path):
         )
 
         forge.detect(result)
-        forge.inject(result)
 
         # --- part count ---
         self.assertEqual(
@@ -373,13 +372,22 @@ def _make_test(path):
                         msg=f"{label} engrave[{j}].role",
                     )
 
-            # --- custom ---
-            for key, value in expected.get("custom", {}).items():
-                self.assertEqual(
-                    part.custom.get(key),
-                    value,
-                    msg=f"{label} custom {key}",
-                )
+            # --- summary (conteggi feature, ex part.custom via inject) ---
+            # Fixture vecchi usano la chiave "custom", i nuovi "summary": stesso
+            # contenuto, ora prodotto da part.summary invece che da inject().
+            expected_summary = expected.get("summary", expected.get("custom", {}))
+            for key, value in expected_summary.items():
+                actual = part.summary.get(key)
+                if isinstance(value, float):
+                    self.assertAlmostEqual(
+                        actual, value, delta=0.01,
+                        msg=f"{label} summary {key}",
+                    )
+                else:
+                    self.assertEqual(
+                        actual, value,
+                        msg=f"{label} summary {key}",
+                    )
 
     test.__name__ = f"test_{path.stem}"
     return test

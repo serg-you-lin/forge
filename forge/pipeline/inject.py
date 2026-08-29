@@ -3,57 +3,30 @@ inject.py
 -----------
 Arricchimento CAM opzionale di un ForgeResult già prodotto da heal() + detect().
 
-Responsabilità:
-    - Conta le feature per tipo (fori plain/countersink/threaded, pieghe,
-      lunghezza incisioni) e le scrive in part.custom.
-    - Passa i testi che ricadono dentro l'outer di ogni parte al data_injector
-      del chiamante (codice pezzo, materiale, spessore, ...).
+Da MAP.md D8: il conteggio delle feature (fori per tipo, pieghe, incisioni) NON
+si fa più qui — è `part.summary`, una property derivata dal modello. `inject()`
+resta solo per il suo lavoro unico: passare i testi che ricadono dentro l'outer
+di ogni parte a un `data_injector` esterno (codice pezzo, materiale, spessore),
+e mettere il dict risultante in `part.custom`.
 
 Contratto:
-    - Opera SEMPRE su un ForgeResult già prodotto da heal() (+ detect()).
-    - I fori (countersink, threaded, plain) si leggono da part.holes.
-    - Incisioni da part.engrave_lines; marking da result.classified_entities.
-    - È indipendente da to_dxf()/split() — si può usare con o senza.
+    - Opera su un ForgeResult già prodotto da heal() (+ detect()).
     - Lavora sul modello: non tocca ezdxf.
-    - Il data_injector è opzionale.
+    - Il data_injector è opzionale — senza, inject() non fa nulla.
     - Muta result.parts[i].custom in-place e ritorna il result.
 
 Flusso tipico:
 
     doc    = forge.load_dxf("pezzo.dxf", label_map={"Bend": "bending"})
-    result = forge.heal(doc)
-    forge.detect(result)
+    result = forge.heal_and_detect(doc)
     forge.inject(result, data_injector=leggi_cartiglio,
                  texts=forge.extract_texts_from_msp(msp))
-    forge.save_json(result, ...)
-
-Nota (MAP.md D8): il conteggio feature diventerà una property derivata
-(part.summary) e inject() resterà solo per il data_injector esterno.
+    forge.save_json(result, ...)   # i conteggi vengono da part.summary
 """
 
-from shapely.geometry import Point
 from typing import Callable, Optional
+
 from ..model.text import ForgeText
-from ..core.geometry import group_collinear_lines
-from ..io.text_utils import extract_texts_from_msp
-from ..adapters.dxf.layers import (
-    LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING, LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
-)
-from ..model import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED, HOLE_TYPE_PLAIN
-
-# Mappa work_type → layer forge dove heal() ha già spostato le entità
-WORK_TYPE_TO_FORGE_LAYER = {
-    "bending": LAYER_BENDING,
-    "engrave": LAYER_ENGRAVE,
-    "marking": LAYER_MARKING,
-}
-
-# Mappa work_type → chiave in part.custom
-WORK_TYPE_TO_KEY = {
-    "bending": "bending_lines",
-    "engrave": "total_engrave_length",
-    "marking": "total_marking_length",
-}
 
 
 def inject(
@@ -63,24 +36,20 @@ def inject(
     tolerance: float = 0.1,
 ):
     """
-    Arricchisce i ForgePart di un ForgeResult.
+    Arricchisce i ForgePart con i dati estratti da un `data_injector` esterno.
 
-    Muta result.parts[i].custom in-place e ritorna il result (così la catena
-    resta esplicita: `result = forge.inject(result)`).
-
-    Fonti di verità:
-        - part.holes                    → fori (countersink, threaded, plain)
-        - part.bending_lines            → pieghe
-        - part.engrave_lines            → lunghezza incisioni
-        - result.classified_entities    → marking
+    Muta `result.parts[i].custom` in-place e ritorna il `result`.
 
     Args:
-        result:         ForgeResult prodotto da heal() + detect()
-        data_injector:  funzione (ForgePart, list[str]) -> dict per dati custom
-        texts:          lista di ForgeText estratti da extract_forge_texts()
-        tolerance:      tolleranza mm per group_collinear_lines
+        result:        ForgeResult prodotto da heal() (+ detect()).
+        data_injector: `callable(ForgePart, list[str]) -> dict`. Riceve i testi
+                       contenuti nell'outer della parte, restituisce i campi da
+                       mettere in `part.custom` (materiale, spessore, codice, ...).
+        texts:         lista di ForgeText (da `extract_texts_from_msp` +
+                       costruzione ForgeText, o da un estrattore proprio).
+        tolerance:     accettato per compatibilità di firma; non più usato.
     """
-    if not result.parts:
+    if not result.parts or data_injector is None:
         return result
 
     for part in result.parts:
@@ -88,98 +57,18 @@ def inject(
         if outer_poly is None or outer_poly.is_empty:
             continue
 
-        # Fori — fonte di verità: part.holes
-        _inject_holes(part)
-
-        # Bending — fonte di verità: part.bending_lines (da detect())
-        _inject_bending(part, tolerance)
-
-        # Engrave, marking — fonte di verità: classified_entities
-        _inject_classified(part, result.classified_entities, outer_poly)
-
-        # Data injector esterno (codice, spessore, materiale, ecc.)
-        if data_injector is not None:
-            testi = _filter_texts_for_part(texts or [], outer_poly)
-            try:
-                injected = data_injector(part, testi)
-                if injected:
-                    part.custom.update(injected)
-            except Exception as ex:
-                result.warnings.append(
-                    f"data_injector fallito su {part.label}: {ex}"
-                )
+        testi = _filter_texts_for_part(texts or [], outer_poly)
+        try:
+            injected = data_injector(part, testi)
+            if injected:
+                part.custom.update(injected)
+        except Exception as ex:
+            result.warnings.append(
+                f"data_injector fallito su {part.label}: {ex}"
+            )
 
     return result
 
-
-def _inject_holes(part) -> None:
-    """
-    Conta i fori per tipo e scrive in part.custom.
-
-    Fonte di verità: part.holes — mai classified_entities.
-    Scrive solo le chiavi con count > 0.
-    """
-    countersink_count   = 0
-    threaded_hole_count = 0
-    plain_hole_count    = 0
-
-    for hole in part.holes:
-        if hole.hole_type == HOLE_TYPE_COUNTERSINK:
-            countersink_count += 1
-        elif hole.hole_type == HOLE_TYPE_THREADED:
-            threaded_hole_count += 1
-        elif hole.hole_type == HOLE_TYPE_PLAIN:
-            plain_hole_count += 1
-
-    if countersink_count:
-        part.custom["countersink_count"]   = countersink_count
-    if threaded_hole_count:
-        part.custom["threaded_holes_count"] = threaded_hole_count
-    if plain_hole_count:
-        part.custom["plain_holes_count"]   = plain_hole_count
-
-
-def _inject_bending(part, tolerance: float) -> None:
-    """
-    Conta le pieghe da part.bending_lines.
-    Fonte di verità: detect() — indipendente da write().
-    """
-    if not part.bending_lines:
-        return
-    geometries = [bl.geometry for bl in part.bending_lines]
-    groups = group_collinear_lines(geometries, tolerance=tolerance)
-    part.custom["bending_lines"] = len(groups)
-
-
-def _inject_classified(part, classified_entities, outer_poly) -> None:
-    total_engrave = 0.0
-    total_marking = 0.0
-
-    for ce in classified_entities:
-        if ce.representative_point is not None:
-            pt = Point(ce.representative_point)
-        elif ce.polygon is not None and not ce.polygon.is_empty:
-            pt = ce.polygon.centroid
-        else:
-            continue
-
-        if pt is None or not outer_poly.covers(pt):
-            continue
-
-        wt = ce.work_type.lower()
-        if wt == "marking":
-            total_marking += ce.data.get("length") or 0.0
-
-    # engrave ora su part.engrave_lines
-    for eng in part.engrave_lines:
-        total_engrave += eng.length or 0.0
-
-    if total_engrave:
-        part.custom["total_engrave_length"] = round(total_engrave, 4)
-    if total_marking:
-        part.custom["total_marking_length"] = round(total_marking, 4)
-
-        
 
 def _filter_texts_for_part(texts: list[ForgeText], outer_poly) -> list[str]:
     """

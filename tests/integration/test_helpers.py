@@ -146,7 +146,13 @@ def get_part(result, index=0):
 
 def get_custom(result, key, default=None):
     """
-    Shortcut per part.custom.
+    Shortcut per i conteggi/metadati di una parte.
+
+    I conteggi feature vivono in part.summary (MAP.md D8); i dati aggiunti da
+    un data_injector esterno in part.custom. Si guardano entrambi.
     """
     part = get_part(result)
+    summary = part.summary
+    if key in summary:
+        return summary[key]
     return part.custom.get(key, default)

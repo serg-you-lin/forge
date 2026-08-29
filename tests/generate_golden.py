@@ -102,8 +102,6 @@ def generate(force: bool = False, only: str = None):
 
             forge.detect(result)
 
-            forge.inject(result)
-
             if not result.is_valid:
                 print(f"  SKIP (non valido): {dxf_path.name} — {result.errors}")
                 skipped += 1
@@ -153,8 +151,9 @@ def generate(force: bool = False, only: str = None):
                     ),
                     "engrave_lines_count": len(part.engrave_lines),
                     "engrave_lines":       [e.to_dict() for e in part.engrave_lines],
-                    # — custom — rimane per compatibilità, ora sempre {} —
-                    "custom": dict(part.custom),
+                    # — summary — conteggi feature derivati dal modello (D8).
+                    #   Solo le chiavi non-zero, come faceva inject() in custom.
+                    "summary": {k: v for k, v in part.summary.items() if v},
                 }
                 golden["parts"].append(part_golden)
 

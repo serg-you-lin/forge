@@ -120,7 +120,7 @@ def generate(force: bool = False, only: str = None):
                     "inners_wkt":    [i.polygon.wkt for i in all_inners],
                     "outer_layer":   ROLE_TO_LAYER.get(part.outer.role),
                     "inners_layers": [ROLE_TO_LAYER.get(i.role, LAYER_INNER) for i in all_inners],
-                    "custom":        dict(part.custom),
+                    "summary":       {k: v for k, v in part.summary.items() if v},
                 }
 
                 golden_path.write_text(
