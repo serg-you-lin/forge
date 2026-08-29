@@ -1,29 +1,34 @@
 """
 inject.py
 -----------
-Inietta dati nei ForgePart di un ForgeResult già prodotto da heal().
+Arricchimento CAM opzionale di un ForgeResult già prodotto da heal() + detect().
 
 Responsabilità:
-    - Calcola metriche per label_map (bending_lines, engrave_length)
-      cercando sulle entità già routate da heal() sui layer forge corretti.
-    - Estrae testi dal msp e li passa al data_injector del chiamante.
-    - Popola part.custom con i risultati.
+    - Conta le feature per tipo (fori plain/countersink/threaded, pieghe,
+      lunghezza incisioni) e le scrive in part.custom.
+    - Passa i testi che ricadono dentro l'outer di ogni parte al data_injector
+      del chiamante (codice pezzo, materiale, spessore, ...).
 
 Contratto:
-    - Opera SEMPRE su un ForgeResult già prodotto da heal().
-    - I fori (countersink, threaded, plain) si leggono da part.holes —
-      non da classified_entities, che contiene solo entità non-Hole
-      (bending, engrave, marking, ecc.).
-    - È indipendente da split() — si può usare con o senza split.
-    - Non modifica il msp.
+    - Opera SEMPRE su un ForgeResult già prodotto da heal() (+ detect()).
+    - I fori (countersink, threaded, plain) si leggono da part.holes.
+    - Incisioni da part.engrave_lines; marking da result.classified_entities.
+    - È indipendente da to_dxf()/split() — si può usare con o senza.
+    - Lavora sul modello: non tocca ezdxf.
     - Il data_injector è opzionale.
+    - Muta result.parts[i].custom in-place e ritorna il result.
 
 Flusso tipico:
 
-    result = forge.heal(msp, label_map={"Bend": "bending"})
+    doc    = forge.load_dxf("pezzo.dxf", label_map={"Bend": "bending"})
+    result = forge.heal(doc)
     forge.detect(result)
-    forge.inject(msp, result)
+    forge.inject(result, data_injector=leggi_cartiglio,
+                 texts=forge.extract_texts_from_msp(msp))
     forge.save_json(result, ...)
+
+Nota (MAP.md D8): il conteggio feature diventerà una property derivata
+(part.summary) e inject() resterà solo per il data_injector esterno.
 """
 
 from shapely.geometry import Point
@@ -56,29 +61,27 @@ def inject(
     data_injector: Optional[Callable] = None,
     texts: Optional[list[ForgeText]] = None,
     tolerance: float = 0.1,
-) -> None:
+):
     """
-    Inietta dati nei ForgePart di un ForgeResult.
+    Arricchisce i ForgePart di un ForgeResult.
 
-    Modifica result.parts[i].custom in-place.
-    Non restituisce nulla — il ForgeResult viene aggiornato direttamente.
+    Muta result.parts[i].custom in-place e ritorna il result (così la catena
+    resta esplicita: `result = forge.inject(result)`).
 
     Fonti di verità:
         - part.holes                    → fori (countersink, threaded, plain)
-        - part.geometry_hints           → bending lines
-        - result.classified_entities    → engrave, marking
-
-    È indipendente da write() — può essere chiamato senza che write()
-    abbia spostato le entità sui layer forge.
+        - part.bending_lines            → pieghe
+        - part.engrave_lines            → lunghezza incisioni
+        - result.classified_entities    → marking
 
     Args:
         result:         ForgeResult prodotto da heal() + detect()
-        data_injector:  funzione (ForgePart, testi) -> dict per dati custom
+        data_injector:  funzione (ForgePart, list[str]) -> dict per dati custom
         texts:          lista di ForgeText estratti da extract_forge_texts()
         tolerance:      tolleranza mm per group_collinear_lines
     """
     if not result.parts:
-        return
+        return result
 
     for part in result.parts:
         outer_poly = part.outer.polygon
@@ -88,7 +91,7 @@ def inject(
         # Fori — fonte di verità: part.holes
         _inject_holes(part)
 
-        # Bending — fonte di verità: part.geometry_hints.bend_line_ids
+        # Bending — fonte di verità: part.bending_lines (da detect())
         _inject_bending(part, tolerance)
 
         # Engrave, marking — fonte di verità: classified_entities
@@ -105,6 +108,8 @@ def inject(
                 result.warnings.append(
                     f"data_injector fallito su {part.label}: {ex}"
                 )
+
+    return result
 
 
 def _inject_holes(part) -> None:
