@@ -22,6 +22,11 @@ class BendingLine(OpenFeature):
     length:     float         = 0.0
     angle_deg:  float         = 0.0
     part_label: str           = ""
+    # Doppio binario di provenienza, come Hole ed Engraving (MAP.md D5):
+    #   source="labeled"   → ruolo da label_map        (confidence 1.0)
+    #   source="geometric" → inferenza in detect()     (confidence < 1.0)
+    confidence: float         = 1.0
+    source:     str           = ""
 
     def __post_init__(self):
         if self.role == ContourRole.UNKNOWN:
@@ -35,4 +40,6 @@ class BendingLine(OpenFeature):
             "length":     round(self.length, 4),
             "angle_deg":  round(self.angle_deg, 4),
             "part_label": self.part_label,
+            "source":     self.source,
+            "confidence": round(self.confidence, 4),
         }

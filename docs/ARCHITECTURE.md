@@ -215,18 +215,16 @@ pipeline.
 Onestà sullo stato — dettagli e decisioni prese in `MAP.md` (sezione "Decisioni
 chiuse"):
 
-- **doppio strato di forme**: `bridge/shape.py` (`OpenShape`/`ClosedShape`, proxy
-  durante l'healing) e `model/feature.py` (`OpenFeature`/`ClosedFeature`) sono
-  vicini. Decisione D4: i primi vengono eliminati, `heal` produrrà direttamente i
-  secondi.
-- **traduttore doppio negli adapter**: `parser.py::DxfEntityDispatcher` e
-  `adapter.py::entity_to_primitive` sono due copie della stessa traduzione
-  entità→primitiva. Decisione D7: una sola.
-- **`parse_loop` mal chiamata**: non parsa niente, orienta segmenti già parsati.
-  Decisione D6: rinominata e spostata in `core/topology/`.
-- **`inject` fa lavoro ridondante**: metà di quello che scrive in `part.custom` è
-  già nelle liste tipate. Decisione D8: diventerà una property derivata.
-- **`source`/`confidence` incoerenti**: `Hole` ed `Engraving` li hanno,
-  `BendingLine` no. Decisione D5: si allineano tutti.
+- **doppio strato di forme** (D4, non ancora fatto): `bridge/shape.py`
+  (`OpenShape`/`ClosedShape`, proxy durante l'healing) e `model/feature.py`
+  (`OpenFeature`/`ClosedFeature`) sono vicini. I primi verranno eliminati, `heal`
+  produrrà direttamente i secondi. È il refactor più invasivo che resta.
+- **`inject` fa lavoro ridondante** (D8, non ancora fatto): metà di quello che
+  scrive in `part.custom` è già nelle liste tipate. Diventerà una property
+  derivata (`part.summary`).
 - **`load_pdf`** ritorna `list[Edge]` invece di un `ForgeDocument` → non si
   aggancia a `heal()`. Congelato (D10).
+
+Già risolto in Fase 4: traduttore entità→primitiva ora unico
+(`DxfEntityDispatcher`, D7); `parse_loop` → `segments_from_loop` in
+`core/topology/` (D6); `source`/`confidence` su `BendingLine` (D5).

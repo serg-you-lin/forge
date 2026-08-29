@@ -278,10 +278,10 @@ def entity_to_polygon(entity) -> Optional[Polygon]:
     Converte un'entità chiusa in un Polygon shapely.
     Usa le primitive del core per la discretizzazione.
     """
-    from .adapter import entity_to_primitive
-    
-    prim = entity_to_primitive(entity)
-    
+    from .parser import DxfEntityDispatcher
+
+    prim = DxfEntityDispatcher(entity).parse()
+
     if prim is None:
         return None
     
