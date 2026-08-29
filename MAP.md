@@ -45,12 +45,14 @@ Branch: `refactor/structure`. Fasi 1–4 concluse e committate. Suite: **555 pas
 / 0 failed** (+ 62 subtests), golden verdi.
 
 Da fare, in ordine:
-1. Riscrittura degli script numerati alla radice — uno per funzione di
-   `forge.__all__`, default su `tests/examples/` (D14).
-2. `to_svg` (D12).
+1. ✅ Riscrittura degli script numerati alla radice (`00_*.py … 12_*.py`), uno
+   per area di `forge.__all__`, default su `tests/examples/` (D14).
+2. ✅ `to_view_model` + `to_svg` / `save_svg` (D12).
 3. `detect_engrave` (D13) — quando Federico decide.
 4. Merge di `refactor/structure` in `main`.
-5. Dashboard — **repo separata** (D16), consuma `forge` come libreria.
+5. Dashboard — **repo separata** (D16). Rendering nel browser (SVG/Canvas JS)
+   da `to_view_model`; backend = server Python sottile attorno a
+   `heal_and_detect`. `to_svg` resta comodità di libreria (export, thumbnail).
 
 ---
 
@@ -141,12 +143,20 @@ come `forge.load_pdf`. PDF si riprende più avanti (o mai).
 `forge.__version__` la legge con `importlib.metadata.version("forge")`, fallback
 `0.0.0+dev`. Non si aggiorna più niente a mano tranne il `pyproject`.
 
-### D12 — SVG: solo in uscita, spline discretizzate
-`to_svg(result)` è un renderer del modello; le spline vengono appiattite a
-polilinea (accettabile per SVG — serve per una futura interfaccia, non per il
-taglio). **Niente `SvgAdapter` in ingresso** finché non arriva un file SVG reale.
-La cartella `adapters/svg/` vuota si toglie finché non c'è dentro qualcosa.
-Ancora da implementare.
+### D12 — SVG: solo in uscita, spline discretizzate  ✅
+`to_svg(result)` è un renderer del modello; archi/cerchi/spline appiattiti a
+polilinea (accettabile per visualizzare, non per il taglio). **Niente
+`SvgAdapter` in ingresso** finché non arriva un file SVG reale.
+
+Implementato in due pezzi (`forge/io/`):
+- **`to_view_model(result)`** — `ForgeResult` → dict JSON con la geometria di
+  *ogni* feature + ruolo + colore hex. È il vero contratto per un renderer
+  esterno (dashboard JS).
+- **`to_svg` / `save_svg`** — SVG "batterie incluse" costruito sopra il view
+  model. Un colore per ruolo (palette semantica condivisa col DXF), Y ribaltata,
+  una parte = un `<g data-part>`, fori come `<circle>` veri.
+- `forge/rules/palette.py` esteso: `ROLE_TO_COLOR` completo + `ACI_TO_HEX` +
+  `role_to_hex()` (nessuna dipendenza da ezdxf o dal formato).
 
 ### D13 — `detect_engrave`: rimandato
 `_detect_engrave` resta placeholder no-op. Il seam nella pipeline `detect()` c'è
@@ -216,6 +226,15 @@ splittata atterra alla stessa coordinata XY assoluta della sorgente. **Unica
 perdita voluta:** la Z viene appiattita a 0 (corretto per lamiera/laser).
 `test_golden_split` blocca questo invariante — confronta l'`outer_wkt` con
 coordinate assolute, un ricentraggio lo farebbe fallire.
+
+### D18 — `to_nester_input`: fuori da `__all__`, sperimentale
+dxf-forge **non fa nesting** (disporre i pezzi in tavola per minimizzare lo
+sfrido) e non lo farà, salvo commessa pagata da un cliente. `to_nester_input`
+era stato scritto all'inizio per un nester mai realizzato. Trattamento identico a
+`load_pdf` (D10): il codice resta, importabile come `forge.to_nester_input`, ma
+fuori da `__all__` e non documentato nel contratto. La serializzazione della
+geometria per renderer/tool è `to_view_model` (D12).
+Riferimento: memoria `nesting-out-of-scope`.
 
 ---
 

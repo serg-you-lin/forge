@@ -21,7 +21,7 @@ in fondo.
 1. [Apertura file](#1-apertura-file) — `load_dxf`, `document_from_msp`
 2. [Validazione](#2-validazione) — `validate`, `validate_result`
 3. [Pipeline](#3-pipeline) — `heal`, `detect`, `heal_and_detect`, `to_dxf`, `split`, `split_to_files`, `inject`
-4. [Export](#4-export) — `save_json`, `to_json`, `save_xml`, `to_nester_input`
+4. [Export](#4-export) — `save_json`, `to_json`, `save_xml`, `to_view_model`, `to_svg`, `save_svg`
 5. [Metadati XDATA](#5-metadati-xdata) — `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema`
 6. [Ispezione / debug](#6-ispezione--debug) — `inspect_dxf`, `inspect_document`, `inspect_result`, `inspect_file`
 7. [Utilità](#7-utilità) — `extract_forge_texts`, `extract_texts_from_msp`
@@ -482,14 +482,76 @@ forge.save_xml(result: ForgeResult, path) -> None
 
 Stessi campi di `save_json`, in XML (`<forge><parts><part>…`).
 
-### `to_nester_input`
+### `to_view_model`
 
 ```python
-forge.to_nester_input(result: ForgeResult) -> list[dict]
+forge.to_view_model(
+    result: ForgeResult,
+    tolerance=0.05,
+    include_trash=True,
+    include_annotations=True,
+) -> dict
 ```
 
-**Non** usa lo schema: il nester vuole le **coordinate**, non i nomi. Per parte:
-`label`, `source_file`, `area`, `bbox`, `outer_coords`, `holes_coords`.
+`ForgeResult` → dizionario JSON **orientato al rendering**: le coordinate di
+*ogni* feature + ruolo + colore hex. È il pendant geometrico di `to_json` (che dà
+solo metadati). Lo consuma `to_svg` e lo consumerebbe un front-end esterno
+(dashboard JS che disegna con SVG/Canvas).
+
+> `to_nester_input(result) -> list[dict]` esiste ancora (`label`, `bbox`,
+> `outer_coords`, `holes_coords` per parte) ma è **sperimentale**, fuori da
+> `__all__` — scritto per un nester mai realizzato (MAP.md D18). Per serializzare
+> la geometria usa `to_view_model`.
+
+Tutta la geometria è **discretizzata a polilinee** (`points: [[x, y], …]`):
+archi, cerchi, spline appiattiti. I fori portano anche `center` + `diameter` per
+disegnare un cerchio vero. Coordinate nel sistema del sorgente (Y in alto).
+
+```python
+vm = forge.to_view_model(result)
+vm["parts"][0]["outer"]        # {"role": "outer", "color": "#00ff00", "points": [...], "closed": true}
+vm["parts"][0]["holes"][0]     # + hole_type, diameter, center, source, confidence
+vm["palette"]                  # {"outer": "#00ff00", "hole": "#ff00ff", ...}
+```
+
+Non muta `result`, non solleva su `result` non valido (torna il dict con
+`is_valid=False`).
+
+### `to_svg` / `save_svg`
+
+```python
+forge.to_svg(
+    result: ForgeResult,
+    tolerance=0.05,
+    include_trash=True,
+    include_annotations=True,
+    padding=0.03,
+    background="#1e1e1e",     # None = trasparente
+    holes_as_circles=True,
+    stroke_width=None,        # None = auto (diagonale bbox / 400)
+    size=None,                # None = niente width/height → scala al contenitore
+    units=None,               # "mm" = SVG in scala reale per import CAM/laser 1:1
+) -> str
+forge.save_svg(result, path, **kwargs) -> None
+```
+
+Renderer SVG del modello (MAP.md D12) — **per visualizzazione** (UI/report/
+anteprima). Un colore per ruolo (stessa palette semantica del DXF di output). La
+Y viene ribaltata (modello Y-su → SVG Y-giù). Una parte = un `<g data-part="…">`.
+Costruito sopra `to_view_model`.
+
+`size=None` (default) **non** scrive `width`/`height` sull'`<svg>`: l'immagine è
+vettoriale e scala a riempire il contenitore (o la finestra del browser) — la
+zoomi quanto vuoi. Passa `size="800"` per fissare la larghezza in px.
+
+`units="mm"` produce un SVG **in scala reale** (`width="…mm"`, padding e sfondo a
+zero) per chi importa SVG in un software laser/CAM che vuole 1 unità = 1 mm.
+**Attenzione:** archi, cerchi e spline restano discretizzati a polilinea — per un
+taglio ad alta fedeltà (fori a tolleranza, cerchi lisci) usa `to_dxf`, non l'SVG.
+
+```python
+forge.save_svg(result, "pezzo.svg")
+```
 
 ---
 
