@@ -195,8 +195,7 @@ class HealStep:
         if not self.edges:
             return
 
-        from ..core.topology.loop_finder import LoopFinder
-        from ..adapters.dxf.parser import parse_loop
+        from ..core.topology.loop_finder import LoopFinder, segments_from_loop
         from ..core.healing.hierarchy import loop_to_closed_shape
         from ..model.role import ContourRole
 
@@ -268,7 +267,7 @@ class HealStep:
         for loop in structural_loops:
             role = loop[0][0].role if loop else ContourRole.UNKNOWN
 
-            segments = parse_loop(loop)
+            segments = segments_from_loop(loop)
 
             from ..core.primitives.polygon_builder import build_polygon
             from ..core.primitives.segments import DEFAULT_TOLERANCE

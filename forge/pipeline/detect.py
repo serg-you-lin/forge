@@ -218,6 +218,8 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                             proxy.pts[-1][0] - proxy.pts[0][0],
                         )) % 180,
                         part_label=part.label,
+                        source="geometric",
+                        confidence=0.9,
                     ))
                     promoted_ids.add(id(proxy))
                     break
@@ -495,4 +497,6 @@ def _bending_line_from_data(data: dict, part_label: str) -> BendingLine:
         length=data["length"],
         angle_deg=data["angle_deg"],
         part_label=part_label,
+        source="labeled",
+        confidence=1.0,
     )

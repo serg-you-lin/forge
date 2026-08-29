@@ -149,6 +149,36 @@ class LoopFinder:
 
 
 # ---------------------------------------------------------------------------
+# Loop → segmenti nativi orientati
+# ---------------------------------------------------------------------------
+
+def segments_from_loop(loop) -> list:
+    """
+    Segmenti nativi di un loop, orientati nel verso di percorrenza.
+
+    NON parsa niente: ogni Edge porta già la sua primitiva (`edge.segment`,
+    tradotta dall'adapter al load). Qui la si prende, la si inverte con
+    `.reversed()` se l'Edge è percorso al contrario nel loop, e la si
+    concatena. Logica di dominio pura — nessuna dipendenza da ezdxf.
+
+    (Ex `adapters/dxf/parser.py::parse_loop` — spostata qui e rinominata,
+    MAP.md D6: non apparteneva all'adapter e il nome era fuorviante.)
+    """
+    out = []
+    for edge, rev in loop:
+        seg = edge.segment
+        if seg is None:
+            continue
+        if isinstance(seg, list):
+            # In produzione un Edge di loop non porta mai una lista (le
+            # polilinee sono già esplose in Edge singoli): ramo per i test.
+            out.extend(seg)
+        else:
+            out.append(seg.reversed() if rev else seg)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Edge → OpenShape — tracce non consumate da loop strutturali
 # ---------------------------------------------------------------------------
 

@@ -21,8 +21,8 @@ def arc_seg_to_bulge(arc: ArcSeg) -> float:
     # L'angolo spazzato dipende dal verso: per un arco CW il tratto reale è
     # start_angle → end_angle percorso in senso orario, NON il complemento a
     # 2π. ArcSeg._sweep() è l'unica sede di questo calcolo — riusarla qui
-    # evita che un arco invertito (ccw=False, prodotto da parse_loop quando il
-    # loop viene orientato CCW) venga scritto con il bulge dell'arco
+    # evita che un arco invertito (ccw=False, prodotto da segments_from_loop
+    # quando il loop viene orientato CCW) venga scritto con il bulge dell'arco
     # complementare, cioè "alla rovescia".
     sweep = arc._sweep()
     if sweep <= 1e-12:

@@ -4,7 +4,7 @@ test_parsing_and_exporting.py
 Test unitari per adapters/dxf/parser.py e adapters/dxf/exporter.py.
 
 Testa il parsing di entità ezdxf mock → primitive pure,
-l'esportazione primitive → DXF, e il routing parse_loop.
+l'esportazione primitive → DXF, e segments_from_loop.
 """
 
 import unittest
@@ -14,10 +14,8 @@ from types import SimpleNamespace
 
 from forge.core.primitives import LineSeg, ArcSeg, SplineSeg
 from forge.adapters.bridge.edge import Edge
-from forge.adapters.dxf.parser import (
-    DxfEntityDispatcher,
-    parse_loop,
-)
+from forge.adapters.dxf.parser import DxfEntityDispatcher
+from forge.core.topology.loop_finder import segments_from_loop
 from forge.adapters.dxf.exporter import (
     arc_seg_to_bulge,
     segments_to_pts_with_bulge,
@@ -112,7 +110,7 @@ def make_edge(entity, layer="0", rev=False):
     """
     Crea un Edge portando la primitiva reale parsata dall'entità mock.
 
-    Dopo il refactoring parse_loop() non riparsare più l'entità sorgente:
+    segments_from_loop() non riparsa l'entità sorgente:
     concatena semplicemente edge.segment. La primitiva va quindi costruita
     qui, come fa l'adapter in fase di traduzione.
     """
@@ -325,26 +323,26 @@ class TestDxfEntityDispatcher(unittest.TestCase):
 
 
 # ===========================================================================
-# TESTS: parse_loop
+# TESTS: segments_from_loop
 # ===========================================================================
 
-class TestParseLoop(unittest.TestCase):
-    """Test del routing parse_loop su loop di Edge."""
+class TestSegmentsFromLoop(unittest.TestCase):
+    """Test di segments_from_loop su loop di Edge."""
 
     def test_001_loop_vuoto(self):
         """Loop vuoto → lista vuota."""
-        self.assertEqual(parse_loop([]), [])
+        self.assertEqual(segments_from_loop([]), [])
 
     def test_002_loop_line_singola(self):
         """Loop con una LINE → un LineSeg."""
         loop = [(make_edge(make_line(0, 0, 10, 0)), False)]
-        result = parse_loop(loop)
+        result = segments_from_loop(loop)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], LineSeg)
 
     def test_003_loop_quadrato(self):
         """Loop quadrato → 4 LineSeg."""
-        primitives = parse_loop(make_square_loop(100.0))
+        primitives = segments_from_loop(make_square_loop(100.0))
         self.assertEqual(len(primitives), 4)
         for p in primitives:
             self.assertIsInstance(p, LineSeg)
@@ -358,7 +356,7 @@ class TestParseLoop(unittest.TestCase):
             (make_edge(arc), False),
             (make_edge(make_line(0, 0, 100, 0)), False),
         ]
-        result = parse_loop(loop)
+        result = segments_from_loop(loop)
         self.assertEqual(len(result), 2)
         self.assertIsInstance(result[0], ArcSeg)
         self.assertIsInstance(result[1], LineSeg)
@@ -372,7 +370,7 @@ class TestParseLoop(unittest.TestCase):
             (0, 10, 0),
         ], is_closed=False)
         loop = [(make_edge(polyline), False)]
-        result = parse_loop(loop)
+        result = segments_from_loop(loop)
         
         self.assertEqual(len(result), 3)  # N-1 segmenti
         self.assertIsInstance(result[0], LineSeg)
@@ -387,7 +385,7 @@ class TestParseLoop(unittest.TestCase):
             (10, 10, 0),
         ], is_closed=False)
         loop = [(make_edge(polyline, rev=True), False)]
-        result = parse_loop(loop)
+        result = segments_from_loop(loop)
 
         self.assertEqual(len(result), 2)
         
@@ -423,7 +421,7 @@ class TestParseLoop(unittest.TestCase):
             (make_edge(spline), False),
             (make_edge(make_line(0, 100, 100, 100)), False),
         ]
-        result = parse_loop(loop)
+        result = segments_from_loop(loop)
         spline_prims = [p for p in result if isinstance(p, SplineSeg)]
         self.assertEqual(len(spline_prims), 1)
 
@@ -436,7 +434,7 @@ class TestParseLoop(unittest.TestCase):
             (0, 10, 0),
         ], is_closed=True)
         loop = [(make_edge(polyline), False)]
-        result = parse_loop(loop)
+        result = segments_from_loop(loop)
         self.assertEqual(len(result), 4)  # N segmenti (chiusa)
 
 
@@ -464,7 +462,7 @@ class TestArcSegToBulge(unittest.TestCase):
         Regressione: un arco CW ha per angolo spazzato il tratto reale
         start→end percorso in orario, NON il complemento a 2π.
 
-        parse_loop produce archi con ccw=False quando orienta il loop in
+        segments_from_loop produce archi con ccw=False quando orienta il loop in
         CCW; se arc_seg_to_bulge usasse (end-start)%2π l'arco verrebbe
         riscritto "alla rovescia" (bulge dell'arco complementare).
         """
@@ -493,17 +491,15 @@ class TestArcSegToBulge(unittest.TestCase):
 
     def test_005_roundtrip_arco_invertito(self):
         """
-        Un ArcSeg e la sua versione invertita (come la produce parse_loop
+        Un ArcSeg e la sua versione invertita (come la produce segments_from_loop
         quando il loop è orientato CCW) devono discretizzare sullo stesso
         insieme di punti e produrre bulge di modulo uguale: nessun arco
         "alla rovescia" nel write-back.
         """
-        from forge.adapters.dxf.parser import _reverse_segment
-
         arc = ArcSeg(center=(3, -2), radius=7.5,
                      start_angle=math.radians(20),
                      end_angle=math.radians(140), ccw=True)
-        rev = _reverse_segment(arc)
+        rev = arc.reversed()
 
         pts_fwd = arc.discretize(0.01)
         pts_rev = rev.discretize(0.01)

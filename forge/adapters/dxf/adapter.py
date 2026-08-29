@@ -24,6 +24,7 @@ from .geometry_adapter import (
     entity_to_polygon,
     spline_is_closed,
 )
+from .parser import DxfEntityDispatcher
 
 
 # ---------------------------------------------------------------------------
@@ -39,223 +40,11 @@ _NON_STRUCTURAL_LAYERS = frozenset({'trash', 'annotation'})
 
 
 # ---------------------------------------------------------------------------
-# TRADUZIONE DXF → PRIMITIVE (UNICO PUNTO)
+# TRADUZIONE DXF → PRIMITIVE
 # ---------------------------------------------------------------------------
-
-def entity_to_primitive(entity, rev: bool = False):
-    """
-    Traduce un'entità DXF in una primitiva Forge.
-    
-    IMPORTANTE: 
-    - CIRCLE → CircleSeg (NON 2 ArcSeg!)
-    - SPLINE → SplineSeg
-    - LINE → LineSeg
-    - ARC → ArcSeg
-    - LWPOLYLINE/POLYLINE → List[LineSeg | ArcSeg]
-    
-    Questa è l'UNICA sede di questa traduzione.
-    """
-    t = entity.dxftype()
-    
-    if t == 'LINE':
-        if rev:
-            return LineSeg(
-                start=(entity.dxf.end.x, entity.dxf.end.y),
-                end=(entity.dxf.start.x, entity.dxf.start.y),
-            )
-        return LineSeg(
-            start=(entity.dxf.start.x, entity.dxf.start.y),
-            end=(entity.dxf.end.x, entity.dxf.end.y),
-        )
-    
-    elif t == 'ARC':
-        sa = math.radians(entity.dxf.start_angle)
-        ea = math.radians(entity.dxf.end_angle)
-        ccw = True
-        if rev:
-            sa, ea = ea, sa
-            ccw = False
-        return ArcSeg(
-            center=(entity.dxf.center.x, entity.dxf.center.y),
-            radius=entity.dxf.radius,
-            start_angle=sa,
-            end_angle=ea,
-            ccw=ccw,
-        )
-    
-    elif t == 'CIRCLE':
-        # CERCHIO → CircleSeg (preservato!)
-        return CircleSeg(
-            center=(entity.dxf.center.x, entity.dxf.center.y),
-            radius=entity.dxf.radius
-        )
-    
-    elif t == 'SPLINE':
-        return _spline_to_primitive(entity, rev)
-    
-    elif t in ('LWPOLYLINE', 'POLYLINE'):
-        return _polyline_to_primitives(entity, rev)
-    
-    return None
-
-
-def _spline_to_primitive(entity, rev: bool = False) -> Optional[SplineSeg]:
-    """Traduce SPLINE in SplineSeg."""
-    try:
-        cps = [_vec3_to_tuple(p) for p in entity.control_points]
-        approx_points = [(float(p[0]), float(p[1])) for p in entity.flattening(DEFAULT_TOLERANCE)]
-        knots = [float(k) for k in entity.knots]
-        weights = [float(w) for w in entity.weights] if len(entity.weights) else None
-        fit_points = [_vec3_to_tuple(p) for p in entity.fit_points] if len(entity.fit_points) else None
-        flags = int(getattr(entity.dxf, "flags", 0) or 0)
-        periodic = bool(flags & 2)
-        closed = bool(getattr(entity, "closed", False) or (flags & 1))
-
-        start_tangent = None
-        if entity.dxf.hasattr("start_tangent"):
-            st = entity.dxf.start_tangent
-            start_tangent = (float(st.x), float(st.y), float(st.z))
-
-        end_tangent = None
-        if entity.dxf.hasattr("end_tangent"):
-            et = entity.dxf.end_tangent
-            end_tangent = (float(et.x), float(et.y), float(et.z))
-    except Exception:
-        cps = []
-        approx_points = []
-        knots = []
-        weights = None
-        fit_points = None
-        flags = 0
-        periodic = False
-        closed = False
-        start_tangent = None
-        end_tangent = None
-    
-    if not cps and not fit_points:
-        return None
-
-    seg = SplineSeg(
-        degree=int(getattr(entity.dxf, "degree", 3) or 3),
-        control_points=[(p[0], p[1]) for p in cps],
-        knots=knots,
-        weights=weights,
-        approx_points=approx_points or None,
-        fit_points=fit_points,
-        closed=closed,
-        periodic=periodic,
-        flags=flags,
-        knot_tolerance=float(entity.dxf.knot_tolerance) if entity.dxf.hasattr("knot_tolerance") else None,
-        fit_tolerance=float(entity.dxf.fit_tolerance) if entity.dxf.hasattr("fit_tolerance") else None,
-        control_point_tolerance=float(entity.dxf.control_point_tolerance) if entity.dxf.hasattr("control_point_tolerance") else None,
-        start_tangent=start_tangent,
-        end_tangent=end_tangent,
-    )
-    return seg.reversed() if rev else seg
-
-
-def _polyline_to_primitives(entity, rev: bool = False) -> List[Segment]:
-    """Traduce LWPOLYLINE/POLYLINE in List[LineSeg | ArcSeg]."""
-    if entity.dxftype() == 'POLYLINE':
-        pts = [(v.dxf.location.x, v.dxf.location.y, getattr(v.dxf, "bulge", 0.0)) 
-               for v in entity.vertices]
-    else:
-        pts = list(entity.get_points('xyb'))
-    
-    if not pts:
-        return []
-    
-    is_closed = bool(getattr(entity, "is_closed", False) or getattr(entity, "closed", False))
-
-    if is_closed and len(pts) > 1:
-        first_xy = (pts[0][0], pts[0][1])
-        last_xy = (pts[-1][0], pts[-1][1])
-        if first_xy == last_xy:
-            pts = pts[:-1]
-
-    if rev:
-        n = len(pts)
-        new_pts = []
-        for i in range(n):
-            idx = (-i) % n
-            x, y, _ = pts[idx]
-            if is_closed:
-                prev_idx = (idx - 1) % n
-                bulge = -pts[prev_idx][2]
-            else:
-                prev_idx = idx - 1
-                bulge = -pts[prev_idx][2] if prev_idx >= 0 else 0.0
-            new_pts.append((x, y, bulge))
-        pts = new_pts
-    
-    primitives = []
-    n = len(pts)
-    edge_count = n if is_closed else max(0, n - 1)
-    for i in range(edge_count):
-        x1, y1, bulge = pts[i]
-        if is_closed:
-            x2, y2, _ = pts[(i + 1) % n]
-        else:
-            x2, y2, _ = pts[i + 1]
-        
-        if abs(bulge) > 1e-6:
-            arc = _bulge_to_arc((x1, y1), (x2, y2), bulge)
-            if arc:
-                primitives.append(arc)
-        else:
-            primitives.append(LineSeg(start=(x1, y1), end=(x2, y2)))
-    
-    return primitives
-
-
-def _bulge_to_arc(p1: Tuple[float, float], p2: Tuple[float, float], bulge: float) -> Optional[ArcSeg]:
-    """Converte bulge DXF in ArcSeg."""
-    x1, y1 = p1
-    x2, y2 = p2
-    
-    included_angle = 4 * math.atan(abs(bulge))
-    if included_angle < 1e-12:
-        return None
-    
-    chord = math.hypot(x2 - x1, y2 - y1)
-    if chord < 1e-12:
-        return None
-    
-    radius = chord / (2 * math.sin(included_angle / 2))
-    
-    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
-    dx, dy = x2 - x1, y2 - y1
-    px, py = -dy / chord, dx / chord
-    dist = radius * math.cos(included_angle / 2)
-    
-    if bulge > 0:
-        cx, cy = mx + px * dist, my + py * dist
-        ccw = True
-    else:
-        cx, cy = mx - px * dist, my - py * dist
-        ccw = False
-    
-    start_angle = math.atan2(y1 - cy, x1 - cx)
-    end_angle = math.atan2(y2 - cy, x2 - cx)
-    
-    if ccw:
-        while end_angle <= start_angle:
-            end_angle += 2 * math.pi
-    else:
-        while end_angle >= start_angle:
-            end_angle -= 2 * math.pi
-    
-    return ArcSeg(
-        center=(cx, cy),
-        radius=radius,
-        start_angle=start_angle,
-        end_angle=end_angle,
-        ccw=ccw,
-    )
-
-
-def _vec3_to_tuple(point) -> Tuple[float, float, float]:
-    return (float(point[0]), float(point[1]), float(point[2] if len(point) > 2 else 0.0))
+# La traduzione entità DXF → primitiva vive in UN SOLO posto:
+# `adapters/dxf/parser.py::DxfEntityDispatcher` (MAP.md D7). Prima ce n'erano
+# due copie quasi identiche — una qui (`entity_to_primitive`), una in parser.py.
 
 
 def _segment_endpoints(segment: Segment) -> Tuple[Tuple[float, float], Tuple[float, float]]:
@@ -408,7 +197,7 @@ class DxfAdapter(ForgeAdapter):
 
             # CIRCLE → CircleSeg (preservato!)
             if dtype == "CIRCLE":
-                prim = entity_to_primitive(entity)
+                prim = DxfEntityDispatcher(entity).parse()
                 if isinstance(prim, CircleSeg):
                     start, end = _segment_endpoints(prim)
                     pt = round_point(start, self.node_decimals)
@@ -423,7 +212,7 @@ class DxfAdapter(ForgeAdapter):
 
             # SPLINE chiusa → loop degenere
             if dtype == "SPLINE" and spline_is_closed(entity):
-                prim = entity_to_primitive(entity)
+                prim = DxfEntityDispatcher(entity).parse()
                 if isinstance(prim, SplineSeg):
                     start, _ = _segment_endpoints(prim)
                     pt = round_point(start, self.node_decimals)
@@ -438,7 +227,7 @@ class DxfAdapter(ForgeAdapter):
 
             # LWPOLYLINE / POLYLINE → segmenti
             if dtype in ("LWPOLYLINE", "POLYLINE"):
-                primitives = entity_to_primitive(entity) or []
+                primitives = DxfEntityDispatcher(entity).parse() or []
                 if not isinstance(primitives, list):
                     primitives = [primitives]
                 poly_closed = bool(
@@ -457,7 +246,7 @@ class DxfAdapter(ForgeAdapter):
             if start is None or end is None:
                 continue
 
-            prim = entity_to_primitive(entity)
+            prim = DxfEntityDispatcher(entity).parse()
             if prim is None:
                 continue
 
