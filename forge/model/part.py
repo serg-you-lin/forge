@@ -11,9 +11,16 @@ from shapely.geometry import Polygon
 from forge.core.primitives import LineSeg, ArcSeg, CircleSeg, SplineSeg
 from forge.model.feature import ClosedFeature
 from forge.model.role import ContourRole
-from forge.model.hole import Hole
+from forge.model.hole import (
+    Hole, HOLE_TYPE_PLAIN, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED,
+)
 from forge.model.bending_line import BendingLine
 from forge.model.engraving import Engraving
+
+# Tolleranza per raggruppare le bending line collineari in un'unica piega
+# logica. Era il default di `inject()` prima che il conteggio diventasse
+# `part.summary` (MAP.md D8).
+_BENDING_GROUP_TOLERANCE = 0.1
 
 
 @dataclass
@@ -61,6 +68,45 @@ class ForgePart:
             - sum(h.area for h in self.holes)
             - sum(i.area for i in self.inners)
         )
+
+    @property
+    def summary(self) -> dict:
+        """
+        Conteggi delle feature, derivati al volo dalle liste tipate del part.
+
+        Sostituisce il lavoro di conteggio che `inject()` faceva copiando in
+        `part.custom` (MAP.md D8): gli stessi numeri, ma calcolati dal modello
+        invece che tenuti in uno stato a parte che poteva desincronizzarsi.
+        `inject()` resta solo per il `data_injector` esterno (materiale,
+        spessore, codice pezzo dai testi).
+        """
+        from collections import Counter
+        from forge.core.geometry import group_collinear_lines
+
+        htypes = Counter(h.hole_type for h in self.holes)
+
+        bending_groups = (
+            len(group_collinear_lines(
+                [bl.geometry for bl in self.bending_lines],
+                tolerance=_BENDING_GROUP_TOLERANCE,
+            ))
+            if self.bending_lines else 0
+        )
+
+        marking = self.custom.get("marking_entities", []) or []
+
+        return {
+            "plain_holes_count":    htypes.get(HOLE_TYPE_PLAIN, 0),
+            "countersink_count":    htypes.get(HOLE_TYPE_COUNTERSINK, 0),
+            "threaded_holes_count": htypes.get(HOLE_TYPE_THREADED, 0),
+            "bending_lines":        bending_groups,
+            "total_engrave_length": round(
+                sum(e.length or 0.0 for e in self.engrave_lines), 4
+            ),
+            "total_marking_length": round(
+                sum(m.get("length") or 0.0 for m in marking), 4
+            ),
+        }
 
     def to_dict(self) -> dict:
         return {

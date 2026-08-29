@@ -132,7 +132,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {
+      "summary": {
         "bending_lines": 8
       }
     }

@@ -34,7 +34,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {
+      "summary": {
         "plain_holes_count": 1
       }
     },
@@ -70,7 +70,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {
+      "summary": {
         "plain_holes_count": 1
       }
     },
@@ -106,7 +106,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {
+      "summary": {
         "plain_holes_count": 1
       }
     },
@@ -142,7 +142,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {
+      "summary": {
         "plain_holes_count": 1
       }
     }

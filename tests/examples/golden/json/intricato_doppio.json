@@ -19,7 +19,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {}
+      "summary": {}
     },
     {
       "area_mm2": 2728.1295,
@@ -126,7 +126,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {
+      "summary": {
         "plain_holes_count": 6
       }
     }

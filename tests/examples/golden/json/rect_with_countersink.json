@@ -35,7 +35,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {
+      "summary": {
         "countersink_count": 1
       }
     }

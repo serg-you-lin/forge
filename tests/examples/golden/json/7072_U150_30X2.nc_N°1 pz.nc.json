@@ -19,7 +19,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {}
+      "summary": {}
     },
     {
       "area_mm2": 93749.7,
@@ -38,7 +38,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {}
+      "summary": {}
     },
     {
       "area_mm2": 18749.94,
@@ -366,7 +366,7 @@
           ]
         }
       ],
-      "custom": {
+      "summary": {
         "total_engrave_length": 181.697
       }
     },
@@ -387,7 +387,7 @@
       "total_engrave_length": 0,
       "engrave_lines_count": 0,
       "engrave_lines": [],
-      "custom": {}
+      "summary": {}
     }
   ]
 }

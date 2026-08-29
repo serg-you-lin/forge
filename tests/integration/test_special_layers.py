@@ -313,16 +313,16 @@ class TestEngraveLength(unittest.TestCase):
 
     def test_002_engrave_length_present(self):
 
-        custom = self.result.parts[0].custom
+        summary = self.result.parts[0].summary
 
         self.assertIn(
             'total_engrave_length',
-            custom,
+            summary,
         )
 
     def test_003_engrave_length_correct(self):
 
-        length = self.result.parts[0].custom[
+        length = self.result.parts[0].summary[
             'total_engrave_length'
         ]
 
@@ -334,11 +334,9 @@ class TestEngraveLength(unittest.TestCase):
 
     def test_004_no_bending_lines(self):
 
-        custom = self.result.parts[0].custom
-
-        self.assertNotIn(
-            'bending_lines',
-            custom,
+        self.assertEqual(
+            self.result.parts[0].summary['bending_lines'],
+            0,
         )
 
 
@@ -366,16 +364,16 @@ class TestBendingLines(unittest.TestCase):
 
     def test_002_bending_lines_present(self):
 
-        custom = self.result.parts[0].custom
+        summary = self.result.parts[0].summary
 
         self.assertIn(
             'bending_lines',
-            custom,
+            summary,
         )
 
     def test_003_bending_lines_correct(self):
 
-        count = self.result.parts[0].custom[
+        count = self.result.parts[0].summary[
             'bending_lines'
         ]
 
@@ -540,7 +538,7 @@ class TestMixedSpecialLayers(unittest.TestCase):
     def test_002_bending_lines(self):
 
         self.assertEqual(
-            self.result.parts[0].custom.get(
+            self.result.parts[0].summary.get(
                 'bending_lines'
             ),
             2,
@@ -548,7 +546,7 @@ class TestMixedSpecialLayers(unittest.TestCase):
 
     def test_003_total_engrave_length(self):
 
-        length = self.result.parts[0].custom.get(
+        length = self.result.parts[0].summary.get(
             'total_engrave_length',
             0,
         )
@@ -561,7 +559,7 @@ class TestMixedSpecialLayers(unittest.TestCase):
 
     def test_004_bending_lines(self):
 
-        count = self.result.parts[0].custom.get(
+        count = self.result.parts[0].summary.get(
             'bending_lines',
             0,
         )

@@ -171,7 +171,7 @@ def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
             "inners_wkt": [h.polygon.wkt for h in sorted(part.holes + part.inners, key=lambda x: x.area, reverse=True)],
             "outer_role": part.outer.role,
             "inner_roles": [h.role for h in sorted(part.holes + part.inners, key=lambda x: x.area, reverse=True)],
-            "custom": dict(part.custom),
+            "summary": part.summary,
         })
 
     cached_entry = {
@@ -338,10 +338,11 @@ def _make_split_test(golden_path: Path):
             )
 
 
-        # --- Custom ---
-        if "custom" in golden:
-            for key, expected_val in golden["custom"].items():
-                actual_val = part_payload["custom"].get(key)
+        # --- Summary (conteggi feature; fixture vecchi usano "custom") ---
+        _expected_summary = golden.get("summary", golden.get("custom"))
+        if _expected_summary:
+            for key, expected_val in _expected_summary.items():
+                actual_val = part_payload["summary"].get(key)
                 if isinstance(expected_val, float):
                     self.assertAlmostEqual(
                         actual_val, expected_val, delta=TOL_PERIMETER,

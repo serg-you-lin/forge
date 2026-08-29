@@ -143,16 +143,15 @@ class TestInjectCountersink(unittest.TestCase):
         _, self.result = _heal_and_inject("rect_with_countersink.dxf")
 
     def test_001_countersink_count_present(self):
-        """countersink_count deve comparire in part.custom quando il foro è presente."""
-        custom = self.result.parts[0].custom
-        self.assertIn("countersink_count", custom)
+        """countersink_count deve comparire in part.summary."""
+        self.assertIn("countersink_count", self.result.parts[0].summary)
 
     def test_002_countersink_count_value(self):
         """Il DXF ha 1 coppia concentrica → countersink_count == 1."""
-        self.assertEqual(self.result.parts[0].custom["countersink_count"], 1)
+        self.assertEqual(self.result.parts[0].summary["countersink_count"], 1)
 
     def test_003_countersink_count_is_int(self):
-        val = self.result.parts[0].custom["countersink_count"]
+        val = self.result.parts[0].summary["countersink_count"]
         self.assertIsInstance(val, int)
 
 
@@ -173,15 +172,14 @@ class TestInjectThreadedHoles(unittest.TestCase):
         )
 
     def test_001_threaded_holes_count_present(self):
-        custom = self.result.parts[0].custom
-        self.assertIn("threaded_holes_count", custom)
+        self.assertIn("threaded_holes_count", self.result.parts[0].summary)
 
     def test_002_threaded_holes_count_value(self):
         """Il DXF ha 3 cerchi su layer THREADED → threaded_holes_count == 3."""
-        self.assertEqual(self.result.parts[0].custom["threaded_holes_count"], 3)
+        self.assertEqual(self.result.parts[0].summary["threaded_holes_count"], 3)
 
     def test_003_threaded_holes_count_is_int(self):
-        val = self.result.parts[0].custom["threaded_holes_count"]
+        val = self.result.parts[0].summary["threaded_holes_count"]
         self.assertIsInstance(val, int)
 
 

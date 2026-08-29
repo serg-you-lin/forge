@@ -37,7 +37,10 @@ def build_metadata(part: ForgePart, schema: dict = None) -> dict:
         schema = METADATA_FIELDS
 
     d = part.to_dict()
-    custom = d.get("custom", {}) or {}
+    # I conteggi delle feature (fori per tipo, pieghe, incisioni) vengono da
+    # part.summary — derivati dal modello (MAP.md D8). part.custom porta solo
+    # ciò che un data_injector esterno ha aggiunto (materiale, spessore, ...).
+    custom = {**part.summary, **(d.get("custom", {}) or {})}
 
     outer_perimeter = 0.0
     inner_perimeter = 0.0

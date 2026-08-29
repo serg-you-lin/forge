@@ -445,16 +445,21 @@ gli archi maggiori (`|bulge| > 1`, sweep > 180°) — usava
 `_bulge_to_arc` corretto di `adapter.py`. 5 golden roundtrip lo hanno preso
 appena unificato il dispatcher.
 
-### D8 — `inject()` sgonfiato  ⬜ DA FARE (entangled con i golden)
-La parte che conta fori/pieghe/incisioni e le ricopia in `part.custom` è
-ridondante. → property derivata (`part.summary`). **Attenzione:**
-`tests/real/test_golden.py` chiama `forge.inject()` e confronta `part.custom`
-contro `expected["custom"]` nei fixture golden. Spostare i conteggi in
-`part.summary` richiede: (1) `part.summary` property, (2) `exporter.build_metadata`
-legge da `summary` non da `custom`, (3) il test golden confronta `part.summary`,
-(4) rigenerare i fixture (dopo aver provato che i numeri sono giusti — memoria
-`golden-files-verify-before-regenerating`). Va fatto come cambiamento coordinato,
-non a pezzi.
+### D8 — `inject()` sgonfiato  ✅ FATTO (Fase 4)
+I conteggi feature (fori per tipo, pieghe, incisioni, marking) sono ora
+`ForgePart.summary`, property derivata dal modello — non più copiati in
+`part.custom` da `inject()`. `inject()` resta solo per il `data_injector` esterno
+(materiale/spessore/codice dai testi); senza `data_injector` non fa nulla.
+`exporter.build_metadata` legge i conteggi da `part.summary`. **Equivalenza
+provata prima di toccare i fixture** (`golden-files-verify-before-regenerating`):
+uno script ha verificato `part.summary == inject().part.custom` su tutte le 63
+parti golden, 0 mismatch. Poi migrati i 46 fixture con un rename chirurgico
+`"custom"` → `"summary"` (63 righe cambiate, valori invariati, nient'altro
+toccato). Test aggiornati: `test_golden.py`, `test_golden_split.py`,
+`test_injector.py`, `test_pipeline.py`, `test_special_layers.py`,
+`test_helpers.get_custom`. Nuovo `tests/unit/test_part_summary.py` (unit +
+prova di equivalenza permanente coi fixture). Output JSON di `save_json`
+invariato. Suite: **550 passed**.
 
 ### D9 — L'inspector diventa strumento a 3 livelli
 `dxf_inspect.py` → `forge/inspect.py`, esportato. Oggi è mezzo rotto
@@ -550,13 +555,13 @@ Suite: **531 passed** (invariata — nessun test dipendeva dal `None`).
       su `LineSeg`/`ArcSeg`/`CircleSeg`.
 - ✅ D7 — un solo dispatcher (`DxfEntityDispatcher`); rimossa la copia in
       `adapter.py`. **+ fix bug archi maggiori in `ArcSeg.from_chord`.**
-- ⬜ D8 — `inject` → `part.summary`. Entangled con i golden (`test_golden.py`
-      confronta `part.custom`). Cambiamento coordinato: property + exporter +
-      test + rigenerazione fixture.
+- ✅ D8 — conteggi feature → `ForgePart.summary` (property derivata); `inject()`
+      resta solo per il `data_injector` esterno. Equivalenza provata sui 63 part
+      golden prima di migrare i fixture (`custom` → `summary`, rename chirurgico).
 - ⬜ D4 — eliminare `OpenShape`/`ClosedShape`. Il pezzo grosso — sessione
       dedicata.
 
-Suite dopo D5+D6+D7: **537 passed** (invariata).
+Suite dopo D5+D6+D7+D8: **550 passed**.
 `forge/adapters/dxf/` da 2914 → ~2500 righe (adapter.py -210).
 
 **Dopo:** `to_svg` (D12), poi `detect_engrave` (D13) quando Federico decide.

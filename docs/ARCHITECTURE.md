@@ -170,9 +170,11 @@ segmenti puri del modello, ognuno sul suo layer forge (vedi tabella in
 ### 5. export / inject
 
 `save_json` / `save_xml` scrivono i metadati per parte secondo lo schema
-(`rules/metadata_schema.py`). `inject` popola `part.custom` con conteggi e con
-quello che un `data_injector` esterno estrae dai testi (codice, materiale,
-spessore).
+(`rules/metadata_schema.py`). I conteggi delle feature (fori per tipo, pieghe,
+incisioni) vengono da `part.summary` — una property derivata dal modello.
+`inject` serve solo a passare i testi dentro l'outer a un `data_injector`
+esterno che restituisce codice / materiale / spessore, e a metterli in
+`part.custom`.
 
 ---
 
@@ -219,12 +221,10 @@ chiuse"):
   (`OpenShape`/`ClosedShape`, proxy durante l'healing) e `model/feature.py`
   (`OpenFeature`/`ClosedFeature`) sono vicini. I primi verranno eliminati, `heal`
   produrrà direttamente i secondi. È il refactor più invasivo che resta.
-- **`inject` fa lavoro ridondante** (D8, non ancora fatto): metà di quello che
-  scrive in `part.custom` è già nelle liste tipate. Diventerà una property
-  derivata (`part.summary`).
 - **`load_pdf`** ritorna `list[Edge]` invece di un `ForgeDocument` → non si
   aggancia a `heal()`. Congelato (D10).
 
 Già risolto in Fase 4: traduttore entità→primitiva ora unico
 (`DxfEntityDispatcher`, D7); `parse_loop` → `segments_from_loop` in
-`core/topology/` (D6); `source`/`confidence` su `BendingLine` (D5).
+`core/topology/` (D6); `source`/`confidence` su `BendingLine` (D5); conteggi
+feature spostati da `inject`→`part.custom` a `part.summary` derivato (D8).
