@@ -4,8 +4,9 @@ from __future__ import annotations
 import os
 
 from .heal import HealStep
-from .detect import detect
+from .detect import detect, ALL_FEATURES
 from .write import to_dxf, split, part_passes_min_area, DEFAULT_MIN_PART_AREA
+from ..rules.thresholds import HOLE_DIAMETER_THRESHOLD
 from ..adapters.dxf.layers import LAYER_ANNOTATION
 from .inject import inject
 from ..model.result import ForgeResult
@@ -38,6 +39,8 @@ def heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeR
 
 
 def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file="",
+                    features="all",
+                    max_drill_diameter: float = HOLE_DIAMETER_THRESHOLD,
                     bending_tolerance: float = 1.0,
                     engrave_tolerance: float = 1.0,
                     deduplicate_boundary_open: bool = True,
@@ -48,12 +51,16 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
     Equivale a:
         result = forge.heal(doc, tolerance=..., label=..., source_file=...)
         if result.is_valid and result.parts:
-            forge.detect(result, bending_tolerance=..., ...)
+            forge.detect(result, features="all", ...)
+
+    A differenza di `detect()` nudo (che fa solo la lane label_map + pulizia
+    topologia), qui `features` è `"all"` di default: fori, pieghe e incisioni
+    vengono classificati. Passare `features=None` per la sola topologia pulita.
 
     `detect()` viene saltato se `heal()` non produce parti valide (il result
     torna comunque, con `is_valid=False` e gli errori popolati). I parametri
-    `*_tolerance` / `deduplicate_boundary_open` / `boundary_tolerance` sono
-    quelli di `detect()`.
+    `features` / `max_drill_diameter` / `*_tolerance` / `deduplicate_boundary_open`
+    / `boundary_tolerance` sono quelli di `detect()`.
 
     Restano disponibili `heal()` e `detect()` separati: un renderer o un
     nesting tool possono volere la sola topologia.
@@ -62,6 +69,8 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
 
     if result.is_valid and result.parts:
         detect(result,
+               features=features,
+               max_drill_diameter=max_drill_diameter,
                bending_tolerance=bending_tolerance,
                engrave_tolerance=engrave_tolerance,
                deduplicate_boundary_open=deduplicate_boundary_open,
@@ -88,7 +97,7 @@ def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
     if not result.is_valid or not result.parts:
         return result
 
-    detect(result)
+    detect(result, features="all")
     drawings = split(result, doc, namer=namer,
                      include_annotations=include_annotations,
                      min_area=min_area, exclude_types=exclude_types,

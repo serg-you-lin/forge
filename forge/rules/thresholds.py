@@ -7,15 +7,19 @@ Queste soglie appartengono al core perché sono decisioni geometriche/semantiche
 indipendenti da come il file è scritto (DXF, SVG, PDF, ...).
 
 Chi le usa:
-    hierarchy.py  — HOLE_DIAMETER_THRESHOLD per classificare hole vs inner
-    detect.py     — VALID_WORK_TYPES per validare i role in ingresso
+    detect.py     — HOLE_DIAMETER_THRESHOLD come default di
+                    `detect(max_drill_diameter=...)`; VALID_WORK_TYPES per
+                    validare i role in ingresso
 """
 
 # ---------------------------------------------------------------------------
-# Soglia diametro fori
+# Soglia diametro fori — default di detect(max_drill_diameter=...)
 # ---------------------------------------------------------------------------
-# CIRCLE con diametro < soglia → Hole
-# CIRCLE con diametro >= soglia → ForgeContour (inner)
+# È un parametro di PROCESSO (capacità di foratura di macchina/utensile), non
+# una costante di topologia: per questo la classificazione hole/inner vive in
+# detect() e non in heal()/hierarchy (MAP.md D15).
+# contorno circolare con Ø < soglia  → Hole (foro da punta)
+# contorno circolare con Ø >= soglia → ForgeContour (inner, tagliato a contorno)
 HOLE_DIAMETER_THRESHOLD: float = 32.1   # mm
 
 # ---------------------------------------------------------------------------

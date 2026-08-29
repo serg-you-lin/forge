@@ -34,8 +34,9 @@ import forge
 
 doc    = forge.load_dxf("part.dxf", tolerance=0.5)   # -> ForgeDocument
 result = forge.heal_and_detect(doc)                  # topology + holes/bends/engraving
-#   == forge.heal(doc) then forge.detect(result); call them separately if you
-#      only need the topology
+#   == forge.heal(doc) then forge.detect(result, "all"); call them separately if
+#      you only need the topology. Bare forge.detect(result) does not classify
+#      holes — pass features ("holes" / "bending" / "engrave" / "all").
 
 if not result.is_valid:
     raise SystemExit(result.errors)
@@ -78,9 +79,9 @@ load_dxf(path)  ──►  ForgeDocument   (edges + annotations + source_meta)
                           │            the only step that touches ezdxf for reading
                           ▼
      heal(doc)  ──►  ForgeResult      topology: gaps closed, loops found,
-                          │            outer / inner / holes built
+                          │            outer / inner containment tree (no holes yet)
                           ▼
-  detect(result)                      semantics: hole type, bend lines, engraving
+  detect(result, "all")               semantics: hole type, bend lines, engraving
                           │            (mutates result in place, returns it)
                           │            heal + detect together: heal_and_detect(doc)
                           ▼

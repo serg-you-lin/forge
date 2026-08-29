@@ -123,7 +123,7 @@ def _make_test(path):
             tolerance=config.get("tolerance", DEFAULT_TOLERANCE),
         )
 
-        forge.detect(result)
+        forge.detect(result, features="all")
 
         # --- part count ---
         self.assertEqual(
@@ -433,7 +433,7 @@ def _make_roundtrip_test(path):
 
         def _pipeline(doc):
             r = forge.heal(doc, tolerance=tol)
-            forge.detect(r)
+            forge.detect(r, features="all")
             return r
 
         result = _pipeline(

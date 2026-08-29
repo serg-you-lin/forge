@@ -33,8 +33,8 @@ Il `ForgeResult` è **il prodotto**. Tutti i `to_*` sono renderer del modello.
 motivo per cui un futuro `to_svg` produrrà la stessa identica immagine senza una
 riga di codice nuova nel core.
 
-Conseguenza pratica: **niente si perde**. Il riferimento dell'utente è SigmaNest,
-che importa tutto — quote, centerline, spazzatura. Perché `forge` non perda
+Conseguenza pratica: **niente si perde**. Si importa tutto — quote, centerline, spazzatura. 
+Perché `forge` non perda
 niente, il modello è abbastanza ricco da tenere anche ciò che non ha classificato:
 
 - geometria di taglio classificata → parti / fori / feature
@@ -131,8 +131,9 @@ Il passo difficile. Lavora su `doc.edges`, zero `ezdxf`. In ordine:
    - se fallisce: loop sul grafo clusterizzato tollerante (con warning: la
      discrepanza sopravvive nell'output)
    - ultima spiaggia: `shapely.polygonize` sui segmenti discretizzati
-5. **costruzione gerarchia**: quale loop contiene quale → outer / inner / holes.
-   Un cerchio piccolo dentro un outer è un `Hole`; un loop più grande è un `inner`.
+5. **costruzione gerarchia**: quale loop contiene quale → albero di contenimento
+   `outer` / `inner`. `heal` si ferma qui: **non** decide hole vs inner (D15) —
+   ogni loop contenuto è un `ForgeContour` in `part.inners`.
 
 Se non si forma **nessun** contorno esterno chiuso, il risultato è dichiarato
 **non valido** (`is_valid = False`) — come il modelspace vuoto. `to_dxf` si
@@ -143,11 +144,18 @@ rifiuterà di generare un file di sola spazzatura.
 ### 3. `detect` (semantica)
 
 Classifica le feature dentro le parti. **Muta il `result` in-place e lo ritorna.**
-`heal_and_detect(doc)` fa il passo 2 e il passo 3 insieme; restano separati perché
-un renderer o un nesting tool possono volere la sola topologia.
+`heal_and_detect(doc)` fa il passo 2 e il passo 3 insieme (con `features="all"`);
+restano separati perché un renderer o un nesting tool possono volere la sola
+topologia.
 
-- **fori** → `plain` / `countersink` / `threaded`. Un foro con un arco a ~270°
-  concentrico e raggio di poco maggiore (rapporto ≤ 1.6) è filettato.
+`detect(result)` nudo fa solo la lane `label_map` + pulizia topologia. Le lane
+geometriche sono opt-in: `detect(result, "holes" | "bending" | "engrave" | "all")`.
+
+- **fori** (`features="holes"`) → un contorno interno circolare con Ø `<
+  max_drill_diameter` (parametro di processo, default 32.1 mm) viene promosso a
+  `Hole`; sopra soglia resta `ForgeContour`. Tipo: `plain` / `countersink`
+  (cerchio piccolo concentrico dentro cerchio grande) / `threaded` (arco a ~270°
+  concentrico, raggio di poco maggiore, rapporto ≤ 1.6).
 - **pieghe** → una traccia da bordo a bordo dell'outer, con il punto medio dentro
   il poligono, è una `BendingLine` con il suo angolo.
 - **incisioni** → le tracce con ruolo `engrave` finiscono in `part.engrave_lines`
@@ -217,17 +225,15 @@ pipeline.
 Onestà sullo stato — dettagli e decisioni prese in `MAP.md` (sezione "Decisioni
 chiuse"):
 
-- **classificazione hole in `hierarchy`** (D15, non ancora fatto): la decisione
-  hole vs inner e la soglia `HOLE_DIAMETER_THRESHOLD` vivono nello strato
-  topologico. Andranno in un `detect()` parametrico (la soglia è un parametro di
-  processo, non una costante). Finché non è fatto, `heal` emette `Hole` da
-  `hierarchy` e un anello grande può finire come `Hole(role="inner")`.
 - **`load_pdf`** ritorna `list[Edge]` invece di un `ForgeDocument` → non si
   aggancia a `heal()`. Congelato (D10).
+- **`detect._detect_engrave`** è ancora un placeholder no-op (D13).
 
 Già risolto in Fase 4: `bridge/shape.py` (`OpenShape`/`ClosedShape`) eliminato,
 `heal` produce direttamente `OpenFeature`/`ClosedFeature` (D4); traduttore
 entità→primitiva ora unico (`DxfEntityDispatcher`, D7); `parse_loop` →
 `segments_from_loop` in `core/topology/` (D6); `source`/`confidence` su
 `BendingLine` (D5); conteggi feature spostati da `inject`→`part.custom` a
-`part.summary` derivato (D8).
+`part.summary` derivato (D8); classificazione hole/inner e soglia
+`max_drill_diameter` spostate da `hierarchy` a `detect()` parametrico (D15) —
+`heal` ora emette solo l'albero di contenimento.

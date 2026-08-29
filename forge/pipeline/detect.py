@@ -17,14 +17,37 @@ from ..model import (
     HOLE_TYPE_PLAIN,
     HOLE_TYPE_COUNTERSINK,
     HOLE_TYPE_THREADED,
-    HOLE_TYPE_UNKNOWN,
 )
 from ..model.engraving import Engraving
 from ..model.feature import OpenFeature
 from ..model.role import ContourRole
 from ..core.classification.hole_detector import is_threaded_hole
-from ..core.geometry import track_points, track_length, track_shape_type
-from ..rules.thresholds import STRUCTURAL_ROLES
+from ..core.geometry import (
+    track_points, track_length, track_shape_type, circular_geometry,
+)
+from ..rules.thresholds import STRUCTURAL_ROLES, HOLE_DIAMETER_THRESHOLD
+
+
+# Lane geometriche attivabili da detect(). `detect(result)` nudo non ne esegue
+# nessuna: fa solo la lane label_map (autoritativa) + la pulizia topologia.
+ALL_FEATURES = frozenset({"holes", "bending", "engrave"})
+
+
+def _normalize_features(features) -> frozenset:
+    """
+    Normalizza l'argomento `features` di detect() in un set di stringhe.
+
+    Accetta: None/() → nessuna lane; True o "all"/"*" → tutte;
+    una stringa singola ("holes"); un iterabile di stringhe.
+    """
+    if features is None:
+        return frozenset()
+    if features is True:
+        return ALL_FEATURES
+    if isinstance(features, str):
+        f = features.strip().lower()
+        return ALL_FEATURES if f in ("all", "*") else frozenset({f})
+    return frozenset(str(f).strip().lower() for f in features)
 
 
 def _proxy_pts(proxy) -> list:
@@ -43,6 +66,9 @@ _ROLE_TO_HOLE_TYPE = {
 
 def detect(
     result:            ForgeResult,
+    features=None,
+    *,
+    max_drill_diameter: float = HOLE_DIAMETER_THRESHOLD,
     bending_tolerance: float = 1.0,
     engrave_tolerance: float = 1.0,
     deduplicate_boundary_open: bool = True,
@@ -51,15 +77,33 @@ def detect(
     """
     Classifica le feature dentro le parti già trovate da heal().
 
+    `detect(result)` nudo esegue solo la lane `label_map` (autoritativa) e la
+    pulizia della topologia: i contorni circolari restano `inners`, nessun
+    `Hole`. È il default per il taglio laser (`laser-cutting-default`).
+
+    Le lane geometriche sono opt-in via `features`:
+        detect(result, "holes")           → promozione fori (Ø < max_drill_diameter)
+        detect(result, "all")             → fori + pieghe + incisioni
+        detect(result, {"holes", "bending"})
+
+    `max_drill_diameter` (default `HOLE_DIAMETER_THRESHOLD`, 32.1 mm) è un
+    parametro di processo: sotto soglia il contorno circolare è un foro da
+    punta, sopra resta un contorno interno.
+
     Muta `result` in-place (parti, trash_entities, classified_entities) e lo
     ritorna, così la catena resta esplicita: `result = forge.detect(result)`.
     """
+    feats = _normalize_features(features)
+
     _detect_labeled(result)
     if deduplicate_boundary_open:
         _deduplicate_boundary_open_segments(result, tolerance=boundary_tolerance)
-    _detect_bending(result, bending_tolerance=bending_tolerance)
-    _detect_engrave(result, engrave_tolerance=engrave_tolerance)
-    _detect_holes(result)
+    if "bending" in feats:
+        _detect_bending(result, bending_tolerance=bending_tolerance)
+    if "engrave" in feats:
+        _detect_engrave(result, engrave_tolerance=engrave_tolerance)
+    if "holes" in feats:
+        _detect_holes(result, max_drill_diameter=max_drill_diameter)
     return result
 
 
@@ -120,17 +164,20 @@ def _detect_labeled(result: ForgeResult) -> None:
         p for p in result.trash_entities if id(p) not in classified_ids
     ]
 
-    for part in result.parts:
-        for hole in part.holes:
-            hole_type = _ROLE_TO_HOLE_TYPE.get(hole.role)
-            if hole_type is None:
-                continue
-            hole.hole_type  = hole_type
-            hole.confidence = 1.0
-            hole.source     = "labeled"
+    _LABELED_HOLE_ROLES = (
+        ContourRole.HOLE, ContourRole.COUNTERSINK, ContourRole.THREADED_HOLE,
+    )
 
+    for part in result.parts:
         remaining = []
         for inner in part.inners:
+            # Lane label_map (autoritativa): un contorno con ruolo foro
+            # assegnato da label_map diventa un Hole a prescindere dai
+            # `features` richiesti (D15).
+            if inner.role in _LABELED_HOLE_ROLES:
+                part.holes.append(_labeled_hole_from_contour(inner))
+                continue
+
             if inner.role == ContourRole.UNKNOWN or inner.role in STRUCTURAL_ROLES:
                 remaining.append(inner)
                 continue
@@ -244,40 +291,127 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
 # Step 3 — promozione fori
 # ---------------------------------------------------------------------------
 
-def _detect_holes(result: ForgeResult) -> None:
-    for part in result.parts:
-        for hole in part.holes:
-            if hole.source == "labeled":
-                continue
-            if hole.hole_type != HOLE_TYPE_UNKNOWN:
-                continue
+_CONCENTRIC_TOLERANCE = 1.0   # mm — distanza max fra i centri per un countersink
 
-            threaded = is_threaded_hole(
-                center=hole.center,
-                radius=hole.diameter / 2,
-                all_arcs=result.all_arcs,
+
+def _detect_holes(result: ForgeResult, max_drill_diameter: float = HOLE_DIAMETER_THRESHOLD) -> None:
+    """
+    Lane geometrica: promuove a `Hole` i contorni interni circolari.
+
+    heal() non produce più `Hole` (D15): consegna solo l'albero di contenimento
+    con `part.inners` piatto. Qui:
+      - coppie concentriche (cerchio piccolo dentro cerchio grande) → countersink
+        (il piccolo diventa `Hole`, l'anello grande viene assorbito);
+      - contorni circolari con Ø < `max_drill_diameter` → foro (plain / threaded);
+      - Ø >= `max_drill_diameter` → restano `ForgeContour` in `part.inners`.
+    """
+    for part in result.parts:
+        _promote_geometric_holes(part, result, max_drill_diameter)
+
+
+def _circular_inners(part: ForgePart) -> list:
+    """(contour, diameter, center) per ogni inner geometricamente circolare."""
+    out = []
+    for c in part.inners:
+        if c.role not in (ContourRole.UNKNOWN, ContourRole.INNER):
+            continue
+        dia, ctr = circular_geometry(c.polygon, getattr(c, "segments", []))
+        if dia is not None:
+            out.append((c, dia, ctr))
+    return out
+
+
+def _promote_geometric_holes(part: ForgePart, result: ForgeResult,
+                             max_drill_diameter: float) -> None:
+    circ = _circular_inners(part)
+    if not circ:
+        return
+
+    swallowed: set = set()      # id(contour) degli anelli esterni di countersink
+    promoted:  dict = {}        # id(contour) -> Hole
+
+    # --- countersink: cerchio piccolo concentrico dentro cerchio grande ---
+    for outer_c, outer_d, outer_ctr in circ:
+        for inner_c, inner_d, inner_ctr in circ:
+            if inner_c is outer_c or inner_d >= outer_d:
+                continue
+            if id(inner_c) in promoted or id(outer_c) in swallowed:
+                continue
+            if not outer_c.polygon.contains(inner_c.polygon):
+                continue
+            if math.hypot(outer_ctr[0] - inner_ctr[0],
+                          outer_ctr[1] - inner_ctr[1]) > _CONCENTRIC_TOLERANCE:
+                continue
+            swallowed.add(id(outer_c))
+            promoted[id(inner_c)] = _hole_from_contour(
+                inner_c, inner_d, inner_ctr,
+                hole_type=HOLE_TYPE_COUNTERSINK, confidence=0.85,
+                geometric_hint="countersink", outer_diameter=outer_d,
             )
 
-            if hole.geometric_hint == "countersink":
-                hole.hole_type  = HOLE_TYPE_COUNTERSINK
-                hole.confidence = 0.85
-                hole.source     = "geometric"
-                continue
+    # --- fori piatti / filettati ---
+    for c, dia, ctr in circ:
+        if id(c) in promoted or id(c) in swallowed:
+            continue
+        if dia >= max_drill_diameter:
+            continue    # sopra la capacità di foratura → resta contorno interno
+        threaded = is_threaded_hole(
+            center=ctr, radius=dia / 2, all_arcs=result.all_arcs,
+        )
+        promoted[id(c)] = _hole_from_contour(
+            c, dia, ctr,
+            hole_type=HOLE_TYPE_THREADED if threaded else HOLE_TYPE_PLAIN,
+            confidence=0.80 if threaded else 1.0,
+        )
 
-            if hole.geometric_hint == "threaded":
-                hole.hole_type  = HOLE_TYPE_THREADED
-                hole.confidence = 0.85
-                hole.source     = "geometric"
-                continue
+    if not promoted and not swallowed:
+        return
 
-            if threaded:
-                hole.hole_type  = HOLE_TYPE_THREADED
-                hole.confidence = 0.80
-                hole.source     = "geometric"
-            else:
-                hole.hole_type  = HOLE_TYPE_PLAIN
-                hole.confidence = 1.0
-                hole.source     = "geometric"
+    new_inners = []
+    for c in part.inners:
+        if id(c) in swallowed:
+            continue
+        hole = promoted.get(id(c))
+        if hole is not None:
+            part.holes.append(hole)
+        else:
+            new_inners.append(c)
+    part.inners = new_inners
+
+
+def _hole_from_contour(contour, diameter, center, *, hole_type, confidence,
+                       geometric_hint="", outer_diameter=None):
+    from ..model import Hole
+    return Hole(
+        role=ContourRole.HOLE,
+        polygon=contour.polygon,
+        segments=list(getattr(contour, "segments", []) or []),
+        diameter=diameter,
+        center=center,
+        hole_type=hole_type,
+        geometric_hint=geometric_hint,
+        confidence=confidence,
+        source="geometric",
+        outer_diameter=outer_diameter,
+    )
+
+
+def _labeled_hole_from_contour(contour):
+    """`ForgeContour` con ruolo foro da label_map → `Hole(source="labeled")`."""
+    from ..model import Hole
+
+    dia, ctr = circular_geometry(contour.polygon, getattr(contour, "segments", []))
+    hole_type = _ROLE_TO_HOLE_TYPE.get(contour.role, HOLE_TYPE_PLAIN)
+    return Hole(
+        role=contour.role,
+        polygon=contour.polygon,
+        segments=list(getattr(contour, "segments", []) or []),
+        diameter=dia or 0.0,
+        center=ctr or (0.0, 0.0),
+        hole_type=hole_type,
+        confidence=1.0,
+        source="labeled",
+    )
 
 
 # ---------------------------------------------------------------------------

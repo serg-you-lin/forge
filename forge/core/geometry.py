@@ -158,6 +158,50 @@ def track_shape_type(pts) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Geometria circolare — diametro / centro di un contorno chiuso ~circolare
+# ---------------------------------------------------------------------------
+# Serve alla regola di processo `Ø < max_drill_diameter → foro` che vive in
+# detect(): dato un contorno interno, questo helper dice se è geometricamente
+# un cerchio e con quale diametro/centro. Prima la stessa logica stava in
+# `hierarchy._single_loop_geometry` e i valori erano stoccati su ClosedFeature
+# (campi rimossi in D15) — ora si ricava qui, al momento della classificazione.
+
+CIRCULAR_BBOX_ASPECT_TOLERANCE = 0.15
+
+
+def circular_geometry(polygon, segments=None):
+    """
+    (diameter, center) se il contorno è ~circolare, altrimenti (None, None).
+
+    Un contorno è "circolare" (candidato foro da punta) solo se:
+      - è fatto di UNA sola primitiva nativa (`len(segments) == 1`) — un CIRCLE
+        o un arco chiuso, non una polilinea multi-lato; e
+      - il suo bounding box è ~quadrato (larghezza e altezza combaciano entro
+        `CIRCULAR_BBOX_ASPECT_TOLERANCE`).
+    Diametro = min(width, height) del bbox, centro = centro del bbox.
+
+    È la stessa regola del vecchio `hierarchy._single_loop_geometry`
+    (gate `len(loop) == 1` + aspect ratio): D15 la sposta qui senza cambiarne
+    i numeri, così i golden non si spostano per la sola misura.
+    """
+    if len(list(segments or [])) != 1:
+        return None, None
+
+    if polygon is None or polygon.is_empty:
+        return None, None
+
+    minx, miny, maxx, maxy = polygon.bounds
+    width  = maxx - minx
+    height = maxy - miny
+    if width <= 0 or height <= 0:
+        return None, None
+    if abs(width - height) / max(width, height) > CIRCULAR_BBOX_ASPECT_TOLERANCE:
+        return None, None
+
+    return min(width, height), ((minx + maxx) / 2, (miny + maxy) / 2)
+
+
+# ---------------------------------------------------------------------------
 # Intersezioni geometriche pure — usate da geometry_adapter (gap closing)
 # ---------------------------------------------------------------------------
 

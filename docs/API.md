@@ -156,7 +156,10 @@ forge.heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> Forg
 
 Il passo difficile: ricostruzione della topologia. Lavora su `doc.edges`, zero
 `ezdxf`. Chiude i gap, individua le linee di piega candidate, trova i loop chiusi,
-costruisce la gerarchia outer / inner / holes.
+costruisce l'albero di contenimento outer / inner.
+
+`heal()` **non classifica i fori** (D15): consegna solo `ForgePart(outer,
+inners=[ForgeContour...])`. La promozione a `Hole` è di `detect(features="holes")`.
 
 | parametro | significato |
 |---|---|
@@ -184,6 +187,9 @@ result = forge.heal(doc, tolerance=0.5, label="P-1024")
 ```python
 forge.detect(
     result: ForgeResult,
+    features=None,                      # None/() | "all" | {"holes","bending","engrave"}
+    *,
+    max_drill_diameter=32.1,            # HOLE_DIAMETER_THRESHOLD
     bending_tolerance=1.0,
     engrave_tolerance=1.0,
     deduplicate_boundary_open=True,
@@ -193,24 +199,33 @@ forge.detect(
 
 Il passo semantico: classifica le feature dentro le parti già trovate da `heal()`.
 
-- **fori** → tipo (`plain` / `countersink` / `threaded`), con `source` e
-  `confidence`
-- **linee di piega** → geometriche (segmenti da bordo a bordo) o da `label_map`
-- **incisioni** → dalle tracce con ruolo `engrave`
-- deduplica i segmenti aperti sovrapposti al bordo outer
+`detect(result)` **nudo** fa solo il minimo: la lane `label_map` (autoritativa) e
+la pulizia della topologia. I contorni circolari restano `inners`, nessun `Hole` —
+è il default per il taglio laser.
+
+Le lane geometriche sono **opt-in** via `features`:
+
+| chiamata | cosa fa in più |
+|---|---|
+| `detect(result, "holes")` | promuove a `Hole` i contorni circolari con Ø `< max_drill_diameter` (`plain` / `countersink` / `threaded`); i Ø maggiori restano contorni interni |
+| `detect(result, "bending")` | linee di piega geometriche (segmenti da bordo a bordo) |
+| `detect(result, "engrave")` | inferenza incisioni (oggi no-op, D13) |
+| `detect(result, "all")` | tutte e tre |
 
 **Muta** `result` in-place (parti, `trash_entities`, `classified_entities`) **e lo
-ritorna** — la catena resta esplicita: `result = forge.detect(result)`.
+ritorna** — la catena resta esplicita: `result = forge.detect(result, "all")`.
 
 | parametro | significato |
 |---|---|
+| `features` | quali lane geometriche eseguire. `None`/`()` = nessuna. `"all"` o l'iterabile `{"holes","bending","engrave"}`. |
+| `max_drill_diameter` | parametro di processo: sotto questo Ø un contorno circolare è un foro da punta, sopra resta contorno interno. Default `32.1` mm. |
 | `bending_tolerance` | lunghezza minima di una traccia perché sia considerata piega. |
 | `engrave_tolerance` | riservato all'inferenza geometrica delle incisioni (oggi no-op). |
 | `deduplicate_boundary_open` | rimuove dalla trash i segmenti aperti che coincidono col bordo outer. |
 
 ```python
 result = forge.heal(doc)
-result = forge.detect(result, bending_tolerance=2.0)
+result = forge.detect(result, "all", max_drill_diameter=25.0)
 ```
 
 ---
@@ -221,15 +236,19 @@ result = forge.detect(result, bending_tolerance=2.0)
 forge.heal_and_detect(
     doc: ForgeDocument,
     tolerance=None, label="", source_file="",
+    features="all",
+    max_drill_diameter=32.1,
     bending_tolerance=1.0, engrave_tolerance=1.0,
     deduplicate_boundary_open=True, boundary_tolerance=0.05,
 ) -> ForgeResult
 ```
 
-`heal()` + `detect()` in un colpo solo — la via del 90% dei chiamanti. `detect()`
-viene saltato se `heal()` non produce parti valide (il `result` torna comunque,
-con `is_valid=False` e gli errori popolati). I primi parametri sono quelli di
-`heal()`, gli altri quelli di `detect()`.
+`heal()` + `detect()` in un colpo solo — la via del 90% dei chiamanti. A
+differenza di `detect()` nudo, qui `features="all"` è il default: fori, pieghe e
+incisioni vengono classificati. `detect()` viene saltato se `heal()` non produce
+parti valide (il `result` torna comunque, con `is_valid=False` e gli errori
+popolati). I primi parametri sono quelli di `heal()`, gli altri quelli di
+`detect()`.
 
 `heal()` e `detect()` separati restano disponibili: un renderer o un nesting tool
 possono volere la sola topologia, senza classificazione feature.
@@ -602,7 +621,7 @@ if not check.is_valid:
 result = forge.heal_and_detect(doc, label="P-1024")
 # separati, se ti serve la sola topologia:
 #   result = forge.heal(doc, label="P-1024")
-#   result = forge.detect(result)
+#   result = forge.detect(result, "all")   # detect(result) nudo non classifica i fori
 
 # 5. controlla SEMPRE prima di renderizzare
 if not result.is_valid:

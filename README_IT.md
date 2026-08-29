@@ -35,8 +35,9 @@ import forge
 
 doc    = forge.load_dxf("pezzo.dxf", tolerance=0.5)   # -> ForgeDocument
 result = forge.heal_and_detect(doc)                   # topologia + fori/pieghe/incisioni
-#   == forge.heal(doc) poi forge.detect(result); chiamali separati se ti serve
-#      la sola topologia
+#   == forge.heal(doc) poi forge.detect(result, "all"); chiamali separati se ti
+#      serve la sola topologia. forge.detect(result) nudo NON classifica i fori —
+#      passa features ("holes" / "bending" / "engrave" / "all").
 
 if not result.is_valid:
     raise SystemExit(result.errors)

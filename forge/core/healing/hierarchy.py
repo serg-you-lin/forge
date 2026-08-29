@@ -5,9 +5,8 @@ from shapely.geometry import Polygon
 
 from ...model.feature import ClosedFeature
 from ...model.part import ForgePart, ForgeContour
-from ...model.hole import Hole, HOLE_TYPE_UNKNOWN
 from ...model.role import ContourRole
-from ...rules.thresholds import HOLE_DIAMETER_THRESHOLD
+from ...core.geometry import circular_geometry
 
 
 MIN_CONTOUR_AREA = 1e-3
@@ -17,23 +16,6 @@ MIN_SINGLE_LOOP_DIAMETER = 0.05
 # ---------------------------------------------------------------------------
 # Conversione loop → ClosedFeature
 # ---------------------------------------------------------------------------
-
-def _single_loop_geometry(loop, poly):
-    if len(loop) != 1:
-        return None, None
-    if poly is None or poly.is_empty:
-        return None, None
-
-    minx, miny, maxx, maxy = poly.bounds
-    width  = maxx - minx
-    height = maxy - miny
-    if width <= 0 or height <= 0:
-        return None, None
-    if abs(width - height) / max(width, height) > 0.15:
-        return None, None
-
-    return min(width, height), ((minx + maxx) / 2, (miny + maxy) / 2)
-
 
 def loop_to_closed_feature(
     loop,
@@ -59,10 +41,12 @@ def loop_to_closed_feature(
         if poly.area <= MIN_CONTOUR_AREA:
             return None
 
-        diameter = None
-        center   = None
+        # Guard sui micro-cerchi: un loop di una singola primitiva circolare
+        # con diametro sotto soglia è rumore, non un contorno. La
+        # classificazione hole/inner vera e propria è di detect() (D15) —
+        # qui `diameter`/`center` NON vengono stoccati sul feature.
         if len(loop) == 1:
-            diameter, center = _single_loop_geometry(loop, poly)
+            diameter, _ = circular_geometry(poly, segments)
             if diameter is not None and diameter < MIN_SINGLE_LOOP_DIAMETER:
                 return None
 
@@ -70,8 +54,6 @@ def loop_to_closed_feature(
             role=role,
             polygon=poly,
             segments=segments or [],
-            diameter=diameter,
-            center=center,
         )
     except Exception:
         return None
@@ -103,27 +85,6 @@ def _build_tree(proxies: list) -> list:
 # Costruzione semantica
 # ---------------------------------------------------------------------------
 
-def _make_hole(
-    proxy: ClosedFeature,
-    geometric_hint: str = "",
-    outer_proxy: Optional[ClosedFeature] = None,
-) -> Hole:
-    role = proxy.role if proxy.role != ContourRole.UNKNOWN else (
-        ContourRole.HOLE if proxy.diameter is not None and proxy.diameter < HOLE_DIAMETER_THRESHOLD
-        else ContourRole.INNER
-    )
-    return Hole(
-        polygon=proxy.polygon,
-        diameter=proxy.diameter or 0.0,
-        center=proxy.center or (0.0, 0.0),
-        hole_type=HOLE_TYPE_UNKNOWN,
-        geometric_hint=geometric_hint,
-        role=role,
-        outer_diameter=outer_proxy.diameter if outer_proxy else None,
-        segments=list(proxy.segments),
-    )
-
-
 def _make_inner(proxy: ClosedFeature, parent_role: ContourRole = ContourRole.UNKNOWN) -> ForgeContour:
     role = (
         proxy.role if proxy.role not in (ContourRole.UNKNOWN, ContourRole.INNER)
@@ -137,28 +98,25 @@ def _make_inner(proxy: ClosedFeature, parent_role: ContourRole = ContourRole.UNK
     )
 
 
-def _process_children(
+def _collect_inners(
     children: list,
-    holes: list,
     inners: list,
     classified_proxies: set,
     parent_role: ContourRole = ContourRole.UNKNOWN,
 ):
+    """
+    Appiattisce l'albero di contenimento: ogni discendente di un outer diventa
+    un `ForgeContour` in `part.inners`, a qualsiasi profondità.
+
+    heal() si ferma qui — non decide più hole vs inner né riconosce i
+    countersink dal nesting (D15). detect(features="holes") ri-deriva il
+    nesting per contenimento fra poligoni e promuove i fori.
+    """
     for child_proxy, grandchildren in children:
         classified_proxies.add(id(child_proxy.polygon))
-
+        inners.append(_make_inner(child_proxy, parent_role=parent_role))
         if grandchildren:
-            for gc_proxy, _ in grandchildren:
-                classified_proxies.add(id(gc_proxy.polygon))
-                if gc_proxy.diameter is not None:
-                    holes.append(_make_hole(gc_proxy, geometric_hint="countersink", outer_proxy=child_proxy))
-                else:
-                    inners.append(_make_inner(gc_proxy, parent_role=parent_role))
-        else:
-            if child_proxy.diameter is not None:
-                holes.append(_make_hole(child_proxy))
-            else:
-                inners.append(_make_inner(child_proxy, parent_role=parent_role))
+            _collect_inners(grandchildren, inners, classified_proxies, parent_role=parent_role)
 
 
 # ---------------------------------------------------------------------------
@@ -199,13 +157,12 @@ class HierarchyBuilder:
             )
             self._classified_proxies.add(id(father_proxy.polygon))
 
-            holes  = []
             inners = []
-            _process_children(children, holes, inners, self._classified_proxies, parent_role=father_proxy.role)
+            _collect_inners(children, inners, self._classified_proxies, parent_role=father_proxy.role)
 
             part = ForgePart(
                 outer=outer,
-                holes=holes,
+                holes=[],
                 inners=inners,
                 label=self.label,
                 source_file=self.source_file,

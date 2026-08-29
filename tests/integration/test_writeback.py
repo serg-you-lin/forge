@@ -42,7 +42,7 @@ def _pipeline(name, *, detect=False, label_map=None):
     doc = forge.load_dxf(EXAMPLES_DIR / name, label_map=label_map or {})
     result = forge.heal(doc)
     if detect:
-        forge.detect(result)
+        forge.detect(result, features="all")
     doc_out = forge.to_dxf(result, doc)
     return result, doc_out.modelspace()
 
@@ -92,7 +92,8 @@ class TestWritebackCircleOuter(unittest.TestCase):
 class TestWritebackCircleHole(unittest.TestCase):
 
     def setUp(self):
-        self.result, self.msp = _pipeline("rect_with_circle_hole.dxf")
+        # D15: la promozione a foro è di detect(features="holes"), non di heal().
+        self.result, self.msp = _pipeline("rect_with_circle_hole.dxf", detect=True)
 
     def test_001_circle_on_hole_layer(self):
         self.assertIn(LAYER_HOLE, _layers_of(self.msp, "CIRCLE"))
@@ -335,7 +336,7 @@ class TestWritebackAnnotations(unittest.TestCase):
         self.assertEqual(kinds["DIMENSION"], 16)
         self.assertEqual(kinds["LEADER"], 4)
         result = forge.heal(doc)
-        forge.detect(result)
+        forge.detect(result, features="all")
         msp = forge.to_dxf(result, doc).modelspace()
         ann_geom = [e for e in msp.query("LWPOLYLINE")
                     if e.dxf.layer == LAYER_ANNOTATION]

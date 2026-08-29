@@ -47,7 +47,7 @@ def _run_pipeline(
     )
 
     forge.detect(
-        result,
+        result, features="all",
     )
 
     doc_out = forge.to_dxf(result, doc)
