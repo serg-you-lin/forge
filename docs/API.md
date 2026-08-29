@@ -353,21 +353,19 @@ forge.inject(
     result: ForgeResult,
     data_injector=None,
     texts=None,
-    tolerance=0.1,
+    tolerance=0.1,   # accettato per compat, non più usato
 ) -> ForgeResult
 ```
 
 Arricchimento CAM **opzionale**. **Muta** `result.parts[i].custom` in-place e
-ritorna il `result`. Fa due cose:
+ritorna il `result`. Fa **una cosa**: se passi `data_injector` —
+`callable(part, list[str]) -> dict` — gli passa i testi che ricadono dentro
+l'outer di ogni parte e mette il dict restituito in `part.custom` (codice pezzo,
+materiale, spessore, …). Senza `data_injector`, `inject()` non fa nulla.
 
-1. Conta le feature per tipo (fori plain/countersink/threaded, pieghe, lunghezza
-   incisioni) e le scrive in `part.custom`.
-2. Se passi `data_injector` — `callable(part, list[str]) -> dict` — gli passa i
-   testi che ricadono dentro l'outer di ogni parte e mette il dict restituito in
-   `part.custom` (codice pezzo, materiale, spessore, …).
-
-> In arrivo (MAP.md D8): il punto 1 diventerà una property derivata (`part.summary`)
-> e `inject` resterà solo per il punto 2.
+I **conteggi delle feature** (fori per tipo, pieghe, lunghezza incisioni) NON si
+fanno più qui: sono `part.summary`, una property derivata dal modello (MAP.md
+D8). `save_json` / `save_xml` li leggono da lì.
 
 ```python
 def leggi_cartiglio(part, testi):
@@ -569,7 +567,8 @@ Metodo `to_dict()` → dizionario JSON-ready (usato internamente dagli export).
 | `bending_lines` | `list[BendingLine]` | pieghe — `geometry`, `length`, `angle_deg` |
 | `engrave_lines` | `list[Engraving]` | incisioni — `segments`, `length`, `closed`, `source`, `confidence` |
 | `label` | `str` | etichetta, base del nome file |
-| `custom` | `dict` | popolato da `inject()` (materiale, spessore, conteggi, …) |
+| `custom` | `dict` | dati aggiunti da un `data_injector` esterno (materiale, spessore, codice) |
+| `summary` | property | conteggi feature derivati dal modello: `plain_holes_count`, `countersink_count`, `threaded_holes_count`, `bending_lines` (gruppi collineari), `total_engrave_length`, `total_marking_length` |
 | `area` | property | outer − fori − inner |
 | `bbox` | property | `(minx, miny, maxx, maxy)` |
 
@@ -609,8 +608,8 @@ result = forge.heal_and_detect(doc, label="P-1024")
 if not result.is_valid:
     raise SystemExit(result.errors)
 
-# 6. arricchimento CAM (opzionale)
-result = forge.inject(result)
+# 6. arricchimento CAM (opzionale — solo se hai un data_injector per i testi)
+result = forge.inject(result, data_injector=leggi_cartiglio, texts=...)
 
 # 7a. render — un documento con tutte le parti
 forge.to_dxf(result, doc).saveas("pezzo_healed.dxf")
