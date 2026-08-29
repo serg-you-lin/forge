@@ -24,7 +24,7 @@ in fondo.
 4. [Export](#4-export) — `save_json`, `to_json`, `save_xml`, `to_nester_input`
 5. [Metadati XDATA](#5-metadati-xdata) — `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema`
 6. [Ispezione / debug](#6-ispezione--debug) — `inspect_dxf`, `inspect_document`, `inspect_result`, `inspect_file`
-7. [Utilità](#7-utilità) — `extract_texts_from_msp`
+7. [Utilità](#7-utilità) — `extract_forge_texts`, `extract_texts_from_msp`
 8. [Tipi di dominio](#8-tipi-di-dominio)
 9. [Il flusso completo, in ordine](#9-il-flusso-completo-in-ordine)
 
@@ -382,16 +382,24 @@ ritorna il `result`. Fa **una cosa**: se passi `data_injector` —
 l'outer di ogni parte e mette il dict restituito in `part.custom` (codice pezzo,
 materiale, spessore, …). Senza `data_injector`, `inject()` non fa nulla.
 
+`texts` va passato come **`list[ForgeText]`** (`content` + `position`) — il
+filtraggio per parte è geometrico, servono le posizioni. Si ottiene con
+`forge.extract_forge_texts(msp)`, **non** con `extract_texts_from_msp` (che
+ritorna stringhe nude). Il `data_injector` riceve comunque `list[str]`.
+
 I **conteggi delle feature** (fori per tipo, pieghe, lunghezza incisioni) NON si
 fanno più qui: sono `part.summary`, una property derivata dal modello (MAP.md
 D8). `save_json` / `save_xml` li leggono da lì.
 
 ```python
+import ezdxf
+msp = ezdxf.readfile("pezzo.dxf").modelspace()
+
 def leggi_cartiglio(part, testi):
     return {"material": next((t for t in testi if t.startswith("S")), "S275JR")}
 
 forge.inject(result, data_injector=leggi_cartiglio,
-             texts=forge.extract_texts_from_msp(msp))
+             texts=forge.extract_forge_texts(msp))
 ```
 
 ---
@@ -525,15 +533,25 @@ forge.inspect_file("pezzo.dxf", label_map={"Piega": "bending"})
 
 ## 7. Utilità
 
+### `extract_forge_texts`
+
+```python
+forge.extract_forge_texts(msp) -> list[ForgeText]
+```
+
+Estrae i testi da un `modelspace` `ezdxf` come `ForgeText` (`content` +
+`position`). **È questo** l'argomento `texts` di `inject()` — il filtraggio per
+parte è geometrico e servono le posizioni. Non gestisce `INSERT` — vanno esplosi
+prima (`load_dxf` lo fa; qui riapri il file solo per i testi).
+
 ### `extract_texts_from_msp`
 
 ```python
 forge.extract_texts_from_msp(msp) -> list[str]
 ```
 
-Estrae i testi grezzi (`TEXT`, `MTEXT`, `MULTILEADER`, `DIMENSION` con override)
-da un `modelspace` `ezdxf`. Utile per costruire l'argomento `texts` di `inject`.
-Non gestisce `INSERT` — vanno esplosi prima.
+Come sopra ma ritorna solo le stringhe, senza posizione. Per chi vuole i testi e
+basta — **non** passabile a `inject()`.
 
 ---
 
@@ -557,6 +575,11 @@ core: dopo di lui, `ezdxf` non si tocca più.
 `kind` (`"TEXT"` | `"MTEXT"` | `"DIMENSION"` | `"LEADER"` | `"MULTILEADER"`),
 `position` `(x, y)`, `data` `dict` (contenuto testuale + forma renderizzata come
 primitive pure per le quote).
+
+### `ForgeText`
+
+Prodotto da `extract_forge_texts(msp)`, consumato da `inject()`. `content` (`str`,
+già ripulito) + `position` (shapely `Point`, per il containment check per parte).
 
 ### `ForgeResult`
 

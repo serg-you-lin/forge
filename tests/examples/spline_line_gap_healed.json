@@ -1,6 +1,6 @@
 {
   "source_file": "spline_line_gap.dxf",
-  "is_valid": true,
+  "is_valid": false,
   "part_count": 0,
   "warnings": [
     "SPLINE con endpoint non connesso trovata — gap tra SPLINE e altre entità gestito con una linea di congiunzione. Verificare manualmente la correttezza del file.",
@@ -8,6 +8,8 @@
     "Nessun loop trovato via grafo, uso polygonize come fallback.",
     "LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta."
   ],
-  "errors": [],
+  "errors": [
+    "Nessun contorno esterno chiuso: nessuna parte generabile dal file. Gli endpoint liberi non si congiungono entro la tolleranza richiesta."
+  ],
   "parts": []
 }

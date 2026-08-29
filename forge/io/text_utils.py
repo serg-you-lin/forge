@@ -31,7 +31,7 @@ def extract_forge_texts(msp) -> list[ForgeText]:
             continue
         result.append(ForgeText(
             content=content,
-            position=pt,
+            position=pt if isinstance(pt, Point) else Point(pt),
         ))
     return result
 

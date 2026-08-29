@@ -1,483 +1,97 @@
-Piano completo — refactoring dxf-forge
-Contratto finale dell'API pubblica
-python
-doc = forge.load_dxf("file.dxf")      # unico punto che tocca ezdxf
-result = forge.heal(doc)               # core puro — zero DXF
-result = forge.detect(result)          # classificazione — zero DXF
-doc_out = forge.write(result)          # documento nuovo — zero source_ref
+# MAP.md — decision log di dxf-forge
+
+Questo file è la **memoria delle decisioni**: cosa è stato deciso, e soprattutto
+*perché*. Non è documentazione (quella è in `docs/`) e non è un log di sessione
+(quello è il git log).
+
+Regola: una decisione chiusa **non si re-decide da capo**. Se va rimessa in
+discussione si dice esplicitamente "stiamo riaprendo la decisione N".
+
+- **Cos'è forge, come si usa** → `README.md`, `docs/API.md`
+- **Com'è fatto dentro** → `docs/ARCHITECTURE.md`
+- **Storia del refactor** → git log (branch `refactor/structure`)
+
+---
+
+## Il contratto dell'API pubblica
+
+```python
+doc    = forge.load_dxf("file.dxf")        # unico punto che tocca ezdxf in lettura
+result = forge.heal(doc)                   # topologia — zero DXF
+result = forge.detect(result, "all")       # semantica/feature — zero DXF
+doc_out = forge.to_dxf(result, doc)        # documento nuovo — nessun source_ref
 doc_out.saveas("output.dxf")
 
-# split è write per ogni part
-paths = forge.split(result, output_folder)
+# multi-pezzo
+forge.split_to_files(doc, "output/")       # unica funzione che scrive su disco
 
-# futuro
-doc = forge.load_svg("file.svg")       # stesso contratto, adapter diverso
-Cosa è doc — il ForgeDocument
+# futuro: stesso contratto, adapter diverso
+doc = forge.load_svg("file.svg")
+```
 
-load_dxf() non restituisce un msp ezdxf. Restituisce un oggetto dominio:
+**Principio portante:** `load_*` produce un `ForgeDocument` di dati puri (edge +
+annotation). Dopo il load, il documento `ezdxf` sorgente sparisce. `heal` /
+`detect` non vedono mai un formato. `to_dxf` costruisce un documento **nuovo** dai
+segmenti del modello — non copia entità dalla sorgente, non porta `source_ref`.
+Il modello è il prodotto; il DXF è solo una delle sue rappresentazioni.
 
-python
-@dataclass
-class ForgeDocument:
-    edges:       List[Edge]        # geometria parsata — input per heal()
-    annotations: List[Annotation]  # testi, quote, leader — input per write()
-    source_meta: dict              # $INSUNITS, $MEASUREMENT, ecc.
-    source_path: str
-
-edges e annotations sono dati puri — zero ezdxf dentro. L'adapter li produce e poi il riferimento al msp originale sparisce.
-
-I passi in ordine
-
-Passo 1 — ForgeDocument
-
-Crea model/document.py con il dataclass sopra. Annotation è un dataclass semplice:
-
-python
-@dataclass
-class Annotation:
-    kind:     str                    # "TEXT" | "MTEXT" | "DIMENSION" | ...
-    position: Tuple[float, float]    # punto rappresentativo
-    data:     dict                   # tutto il necessario per riscriverla
-
-Niente source_ref — data contiene il testo, la posizione, tutto quello che serve per ricreare l'entità nel documento di output.
-
-Passo 2 — forge.load_dxf()
-
-python
-def load_dxf(path: str) -> ForgeDocument:
-    doc = ezdxf.readfile(path)
-    msp = doc.modelspace()
-    edges       = DxfAdapter(msp).to_edges()
-    annotations = DxfAnnotationExtractor(msp).extract()
-    meta = {
-        "$INSUNITS":   doc.header.get("$INSUNITS", 4),
-        "$MEASUREMENT": doc.header.get("$MEASUREMENT", 1),
-    }
-    return ForgeDocument(edges=edges, annotations=annotations,
-                         source_meta=meta, source_path=path)
-
-Dopo questa funzione, ezdxf non viene mai più toccato fino a write().
-
-Passo 3 — forge.heal() riceve ForgeDocument
-
-python
-def heal(doc: ForgeDocument) -> ForgeResult:
-    # lavora su doc.edges — zero DXF
-    ...
-
-ForgeResult non cambia struttura — ma non porta più source_ref né _entities_in_loops_ids.
-
-Passo 4 — elimina source_ref dal modello
-
-Ora che heal() non vede più ezdxf, source_ref non ha motivo di esistere. Si elimina da:
-
-Edge
-ClosedShape, OpenShape
-Feature e tutta la gerarchia
-Hole, BendingLine, ForgeContour
-ClassifiedEntity
-
-Passo 5 — forge.write() riceve ForgeResult
-
-python
-def write(result: ForgeResult, source_doc: ForgeDocument = None) -> ezdxf.document:
-    doc_out = ezdxf.new(dxfversion="R2010")
-    if source_doc:
-        doc_out.header["$INSUNITS"]    = source_doc.source_meta["$INSUNITS"]
-        doc_out.header["$MEASUREMENT"] = source_doc.source_meta["$MEASUREMENT"]
-    msp_out = doc_out.modelspace()
-    _setup_layers(doc_out)
-
-    for part in result.parts:
-        write_segments(part.outer.segments, msp_out, LAYER_OUTER)
-        for inner in part.inners:
-            write_segments(inner.segments, msp_out, LAYER_INNER)
-        for hole in part.holes:
-            layer = _work_layer_for_hole(hole) or LAYER_HOLE
-            write_segments(hole.segments, msp_out, layer)
-        _write_bending_lines(msp_out, part)
-        for eng in part.engrave_lines:
-            write_segments(eng.segments, msp_out, LAYER_ENGRAVE)
-
-    if source_doc and source_doc.annotations:
-        _write_annotations(msp_out, result, source_doc.annotations)
-
-    return doc_out
-
-Passo 6 — forge.split() diventa banale
-
-python
-def split(result: ForgeResult, source_doc: ForgeDocument,
-          output_folder: str, ...) -> list:
-    for i, part in enumerate(result.parts):
-        result_part = ForgeResult(parts=[part], ...)
-        doc_out = write(result_part, source_doc)
-        doc_out.saveas(path)
-
-Passo 7 — aggiorna i test
-
-I test di write smettono di controllare il msp originale — controllano il doc_out restituito. Questo è il passo che blocca tutto se non viene fatto prima di scrivere il codice.
-
-Ordine di esecuzione
-1. ForgeDocument          — model/document.py
-2. DxfAnnotationExtractor — adapters/dxf/annotation_extractor.py
-3. forge.load_dxf()       — forge/__init__.py o pipeline/load.py
-4. forge.heal() aggiornato — pipeline/heal.py
-5. elimina source_ref     — modello e bridge
-6. forge.write() riscritto — pipeline/write.py
-7. forge.split() riscritto — pipeline/write.py
-7bis. write→to_dxf, split ritorna list[Drawing], I/O solo in split_to_files
-8. aggiorna i test        — tutti i test di write/to_dxf e split
-Cosa NON cambia
-DxfAdapter.to_edges() — già produce Edge puri
-hierarchy.py — già lavoro su ClosedShape puri
-detect() — non tocca DXF
-exporter.py — già lavora su segmenti puri
-Il modello domain interno — fino al passo 5
-Il futuro load_svg
-python
-def load_svg(path: str) -> ForgeDocument:
-    edges       = SvgAdapter(path).to_edges()
-    annotations = []   # SVG non ha annotazioni DXF
-    meta        = {}
-    return ForgeDocument(edges=edges, annotations=annotations,
-                         source_meta=meta, source_path=path)
-
-Stesso contratto — heal(), detect(), write() non cambiano una riga.
+Dettaglio completo di ogni funzione in `docs/API.md`.
 
 ---
 
-# STATO DEL REFACTOR — aggiornato 2026-08-29
+## Stato
 
-Branch: `refactor/structure`. Modifiche **non committate** (i commit li fa Federico).
+Branch: `refactor/structure`. Fasi 1–4 concluse e committate. Suite: **555 passed
+/ 0 failed** (+ 62 subtests), golden verdi.
 
-**Passi 1–8 completati** + fix regressione engrave `to_dxf()`.
-**Fase 4 (consolidamento): D5, D6, D7, D8, D4, D15 fatti.** Fase 4 conclusa.
-Suite: **550 passed / 0 failed** (era 554; ~4 test di `hierarchy`/`healer`
-consolidati con D15).
-
-## Ultima sessione (2026-08-29) — D15: `detect()` parametrico, classificazione hole spostata
-
-`heal`/`hierarchy` non producono più `Hole`: `HierarchyBuilder` consegna solo
-l'albero di contenimento (`ForgePart(outer, inners=[ForgeContour...])`, nesting
-appiattito). `ClosedFeature` non porta più `diameter`/`center` (campi D4.2
-rimossi). `detect()` è parametrico:
-- `detect(result)` nudo → solo lane label_map (autoritativa) + pulizia topologia,
-  zero `Hole`;
-- `detect(result, features="holes" | "bending" | "engrave" | "all")` → lane
-  geometriche opt-in;
-- `max_drill_diameter` (default `HOLE_DIAMETER_THRESHOLD` = 32.1) è argomento di
-  `detect()`: Ø < soglia → `Hole`, Ø ≥ soglia → resta `ForgeContour` inner.
-`heal_and_detect(..., features="all")` è la via del 90%.
-Nuovi helper: `core/geometry.py::circular_geometry(polygon, segments)` (stessa
-regola del vecchio `_single_loop_geometry`: gate `len(segments)==1` + aspect
-ratio bbox ≤ 0.15, numeri invariati); `detect._detect_holes` riscritto
-(`_promote_geometric_holes` — countersink da coppia concentrica, plain/threaded,
-migrazione inners→holes); `detect._labeled_hole_from_contour` (lane label_map).
-Prova di equivalenza su tutti i golden DXF (`features="all"`): diff **solo** su
-7 file — `Multipolis`, `Polylines`, `arc_ocs_flip_loop.dxf`, `cerchi_ciambella`,
-`flangia con fori`, `flangia_scantonata`, `fori_spuri` — dove cerchi Ø ≥ 32.1
-migrano da `Hole(role="inner")` a `ForgeContour(role=INNER)`. Golden rigenerati
-uno per uno (`--force --only`), diff verificato a mano. Q1/Q2 chiuse.
-
-## Sessione precedente (2026-08-29) — D4: bridge `OpenShape`/`ClosedShape` eliminato
-
-`heal` produce direttamente `OpenFeature`/`ClosedFeature`; `bridge/shape.py`
-cancellato. `pts`/`length`/`shape_type` ora derivati dai segmenti nativi via
-`core/geometry.py::track_points`/`track_length`/`track_shape_type`. Zero golden
-rigenerati. Dettaglio + sub-step nella scheda **D4**; questione hole rimandata a
-**D15** (`detect()` parametrico, soglia = parametro di processo), vedi Q1/Q2.
-
-## Fatto e verificato
-
-- **Passo 1** — `forge/model/document.py`: `ForgeDocument` (edges, annotations, source_meta, source_path) + `Annotation` (kind, position, data). Esportati da `forge/model/__init__.py` e `forge/__init__.py`.
-- **Passo 2** — `forge/adapters/dxf/annotation_extractor.py`: `DxfAnnotationExtractor(msp).extract() -> List[Annotation]`.
-- **Passo 3** — `forge/adapters/dxf/loader.py`: `load_dxf(...) -> ForgeDocument` (non più `(doc, msp)`). Aggiunto `document_from_msp(msp, ...)` per test / geometria generata a mano.
-- **Passo 4** — `forge/pipeline/heal.py`: `HealStep(doc: ForgeDocument, ...)`, lavora su `doc.edges`, zero ezdxf. `forge.heal(doc)` valida il tipo e prende `tolerance` da `doc.source_meta`.
-- **Passo 6** — `forge/pipeline/write.py`: `write(result, source_doc=None) -> doc_out` (documento ezdxf nuovo, mai il msp sorgente). `$INSUNITS`/`$MEASUREMENT` da `source_meta`. `_write_annotations()` filtra per part scritte.
-- **Passo 7** — `write.py`: `split(result, source_doc=None, output_folder=..., ...)` — un `write()` per part. `forge/pipeline/__init__.py`: `heal()`, `split_to_files()` sul nuovo contratto.
-- **Gap healing puro** — `forge/core/healing/gap_solver.py`: `free_endpoints_from_edges(edges, graph)` e `apply_gap_fixes(edges, fixes, node_decimals) -> List[Edge]` sostituiscono i metodi DXF-based dell'adapter. `compute_gap_fixes` invariato. Rimossi da `adapter.py`: `extract_free_endpoints`, `apply_gap_fixes`, `to_circular_arcs`, `load_entity_lists`, `_gap_meta_for`, `_GAP_KIND_MAP`.
-- **Regressione bending risolta** — `Edge.closed_path: bool` (nuovo campo). `to_edges()` lo mette a True per i segmenti esplosi da LWPOLYLINE/POLYLINE chiuse; `BendingDetector` scarta questi edge dai candidati piega (era la guardia `_is_closed_polyline_ref(source_ref)` persa col Passo 4).
-- Helper: `forge/core/geometry.py::node_decimals_for(tol)`, `forge/core/primitives/segments.py::segment_endpoints(seg)`.
-
-Verifica: `tests/real/test_golden.py` **48/48**, `tests/real/test_golden_split.py` **51/51**.
-Suite completa dopo il **Passo 8**: **440 passed / 0 failed / 0 errors** (2 xfail preesistenti).
-
-## Passo 5 — source_ref: FATTO
-
-Rimosso da: `Edge`, `ClosedShape`/`OpenShape`, `Feature` e gerarchia, `Hole`, `BendingLine`,
-`ForgeContour`, `ClassifiedEntity`, `loop_finder.edges_to_open_shapes`.
-
-Completato in questa sessione:
-- `forge/adapters/pdf/graph_adapter.py` — rimosse le 3 costruzioni `Edge(source_ref=item)`
-- `forge/io/text_utils.py` — `extract_forge_texts()` non passa più `source_ref=e`
-- `forge/model/text.py` — rimosso il campo `source_ref` da `ForgeText` (import `Any`/`Optional` puliti)
-- commenti/docstring stantii aggiornati: `loop_finder.py`, `feature.py` (+ import `Any` rimosso),
-  `adapters/bridge/edge.py`
-
-`grep -rn source_ref forge/` ora trova solo prosa che spiega l'assenza del campo
-(`write.py`, `document.py`). Golden 48/48, split 51/51.
-
-## Passo 7bis — `write`→`to_dxf` e `split` puro: FATTO
-
-- **`write` → `to_dxf`** — `forge/pipeline/write.py`. Firma invariata:
-  `to_dxf(result, source_doc=None, filter_part=None, include_annotations=True) -> Drawing`.
-  Esportato da `forge/__init__.py` (`__all__`, docstring) e `forge/pipeline/__init__.py`.
-- **`split` è puro** — ritorna `list[Drawing]` nell'ordine delle parti tenute.
-  Niente più `os` / `output_folder` / `saveas` / `keep_trash`. Parametri rimasti:
-  `namer`, `include_annotations`, `min_area`, `exclude_types`, `on_part`.
-  `namer(i, part)` assegna `part.label` (così il nome file resta ricavabile a valle).
-  `on_part` ora è `on_part(part, doc_out)` — niente più terzo arg `out_path`.
-  Nuovo helper esportato: `part_passes_min_area(part, min_area) -> bool`.
-- **`split_to_files`** (`forge/pipeline/__init__.py`) è l'unica funzione che tocca
-  il disco: `heal → detect → split → saveas`. Nome file: `f"{part.label}.dxf"`.
-  Perso il param `keep_trash`.
-- Migrati: `tests/real/test_golden_split.py` (usa `split` + `saveas` manuale,
-  importa `part_passes_min_area`/`DEFAULT_MIN_PART_AREA`),
-  `tests/integration/test_helpers.py` (`forge.write` → `forge.to_dxf`).
-- `tests/generate_golden_split.py` NON toccato: è ancora su vecchia API modello
-  (`load_dxf` che ritorna `(_, msp)`, `heal(msp)`) → va fatto nel Passo 8 insieme
-  agli script root.
-
-Verifica dopo 7bis: golden 48/48, split 51/51. Suite completa invariata:
-**217 passed / 208 failed / 16 errors** (nessuna regressione).
-
-`split` resta API esposta di prima classe: è il seam giusto per il futuro
-("isole" / disegno in tavola su più viste).
-
-NON fare: `split` come flag booleano di `to_dxf` (`to_dxf(result, split=True)`).
-Tipo di ritorno che cambia su un flag = API non tipizzabile.
-
-## Passo 8 — migrazione test: FATTO
-
-Traduzione meccanica vecchia API → nuova (nomi **post Passo 7bis**):
-- `heal(msp, ...)` / `heal(msp, label_map=...)` → `heal(forge.document_from_msp(msp, label_map=...), ...)` oppure via `load_dxf`
-- `doc, msp = load_dxf(...)` → `doc = load_dxf(...)`
-- `detect(result, msp)` → `detect(result)` (non prende più il msp)
-- `write(msp, result)` → `doc_out = to_dxf(result, doc)`
-- `split(msp, result, folder)` → `docs = split(result, doc)` + `saveas`, oppure `split_to_files(doc, folder, ...)`
-- test che ispezionano `msp` dopo il write → ispezionare `doc_out.modelspace()`
-  o il modello (`result.trash_entities`, `part.engrave_lines`, ...)
-
-Migrati (meccanica): `tests/unit/test_healer.py`, `tests/integration/test_gap.py`,
-`tests/integration/test_injector.py`, `tests/integration/test_special_layers.py`,
-`tests/integration/test_pipeline.py`, `tests/unit/test_detect.py`,
-`tests/real/test_edge_cases.py`.
-
-Migrati + riscritte le parti su comportamento sparito (scrittura nel msp
-sorgente / layer "Trash" / `keep_trash`), ora verificano `to_dxf`/`split` o il
-modello: `tests/integration/test_writeback.py` (riscritto intero),
-`tests/integration/test_splitter.py` (helper `_split_files` locale: `split` puro
-+ `saveas`), `tests/real/test_layers.py` (`_run_pipeline` → `(source_doc, doc_out,
-result)`; `TestLineetteBastarde` off `bl.source_ref`).
-
-Migrati per Passo 4/5 (`Edge` senza `source_ref`/`layer`/`geometry`, ora
-`role`+`segment`+`closed_path`; `Feature.role` obbligatorio; `parse_loop` non
-riparsare più l'entità): `tests/unit/test_models.py` (`TestEdge` riscritto),
-`tests/unit/adapters/test_parsing_and_exporting.py` (`make_edge` costruisce la
-primitiva reale via `DxfEntityDispatcher`), `tests/unit/core/test_hierarchy_builder.py`.
-
-Script aggiornati: `01_run_healer_interpreter.py` (ora `doc_out = forge.to_dxf(result, doc)`
-+ `doc_out.saveas(output_dxf)` — salva davvero il DXF), `tests/generate_golden.py`,
-`tests/generate_golden_split.py`. (Gli script `02_*.py … 20_*.py` non esistono.)
-
-### Regressione engrave in `to_dxf()` — RISOLTA
-
-**Sintomo:** `to_dxf()` non materializzava le engrave line. `_handle_engrave_open`
-/ `_handle_engrave_closed` creavano `EngravingOpen`/`EngravingClosed` con
-`segments=[]`, e `to_dxf` fa `write_segments(eng.segments, ...)` → zero entità
-sul layer Engrave del documento di output.
-
-**Perché i golden non l'hanno preso:** `test_golden` / `test_golden_split`
-verificano il *modello* (`part.engrave_lines`, `total_engrave_length`, `to_dict`)
-e la geometria di outer/holes nei figli — mai una engrave line riletta da un DXF
-materializzato. Il bug viveva solo nel path `to_dxf` (documento nuovo, introdotto
-al Passo 6/7bis) che nessun golden riattraversa.
-
-**Fix:**
-- `OpenShape` ora ha un campo `segments` (come `ClosedShape`).
-- `edges_to_open_shapes` lo popola con `[edge.segment]` — la primitiva nativa,
-  non i punti discretizzati.
-- `_handle_engrave_open` / `_handle_engrave_closed` passano `segments=` al
-  costruttore di `EngravingOpen` / `EngravingClosed`.
-- Nuova copertura: `test_writeback.TestWritebackSpecialLayers.test_003_engrave_geometry_materialized`
-  e `test_special_layers.TestSpecialLayerNotTrash.test_002` rileggono il layer
-  Engrave del `doc_out`.
-
-**Comportamento voluto (non un limite):** un contorno chiuso su layer engrave
-non viene trattato come loop strutturale (`_loop_is_structural` non include
-`ENGRAVE`, giustamente). Il ruolo è deciso al load da `label_map` — a valle è
-engrave e basta: viene materializzato come N segmenti sul layer Engrave e non
-entra nei conteggi strutturali (fori, inner). Se serve una polilinea chiusa
-unica invece di N segmenti è solo cosmesi di output, non correttezza.
-
-### Engrave/marking fuori dalla topologia — FATTO
-
-Gli Edge con `role` ENGRAVE o MARKING (deciso da `label_map` al load) non entrano
-più nel grafo né nella ricerca loop: `HealStep._split_labeled()` li estrae da
-`self.edges` prima di `_preprocess()`. Erano prima *walkati* da `LoopFinder` e poi
-scartati da `_loop_is_structural()` — lavoro sprecato, e un loop misto
-strutturale+engrave veniva buttato intero.
-
-`HealStep._labeled_proxies()` li riconverte in proxy e li mette in
-`result.trash_entities`:
-- traccia aperta → `OpenShape(role=...)`
-- traccia già degenere (CIRCLE, SPLINE chiusa, `edge.start == edge.end`) →
-  `ClosedShape(role=...)` — **prima veniva persa in silenzio** dal guard
-  `edge.start == edge.end` di `edges_to_open_shapes`.
-
-`detect._detect_labeled()` fa l'unico calcolo che li riguarda, il contenimento:
-- dentro un part → `part.engrave_lines` (`EngravingOpen`/`EngravingClosed`) o
-  classified entity per marking;
-- fuori da ogni part → **resta in `trash_entities`**, geometria orfana come
-  qualsiasi entità non contenuta nell'outer (`_handle_engrave_open` ora ritorna
-  `bool`; niente più warning + drop).
-
-Nuovo: `_handle_engrave_closed_trash()`. Copertura:
-`test_special_layers.TestEngraveDegenerateCircle`. Suite: 445 passed.
-
-### `Engraving` unico + seam per l'inferenza — FATTO
-
-`EngravingClosed` / `EngravingOpen` collassati in un solo `Engraving(OpenFeature)`
-(`model/engraving.py`). Nessuno shim: aggiornati `model/__init__`, `model/part.py`
-(`engrave_lines: List[Engraving]`), `detect.py`, docstring di `feature.py`.
-- `Engraving` porta `segments` + `length` + `pts` + `geometry` + `polygon`
-  opzionale (solo per traccia degenere). `closed` **non è un campo**: è una
-  property = `polygon is not None`, così non può desincronizzarsi.
-- Nuovi campi `source` / `confidence`, **stesso pattern di `Hole`**:
-  `source="labeled"` (da label_map, confidence 1.0) vs `source="geometric"`
-  (inferenza). `to_dict()` li espone (i golden confrontano solo `closed`/`length`
-  /`role`, quindi non si rompono).
-- Costruttori centralizzati: `_engraving_from_open()` / `_engraving_from_closed()`.
-
-**Perché un tipo solo:** in produzione nessuno ramificava su `EngravingClosed`
-vs `EngravingOpen` — `to_dxf` scrive `eng.segments` e `inject` somma `eng.length`
-per entrambi. La distinzione viveva solo in `to_dict()["closed"]`.
-
-**Seam per l'inferenza:** `detect._detect_engrave(result, engrave_tolerance)` —
-placeholder no-op, già inserito nella pipeline `detect()` e già con il parametro
-`engrave_tolerance`. Quando implementato: guarda `part.inners` con role UNKNOWN e
-`result.trash_entities`, promuove a `Engraving(source="geometric")` i pattern
-riconoscibili (es. inner = due polilinee ~parallele a distanza < tolerance →
-incisione, non foro/inner). Le feature — engraving, bending, countersink,
-threaded — condividono tutte il doppio binario label_map / inferenza; `Hole` è
-l'implementazione di riferimento (`hole_type` + `geometric_hint` + `source` +
-`confidence`), `Engraving` ora lo segue, `BendingLine` no (manca `source`).
-
-## Fatto: già migrati (sessioni precedenti)
-
-`tests/integration/test_helpers.py`, `tests/real/test_golden.py`, `tests/real/test_golden_split.py`.
-
-
-# Fasi per rendere pubblicabile la repo:
-
-Fase 1 — igiene (1 giorno):
-1. git rm -r --cached .venv, .gitignore serio
-2. spostare i 21 script root → examples/ (o cancellare i morti)
-3. cancellare _archive/, _split_debug/, PNG, .dxf scratch, dict, particci.md, le_bestemmie...
-4. cartelle vuote svg/, workflow/ → via
-5. fix import rotto #1, allineare versione e nome pacchetto, aggiungere LICENSE
-
-Fase 2 — documentazione (1-2 giorni):
-6. README nuovo: cos'è, install, esempio minimo (10 righe), esempio multi-pezzo, tabella layer output, limiti noti
-7. docs/API.md: ogni funzione di forge.__all__ — firma, cosa prende, cosa ritorna, cosa muta, quando solleva. Con esempi copiabili. Questo è il documento che ti serve per "spiegarlo a qualcuno".
-8. docs/ARCHITECTURE.md: il diagramma load → ForgeDocument → heal → detect → render, spiegato a parole. Metà di MAP.md è già questo, va solo ripulito dal linguaggio di sessione.
-
-Fase 3 — decisioni (mezza giornata di discussione):
-9. PDF: finire o congelare?
-10. SVG: solo to_svg in uscita, o anche in ingresso?
-11. detect() inferenza engrave: serve davvero o label_map basta?
-
-Fase 4 — consolidamento modello (2-3 giorni, opzionale ma paga):
-12. fondere ClosedShape/OpenShape con ClosedFeature/OpenFeature
-13. un solo dispatcher entità→primitiva negli adapter
-14. ridurre inject alla parte non ridondante
-
-Dopo la Fase 2 il progetto è spiegabile e usabile da un terzo. Fase 1+2 sono ~3 giorni.
-
+Da fare, in ordine:
+1. Riscrittura degli script numerati alla radice — uno per funzione di
+   `forge.__all__`, default su `tests/examples/` (D14).
+2. `to_svg` (D12).
+3. `detect_engrave` (D13) — quando Federico decide.
+4. Merge di `refactor/structure` in `main`.
+5. Dashboard — **repo separata** (D16), consuma `forge` come libreria.
 
 ---
 
-# DECISIONI CHIUSE — 2026-08-28
+## DECISIONI CHIUSE
 
-Prese in conversazione con Federico. Non si riaprono: se una va rimessa in
-discussione, si dice "stiamo riaprendo la decisione N", non la si re-decide da capo.
-
-### D1 — Nome libieria: resta `forge` (per ora)
+### D1 — Nome libreria: resta `forge` (per ora)
 `heal` come nome package è stato valutato e scartato (`from heal import heal`
-suona male). `dxf-forge` è fuorviante (troppo legato al formato) ma il rename si
-rimanda. Package importabile resta `forge`.
+suona male). `dxf-forge` è fuorviante — troppo legato al formato, mentre il punto
+è che il modello è format-agnostic — ma il rename si rimanda. Package importabile:
+`forge`.
 
-### D2 — Funzione pipeline comune: `heal_and_detect(doc)`  ✅ FATTO (Fase 3)
-Nuova funzione top-level che fa `heal → detect` e ritorna il `ForgeResult`. È la
-via del 90% dei chiamanti, va nel README. `heal()` e `detect()` restano funzioni
-separate e pubbliche (un renderer o un nesting tool possono volere la sola
-topologia). Nome esplicito e un po' goffo di proposito — scelta umana, non
-"process". Implementata in `forge/pipeline/__init__.py`, esportata in `__all__`.
-`detect()` saltato se `heal()` non produce parti valide.
+### D2 — `heal_and_detect(doc)` come funzione della via del 90%  ✅
+Funzione top-level che fa `heal → detect` e ritorna il `ForgeResult`. Va nel
+README. `heal()` e `detect()` restano separate e pubbliche: un renderer o un
+nesting tool possono volere la sola topologia. Nome esplicito e un po' goffo di
+proposito — scelta umana, non "process". `detect()` viene saltato se `heal()` non
+produce parti valide.
 
-### D3 — `detect()` / `inject()` ritornano il result  ✅ FATTO (Fase 3)
-`detect()` e `inject()` non ritornano più `None`: ritornano il `ForgeResult` (lo
-stesso oggetto, mutato) così la catena è esplicita: `result = forge.detect(result)`.
-Nessun test dipendeva dal `None`. Docstring di `inject.py` ripulite (erano su API
-morta `inject(msp, result)` / `part.geometry_hints`).
+### D3 — `detect()` / `inject()` ritornano il result  ✅
+Non ritornano più `None`: ritornano il `ForgeResult` (lo stesso oggetto, mutato)
+così la catena è esplicita: `result = forge.detect(result)`. Nessun test
+dipendeva dal `None`.
 
-### D4 — `OpenShape` / `ClosedShape` (bridge): ELIMINATI  ✅ FATTO (sessione 2026-08-29, non committato)
-`heal` produce direttamente `OpenFeature` / `ClosedFeature`. `bridge/shape.py`
-eliminato. `OpenFeature` / `ClosedFeature` (model/feature.py) TENUTI: la
-distinzione "ha polygon / non ce l'ha" è onesta e dà `area`/`bbox` gratis.
+### D4 — `OpenShape` / `ClosedShape` (bridge) eliminati  ✅
+`heal` produce direttamente `OpenFeature` / `ClosedFeature`; `bridge/shape.py`
+cancellato. `pts` / `length` / `shape_type` ora derivati dai segmenti nativi via
+`core/geometry.py` (`track_points` / `track_length` / `track_shape_type`).
+`OpenFeature` / `ClosedFeature` (`model/feature.py`) **tenuti**: la distinzione
+"ha polygon / non ce l'ha" è onesta e dà `area` / `bbox` gratis. È stato il
+cambiamento più invasivo della Fase 4 — fatto sub-step per sub-step con la suite
+golden come rete.
 
-**Sub-step (suite come rete, ogni step verde prima del successivo):**
-- D4.0 baseline — 550 passed ✅
-- D4.1 helper `track_points`/`track_length`/`track_shape_type` in
-  `core/geometry.py`, usati dai 2 produttori attuali (inerte) ✅ — 554 passed
-- D4.2 `ClosedFeature` + `diameter`/`center` opzionali; `heal` emette
-  `ClosedFeature` (`loop_to_closed_shape` → `loop_to_closed_feature`);
-  `hierarchy` interno su `ClosedFeature` (inerte) ✅ — 554 passed
-- D4.3 fix `Hole(role="inner")` — **SALTATO**: dipende dalla classificazione in
-  `hierarchy`, che D15 sposterà in `detect`. Il bug resta, lo chiude D15.
-- D4.4 `heal` emette `OpenFeature` (`edges_to_open_shapes` →
-  `edges_to_open_features`); `detect`/`write._write_trash`/`inspect` usano gli
-  helper `track_*` invece di `.pts`/`.length`/`.shape_type` ✅ — 554 passed
-- D4.5 eliminato `bridge/shape.py`; `bridge/__init__` tiene solo `Edge`; tolto
-  lo shim `ClosedShape`/`OpenShape` da `model/__init__`; docstring aggiornate
-  (`role.py`, `adapter_base.py`, `graph.py`, `ARCHITECTURE.md`);
-  `test_hierarchy_builder.py` costruisce `ClosedFeature`/`OpenFeature` diretti.
-  `dev_tools/12` fuori scope (rotto, lo sistema Federico). ✅ — 554 passed
-- D4.6 verifica finale: 554 passed, golden 145/145, bridge assente ovunque
-  tranne `dev_tools/12`. ✅
-
-Campi buttati: `pts`/`length`/`shape_type` (ora derivati dagli helper `track_*`),
-`origin`, `shape_type` lato closed. `ClosedFeature.diameter`/`center` **rimossi
-in D15** (la geometria circolare la ricava `core/geometry.circular_geometry`).
-
-**NB residuo per D15: CHIUSO.** D15 (2026-08-29) ha spostato tutta la
-classificazione hole/inner in `detect()` parametrico; `heal` emette solo
-l'albero di contenimento.
-**Superficie:** `OpenShape`/`ClosedShape` portano campi extra che `OpenFeature`/
-`ClosedFeature` non hanno — `pts`, `length`, `shape_type` (open), `diameter`,
-`center` (closed). Li consumano `hierarchy.py` (diameter/center per la
-classificazione fori), `detect.py` (pts/length/shape_type per le pieghe),
-`write.py::_write_trash`, `inspect.py`. Eliminare i proxy richiede: aggiungere
-quei campi a `OpenFeature`/`ClosedFeature` **oppure** far derivare i consumatori
-(pts da `segments[i].discretize()`, diameter/center dal `polygon.bounds`). Tocca
-`heal.py`, `hierarchy.py`, `loop_finder.edges_to_open_shapes`,
-`heal._labeled_proxies`, `detect.py`, `write.py`, più i test
-`test_hierarchy_builder.py` / `test_models.py`. È il cambiamento più invasivo
-della Fase 4 — va fatto in una sessione dedicata, sub-step per sub-step con la
-suite golden come rete.
-
-### D5 — `source` / `confidence` su `BendingLine`  ✅ FATTO (Fase 4)
-`Hole`, `Engraving`, `BendingLine`, `ClassifiedEntity` restano tutte (4 intenti
-di fabbricazione con consumatori diversi). `BendingLine` ora ha `source: str` e
-`confidence: float` (default `""` / `1.0`), esposti in `to_dict()`. Popolati in
-`detect.py`: lane geometrica → `source="geometric"`, `confidence=0.9`; lane
-label_map → `source="labeled"`, `confidence=1.0`. NIENTE gerarchia con
-ereditarietà multipla — convenzione, non una torre di classi. `ClassifiedEntity`
-resta fuori dalla gerarchia `Feature` per scelta (via di fuga dict-based).
-Nota: i default a livello dataclass variano ancora un filo tra i 3 tipi
-(`Hole.confidence` default 0.0 = sentinella "non ancora tipato"); l'invariante è
-"dopo `detect()`, ogni feature ha `source` + `confidence` sensati".
+### D5 — `source` / `confidence` sulle feature rilevate  ✅
+`Hole`, `Engraving`, `BendingLine`, `ClassifiedEntity` restano tutte e quattro:
+sono quattro intenti di fabbricazione con consumatori diversi. Ognuna porta
+`source: str` e `confidence: float`, popolati in `detect.py`: lane geometrica →
+`source="geometric"`, lane `label_map` → `source="labeled"` / `confidence=1.0`.
+**Niente gerarchia con ereditarietà multipla** — è una convenzione, non una torre
+di classi. `ClassifiedEntity` resta fuori dalla gerarchia `Feature` per scelta
+(via di fuga dict-based). Invariante: dopo `detect()`, ogni feature ha `source` +
+`confidence` sensati.
 
 Struttura finale del modello:
 ```
@@ -485,197 +99,136 @@ Feature (role)
 ├── ClosedFeature (polygon, segments) → ForgeContour, Hole
 └── OpenFeature   (segments)          → Engraving, BendingLine
 ClassifiedEntity  → catch-all dict-based, fuori gerarchia per scelta
-feature "rilevate" → campi source + confidence identici (Hole/Engraving/BendingLine[/ClassifiedEntity])
 ```
 
-### D6 — `parse_loop`: rinominare e spostare  ✅ FATTO (Fase 4)
-`parse_loop` → `segments_from_loop`, spostata da `adapters/dxf/parser.py` a
-`core/topology/loop_finder.py` (logica di dominio pura). `_reverse_segment`
-rimosso: ora `LineSeg`/`ArcSeg`/`CircleSeg` hanno `.reversed()` come `SplineSeg`.
-`heal.py` e il test `test_parsing_and_exporting.py` aggiornati.
+### D6 — `parse_loop` → `segments_from_loop`  ✅
+Rinominata e spostata da `adapters/dxf/parser.py` a
+`core/topology/loop_finder.py` (logica di dominio pura, non parsing DXF).
+`_reverse_segment` rimosso: `LineSeg` / `ArcSeg` / `CircleSeg` hanno `.reversed()`
+come `SplineSeg`.
 
-### D7 — Un solo dispatcher entità→primitiva  ✅ FATTO (Fase 4)
+### D7 — Un solo dispatcher entità→primitiva  ✅
 `parser.py::DxfEntityDispatcher` e `adapter.py::entity_to_primitive` erano due
-copie quasi identiche della stessa traduzione. Ora una sola
-(`DxfEntityDispatcher`), usata da produzione E test. Rimossi da `adapter.py`:
-`entity_to_primitive`, `_spline_to_primitive`, `_polyline_to_primitives`,
-`_bulge_to_arc`, `_vec3_to_tuple`. `geometry_adapter.entity_to_polygon` ora usa
-il dispatcher. **Bug latente scoperto e corretto:** `ArcSeg.from_chord` sbagliava
-gli archi maggiori (`|bulge| > 1`, sweep > 180°) — usava
-`sqrt(r² - half_chord²)` (sempre positivo → sempre arco minore) invece di
-`r·cos(sweep/2)` (con segno). Era mascherato perché la produzione usava il
-`_bulge_to_arc` corretto di `adapter.py`. 5 golden roundtrip lo hanno preso
-appena unificato il dispatcher.
+copie quasi identiche. Ora una sola (`DxfEntityDispatcher`), usata da produzione
+**e** test. **Bug latente scoperto e corretto:** `ArcSeg.from_chord` sbagliava
+gli archi maggiori (`|bulge| > 1`, sweep > 180°) — usava `sqrt(r² - half_chord²)`
+(sempre positivo → sempre arco minore) invece di `r·cos(sweep/2)` (con segno).
+Era mascherato perché la produzione usava il `_bulge_to_arc` corretto di
+`adapter.py`. 5 golden roundtrip lo hanno preso appena unificato il dispatcher.
 
-### D8 — `inject()` sgonfiato  ✅ FATTO (Fase 4)
+### D8 — `inject()` sgonfiato  ✅
 I conteggi feature (fori per tipo, pieghe, incisioni, marking) sono ora
 `ForgePart.summary`, property derivata dal modello — non più copiati in
 `part.custom` da `inject()`. `inject()` resta solo per il `data_injector` esterno
-(materiale/spessore/codice dai testi); senza `data_injector` non fa nulla.
-`exporter.build_metadata` legge i conteggi da `part.summary`. **Equivalenza
-provata prima di toccare i fixture** (`golden-files-verify-before-regenerating`):
-uno script ha verificato `part.summary == inject().part.custom` su tutte le 63
-parti golden, 0 mismatch. Poi migrati i 46 fixture con un rename chirurgico
-`"custom"` → `"summary"` (63 righe cambiate, valori invariati, nient'altro
-toccato). Test aggiornati: `test_golden.py`, `test_golden_split.py`,
-`test_injector.py`, `test_pipeline.py`, `test_special_layers.py`,
-`test_helpers.get_custom`. Nuovo `tests/unit/test_part_summary.py` (unit +
-prova di equivalenza permanente coi fixture). Output JSON di `save_json`
-invariato. Suite: **550 passed**.
+(materiale / spessore / codice dai testi); senza `data_injector` non fa nulla.
+Equivalenza provata prima di toccare i fixture (`part.summary ==
+inject().part.custom` su tutte le 63 parti golden, 0 mismatch), poi rename
+chirurgico `"custom"` → `"summary"` nei fixture.
 
-### D9 — L'inspector diventa strumento a 3 livelli
-`dxf_inspect.py` → `forge/inspect.py`, esportato. Oggi è mezzo rotto
-(`edges_from_msp`, `dxf_forge.core.graph`, `entity.layer` — API morte). Va fixato
-e potenziato per stampare TRE livelli:
-1. entità DXF grezze (già fa) — "cosa c'è nel file"
-2. primitive / edge / grafo dopo `load_dxf` — "cosa ha capito l'adapter"
-3. il modello dopo `heal`/`detect` — parti, fori tipati, pieghe, incisioni,
-   trash, annotazioni — "cosa ha prodotto forge"
-Serve per lavorare su file reali (es. quando si implementerà `detect_engrave`).
+### D9 — L'inspector diventa strumento a 3 livelli  ✅
+`dxf_inspect.py` (morto, import rotti) → `forge/inspect.py`, esportato. Stampa
+tre livelli: (1) entità DXF grezze — "cosa c'è nel file"; (2) primitive / edge /
+grafo dopo `load_dxf` — "cosa ha capito l'adapter"; (3) il modello dopo
+`heal` / `detect` — "cosa ha prodotto forge". Serve per lavorare su file reali
+(es. quando si implementerà `detect_engrave`).
 
-### D10 — `load_pdf` congelato
-Ritorna `list[Edge]`, non un `ForgeDocument` → `forge.heal()` lo rifiuta. Si
-toglie da `__all__` e si marca `_experimental`. Il codice NON si tocca. PDF si
-riprende più avanti (o mai).
+### D10 — `load_pdf` congelato  ✅
+Ritorna `list[Edge]`, non un `ForgeDocument` → `forge.heal()` lo rifiuta. Tolto
+da `__all__`, marcato sperimentale. Il codice **non si tocca**. Resta importabile
+come `forge.load_pdf`. PDF si riprende più avanti (o mai).
 
-### D11 — Versione: unico punto = `pyproject.toml`
-`forge.__version__` la legge con `importlib.metadata.version(...)`. Non si
-aggiorna più niente a mano tranne il `pyproject`.
+### D11 — Versione: unico punto = `pyproject.toml`  ✅
+`forge.__version__` la legge con `importlib.metadata.version("forge")`, fallback
+`0.0.0+dev`. Non si aggiorna più niente a mano tranne il `pyproject`.
 
 ### D12 — SVG: solo in uscita, spline discretizzate
-`to_svg(result)` renderer del modello, spline flattenate a polilinea (accettabile
-per SVG — serve per una futura interfaccia, non per il taglio). NIENTE
-`SvgAdapter` in ingresso finché non arriva un file SVG reale. Cartella
-`adapters/svg/` vuota → si toglie finché non c'è dentro qualcosa.
+`to_svg(result)` è un renderer del modello; le spline vengono appiattite a
+polilinea (accettabile per SVG — serve per una futura interfaccia, non per il
+taglio). **Niente `SvgAdapter` in ingresso** finché non arriva un file SVG reale.
+La cartella `adapters/svg/` vuota si toglie finché non c'è dentro qualcosa.
+Ancora da implementare.
 
 ### D13 — `detect_engrave`: rimandato
-`_detect_engrave` resta placeholder no-op. Federico lo implementerà dopo aver
-fatto ordine. Il seam nella pipeline `detect()` c'è già.
+`_detect_engrave` resta placeholder no-op. Il seam nella pipeline `detect()` c'è
+già (parametro `engrave_tolerance`, chiamata in `detect()`). Quando implementato:
+guarda `part.inners` con role UNKNOWN e `result.trash_entities`, promuove a
+`Engraving(source="geometric")` i pattern riconoscibili (es. due polilinee
+~parallele a distanza < tolerance → incisione, non foro). Federico lo
+implementerà dopo aver fatto ordine.
 
-### D14 — Script numerati alla radice: restano
-Federico li usa. Al massimo si aggiunge `.gitignore` per i loro output
-(`*_healed.dxf`, `*.png`, `pipeline_output/`, `_split_debug/`).
+### D14 — Script numerati alla radice: restano, ma si riscrivono
+Federico li usa come palestra per capire l'API. Decisione aggiornata (2026-08-29):
+non solo si tengono, si **riscrivono e rinumerano** — idealmente uno script per
+ogni funzione di `forge.__all__`, con un `INPUT` di default che punti a
+`tests/examples/` così girano senza configurazione. `.gitignore` copre già i loro
+output (`*_healed.dxf`, `*.png`, `pipeline_output/`, `_split_debug/`).
+`13_ARC_splitter` è **fuori da questo lavoro**: è codice di produzione su file
+cliente, va portato alla nuova API in una sessione dedicata e collaudato da
+Federico con il suo overlay-check in SigmaNest.
 
-### D15 — `detect()` parametrico + classificazione hole spostata lì  ✅ FATTO (sessione 2026-08-29, non committato)
-Deciso 2026-08 (con Federico, dopo aver oscillato — vedi Q1). NON si esegue
-dentro la sessione D4: è una decisione a sé, va progettata a mente fredda.
+### D15 — `detect()` parametrico + classificazione hole spostata lì  ✅
+Principio: `HOLE_DIAMETER_THRESHOLD` (32.1 mm) è un **parametro di processo** —
+la capacità di foratura della macchina/utensile — non una costante di dominio. I
+parametri di processo appartengono alla chiamata di classificazione, non alla
+topologia.
 
-Principio: `HOLE_DIAMETER_THRESHOLD` è un **parametro di processo** (capacità
-di foratura della macchina/utensile), non una costante di dominio. I parametri
-di processo appartengono alla chiamata di classificazione, non alla topologia.
-Quindi tutta la classificazione hole/inner si sposta in `detect()`.
+Forma finale:
+- `heal` produce **solo** l'albero di contenimento:
+  `ForgePart(outer, inners=[ForgeContour...])`, zero `Hole`.
+- `detect()` è parametrico:
+  - `detect(result)` nudo → default taglio laser: solo lane `label_map`
+    (autoritativa) + pulizia topologia, zero `Hole`;
+  - `detect(result, "holes" | "bending" | "engrave" | "all")` → lane geometriche
+    opt-in;
+  - `max_drill_diameter` (default 32.1) è argomento di `detect()`: Ø < soglia →
+    `Hole`, Ø ≥ soglia → resta `ForgeContour` inner.
+- `heal_and_detect(..., features="all")` è la via del 90%.
+- `ClosedFeature.diameter` / `center` rimossi: la geometria circolare la ricava
+  `core/geometry.circular_geometry`.
 
-Forma target:
-- `heal` produce solo l'albero di contenimento:
-  `ForgePart(outer, inners=[ForgeContour...])`, **zero `Hole`**.
-- `detect()` diventa parametrico — il chiamante sceglie cosa rilevare e con
-  quali tolleranze:
-  - `detect(result)` → default taglio laser: niente, solo topologia pulita
-  - `detect(result, holes=True)` → solo fori piatti (`Ø < max_drill_diameter`)
-  - `detect(result, features=ALL, bending_tolerance=..., engrave_tolerance=...,
-    max_drill_diameter=...)` → tutto
-- `diameter` / `center` calcolati da `detect` sull'oggetto `Hole`, non più
-  portati da `ClosedFeature` (i 2 campi aggiunti in D4.2 si tolgono qui).
+Prova di equivalenza su tutti i golden (`features="all"`): diff **solo** su 7
+file, dove cerchi Ø ≥ 32.1 migrano da `Hole(role="inner")` a
+`ForgeContour(role=INNER)` — che è il comportamento voluto. Golden rigenerati uno
+per uno, diff verificato a mano.
 
-Effetti collaterali quando D15 atterra:
-- il bug `Hole(role="inner")` sparisce da solo (nessun `Hole` da `hierarchy`) —
-  per questo D4.3 è stato saltato in D4
-- Q1 e Q2 chiuse
-- golden hole/inner rigenerati una volta sola (in D15, non in D4)
+Effetto collaterale: il vecchio bug `Hole(role="inner")` prodotto da `hierarchy`
+sparisce da solo (nessun `Hole` da `hierarchy`).
 
 Riferimento: memoria `hole-classification-belongs-in-detect`.
 
+### D16 — Dashboard: repo separata, non branch
+Una eventuale dashboard / interfaccia è un'**app** con dipendenze proprie (web
+server o toolkit GUI), ciclo di release diverso, e non deve inquinare la repo
+della libreria. Va in una repo a sé che fa `pip install forge` (o `-e` in
+sviluppo), come già `snapmark`. I prototipi in `dev_tools/` (`dashboard.py`,
+`dashboard_2.py`, `split_verify*.py`, `dxf_kernel*.py`) sono il punto di
+partenza, si portano lì. Un branch andrebbe bene solo per un prototipo
+usa-e-getta dentro questa stessa storia.
+
+### D17 — La posizione XY del mondo è preservata (invariante, non decisione)
+Registrato qui perché è una garanzia su cui si appoggia il flusso di produzione
+(split → import in SigmaNest → overlay dell'originale per il registration check).
+La pipeline **non trasla mai** la geometria: `load_dxf` sanifica l'OCS
+(`normalize_ocs`: gira il vettore di estrusione senza alterare la geometria in
+WCS) e appiattisce la Z; `heal` tocca solo gli endpoint per chiudere i gap;
+`to_dxf` / `split` scrivono `center` / `pts` dei segmenti verbatim. Ogni parte
+splittata atterra alla stessa coordinata XY assoluta della sorgente. **Unica
+perdita voluta:** la Z viene appiattita a 0 (corretto per lamiera/laser).
+`test_golden_split` blocca questo invariante — confronta l'`outer_wkt` con
+coordinate assolute, un ricentraggio lo farebbe fallire.
+
 ---
 
-## QUESTIONI APERTE
+## QUESTIONI CHIUSE (storico)
 
-### Q1 — classificazione hole: topologia o detection?  → RISOLTA da D15
-Prima ipotesi (scartata): la classificazione hole/inner resta in `heal`/
-`hierarchy`. Problema: `heal` da solo impegnerebbe la semantica hole/inner,
-non più saltabile, contro `laser-cutting-default-cam-enrichment-optional`.
-Risoluzione: la classificazione si sposta in `detect()` parametrico — vedi D15.
-
-### Q2 — valore di `HOLE_DIAMETER_THRESHOLD`  → RISOLTA da D15
-`32.1` mm ora è il **default** di `detect(max_drill_diameter=...)` — parametro
-di processo, non costante di dominio. Federico (2026-08-29): lascia `32.1` di
-default per ora ("io ragiono sui fori che magari hanno tolleranza e devono
-essere ripassati"). La costante resta in `rules/thresholds.py` come sorgente del
-default; il chiamante la può override per macchina/utensile.
-
----
-
-## ORDINE DI ESECUZIONE CONCORDATO
-
-**Fase 1 — igiene** ✅ FATTO (non committato — commit li fa Federico):
-- (a) versione unica (D11): `pyproject.toml` = `0.5.1` (unica fonte);
-      `forge.__version__` la legge via `importlib.metadata.version("forge")`
-      con fallback `0.0.0+dev`. Editable reinstallato come `forge 0.5.1`,
-      rimosso lo stale `dxf-forge 0.3.0` + `dxf_forge.egg-info`. `.gitignore`
-      già a posto, `.venv` non era tracciato. `LICENSE`: rimandato (scelta utente).
-- (b) ✅ fix import rotto `write_metadata_to_dxf` / `read_metadata_from_dxf`
-      (`from ..rules.layers` → `from ..adapters.dxf.layers`) in `io/exporter.py`.
-      Nuovo test `tests/unit/test_metadata_xdata.py` (2 test).
-- (c) ✅ `load_pdf` fuori da `__all__`, commento SPERIMENTALE (D10). Resta
-      importabile come `forge.load_pdf` (lo usa lo script `18_pdf_healing.py`).
-- (d) ✅ inspector a 3 livelli (D9): `forge/dxf_inspect.py` (morto, import
-      rotti) eliminato → nuovo `forge/inspect.py`. Funzioni: `inspect_dxf`
-      (livello 1), `inspect_document` (livello 2: edge + primitive + grafo),
-      `inspect_result` (livello 3: il modello), `inspect_file` (orchestratore).
-      Esportate in `__all__`. Smoke test `tests/unit/test_inspect.py` (3 test).
-
-Suite dopo Fase 1: **531 passed / 0 failed** (era 526).
-
-Script già rotti su API vecchia, NON toccati (fuori scope, D14): `14_preprocessing_healing.py`,
-`18_pdf_healing.py` (usano `forge.validate_msp`, `forge.heal(msp, ...)`,
-`forge.detect(result, msp)`, `forge.write(msp, ...)`, `edge.geometry` — tutta API
-morta). Da sistemare o cestinare quando Federico ci torna sopra.
-
-**Fase 2 — documentazione** ✅ FATTO (non committato):
-- `README.md` riscritto (EN, shop-window): cos'è, install, quick start singolo +
-  multi-pezzo, `label_map`, diagramma pipeline, tabella layer output, inspector,
-  geometria supportata, limiti noti. Rimanda a `docs/`.
-- `README_IT.md` riscritto (IT, quick start + puntatori a `docs/` — niente più
-  mirror completo da tenere in sync).
-- `docs/API.md` (IT): ogni nome di `forge.__all__` — firma reale, prende/ritorna,
-  **cosa muta**, quando solleva, esempio copiabile. + tipi di dominio + flusso
-  completo in ordine. È il documento per spiegare `forge` a qualcuno.
-- `docs/ARCHITECTURE.md` (IT): l'idea in una frase, "il prodotto è il modello",
-  i 4 strati + regola di dipendenza, il flusso passo-per-passo, i 2 concetti
-  ricorrenti (tolleranza, doppio binario feature), "cosa non è ancora pulito"
-  (rimanda a D4–D10).
-- Tutti gli esempi delle doc verificati con uno smoke reale su
-  `rettangolo_raggiato.dxf`: passano.
-
-Suite invariata: **531 passed**.
-
-**Fase 3 — API surface** ✅ FATTO (non committato):
-- `heal_and_detect(doc, ...)` (D2) — `forge/pipeline/__init__.py`, in `__all__`.
-- `detect()` e `inject()` ritornano il `ForgeResult` (D3), non più `None`.
-- Docstring di `inject.py` riscritte (erano su API morta).
-- Doc aggiornate: `README.md`, `README_IT.md`, `docs/API.md` (nuova sezione
-  `heal_and_detect`, note "in arrivo" rimosse), `docs/ARCHITECTURE.md`.
-- `forge/__init__.py` docstring del modulo aggiornata.
-Suite: **531 passed** (invariata — nessun test dipendeva dal `None`).
-
-**Fase 4 — consolidamento** ✅ CONCLUSA (non committato):
-- ✅ D5 — `source`/`confidence` su `BendingLine` + lane geometrica/label_map.
-- ✅ D6 — `parse_loop` → `segments_from_loop` in `core/topology/`; `.reversed()`
-      su `LineSeg`/`ArcSeg`/`CircleSeg`.
-- ✅ D7 — un solo dispatcher (`DxfEntityDispatcher`); rimossa la copia in
-      `adapter.py`. **+ fix bug archi maggiori in `ArcSeg.from_chord`.**
-- ✅ D8 — conteggi feature → `ForgePart.summary` (property derivata); `inject()`
-      resta solo per il `data_injector` esterno. Equivalenza provata sui 63 part
-      golden prima di migrare i fixture (`custom` → `summary`, rename chirurgico).
-- ✅ D4 — `OpenShape`/`ClosedShape` eliminati (sessione 2026-08-29, non
-      committato). `heal` emette `OpenFeature`/`ClosedFeature`. D4.3 saltato
-      (→ D15). 554 passed, golden 145/145. Dettaglio sub-step nella scheda D4.
-- ✅ D15 — `detect()` parametrico; classificazione hole/inner + `max_drill_diameter`
-      spostati da `hierarchy` a `detect()`. `heal` emette solo l'albero di
-      contenimento. `ClosedFeature.diameter`/`center` rimossi. 7 golden
-      rigenerati (cerchi Ø ≥ 32.1: `Hole(role=inner)` → `ForgeContour`).
-      Vedi scheda D15 + "Ultima sessione".
-
-Suite dopo D5+D6+D7+D8: **550 passed**. Dopo D4+D15: **550 passed**.
-`forge/adapters/dxf/` da 2914 → ~2500 righe (adapter.py -210).
-
-**Dopo:** `to_svg` (D12), poi `detect_engrave` (D13) quando Federico decide.
+- **Q1 — classificazione hole: topologia o detection?** → risolta da D15
+  (detection, `detect()` parametrico). L'ipotesi scartata era tenerla in
+  `heal` / `hierarchy`: avrebbe impegnato `heal` sulla semantica hole/inner,
+  rendendolo non più saltabile, contro
+  `laser-cutting-default-cam-enrichment-optional`.
+- **Q2 — valore di `HOLE_DIAMETER_THRESHOLD`** → risolta da D15. `32.1` mm è ora
+  il **default** di `detect(max_drill_diameter=...)`, non una costante di
+  dominio. Federico: lascia `32.1` per ora ("ragiono sui fori che magari hanno
+  tolleranza e devono essere ripassati"). La costante resta in
+  `rules/thresholds.py` come sorgente del default; il chiamante la può override
+  per macchina/utensile.

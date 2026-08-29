@@ -11,7 +11,22 @@
       "quantity": 1,
       "material": "S275JR",
       "thickness_mm": 0.0,
-      "bending_lines": 2,
+      "bending_lines": [
+        {
+          "start": [
+            380.0,
+            215.304
+          ],
+          "end": [
+            380.0,
+            135.305
+          ],
+          "length": 79.999,
+          "angle_deg": 90.0,
+          "confidence": 1.0,
+          "source": "labeled"
+        }
+      ],
       "countersink_count": 10,
       "threaded_holes_count": 7,
       "total_engrave_length_mm": 29.574,

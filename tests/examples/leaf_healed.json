@@ -14,7 +14,7 @@
       "bending_lines": 0,
       "countersink_count": 0,
       "threaded_holes_count": 0,
-      "total_engrave_length_mm": 0.0,
+      "total_engrave_length_mm": 0,
       "area_mm2": 1157.0166,
       "holes_count": 0,
       "inner_contours_count": 0,

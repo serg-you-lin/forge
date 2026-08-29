@@ -59,7 +59,7 @@ from .io.exporter         import (
     set_schema,
 )
 from .model         import ForgeResult, ForgePart, ForgeContour, ForgeDocument, Annotation
-from .io.text_utils       import extract_texts_from_msp
+from .io.text_utils       import extract_texts_from_msp, extract_forge_texts
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -100,6 +100,7 @@ __all__ = [
     "set_schema",
     # Utilità
     "extract_texts_from_msp",
+    "extract_forge_texts",
     # Ispezione / debug (3 livelli: DXF grezzo → ForgeDocument → ForgeResult)
     "inspect_dxf",
     "inspect_document",
