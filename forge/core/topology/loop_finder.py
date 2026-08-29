@@ -179,50 +179,41 @@ def segments_from_loop(loop) -> list:
 
 
 # ---------------------------------------------------------------------------
-# Edge → OpenShape — tracce non consumate da loop strutturali
+# Edge → OpenFeature — tracce non consumate da loop strutturali
 # ---------------------------------------------------------------------------
 
-def edges_to_open_shapes(edges: list, exclude_ids: set, label_map: dict) -> list:
+def edges_to_open_features(edges: list, exclude_ids: set, label_map: dict) -> list:
     """
-    Converte gli Edge non assorbiti da un loop strutturale in OpenShape.
+    Converte gli Edge non assorbiti da un loop strutturale in OpenFeature.
 
     Opera esclusivamente su Edge (role semantico, segmento nativo) —
     zero dipendenze da ezdxf o altro formato.
-    Sostituisce l'uso di adapter.to_open(): la classificazione geometrica
-    (pts/length/role) appartiene al core, non all'adapter.
+
+    L'OpenFeature porta solo `role` + `segments` (primitive native). `pts`,
+    `length`, `shape_type` sono valori derivati: chi li consuma (detect,
+    write._write_trash, inspect) li ricava dai segmenti con gli helper
+    `track_*` di `core.geometry`.
 
     Args:
         edges:       lista di Edge prodotta da adapter.to_edges()
         exclude_ids: id(Edge) già assorbiti in loop strutturali
         label_map:   {nome_layer: work_type} — tradotto in ContourRole
     """
-    from ...adapters.bridge.shape import OpenShape
+    from ...model.feature import OpenFeature
+    from ...core.primitives.segments import LineSeg
+    from ...core.geometry import track_points
 
-    def _length(pts) -> float:
-        return sum(
-            math.hypot(pts[i+1][0]-pts[i][0], pts[i+1][1]-pts[i][1])
-            for i in range(len(pts)-1)
-        )
-
-    shapes = []
+    features = []
     for edge in edges:
         if id(edge) in exclude_ids:
             continue
         if edge.start == edge.end:
             continue
 
-        pts = edge.segment.discretize() if edge.segment else [edge.start, edge.end]
-        if len(pts) < 2:
+        seg = edge.segment or LineSeg(start=edge.start, end=edge.end)
+        if len(track_points([seg])) < 2:
             continue
 
-        shape_type = "line" if len(pts) == 2 else "curve"
+        features.append(OpenFeature(role=edge.role, segments=[seg]))
 
-        shapes.append(OpenShape(
-            pts=pts,
-            length=_length(pts),
-            role=edge.role,
-            shape_type=shape_type,
-            segments=[edge.segment] if edge.segment else [],
-        ))
-
-    return shapes
+    return features

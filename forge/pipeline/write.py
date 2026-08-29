@@ -310,14 +310,17 @@ def _emit_annotation(msp, ann: Annotation, annotation_layer: Optional[str]) -> N
 
 def _trash_probe_point(trash) -> Optional[tuple]:
     """Punto rappresentativo di un'entità trash, per assegnarla a una parte."""
-    pts = getattr(trash, "pts", None)
+    from ..core.geometry import track_points
+
+    poly = getattr(trash, "polygon", None)
+    if poly is not None:
+        c = poly.representative_point()
+        return (c.x, c.y)
+
+    pts = track_points(getattr(trash, "segments", []) or [])
     if pts:
         mid = pts[len(pts) // 2]
         return (mid[0], mid[1])
-    for seg in getattr(trash, "segments", []) or []:
-        start = getattr(seg, "start", None) or getattr(seg, "center", None)
-        if start is not None:
-            return (start[0], start[1])
     return None
 
 
@@ -359,15 +362,6 @@ def _write_trash(
         segments = list(getattr(trash, "segments", []) or [])
         if segments:
             write_open_segments(segments, msp, TRASH_LAYER)
-            continue
-
-        pts = getattr(trash, "pts", None)
-        if pts and len(pts) >= 2:
-            msp.add_lwpolyline(
-                [(x, y) for x, y in pts],
-                dxfattribs={"layer": TRASH_LAYER, "color": 256},
-                close=False,
-            )
 
 
 # ---------------------------------------------------------------------------

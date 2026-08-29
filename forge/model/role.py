@@ -2,7 +2,8 @@
 model/role.py
 
 Ruolo semantico di una forma nel contesto manifatturiero.
-Unica fonte di verità — usato da ClosedShape, OpenShape, detect.py.
+Unica fonte di verità — usato da model/feature.py (ClosedFeature/OpenFeature),
+hierarchy.py, detect.py.
 
 layer_to_role() è la mappatura pura stringa→ruolo (nessuna dipendenza
 da ezdxf o altro formato) — usata dal core (loop_finder, hierarchy)

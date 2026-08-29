@@ -45,9 +45,16 @@ class ClosedFeature(Feature):
 
     Il polygon è prodotto dall'adapter (o dal polygon_builder) e passato
     al costruttore — il core non lo ricalcola mai.
+
+    `diameter` / `center` sono valorizzati solo quando il loop è una singola
+    primitiva ~circolare (tipicamente un CIRCLE): li calcola `hierarchy` al
+    momento della costruzione e servono alla regola strutturale
+    `Ø < HOLE_DIAMETER_THRESHOLD → hole`. `None` per ogni altro contorno.
     """
     polygon:  Polygon                          = field(default=None)
     segments: List[LineSeg | ArcSeg | SplineSeg] = field(default_factory=list)
+    diameter: Optional[float]                   = None
+    center:   Optional[Tuple[float, float]]     = None
 
     @property
     def area(self) -> float:

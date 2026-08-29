@@ -41,7 +41,4 @@ def __getattr__(name):
     if name == "Edge":
         from ..adapters.bridge.edge import Edge
         return Edge
-    if name in {"ClosedShape", "OpenShape"}:
-        from ..adapters.bridge.shape import ClosedShape, OpenShape
-        return {"ClosedShape": ClosedShape, "OpenShape": OpenShape}[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

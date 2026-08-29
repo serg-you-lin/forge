@@ -117,6 +117,47 @@ def group_collinear_lines(lines: list, tolerance: float = 0.1) -> list:
 
 
 # ---------------------------------------------------------------------------
+# Tracce aperte — vertici / lunghezza / tipo da segmenti nativi
+# ---------------------------------------------------------------------------
+# Una traccia aperta (bending line, incisione, frammento non chiuso) nel modello
+# è una lista di segmenti nativi (LineSeg / ArcSeg / SplineSeg / CircleSeg).
+# `pts`, `length`, `shape_type` sono valori DERIVATI da quei segmenti: qui, non
+# stoccati sul modello. Chi li consuma — detect(), write._write_trash,
+# inspect() — li ricava con queste funzioni.
+
+def track_points(segments, tolerance: Optional[float] = None) -> List[Point]:
+    """
+    Vertici di una traccia aperta come catena di segmenti nativi.
+
+    Concatena `seg.discretize()` di ogni segmento, deduplicando il vertice
+    condiviso alla giunzione fra un segmento e il successivo.
+    """
+    pts: List[Point] = []
+    for seg in segments or []:
+        seg_pts = seg.discretize() if tolerance is None else seg.discretize(tolerance)
+        if not seg_pts:
+            continue
+        if pts and _distance(pts[-1], seg_pts[0]) < 1e-9:
+            pts.extend(seg_pts[1:])
+        else:
+            pts.extend(seg_pts)
+    return pts
+
+
+def track_length(pts) -> float:
+    """Lunghezza totale di una polilinea (somma delle corde)."""
+    return sum(
+        math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+        for i in range(len(pts) - 1)
+    )
+
+
+def track_shape_type(pts) -> str:
+    """`"line"` se la traccia è un solo segmento retto (2 vertici), altrimenti `"curve"`."""
+    return "line" if len(pts) == 2 else "curve"
+
+
+# ---------------------------------------------------------------------------
 # Intersezioni geometriche pure — usate da geometry_adapter (gap closing)
 # ---------------------------------------------------------------------------
 

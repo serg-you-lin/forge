@@ -20,10 +20,16 @@ from ..model import (
     HOLE_TYPE_UNKNOWN,
 )
 from ..model.engraving import Engraving
+from ..model.feature import OpenFeature
 from ..model.role import ContourRole
-from ..adapters.bridge.shape import OpenShape
 from ..core.classification.hole_detector import is_threaded_hole
+from ..core.geometry import track_points, track_length, track_shape_type
 from ..rules.thresholds import STRUCTURAL_ROLES
+
+
+def _proxy_pts(proxy) -> list:
+    """Vertici di un proxy aperto (OpenFeature), derivati dai suoi segmenti nativi."""
+    return track_points(getattr(proxy, "segments", []) or [])
 
 _ROLE_TO_HOLE_TYPE = {
     ContourRole.COUNTERSINK:   HOLE_TYPE_COUNTERSINK,
@@ -161,11 +167,12 @@ def _deduplicate_boundary_open_segments(result: ForgeResult, tolerance: float = 
     removed = 0
 
     for proxy in result.trash_entities:
-        if proxy.shape_type != "line" or len(proxy.pts) < 2:
+        pts = _proxy_pts(proxy)
+        if track_shape_type(pts) != "line" or len(pts) < 2:
             kept.append(proxy)
             continue
 
-        segment = LineString([proxy.pts[0], proxy.pts[-1]])
+        segment = LineString([pts[0], pts[-1]])
         on_boundary = False
         for part in result.parts:
             if part.outer.polygon.boundary.buffer(tolerance).covers(segment):
@@ -189,15 +196,15 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
     promoted_ids: set[int] = set()
 
     for proxy in result.trash_entities:
-        if proxy.shape_type != "line":
+        pts = _proxy_pts(proxy)
+        if track_shape_type(pts) != "line" or len(pts) < 2:
             continue
-        if len(proxy.pts) < 2:
-            continue
-        if proxy.length < bending_tolerance:
+        length = track_length(pts)
+        if length < bending_tolerance:
             continue
 
-        s = Point(proxy.pts[0])
-        e = Point(proxy.pts[-1])
+        s = Point(pts[0])
+        e = Point(pts[-1])
 
         for part in result.parts:
             outer    = part.outer.polygon
@@ -205,17 +212,17 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
 
             if boundary.distance(s) < 1.0 and boundary.distance(e) < 1.0:
                 midpoint = Point(
-                    (proxy.pts[0][0] + proxy.pts[-1][0]) / 2,
-                    (proxy.pts[0][1] + proxy.pts[-1][1]) / 2,
+                    (pts[0][0] + pts[-1][0]) / 2,
+                    (pts[0][1] + pts[-1][1]) / 2,
                 )
                 if outer.contains(midpoint):
                     part.bending_lines.append(BendingLine(
                         role=ContourRole.BEND,
-                        geometry=LineString([proxy.pts[0], proxy.pts[-1]]),
-                        length=proxy.length,
+                        geometry=LineString([pts[0], pts[-1]]),
+                        length=length,
                         angle_deg=math.degrees(math.atan2(
-                            proxy.pts[-1][1] - proxy.pts[0][1],
-                            proxy.pts[-1][0] - proxy.pts[0][0],
+                            pts[-1][1] - pts[0][1],
+                            pts[-1][0] - pts[0][0],
                         )) % 180,
                         part_label=part.label,
                         source="geometric",
@@ -302,11 +309,11 @@ def _detect_engrave(result: ForgeResult, engrave_tolerance: float = 1.0) -> None
 
 def _engraving_from_open(proxy, part_label: str = "",
                          source: str = "labeled", confidence: float = 1.0) -> Engraving:
-    pts = list(getattr(proxy, "pts", []) or [])
+    pts = _proxy_pts(proxy)
     return Engraving(
         role=ContourRole.ENGRAVE,
         segments=list(getattr(proxy, "segments", []) or []),
-        length=round(getattr(proxy, "length", 0.0), 4),
+        length=round(track_length(pts), 4),
         pts=pts,
         geometry=LineString(pts) if len(pts) >= 2 else None,
         part_label=part_label,
@@ -329,7 +336,7 @@ def _engraving_from_closed(polygon, segments, part_label: str = "",
     )
 
 
-def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> bool:
+def _handle_engrave_open(proxy: OpenFeature, result: ForgeResult) -> bool:
     """
     Smista una traccia engrave aperta per contenimento.
 
@@ -337,13 +344,14 @@ def _handle_engrave_open(proxy: OpenShape, result: ForgeResult) -> bool:
     Fuori da ogni part → resta trash: è geometria orfana come ogni altra
     entità che non sta dentro un outer (ritorna False).
     """
-    if len(proxy.pts) >= 2:
+    pts = _proxy_pts(proxy)
+    if len(pts) >= 2:
         rep = (
-            sum(p[0] for p in proxy.pts) / len(proxy.pts),
-            sum(p[1] for p in proxy.pts) / len(proxy.pts),
+            sum(p[0] for p in pts) / len(pts),
+            sum(p[1] for p in pts) / len(pts),
         )
     else:
-        rep = proxy.pts[0] if proxy.pts else None
+        rep = pts[0] if pts else None
 
     probe = Point(rep) if rep else None
     for part in result.parts:
@@ -436,9 +444,10 @@ def _probe_point(ce: ClassifiedEntity) -> Optional[Point]:
     return None
 
 
-def _extract_data(proxy: OpenShape, work_type: str) -> dict:
+def _extract_data(proxy: OpenFeature, work_type: str) -> dict:
     work_type = work_type.lower()
-    pts = proxy.pts
+    pts = _proxy_pts(proxy)
+    length = track_length(pts)
 
     if len(pts) >= 2:
         rep = (
@@ -448,7 +457,7 @@ def _extract_data(proxy: OpenShape, work_type: str) -> dict:
     else:
         rep = pts[0] if pts else None
 
-    if work_type == "bending" and proxy.shape_type == "line" and len(pts) >= 2:
+    if work_type == "bending" and track_shape_type(pts) == "line" and len(pts) >= 2:
         start = pts[0]
         end   = pts[-1]
         dx    = end[0] - start[0]
@@ -456,14 +465,14 @@ def _extract_data(proxy: OpenShape, work_type: str) -> dict:
         return {
             "start":                start,
             "end":                  end,
-            "length":               round(proxy.length, 4),
+            "length":               round(length, 4),
             "angle_deg":            round(math.degrees(math.atan2(dy, dx)) % 180, 4),
             "representative_point": rep,
         }
 
     if work_type == "marking":
         return {
-            "length":               round(proxy.length, 4),
+            "length":               round(length, 4),
             "representative_point": rep,
         }
 

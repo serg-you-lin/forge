@@ -3,34 +3,18 @@ tests/unit/core/test_hierarchy_builder.py
 
 Test per HierarchyBuilder (Step 4 del refactor).
 
-I proxy ClosedShape vengono costruiti direttamente con Polygon shapely —
-nessun adapter DXF, nessun file reale.  I source_ref sono stub minimali
-perché HierarchyBuilder li passa avanti opachi (traceability) ma non li
-interpreta.
+I proxy ClosedFeature/OpenFeature vengono costruiti direttamente con Polygon
+shapely e primitive native — nessun adapter DXF, nessun file reale.
 """
 
 import math
 import unittest
 from shapely.geometry import Polygon
 
-from forge.adapters.bridge.shape import ClosedShape, OpenShape
+from forge.core.primitives.segments import LineSeg
+from forge.model.feature import ClosedFeature, OpenFeature
 from forge.model.role import ContourRole
 from forge.core.healing.hierarchy import HierarchyBuilder
-
-
-# ---------------------------------------------------------------------------
-# Stub minimo per source_ref
-# ---------------------------------------------------------------------------
-
-class _FakeEntity:
-    """source_ref fittizio: HierarchyBuilder non ci accede mai direttamente."""
-
-    def __init__(self):
-        self.layer = ""
-        self.color = 0
-
-    def dxftype(self):
-        return "LWPOLYLINE"   # non LINE né ARC → is_durable=True
 
 
 # ---------------------------------------------------------------------------
@@ -38,26 +22,20 @@ class _FakeEntity:
 # ---------------------------------------------------------------------------
 
 def _make_proxy(polygon, *, diameter=None, center=None, role=ContourRole.UNKNOWN):
-    return ClosedShape(
-        polygon=polygon,
+    return ClosedFeature(
         role=role,
-        shape_type="polyline",
+        polygon=polygon,
         diameter=diameter,
         center=center,
     )
 
 
 def _make_open_proxy(pts, *, role=ContourRole.UNKNOWN):
-    length = sum(
-        math.dist(pts[i], pts[i + 1])
+    segments = [
+        LineSeg(start=pts[i], end=pts[i + 1])
         for i in range(len(pts) - 1)
-    )
-    return OpenShape(
-        pts=pts,
-        length=length,
-        role=role,
-        shape_type="line",
-    )
+    ]
+    return OpenFeature(role=role, segments=segments)
 
 
 def _circle_proxy(cx, cy, r):
@@ -172,7 +150,7 @@ class TestTrash(unittest.TestCase):
     """
     Configurazione:
         - 1 proxy outer (100×100)
-        - 1 OpenShape role=UNKNOWN fuori dall'outer, non in entities_in_loops
+        - 1 OpenFeature role=UNKNOWN fuori dall'outer, non in entities_in_loops
 
     Atteso: il proxy aperto flottante finisce in trash, l'outer produce 1 ForgePart.
     """
