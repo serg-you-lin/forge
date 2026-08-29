@@ -41,13 +41,20 @@ def detect(
     engrave_tolerance: float = 1.0,
     deduplicate_boundary_open: bool = True,
     boundary_tolerance: float = 0.05,
-) -> None:
+) -> ForgeResult:
+    """
+    Classifica le feature dentro le parti già trovate da heal().
+
+    Muta `result` in-place (parti, trash_entities, classified_entities) e lo
+    ritorna, così la catena resta esplicita: `result = forge.detect(result)`.
+    """
     _detect_labeled(result)
     if deduplicate_boundary_open:
         _deduplicate_boundary_open_segments(result, tolerance=boundary_tolerance)
     _detect_bending(result, bending_tolerance=bending_tolerance)
     _detect_engrave(result, engrave_tolerance=engrave_tolerance)
     _detect_holes(result)
+    return result
 
 
 # ---------------------------------------------------------------------------

@@ -374,17 +374,19 @@ discussione, si dice "stiamo riaprendo la decisione N", non la si re-decide da c
 suona male). `dxf-forge` è fuorviante (troppo legato al formato) ma il rename si
 rimanda. Package importabile resta `forge`.
 
-### D2 — Funzione pipeline comune: `heal_and_detect(doc)`
+### D2 — Funzione pipeline comune: `heal_and_detect(doc)`  ✅ FATTO (Fase 3)
 Nuova funzione top-level che fa `heal → detect` e ritorna il `ForgeResult`. È la
 via del 90% dei chiamanti, va nel README. `heal()` e `detect()` restano funzioni
 separate e pubbliche (un renderer o un nesting tool possono volere la sola
 topologia). Nome esplicito e un po' goffo di proposito — scelta umana, non
-"process".
+"process". Implementata in `forge/pipeline/__init__.py`, esportata in `__all__`.
+`detect()` saltato se `heal()` non produce parti valide.
 
-### D3 — `detect()` ritorna il result
-`detect()` smette di ritornare `None`. Ritorna il `ForgeResult` (lo stesso
-oggetto, mutato) così la catena è esplicita: `result = forge.detect(result)`.
-Stesso trattamento dove ha senso in `inject()`.
+### D3 — `detect()` / `inject()` ritornano il result  ✅ FATTO (Fase 3)
+`detect()` e `inject()` non ritornano più `None`: ritornano il `ForgeResult` (lo
+stesso oggetto, mutato) così la catena è esplicita: `result = forge.detect(result)`.
+Nessun test dipendeva dal `None`. Docstring di `inject.py` ripulite (erano su API
+morta `inject(msp, result)` / `part.geometry_hints`).
 
 ### D4 — `OpenShape` / `ClosedShape` (bridge): ELIMINATI
 `heal` produce direttamente `OpenFeature` / `ClosedFeature`. `bridge/shape.py`
@@ -493,9 +495,32 @@ Script già rotti su API vecchia, NON toccati (fuori scope, D14): `14_preprocess
 `forge.detect(result, msp)`, `forge.write(msp, ...)`, `edge.geometry` — tutta API
 morta). Da sistemare o cestinare quando Federico ci torna sopra.
 
-**Fase 2 — documentazione:** README nuovo, `docs/API.md`, `docs/ARCHITECTURE.md`.
+**Fase 2 — documentazione** ✅ FATTO (non committato):
+- `README.md` riscritto (EN, shop-window): cos'è, install, quick start singolo +
+  multi-pezzo, `label_map`, diagramma pipeline, tabella layer output, inspector,
+  geometria supportata, limiti noti. Rimanda a `docs/`.
+- `README_IT.md` riscritto (IT, quick start + puntatori a `docs/` — niente più
+  mirror completo da tenere in sync).
+- `docs/API.md` (IT): ogni nome di `forge.__all__` — firma reale, prende/ritorna,
+  **cosa muta**, quando solleva, esempio copiabile. + tipi di dominio + flusso
+  completo in ordine. È il documento per spiegare `forge` a qualcuno.
+- `docs/ARCHITECTURE.md` (IT): l'idea in una frase, "il prodotto è il modello",
+  i 4 strati + regola di dipendenza, il flusso passo-per-passo, i 2 concetti
+  ricorrenti (tolleranza, doppio binario feature), "cosa non è ancora pulito"
+  (rimanda a D4–D10).
+- Tutti gli esempi delle doc verificati con uno smoke reale su
+  `rettangolo_raggiato.dxf`: passano.
 
-**Fase 3 — API surface:** `heal_and_detect` (D2), `detect` ritorna result (D3).
+Suite invariata: **531 passed**.
+
+**Fase 3 — API surface** ✅ FATTO (non committato):
+- `heal_and_detect(doc, ...)` (D2) — `forge/pipeline/__init__.py`, in `__all__`.
+- `detect()` e `inject()` ritornano il `ForgeResult` (D3), non più `None`.
+- Docstring di `inject.py` riscritte (erano su API morta).
+- Doc aggiornate: `README.md`, `README_IT.md`, `docs/API.md` (nuova sezione
+  `heal_and_detect`, note "in arrivo" rimosse), `docs/ARCHITECTURE.md`.
+- `forge/__init__.py` docstring del modulo aggiornata.
+Suite: **531 passed** (invariata — nessun test dipendeva dal `None`).
 
 **Fase 4 — consolidamento:** D4, D6, D7, D8 (modello + adapter). D5 (campi
 `source`/`confidence` su `BendingLine`) va con la Fase 4.

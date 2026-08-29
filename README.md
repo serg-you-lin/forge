@@ -1,133 +1,164 @@
-# dxf-forge
+# forge
 
-DXF geometry preprocessor for manufacturing pipelines.
+**2D geometry preprocessor for sheet/plate manufacturing.**
 
-Prepares raw DXF files — from CAD software, clients, or CAM machines — into clean,
-structured data ready for downstream tools like nesting, quoting, or fabrication workflows.
+`forge` takes a messy 2D drawing — scattered `LINE`/`ARC` soup exported by a CAM
+machine, a client's DXF, a legacy R12 file — and turns it into a clean, structured
+model: closed part profiles, inner cutouts, holes (plain / countersink / threaded),
+bend lines, engraving traces. That model can then be rendered back to DXF (one file
+per part), exported as JSON/XML metadata, or fed to nesting.
+
+The distinctive part is the **healing**: reconnecting broken geometry into closed
+contours. No other DXF library does that for you.
+
+> Status: **alpha**. Used in production for laser/plasma cutting prep, but the API
+> still moves. See `MAP.md` for the current design decisions.
 
 ---
 
-## What it does
+## Install
 
-- **Heals** broken geometry: reconnects scattered `LINE` and `ARC` entities into closed `LWPOLYLINE` contours
-- **Splits** multi-part DXF files into individual part files, one per piece
-- **Classifies** contours: outer profiles, inner cutouts, holes
-- **Exports** structured metadata: area, perimeter, bounding box, hole count — as Python objects, JSON, or XML
-- **Validates** geometry before processing: detects open contours, ambiguous nodes, missing structure
+```bash
+pip install -e .            # from a clone
+pip install -e ".[pdf]"     # + experimental PDF input
+```
+
+Dependencies: `ezdxf`, `shapely`, `numpy` (Python ≥ 3.10).
 
 ---
 
-## Philosophy
-
-`dxf-forge` never opens or saves files by itself.  
-It works on `msp` (modelspace) objects already loaded by the caller.  
-The caller decides when to open, when to save, when to close.
+## Quick start — one file
 
 ```python
-import ezdxf
-import dxf_forge as forge
+import forge
 
-doc = ezdxf.readfile("part.dxf")
-msp = doc.modelspace()
+doc    = forge.load_dxf("part.dxf", tolerance=0.5)   # -> ForgeDocument
+result = forge.heal_and_detect(doc)                  # topology + holes/bends/engraving
+#   == forge.heal(doc) then forge.detect(result); call them separately if you
+#      only need the topology
 
-result = forge.heal(msp, tolerance=0.5, write_to_msp=True)
-print(f"Parts found: {result.part_count}")
+if not result.is_valid:
+    raise SystemExit(result.errors)
 
-doc.saveas("part_healed.dxf")
+doc_out = forge.to_dxf(result, doc)                  # -> ezdxf Drawing
+doc_out.saveas("part_healed.dxf")
+
+forge.save_json(result, "part.json")                 # metadata
+print(f"{result.part_count} part(s), "
+      f"{sum(len(p.holes) for p in result.parts)} holes")
 ```
 
----
-
-## Core API
-
-### `heal(msp)`
-Repairs geometry and classifies contours.  
-Handles `LINE`/`ARC` soup, existing `LWPOLYLINE`, `CIRCLE`, closed `SPLINE`, `ELLIPSE`.  
-Returns a `ForgeResult` with one `ForgePart` per closed outer contour found.
-
-### `split_to_files(msp, output_folder)`
-Splits a multi-part file into N child DXF files, one per part.  
-Copies inner contours and extra entities (marks, text, annotations) into the correct child file.
+## Multi-part file
 
 ```python
-result = forge.split_to_files(
-    msp,
-    output_folder="output/",
-    label="part_code",
-    source_file="multi.dxf",
-)
+import forge
+
+doc    = forge.load_dxf("batch.dxf")
+result = forge.split_to_files(doc, "output/", label="batch")
+# writes output/batch_P1.dxf, output/batch_P2.dxf, ... one per piece
+# (pass namer=lambda i, part: "..." to control the file names)
+forge.save_json(result, "batch.json")
 ```
 
-### `is_multi(result)`
-Returns `True` if the file contains more than one part.
+## Bend / engrave layers you already know
+
+If the source file marks bend lines or engraving on named layers, tell `load_dxf`
+so it assigns the role up front instead of guessing:
 
 ```python
-result = forge.heal(msp, write_to_msp=True)
-if forge.is_multi(result):
-    forge.split_to_files(msp, output_folder="output/", heal_result=result)
-else:
-    forge.write_metadata_to_dxf(doc, result.parts[0])
-    doc.saveas("output/part.dxf")
+doc = forge.load_dxf("part.dxf", label_map={"Piega": "bending", "MARK": "engrave"})
 ```
 
-### Metadata
-Geometric metadata is written as XDATA into the DXF and can be exported to JSON or XML.
+---
+
+## The pipeline
+
+```
+load_dxf(path)  ──►  ForgeDocument   (edges + annotations + source_meta)
+                          │            the only step that touches ezdxf for reading
+                          ▼
+     heal(doc)  ──►  ForgeResult      topology: gaps closed, loops found,
+                          │            outer / inner / holes built
+                          ▼
+  detect(result)                      semantics: hole type, bend lines, engraving
+                          │            (mutates result in place, returns it)
+                          │            heal + detect together: heal_and_detect(doc)
+                          ▼
+   to_dxf(result, doc)  ──►  ezdxf Drawing        render — one document
+   split(result, doc)   ──►  list[Drawing]        render — one per part
+   save_json / save_xml / to_nester_input         export the model
+   inject(result, ...)                            optional CAM enrichment from texts
+```
+
+The model is the product. `to_dxf` never re-reads the source file — every renderer
+draws from the model, so a future `to_svg` produces the same picture.
+
+---
+
+## Output DXF layers
+
+| Layer          | Meaning                                    |
+|----------------|--------------------------------------------|
+| `OuterContour` | outer profile of the part                  |
+| `InnerContour` | internal opening (slot, pocket)            |
+| `Hole`         | plain circular hole                        |
+| `Countersink`  | countersunk hole                           |
+| `ThreadHole`   | threaded / tapped hole                     |
+| `Bending`      | bend line                                  |
+| `Engrave`      | engraving / marking trace                  |
+| `Marking`      | other marking geometry                     |
+| `Annotation`   | source texts and dimensions (not a cut layer) |
+| `Trash`        | everything `forge` could not classify — kept, never dropped |
+
+Nothing from the source is silently lost: unclassified geometry goes to `Trash`,
+texts and dimensions to `Annotation`. Entity types `forge` does not model (`HATCH`,
+`IMAGE`, `TABLE`, …) are reported as a warning by `load_dxf`, not dropped in silence.
+
+---
+
+## Inspecting a real file
+
+Three levels, matching the pipeline:
 
 ```python
-forge.write_metadata_to_dxf(doc, part)
-forge.save_json(result, "metadata.json")
-forge.save_xml(result, "metadata.xml")
+import forge
+
+forge.inspect_dxf("part.dxf")        # 1 — raw DXF entities: what's in the file
+forge.inspect_document(doc)          # 2 — edges, primitives, node graph: what the adapter understood
+forge.inspect_result(result)         # 3 — the model: parts, typed holes, bends, engraving, trash
+
+forge.inspect_file("part.dxf", label_map={"Piega": "bending"})   # all three, in order
 ```
+
+Everything prints to stdout. Use it when something on a real file doesn't come out
+right and you need to see where in the chain it breaks.
 
 ---
 
-## Structural layers
+## Supported input geometry
 
-| Layer | Meaning |
-|---|---|
-| `OuterContour` | Outer profile of the part |
-| `InnerContour` | Internal opening (slot, pocket) |
-| `Hole` | Circular hole (diameter < 32.1 mm) |
-| `Trash` | Unclassified entities |
-
----
-
-## Supported geometry
-
-As structural contours: `LWPOLYLINE`, `CIRCLE`, closed `SPLINE`, `ELLIPSE`  
-As raw geometry to reconstruct: `LINE`, `ARC`, open `SPLINE` connected to other entities
+- **As structural contours:** `LWPOLYLINE`, `POLYLINE`, `CIRCLE`, closed `SPLINE`
+- **To reconstruct into contours:** `LINE`, `ARC`, open `SPLINE` connected to other entities
+- **As annotations:** `TEXT`, `MTEXT`, `DIMENSION`, `LEADER`, `MULTILEADER`
+- **Blocks:** `INSERT` is exploded on load by default
+- **Legacy:** R12/R13/R14 files are upgraded to R2010; `.dwg` needs ODA File Converter (`ODA_PATH` env var)
 
 ---
 
-## Dependencies
+## Known limits
 
-```
-ezdxf
-shapely
-numpy
-```
-
----
-
-## Structure
-
-```
-dxf_forge/
-  healer.py      — geometry repair, core of the library
-  splitter.py    — multi-part file splitting
-  geometry.py    — pure geometric functions
-  graph.py       — topological graph for closed loop detection
-  virtual.py     — in-memory loop representation
-  classifier.py  — extra entity classification by layer/color
-  exporter.py    — JSON / XML / XDATA serialization
-  validator.py   — pre-healing validation
-  models.py      — ForgeResult, ForgePart, ForgeContour
-  layers.py      — single source of truth for layer names and colors
-```
+- **Splines** are re-emitted natively on cut layers but **discretized** in the
+  planned SVG output.
+- **`load_pdf`** exists but is experimental — it returns raw edges, not a
+  `ForgeDocument`, so it does not plug into `heal()` yet. Not in the public API.
+- **Geometric engraving inference** (`detect` finding engraving without a
+  `label_map`) is a planned no-op placeholder.
+- **`arc/arc` gaps beyond tolerance** are not auto-closed — raise `tolerance`.
+- If no closed outer contour can be formed, `result.is_valid` is `False` and
+  `to_dxf` / `split` raise `ValueError` rather than emit a file of only trash.
 
 ---
 
-## Notes
+## Full API reference
 
-Experimental project. Built to handle real-world DXF files from CAM machines in a laser/plasma cutting context.  
-Not a general-purpose DXF library — it solves a specific problem in a specific domain.
+See [`docs/API.md`](docs/API.md). Architecture and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
