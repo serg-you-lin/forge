@@ -142,7 +142,12 @@ right and you need to see where in the chain it breaks.
 - **To reconstruct into contours:** `LINE`, `ARC`, open `SPLINE` connected to other entities
 - **As annotations:** `TEXT`, `MTEXT`, `DIMENSION`, `LEADER`, `MULTILEADER`
 - **Blocks:** `INSERT` is exploded on load by default
-- **Legacy:** R12/R13/R14 files are upgraded to R2010; `.dwg` needs ODA File Converter (`ODA_PATH` env var)
+- **Legacy:** R12/R13/R14 files are upgraded to R2010
+- **DWG:** neither `forge` nor `ezdxf` reads DWG natively — it goes through
+  [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter)
+  (free). Install it and point `forge` at the executable via the `ODA_PATH`
+  environment variable (full path to the `.exe`), or put `ODAFileConverter` on
+  your `PATH`. See `docs/API.md` → *load_dxf → DWG* for per-OS setup.
 
 ---
 
