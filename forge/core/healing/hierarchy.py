@@ -3,7 +3,7 @@
 from typing import Optional
 from shapely.geometry import Polygon
 
-from ...adapters.bridge.shape import ClosedShape, OpenShape
+from ...model.feature import ClosedFeature
 from ...model.part import ForgePart, ForgeContour
 from ...model.hole import Hole, HOLE_TYPE_UNKNOWN
 from ...model.role import ContourRole
@@ -15,7 +15,7 @@ MIN_SINGLE_LOOP_DIAMETER = 0.05
 
 
 # ---------------------------------------------------------------------------
-# Conversione loop → ClosedShape
+# Conversione loop → ClosedFeature
 # ---------------------------------------------------------------------------
 
 def _single_loop_geometry(loop, poly):
@@ -35,12 +35,12 @@ def _single_loop_geometry(loop, poly):
     return min(width, height), ((minx + maxx) / 2, (miny + maxy) / 2)
 
 
-def loop_to_closed_shape(
+def loop_to_closed_feature(
     loop,
     role: ContourRole = ContourRole.UNKNOWN,
     polygon=None,
     segments: list = None,
-) -> Optional[ClosedShape]:
+) -> Optional[ClosedFeature]:
     from ...core.topology.loop_finder import LoopFinder
 
     if polygon is not None:
@@ -66,12 +66,12 @@ def loop_to_closed_shape(
             if diameter is not None and diameter < MIN_SINGLE_LOOP_DIAMETER:
                 return None
 
-        return ClosedShape(
+        return ClosedFeature(
+            role=role,
             polygon=poly,
+            segments=segments or [],
             diameter=diameter,
             center=center,
-            role=role,
-            segments=segments or [],
         )
     except Exception:
         return None
@@ -81,7 +81,7 @@ def loop_to_closed_shape(
 # Albero di contenimento
 # ---------------------------------------------------------------------------
 
-def _place(proxy: ClosedShape, nodes: list) -> bool:
+def _place(proxy: ClosedFeature, nodes: list) -> bool:
     for node in nodes:
         if node[0].polygon.contains(proxy.polygon):
             if not _place(proxy, node[1]):
@@ -104,9 +104,9 @@ def _build_tree(proxies: list) -> list:
 # ---------------------------------------------------------------------------
 
 def _make_hole(
-    proxy: ClosedShape,
+    proxy: ClosedFeature,
     geometric_hint: str = "",
-    outer_proxy: Optional[ClosedShape] = None,
+    outer_proxy: Optional[ClosedFeature] = None,
 ) -> Hole:
     role = proxy.role if proxy.role != ContourRole.UNKNOWN else (
         ContourRole.HOLE if proxy.diameter is not None and proxy.diameter < HOLE_DIAMETER_THRESHOLD
@@ -124,7 +124,7 @@ def _make_hole(
     )
 
 
-def _make_inner(proxy: ClosedShape, parent_role: ContourRole = ContourRole.UNKNOWN) -> ForgeContour:
+def _make_inner(proxy: ClosedFeature, parent_role: ContourRole = ContourRole.UNKNOWN) -> ForgeContour:
     role = (
         proxy.role if proxy.role not in (ContourRole.UNKNOWN, ContourRole.INNER)
         else parent_role if parent_role not in (ContourRole.UNKNOWN, ContourRole.INNER)

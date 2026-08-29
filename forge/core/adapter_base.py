@@ -5,7 +5,7 @@ Contratto base per gli adapter di input di Forge.
 Un adapter traduce la geometria di una sorgente nel vocabolario
 geometrico che il Core può elaborare.
 
-L'adapter NON costruisce ClosedShape/OpenShape e non conosce
+L'adapter NON costruisce feature di dominio e non conosce
 la topologia del Core: produce Edge e fornisce il contesto della
 sorgente quando necessario.
 """

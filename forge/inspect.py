@@ -24,6 +24,8 @@ import math
 from collections import Counter
 from typing import Optional
 
+from forge.core.geometry import track_points, track_shape_type
+
 __all__ = [
     "inspect_dxf",
     "inspect_document",
@@ -245,10 +247,14 @@ def inspect_result(result, coords: bool = False) -> None:
     trash = result.trash_entities or []
     if trash:
         print(f"\n{_SUB}\ntrash_entities: {len(trash)}  (geometria non classificata)")
-        kinds = Counter(getattr(t, "shape_type", type(t).__name__) or "?" for t in trash)
+        kinds = Counter(
+            "closed" if getattr(t, "polygon", None) is not None
+            else track_shape_type(track_points(getattr(t, "segments", []) or []))
+            for t in trash
+        )
         roles = Counter(_role(getattr(t, "role", "?")) for t in trash)
-        print(f"  per shape_type: {dict(kinds)}")
-        print(f"  per ruolo     : {dict(roles)}")
+        print(f"  per tipo : {dict(kinds)}")
+        print(f"  per ruolo: {dict(roles)}")
 
     ce = result.classified_entities or []
     if ce:
