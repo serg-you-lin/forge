@@ -37,6 +37,39 @@ def heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeR
     return result
 
 
+def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file="",
+                    bending_tolerance: float = 1.0,
+                    engrave_tolerance: float = 1.0,
+                    deduplicate_boundary_open: bool = True,
+                    boundary_tolerance: float = 0.05) -> ForgeResult:
+    """
+    heal() + detect() in un colpo solo — la via del 90% dei chiamanti.
+
+    Equivale a:
+        result = forge.heal(doc, tolerance=..., label=..., source_file=...)
+        if result.is_valid and result.parts:
+            forge.detect(result, bending_tolerance=..., ...)
+
+    `detect()` viene saltato se `heal()` non produce parti valide (il result
+    torna comunque, con `is_valid=False` e gli errori popolati). I parametri
+    `*_tolerance` / `deduplicate_boundary_open` / `boundary_tolerance` sono
+    quelli di `detect()`.
+
+    Restano disponibili `heal()` e `detect()` separati: un renderer o un
+    nesting tool possono volere la sola topologia.
+    """
+    result = heal(doc, tolerance=tolerance, label=label, source_file=source_file)
+
+    if result.is_valid and result.parts:
+        detect(result,
+               bending_tolerance=bending_tolerance,
+               engrave_tolerance=engrave_tolerance,
+               deduplicate_boundary_open=deduplicate_boundary_open,
+               boundary_tolerance=boundary_tolerance)
+
+    return result
+
+
 def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
                    tolerance=None, namer=None,
                    include_annotations=True,

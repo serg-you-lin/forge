@@ -11,8 +11,9 @@ Workflow consigliato (file singolo):
 
     doc = forge.load_dxf("pezzo.dxf", label_map={"Piega": "bending"})
 
-    result = forge.heal(doc, label="pezzo", source_file="pezzo.dxf")
-    forge.detect(result)
+    result = forge.heal_and_detect(doc, label="pezzo", source_file="pezzo.dxf")
+    # equivale a: result = forge.heal(doc, ...); forge.detect(result)
+
     doc_out = forge.to_dxf(result, doc)
     forge.inject(result)
     doc_out.saveas("pezzo_healed.dxf")
@@ -42,7 +43,7 @@ from .adapters.dxf.loader import load_dxf, document_from_msp
 # Resta importabile come forge.load_pdf per chi ci lavora sopra, ma non è in
 # __all__ e non è documentato: l'API può cambiare o sparire senza preavviso.
 from .adapters.pdf.loader import load_pdf
-from .pipeline            import heal, split_to_files
+from .pipeline            import heal, heal_and_detect, split_to_files
 from .pipeline.inject   import inject
 from .pipeline.write  import to_dxf, split
 from .pipeline.detect  import detect
@@ -81,6 +82,7 @@ __all__ = [
     # Workflow
     "heal",
     "detect",
+    "heal_and_detect",
     "to_dxf",
     "split",
     "inject",
