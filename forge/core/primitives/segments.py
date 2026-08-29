@@ -52,6 +52,10 @@ class LineSeg:
         """
         return [self.start, self.end]
 
+    def reversed(self) -> "LineSeg":
+        """Stessa linea, percorsa al contrario."""
+        return LineSeg(start=self.end, end=self.start)
+
 
 # ---------------------------------------------------------------------------
 # ArcSeg
@@ -122,6 +126,16 @@ class ArcSeg:
         y = self.center[1] + self.radius * math.sin(angle)
         return (x, y)
 
+    def reversed(self) -> "ArcSeg":
+        """Stesso arco fisico, percorso al contrario: scambia gli angoli e nega ccw."""
+        return ArcSeg(
+            center=self.center,
+            radius=self.radius,
+            start_angle=self.end_angle,
+            end_angle=self.start_angle,
+            ccw=not self.ccw,
+        )
+
     @classmethod
     def from_chord(cls, start: Point, end: Point, bulge: float) -> "ArcSeg":
         """
@@ -150,8 +164,12 @@ class ArcSeg:
         nx = -dy / chord_len
         ny =  dx / chord_len
 
-        # Distanza dal midpoint al centro
-        d = math.sqrt(max(0.0, radius ** 2 - half_chord ** 2))
+        # Distanza (con segno) dal midpoint al centro lungo la perpendicolare.
+        # `radius * cos(sweep/2)` è negativo per sweep > π (arco maggiore,
+        # |bulge| > 1): il centro sta dalla parte opposta della corda rispetto
+        # all'arco minore. `sqrt(r² - half_chord²)` sarebbe sempre positivo e
+        # sceglierebbe l'arco minore anche quando il bulge chiede il maggiore.
+        d = radius * math.cos(sweep / 2.0)
 
         # CCW → centro a sinistra della corda (nx, ny positivo)
         # CW  → centro a destra (nx, ny negativo)
@@ -326,6 +344,10 @@ class CircleSeg:
     def __post_init__(self):
         if self.radius <= 0:
             raise ValueError(f"Raggio deve essere positivo: {self.radius}")
+
+    def reversed(self) -> "CircleSeg":
+        """Un cerchio è simmetrico: invertirlo lo lascia identico."""
+        return CircleSeg(center=self.center, radius=self.radius)
 
     def discretize(self, tolerance: float = DEFAULT_TOLERANCE) -> List[Point]:
         """

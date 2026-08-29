@@ -129,22 +129,6 @@ def _parse_circle(entity) -> CircleSeg:
     )
 
 
-def _reverse_segment(segment):
-    if isinstance(segment, LineSeg):
-        return LineSeg(start=segment.end, end=segment.start)
-    if isinstance(segment, ArcSeg):
-        return ArcSeg(
-            center=segment.center,
-            radius=segment.radius,
-            start_angle=segment.end_angle,
-            end_angle=segment.start_angle,
-            ccw=not segment.ccw,
-        )
-    if isinstance(segment, SplineSeg):
-        return segment.reversed()
-    return segment
-
-
 def _parse_polyline(entity, rev) -> list:
     if entity.dxftype() == "POLYLINE":
         points = [
@@ -160,6 +144,12 @@ def _parse_polyline(entity, rev) -> list:
     is_closed = bool(
         getattr(entity, "is_closed", False) or getattr(entity, "closed", False)
     )
+
+    # Polilinea chiusa con vertice di chiusura esplicito (primo == ultimo):
+    # scartalo, altrimenti il ciclo `%n` genera un segmento di lunghezza nulla.
+    if is_closed and len(points) > 1:
+        if (points[0][0], points[0][1]) == (points[-1][0], points[-1][1]):
+            points = points[:-1]
 
     # Semplice reversal: inverte tutto e basta
     if rev:
@@ -180,18 +170,4 @@ def _parse_polyline(entity, rev) -> list:
             primitives.append(ArcSeg.from_chord(start=(x1, y1), end=(x2, y2), bulge=bulge))
         else:
             primitives.append(LineSeg(start=(x1, y1), end=(x2, y2)))
-    return primitives
-
-# ---------------------------------------------------------------------------
-# Loop → primitive
-# ---------------------------------------------------------------------------
-
-def parse_loop(loop) -> List:
-    primitives = []
-    for edge, rev in loop:
-        segment = _reverse_segment(edge.segment) if rev else edge.segment
-        if isinstance(segment, list):
-            primitives.extend(segment)
-        else:
-            primitives.append(segment)
     return primitives

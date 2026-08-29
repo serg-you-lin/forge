@@ -388,20 +388,34 @@ stesso oggetto, mutato) così la catena è esplicita: `result = forge.detect(res
 Nessun test dipendeva dal `None`. Docstring di `inject.py` ripulite (erano su API
 morta `inject(msp, result)` / `part.geometry_hints`).
 
-### D4 — `OpenShape` / `ClosedShape` (bridge): ELIMINATI
+### D4 — `OpenShape` / `ClosedShape` (bridge): ELIMINATI  ⬜ DA FARE (grosso, sessione dedicata)
 `heal` produce direttamente `OpenFeature` / `ClosedFeature`. `bridge/shape.py`
 sparisce. `OpenFeature` / `ClosedFeature` (model/feature.py) si TENGONO: la
 distinzione "ha polygon / non ce l'ha" è onesta e dà `area`/`bbox` gratis.
+**Superficie:** `OpenShape`/`ClosedShape` portano campi extra che `OpenFeature`/
+`ClosedFeature` non hanno — `pts`, `length`, `shape_type` (open), `diameter`,
+`center` (closed). Li consumano `hierarchy.py` (diameter/center per la
+classificazione fori), `detect.py` (pts/length/shape_type per le pieghe),
+`write.py::_write_trash`, `inspect.py`. Eliminare i proxy richiede: aggiungere
+quei campi a `OpenFeature`/`ClosedFeature` **oppure** far derivare i consumatori
+(pts da `segments[i].discretize()`, diameter/center dal `polygon.bounds`). Tocca
+`heal.py`, `hierarchy.py`, `loop_finder.edges_to_open_shapes`,
+`heal._labeled_proxies`, `detect.py`, `write.py`, più i test
+`test_hierarchy_builder.py` / `test_models.py`. È il cambiamento più invasivo
+della Fase 4 — va fatto in una sessione dedicata, sub-step per sub-step con la
+suite golden come rete.
 
-### D5 — Le 4 feature tipate si tengono tutte
-`Hole`, `Engraving`, `BendingLine`, `ClassifiedEntity` restano. Sono 4 intenti di
-fabbricazione con consumatori diversi (nesting / piega / marcatura / catch-all).
-La "coerenza" tra loro = **2 campi soli**: `source: str` e `confidence: float`,
-stessi nomi / default / chiave in `to_dict()`. Oggi mancano a `BendingLine` — si
-allineano tutti e 4. NIENTE gerarchia con ereditarietà multipla per condividerli:
-convenzione + un test, non una torre di classi. `ClassifiedEntity` resta fuori
-dalla gerarchia `Feature` per scelta (è la via di fuga dict-based per work_type
-senza classe dedicata).
+### D5 — `source` / `confidence` su `BendingLine`  ✅ FATTO (Fase 4)
+`Hole`, `Engraving`, `BendingLine`, `ClassifiedEntity` restano tutte (4 intenti
+di fabbricazione con consumatori diversi). `BendingLine` ora ha `source: str` e
+`confidence: float` (default `""` / `1.0`), esposti in `to_dict()`. Popolati in
+`detect.py`: lane geometrica → `source="geometric"`, `confidence=0.9`; lane
+label_map → `source="labeled"`, `confidence=1.0`. NIENTE gerarchia con
+ereditarietà multipla — convenzione, non una torre di classi. `ClassifiedEntity`
+resta fuori dalla gerarchia `Feature` per scelta (via di fuga dict-based).
+Nota: i default a livello dataclass variano ancora un filo tra i 3 tipi
+(`Hole.confidence` default 0.0 = sentinella "non ancora tipato"); l'invariante è
+"dopo `detect()`, ogni feature ha `source` + `confidence` sensati".
 
 Struttura finale del modello:
 ```
@@ -412,27 +426,35 @@ ClassifiedEntity  → catch-all dict-based, fuori gerarchia per scelta
 feature "rilevate" → campi source + confidence identici (Hole/Engraving/BendingLine[/ClassifiedEntity])
 ```
 
-### D6 — `parse_loop`: rinominare e spostare
-`parse_loop` NON parsa entità: prende segmenti già parsati (da `edge.segment`),
-li orienta e li mette in fila. → rinominare `segments_from_loop` (o `orient_loop`),
-spostare da `adapters/dxf/parser.py` a `core/topology/`. È logica di dominio pura.
-`_reverse_segment` → diventa metodo `.reversed()` su ogni primitiva (`SplineSeg`
-ce l'ha già).
+### D6 — `parse_loop`: rinominare e spostare  ✅ FATTO (Fase 4)
+`parse_loop` → `segments_from_loop`, spostata da `adapters/dxf/parser.py` a
+`core/topology/loop_finder.py` (logica di dominio pura). `_reverse_segment`
+rimosso: ora `LineSeg`/`ArcSeg`/`CircleSeg` hanno `.reversed()` come `SplineSeg`.
+`heal.py` e il test `test_parsing_and_exporting.py` aggiornati.
 
-### D7 — Un solo dispatcher entità→primitiva
-`parser.py::DxfEntityDispatcher` e `adapter.py::entity_to_primitive` sono due
-copie quasi identiche della stessa traduzione. Quella di `adapter.py` la usa la
-produzione, quella di `parser.py` solo i test. → una copia sola
-(`DxfEntityDispatcher`), usata da produzione E test. `entity_to_primitive`,
-`_spline_to_primitive`, `_polyline_to_primitives`, `_bulge_to_arc` esistono in un
-posto solo. Target: `adapters/dxf/` da ~2900 a ~2100 righe.
+### D7 — Un solo dispatcher entità→primitiva  ✅ FATTO (Fase 4)
+`parser.py::DxfEntityDispatcher` e `adapter.py::entity_to_primitive` erano due
+copie quasi identiche della stessa traduzione. Ora una sola
+(`DxfEntityDispatcher`), usata da produzione E test. Rimossi da `adapter.py`:
+`entity_to_primitive`, `_spline_to_primitive`, `_polyline_to_primitives`,
+`_bulge_to_arc`, `_vec3_to_tuple`. `geometry_adapter.entity_to_polygon` ora usa
+il dispatcher. **Bug latente scoperto e corretto:** `ArcSeg.from_chord` sbagliava
+gli archi maggiori (`|bulge| > 1`, sweep > 180°) — usava
+`sqrt(r² - half_chord²)` (sempre positivo → sempre arco minore) invece di
+`r·cos(sweep/2)` (con segno). Era mascherato perché la produzione usava il
+`_bulge_to_arc` corretto di `adapter.py`. 5 golden roundtrip lo hanno preso
+appena unificato il dispatcher.
 
-### D8 — `inject()` sgonfiato
+### D8 — `inject()` sgonfiato  ⬜ DA FARE (entangled con i golden)
 La parte che conta fori/pieghe/incisioni e le ricopia in `part.custom` è
-ridondante (i numeri sono già nelle liste tipate). → spostare in una property
-derivata (`part.summary`), non stato salvato. `inject()` resta solo per il suo
-lavoro unico: passare i testi dentro l'outer al `data_injector` esterno
-(codice / materiale / spessore).
+ridondante. → property derivata (`part.summary`). **Attenzione:**
+`tests/real/test_golden.py` chiama `forge.inject()` e confronta `part.custom`
+contro `expected["custom"]` nei fixture golden. Spostare i conteggi in
+`part.summary` richiede: (1) `part.summary` property, (2) `exporter.build_metadata`
+legge da `summary` non da `custom`, (3) il test golden confronta `part.summary`,
+(4) rigenerare i fixture (dopo aver provato che i numeri sono giusti — memoria
+`golden-files-verify-before-regenerating`). Va fatto come cambiamento coordinato,
+non a pezzi.
 
 ### D9 — L'inspector diventa strumento a 3 livelli
 `dxf_inspect.py` → `forge/inspect.py`, esportato. Oggi è mezzo rotto
@@ -522,7 +544,19 @@ Suite invariata: **531 passed**.
 - `forge/__init__.py` docstring del modulo aggiornata.
 Suite: **531 passed** (invariata — nessun test dipendeva dal `None`).
 
-**Fase 4 — consolidamento:** D4, D6, D7, D8 (modello + adapter). D5 (campi
-`source`/`confidence` su `BendingLine`) va con la Fase 4.
+**Fase 4 — consolidamento** 🟡 IN CORSO (non committato):
+- ✅ D5 — `source`/`confidence` su `BendingLine` + lane geometrica/label_map.
+- ✅ D6 — `parse_loop` → `segments_from_loop` in `core/topology/`; `.reversed()`
+      su `LineSeg`/`ArcSeg`/`CircleSeg`.
+- ✅ D7 — un solo dispatcher (`DxfEntityDispatcher`); rimossa la copia in
+      `adapter.py`. **+ fix bug archi maggiori in `ArcSeg.from_chord`.**
+- ⬜ D8 — `inject` → `part.summary`. Entangled con i golden (`test_golden.py`
+      confronta `part.custom`). Cambiamento coordinato: property + exporter +
+      test + rigenerazione fixture.
+- ⬜ D4 — eliminare `OpenShape`/`ClosedShape`. Il pezzo grosso — sessione
+      dedicata.
+
+Suite dopo D5+D6+D7: **537 passed** (invariata).
+`forge/adapters/dxf/` da 2914 → ~2500 righe (adapter.py -210).
 
 **Dopo:** `to_svg` (D12), poi `detect_engrave` (D13) quando Federico decide.
