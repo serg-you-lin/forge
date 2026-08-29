@@ -129,7 +129,7 @@ class TestHealerCircleOuter(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# CIRCLE piccolo → HOLE
+# CIRCLE piccolo → HOLE (dopo detect — D15: heal non promuove più i fori)
 # ---------------------------------------------------------------------------
 
 class TestHealerCircleHole(unittest.TestCase):
@@ -137,6 +137,11 @@ class TestHealerCircleHole(unittest.TestCase):
     def setUp(self):
         doc = forge.load_dxf(load("rect_with_circle_hole.dxf"))
         self.result = forge.heal(doc)
+        # heal() consegna solo il contorno interno; la promozione a foro è di
+        # detect(features="holes").
+        self.assertEqual(len(self.result.parts[0].holes), 0)
+        self.assertEqual(len(self.result.parts[0].inners), 1)
+        forge.detect(self.result, features="all")
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.part_count, 1)
@@ -144,17 +149,17 @@ class TestHealerCircleHole(unittest.TestCase):
     def test_002_has_hole(self):
         self.assertGreaterEqual(len(self.result.parts[0].holes), 1)
 
-    def test_003_hole_layer_and_color(self):
-        for inner in self.result.parts[0].inners:
-            self.assertEqual(inner.layer, LAYER_HOLE)
-            self.assertEqual(inner.color, COLOR_HOLE)
+    def test_003_hole_role(self):
+        from forge.model.role import ContourRole
+        for hole in self.result.parts[0].holes:
+            self.assertEqual(hole.role, ContourRole.HOLE)
 
     def test_004_exact_hole_count(self):
         self.assertEqual(len(self.result.parts[0].holes), 1)
 
 
 # ---------------------------------------------------------------------------
-# CIRCLE grande → INNER
+# CIRCLE grande → INNER (resta contorno interno anche dopo detect)
 # ---------------------------------------------------------------------------
 
 class TestHealerCircleInner(unittest.TestCase):
@@ -163,17 +168,18 @@ class TestHealerCircleInner(unittest.TestCase):
         doc = forge.load_dxf(load("rect_with_circle_inner.dxf"))
         self.result = forge.heal(doc)
 
-    def test_001_inner_layer_and_color(self):
-        for inner in self.result.parts[0].inners:
-            self.assertEqual(inner.layer, LAYER_INNER)
-            self.assertEqual(inner.color, COLOR_INNER)
+    def test_001_inner_present_and_role(self):
+        from forge.model.role import ContourRole
+        inners = self.result.parts[0].inners
+        self.assertEqual(len(inners), 1)
+        self.assertEqual(inners[0].role, ContourRole.INNER)
+        self.assertEqual(len(self.result.parts[0].holes), 0)
 
 
 # ---------------------------------------------------------------------------
 # Coppia concentrica → countersink
-# Heal classifica entrambi i CIRCLE come inners.
-# detect() li riclassifica come countersink.
-# Qui verifichiamo solo che heal() li veda entrambi come inners.
+# heal() vede entrambi i CIRCLE come inners; detect(features="holes") li
+# riconosce come countersink (piccolo → Hole, anello grande assorbito).
 # ---------------------------------------------------------------------------
 
 class TestHealerCountersink(unittest.TestCase):
@@ -187,13 +193,8 @@ class TestHealerCountersink(unittest.TestCase):
 
     def test_002_sees_both_circles_as_inners(self):
         # heal() non distingue countersink — li vede entrambi come inners
-        self.assertGreaterEqual(len(self.result.parts[0].holes) + len(self.result.parts[0].inners), 1)
-
-    def test_003_entity_populated(self):
-        # ForgeContour.entity deve essere popolato per detect()
-        for inner in self.result.parts[0].inners:
-            if inner.is_hole:
-                self.assertIsNotNone(inner.entity)
+        self.assertEqual(len(self.result.parts[0].holes), 0)
+        self.assertGreaterEqual(len(self.result.parts[0].inners), 2)
 
 
 # ---------------------------------------------------------------------------

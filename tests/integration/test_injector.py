@@ -55,7 +55,7 @@ def _heal_and_inject(dxf_name, label_map=None, data_injector=None, interpreter=N
     )
     result = forge.heal(doc)
     forge.detect(
-        result
+        result, features="all"
     )
     forge.inject(result, data_injector=data_injector)
     return doc, result
@@ -195,7 +195,7 @@ class TestInjectDataInjector(unittest.TestCase):
             label_map={"BEND": "bending", "MARK": "engrave"},
         )
         self.result = forge.heal(self.doc)
-        forge.detect(self.result)
+        forge.detect(self.result, features="all")
 
     def test_001_data_injector_viene_chiamato(self):
         """Il data_injector deve essere chiamato e il risultato finire in custom."""

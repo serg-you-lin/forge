@@ -12,7 +12,8 @@ Workflow consigliato (file singolo):
     doc = forge.load_dxf("pezzo.dxf", label_map={"Piega": "bending"})
 
     result = forge.heal_and_detect(doc, label="pezzo", source_file="pezzo.dxf")
-    # equivale a: result = forge.heal(doc, ...); forge.detect(result)
+    # equivale a: result = forge.heal(doc, ...); forge.detect(result, "all")
+    # forge.detect(result) nudo classifica solo i ruoli da label_map
 
     doc_out = forge.to_dxf(result, doc)
     forge.inject(result)
@@ -46,7 +47,7 @@ from .adapters.pdf.loader import load_pdf
 from .pipeline            import heal, heal_and_detect, split_to_files
 from .pipeline.inject   import inject
 from .pipeline.write  import to_dxf, split
-from .pipeline.detect  import detect
+from .pipeline.detect  import detect, ALL_FEATURES
 from .rules.validator     import validate, validate_result
 from .io.exporter         import (
     to_json,
@@ -82,6 +83,7 @@ __all__ = [
     # Workflow
     "heal",
     "detect",
+    "ALL_FEATURES",
     "heal_and_detect",
     "to_dxf",
     "split",
