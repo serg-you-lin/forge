@@ -1,7 +1,8 @@
 # Vecchi script numerati — archiviati 2026-08-29
 
-Sostituiti dalla nuova serie `00_*.py … 11_*.py` alla radice (uno per funzione di
-`forge.__all__`, + `11_batch_heal.py` per il batch su cartella; vedi MAP.md D14).
+Sostituiti dalla nuova serie `00_*.py … 12_*.py` alla radice (uno per area di
+`forge.__all__`, + `11_batch_heal.py` batch su cartella e `12_to_svg.py`; vedi
+MAP.md D14).
 
 Quasi tutti usavano API morte (`forge.validate_msp`, `forge.heal(msp, ...)`,
 `forge.classify`, `load_dxf` che ritornava `(doc, msp)`, `edge.geometry`).

@@ -53,11 +53,17 @@ from .io.exporter         import (
     to_json,
     save_json,
     save_xml,
-    to_nester_input,
     write_metadata_to_dxf,
     read_metadata_from_dxf,
     set_schema,
 )
+# to_nester_input: SPERIMENTALE, fuori dal contratto pubblico (vedi MAP.md D18).
+# Scritto per un nester mai realizzato — dxf-forge non fa nesting. Resta
+# importabile come forge.to_nester_input, ma non è in __all__ né documentato.
+# Per serializzare la geometria a un renderer/tool usa forge.to_view_model().
+from .io.exporter         import to_nester_input
+from .io.view_model       import to_view_model
+from .io.svg              import to_svg, save_svg
 from .model         import ForgeResult, ForgePart, ForgeContour, ForgeDocument, Annotation
 from .io.text_utils       import extract_texts_from_msp, extract_forge_texts
 from .inspect             import (
@@ -93,7 +99,9 @@ __all__ = [
     "to_json",
     "save_json",
     "save_xml",
-    "to_nester_input",
+    "to_view_model",
+    "to_svg",
+    "save_svg",
     # Metadati DXF
     "write_metadata_to_dxf",
     "read_metadata_from_dxf",

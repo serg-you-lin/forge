@@ -87,12 +87,14 @@ load_dxf(path)  ──►  ForgeDocument   (edges + annotations + source_meta)
                           ▼
    to_dxf(result, doc)  ──►  ezdxf Drawing        render — one document
    split(result, doc)   ──►  list[Drawing]        render — one per part
-   save_json / save_xml / to_nester_input         export the model
+   to_svg(result)       ──►  SVG string           render — for a UI / report
+   to_view_model(result)  ─►  dict (full geometry) for an external renderer
+   save_json / save_xml                           export the model (metadata)
    inject(result, ...)                            optional CAM enrichment from texts
 ```
 
 The model is the product. `to_dxf` never re-reads the source file — every renderer
-draws from the model, so a future `to_svg` produces the same picture.
+(DXF, SVG, the view model) draws from the same model, so they all show the same picture.
 
 ---
 
@@ -153,8 +155,8 @@ right and you need to see where in the chain it breaks.
 
 ## Known limits
 
-- **Splines** are re-emitted natively on cut layers but **discretized** in the
-  planned SVG output.
+- **Splines** are re-emitted natively on cut layers (`to_dxf`) but **discretized**
+  in `to_svg` / `to_view_model` (which are for viewing, not cutting).
 - **`load_pdf`** exists but is experimental — it returns raw edges, not a
   `ForgeDocument`, so it does not plug into `heal()` yet. Not in the public API.
 - **Geometric engraving inference** (`detect` finding engraving without a

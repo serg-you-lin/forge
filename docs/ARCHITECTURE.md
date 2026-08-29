@@ -23,15 +23,15 @@ primitive geometriche pure.
                     ┌─────────────────┐
    DXF / DWG  ──────►                 ├──────►  DXF (to_dxf, split)
    PDF (sperim.) ───►   ForgeResult   ├──────►  JSON / XML (save_json, save_xml)
-   SVG (futuro) ─────►   il modello   ├──────►  input nester (to_nester_input)
-                    │                 ├──────►  SVG (futuro to_svg)
+   SVG (futuro) ─────►   il modello   ├──────►  view model JSON (to_view_model)
+                    │                 ├──────►  SVG (to_svg, save_svg)
                     └─────────────────┘
 ```
 
 Il `ForgeResult` è **il prodotto**. Tutti i `to_*` sono renderer del modello.
 `to_dxf` **non rilegge mai il file sorgente** — disegna dal modello. Questo è il
-motivo per cui un futuro `to_svg` produrrà la stessa identica immagine senza una
-riga di codice nuova nel core.
+motivo per cui `to_svg` produce la stessa identica immagine senza una riga di
+codice nuova nel core.
 
 Conseguenza pratica: **niente si perde**. Si importa tutto — quote, centerline, spazzatura. 
 Perché `forge` non perda
@@ -83,7 +83,7 @@ forge/
 │   └── inject.py     inject()
 │
 ├── rules/        REGOLE di dominio                     (soglie, palette, schema, validazione)
-├── io/           export (JSON/XML/XDATA/nester) + utilità testi
+├── io/           export (JSON/XML/XDATA, view_model, SVG) + utilità testi
 └── inspect.py    strumento di ispezione a 3 livelli
 ```
 
