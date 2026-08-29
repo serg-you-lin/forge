@@ -217,14 +217,17 @@ pipeline.
 Onestà sullo stato — dettagli e decisioni prese in `MAP.md` (sezione "Decisioni
 chiuse"):
 
-- **doppio strato di forme** (D4, non ancora fatto): `bridge/shape.py`
-  (`OpenShape`/`ClosedShape`, proxy durante l'healing) e `model/feature.py`
-  (`OpenFeature`/`ClosedFeature`) sono vicini. I primi verranno eliminati, `heal`
-  produrrà direttamente i secondi. È il refactor più invasivo che resta.
+- **classificazione hole in `hierarchy`** (D15, non ancora fatto): la decisione
+  hole vs inner e la soglia `HOLE_DIAMETER_THRESHOLD` vivono nello strato
+  topologico. Andranno in un `detect()` parametrico (la soglia è un parametro di
+  processo, non una costante). Finché non è fatto, `heal` emette `Hole` da
+  `hierarchy` e un anello grande può finire come `Hole(role="inner")`.
 - **`load_pdf`** ritorna `list[Edge]` invece di un `ForgeDocument` → non si
   aggancia a `heal()`. Congelato (D10).
 
-Già risolto in Fase 4: traduttore entità→primitiva ora unico
-(`DxfEntityDispatcher`, D7); `parse_loop` → `segments_from_loop` in
-`core/topology/` (D6); `source`/`confidence` su `BendingLine` (D5); conteggi
-feature spostati da `inject`→`part.custom` a `part.summary` derivato (D8).
+Già risolto in Fase 4: `bridge/shape.py` (`OpenShape`/`ClosedShape`) eliminato,
+`heal` produce direttamente `OpenFeature`/`ClosedFeature` (D4); traduttore
+entità→primitiva ora unico (`DxfEntityDispatcher`, D7); `parse_loop` →
+`segments_from_loop` in `core/topology/` (D6); `source`/`confidence` su
+`BendingLine` (D5); conteggi feature spostati da `inject`→`part.custom` a
+`part.summary` derivato (D8).

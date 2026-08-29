@@ -21,9 +21,12 @@ sys.path.insert(0, str(project_root))
 
 from shapely.geometry import LineString
 
-from forge.core.primitives.segments import ArcSeg
+from forge.core.primitives.segments import ArcSeg, LineSeg
 from forge.core.classification.hole_detector import is_threaded_hole, is_countersink_outer
-from forge.core.geometry import are_collinear, group_collinear_lines
+from forge.core.geometry import (
+    are_collinear, group_collinear_lines,
+    track_points, track_length, track_shape_type,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -291,6 +294,38 @@ class TestGroupCollinearLines(unittest.TestCase):
         self.assertEqual(len(groups), 3)
         sizes = sorted(len(g) for g in groups)
         self.assertEqual(sizes, [1, 1, 2])
+
+
+# ---------------------------------------------------------------------------
+# track_points / track_length / track_shape_type
+# ---------------------------------------------------------------------------
+
+class TestTrackHelpers(unittest.TestCase):
+
+    def test_001_single_line_two_points(self):
+        seg = LineSeg(start=(0, 0), end=(10, 0))
+        pts = track_points([seg])
+        self.assertEqual(pts, [(0, 0), (10, 0)])
+        self.assertAlmostEqual(track_length(pts), 10.0)
+        self.assertEqual(track_shape_type(pts), "line")
+
+    def test_002_chain_dedups_shared_vertex(self):
+        a = LineSeg(start=(0, 0), end=(10, 0))
+        b = LineSeg(start=(10, 0), end=(10, 5))
+        pts = track_points([a, b])
+        self.assertEqual(pts, [(0, 0), (10, 0), (10, 5)])
+        self.assertAlmostEqual(track_length(pts), 15.0)
+        self.assertEqual(track_shape_type(pts), "curve")
+
+    def test_003_arc_is_curve(self):
+        arc = make_arc(0, 0, 5, 0, 90)
+        pts = track_points([arc])
+        self.assertGreater(len(pts), 2)
+        self.assertEqual(track_shape_type(pts), "curve")
+
+    def test_004_empty(self):
+        self.assertEqual(track_points([]), [])
+        self.assertEqual(track_length([]), 0.0)
 
 
 if __name__ == "__main__":

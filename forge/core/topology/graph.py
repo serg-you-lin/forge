@@ -258,7 +258,7 @@ def build_node_graph(edges: list, epsilon: float = 0.0) -> Graph:
         if s == e:
             # Endpoint distinti collassati dal clustering: sliver più corto di
             # epsilon. Non è un loop strutturale — lo si lascia fuori dal grafo
-            # e lo raccoglie edges_to_open_shapes come traccia aperta.
+            # e lo raccoglie edges_to_open_features come traccia aperta.
             continue
 
         raw[s].append((edge, e))

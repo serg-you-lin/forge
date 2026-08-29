@@ -196,7 +196,7 @@ class HealStep:
             return
 
         from ..core.topology.loop_finder import LoopFinder, segments_from_loop
-        from ..core.healing.hierarchy import loop_to_closed_shape
+        from ..core.healing.hierarchy import loop_to_closed_feature
         from ..model.role import ContourRole
 
         graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
@@ -275,7 +275,7 @@ class HealStep:
             if polygon is None:
                 continue
 
-            shape = loop_to_closed_shape(
+            shape = loop_to_closed_feature(
                 loop,
                 role=role,
                 polygon=polygon,
@@ -288,10 +288,10 @@ class HealStep:
         pass
 
     def _build_hierarchy(self):
-        from ..core.topology.loop_finder import edges_to_open_shapes
+        from ..core.topology.loop_finder import edges_to_open_features
         from ..core.healing.hierarchy import HierarchyBuilder
 
-        open_proxies = edges_to_open_shapes(
+        open_proxies = edges_to_open_features(
             self.edges,
             exclude_ids=self.loop_edge_ids,
             label_map=self.result.label_map,
@@ -331,49 +331,38 @@ class HealStep:
 
     def _labeled_proxies(self):
         """
-        Converte gli Edge estratti da _split_labeled() in proxy (OpenShape o,
-        per tracce già degeneri come CIRCLE / SPLINE chiusa, ClosedShape).
+        Converte gli Edge estratti da _split_labeled() in proxy (OpenFeature o,
+        per tracce già degeneri come CIRCLE / SPLINE chiusa, ClosedFeature).
 
         Restano portatori del loro `role` autoritativo: detect() li smista per
         contenimento senza mai rimetterli in discussione.
         """
-        import math
-        from ..adapters.bridge.shape import OpenShape, ClosedShape
+        from ..model.feature import OpenFeature, ClosedFeature
         from ..core.primitives.polygon_builder import build_polygon
         from ..core.primitives.segments import DEFAULT_TOLERANCE
+        from ..core.geometry import track_points
 
         proxies = []
         for edge in self.labeled_edges:
             seg = edge.segment
             if seg is None:
                 continue
-            pts = seg.discretize()
 
             if edge.start == edge.end:
                 polygon = build_polygon([seg], DEFAULT_TOLERANCE)
                 if polygon is None:
                     continue
-                proxies.append(ClosedShape(
-                    polygon=polygon,
+                proxies.append(ClosedFeature(
                     role=edge.role,
+                    polygon=polygon,
                     segments=[seg],
                 ))
                 continue
 
-            if len(pts) < 2:
+            if len(track_points([seg])) < 2:
                 continue
 
-            length = sum(
-                math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
-                for i in range(len(pts) - 1)
-            )
-            proxies.append(OpenShape(
-                pts=pts,
-                length=length,
-                role=edge.role,
-                shape_type="line" if len(pts) == 2 else "curve",
-                segments=[seg],
-            ))
+            proxies.append(OpenFeature(role=edge.role, segments=[seg]))
 
         return proxies
 
@@ -399,7 +388,7 @@ def _fallback_polygonize(self):
     from shapely.ops import unary_union, snap, polygonize
     from shapely.geometry import LineString, Polygon
     from ..core.primitives.segments import ArcSeg, DEFAULT_TOLERANCE
-    from ..core.healing.hierarchy import loop_to_closed_shape
+    from ..core.healing.hierarchy import loop_to_closed_feature
     from ..model.role import ContourRole
 
     self.result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
@@ -432,7 +421,7 @@ def _fallback_polygonize(self):
                 LineSeg(start=pts[i], end=pts[i + 1])
                 for i in range(len(pts) - 1)
             ]
-            shape = loop_to_closed_shape(
+            shape = loop_to_closed_feature(
                 [],
                 role=ContourRole.OUTER,
                 polygon=poly,
@@ -448,7 +437,7 @@ def _fallback_polygonize(self):
                     for i in range(len(pts_i) - 1)
                 ]
                 inner_poly = Polygon(interior)
-                shape_i = loop_to_closed_shape(
+                shape_i = loop_to_closed_feature(
                     [],
                     role=ContourRole.INNER,
                     polygon=inner_poly,
