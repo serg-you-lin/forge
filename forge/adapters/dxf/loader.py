@@ -13,6 +13,8 @@ ForgeDocument restituito.
 """
 
 import os
+import sys
+import shutil
 import ezdxf
 from ezdxf.addons import odafc
 
@@ -21,8 +23,22 @@ from .adapter import DxfAdapter
 from .annotation_extractor import DxfAnnotationExtractor
 from ...model.document import ForgeDocument
 
-ODA_PATH = os.environ.get(
-    "ODA_PATH"
+# Percorso dell'eseguibile ODA File Converter. `forge` NON legge i DWG da solo:
+# il supporto DWG di ezdxf È l'addon `odafc`, che è un wrapper attorno a ODA
+# File Converter (converte il DWG in DXF temporaneo, ezdxf rilegge il DXF).
+# Download (gratuito): https://www.opendesign.com/guestfiles/oda_file_converter
+ODA_DOWNLOAD_URL = "https://www.opendesign.com/guestfiles/oda_file_converter"
+ODA_PATH = os.environ.get("ODA_PATH")
+
+# Guida rapida alle variabili d'ambiente per SO — rimando nei messaggi d'errore.
+_ENV_VAR_HELP = (
+    "Come impostare ODA_PATH:\n"
+    "  Windows (permanente): setx ODA_PATH \"C:\\Program Files\\ODA\\"
+    "ODAFileConverter X.Y.Z\\ODAFileConverter.exe\"  (riapri il terminale)\n"
+    "  Windows (sessione)  : $env:ODA_PATH = \"...\\ODAFileConverter.exe\"  (PowerShell)\n"
+    "  Linux / macOS       : export ODA_PATH=\"/opt/ODAFileConverter/ODAFileConverter\" "
+    "in ~/.bashrc o ~/.zshrc\n"
+    "  In alternativa metti l'eseguibile ODAFileConverter nel PATH di sistema."
 )
 
 DWG_VERSIONS = {
@@ -85,14 +101,54 @@ def _emit(sink: list, msg: str, verbose: bool = False) -> None:
         print(f"[loader] {msg}")
 
 
-def _read_dwg(path: str, sink: list = None, verbose: bool = False):
+def _configure_odafc(sink: list = None, verbose: bool = False) -> None:
     """
-    Legge un file DWG usando ezdxf.addons.odafc.
-    Richiede ODA File Converter installato e ODA_PATH settato.
+    Punta l'addon `odafc` all'eseguibile ODA File Converter.
+
+    Ordine di ricerca:
+      1. variabile d'ambiente ODA_PATH (full path dell'eseguibile)
+      2. `ODAFileConverter` nel PATH di sistema (odafc lo trova da solo)
 
     Raises:
-        EnvironmentError: se ODA_PATH non è settato
-        RuntimeError: se la conversione fallisce
+        EnvironmentError: ODA_PATH non settato E nessun ODAFileConverter nel PATH.
+                          Il messaggio include link di download e guida alle
+                          variabili d'ambiente per SO.
+    """
+    # su Windows odafc usa "win_exec_path", su Linux/macOS "unix_exec_path"
+    opt_key = "win_exec_path" if sys.platform == "win32" else "unix_exec_path"
+
+    if ODA_PATH:
+        if os.path.isfile(ODA_PATH):
+            ezdxf.options.set("odafc-addon", opt_key, ODA_PATH)
+            return
+        _emit(
+            sink,
+            f"ODA_PATH è settato ma non punta a un file esistente: {ODA_PATH!r} "
+            f"— provo a cercare ODAFileConverter nel PATH.",
+            verbose,
+        )
+
+    if shutil.which("ODAFileConverter"):
+        return  # odafc lo troverà da solo
+
+    raise EnvironmentError(
+        "Impossibile aprire il DWG: ODA File Converter non trovato.\n"
+        "`forge` (come ezdxf) converte i DWG tramite ODA File Converter.\n\n"
+        f"1. Scaricalo (gratuito) da: {ODA_DOWNLOAD_URL}\n"
+        f"2. {_ENV_VAR_HELP}\n\n"
+        "Nota: se hai già ODA installato ma in una cartella con la versione nel "
+        "nome (es. 'ODAFileConverter 27.1.0'), ODA_PATH deve puntare al full "
+        "path dell'eseguibile, non alla cartella."
+    )
+
+
+def _read_dwg(path: str, sink: list = None, verbose: bool = False):
+    """
+    Legge un file DWG usando ezdxf.addons.odafc (wrapper di ODA File Converter).
+
+    Raises:
+        EnvironmentError: ODA File Converter non trovato (vedi `_configure_odafc`)
+        RuntimeError: la conversione DWG→DXF è fallita
     """
     from ezdxf.addons import odafc
 
@@ -101,18 +157,16 @@ def _read_dwg(path: str, sink: list = None, verbose: bool = False):
     version_name = DWG_VERSIONS.get(version_code, version_code)
     _emit(sink, f"DWG rilevato: {version_name} ({version_code}), convertito via odafc", verbose)
 
-    if not ODA_PATH:
-        raise EnvironmentError(
-            "[loader] ODA_PATH non settato.\n"
-            "Installa ODA File Converter e setta la variabile d'ambiente ODA_PATH."
-        )
-
-    ezdxf.options.set("odafc-addon", "win_exec_path", ODA_PATH)
+    _configure_odafc(sink=sink, verbose=verbose)
 
     try:
         doc = odafc.readfile(path)
     except Exception as ex:
-        raise RuntimeError(f"[loader] Conversione DWG fallita: {ex}")
+        raise RuntimeError(
+            f"Conversione DWG fallita ({type(ex).__name__}: {ex}).\n"
+            f"Se il messaggio parla di 'ODAFileConverter not installed', "
+            f"scaricalo da {ODA_DOWNLOAD_URL} e imposta ODA_PATH.\n{_ENV_VAR_HELP}"
+        )
 
     return doc
 

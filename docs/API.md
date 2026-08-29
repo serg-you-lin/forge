@@ -54,7 +54,7 @@ funzione il documento `ezdxf` sorgente sparisce.
 
 | parametro | significato |
 |---|---|
-| `path` | percorso `.dxf` o `.dwg`. Il `.dwg` richiede ODA File Converter + variabile d'ambiente `ODA_PATH`. |
+| `path` | percorso `.dxf` o `.dwg`. Per il `.dwg` vedi la sezione **DWG** qui sotto. |
 | `upgrade` | forza l'upgrade a R2010 anche se non necessario. |
 | `explode_inserts` | `True` (default): esplode i blocchi in primitive. **Metti `False` solo se vuoi ignorare i blocchi di proposito** — un `INSERT` non esploso viene scartato e la sua geometria sparisce. |
 | `flatten_z_flag` | riporta sul piano le entità con Z ≠ 0. |
@@ -75,6 +75,40 @@ doc = forge.load_dxf("pezzo.dxf", tolerance=0.5,
 for w in doc.warnings:
     print("loader:", w)
 ```
+
+#### DWG
+
+**`forge` non legge il DWG da solo, e nemmeno `ezdxf`.** Il DWG è un formato
+chiuso: il "supporto DWG" di `ezdxf` è l'addon `odafc`, che è un wrapper attorno
+a **ODA File Converter** — converte il `.dwg` in un `.dxf` temporaneo e `ezdxf`
+rilegge quello. `forge` usa esattamente questo (`adapters/dxf/loader.py`).
+
+Per aprire un `.dwg` serve quindi:
+
+1. **ODA File Converter** installato — download gratuito:
+   <https://www.opendesign.com/guestfiles/oda_file_converter>
+2. `forge` deve trovare l'eseguibile. Due modi:
+   - variabile d'ambiente **`ODA_PATH`** = *full path dell'eseguibile*
+     (non la cartella — se ODA è in `ODAFileConverter 27.1.0\`, il path deve
+     includere `\ODAFileConverter.exe`);
+   - oppure `ODAFileConverter` raggiungibile dal `PATH` di sistema.
+
+Impostare `ODA_PATH`:
+
+| SO | comando |
+|---|---|
+| Windows, permanente | `setx ODA_PATH "C:\Program Files\ODA\ODAFileConverter 27.1.0\ODAFileConverter.exe"` — poi **riapri il terminale** |
+| Windows, solo sessione (PowerShell) | `$env:ODA_PATH = "C:\...\ODAFileConverter.exe"` |
+| Windows, GUI | Impostazioni → *Modifica le variabili di ambiente relative al sistema* → *Variabili d'ambiente…* → *Nuova* |
+| Linux / macOS, permanente | `export ODA_PATH="/opt/ODAFileConverter/ODAFileConverter"` in `~/.bashrc` o `~/.zshrc`, poi riapri la shell |
+| Linux / macOS, solo sessione | `export ODA_PATH="/opt/ODAFileConverter/ODAFileConverter"` |
+
+Guide di riferimento per le variabili d'ambiente:
+[Windows](https://learn.microsoft.com/windows/win32/procthread/environment-variables) ·
+[Linux/macOS (`export`)](https://www.gnu.org/software/bash/manual/bash.html#Environment).
+
+Se manca tutto, `load_dxf` su un `.dwg` solleva `EnvironmentError` con il link e
+questa stessa guida nel messaggio.
 
 ---
 
