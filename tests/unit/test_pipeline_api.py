@@ -32,7 +32,7 @@ class TestPipelineApi(unittest.TestCase):
     def test_heal_and_detect_equivalent_to_separate_calls(self):
         doc_a, doc_b = _square_doc(), _square_doc()
         combined = forge.heal_and_detect(doc_a)
-        step = forge.detect(forge.heal(doc_b))
+        step = forge.detect(forge.heal(doc_b), features="all")
         self.assertEqual(combined.part_count, step.part_count)
         self.assertEqual(
             [h.hole_type for p in combined.parts for h in p.holes],

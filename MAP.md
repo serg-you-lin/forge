@@ -152,10 +152,35 @@ Stesso contratto — heal(), detect(), write() non cambiano una riga.
 Branch: `refactor/structure`. Modifiche **non committate** (i commit li fa Federico).
 
 **Passi 1–8 completati** + fix regressione engrave `to_dxf()`.
-**Fase 4 (consolidamento): D5, D6, D7, D8, D4 fatti.** Resta D15 (sessione a sé).
-Suite: **554 passed / 0 failed** (2 xfail preesistenti).
+**Fase 4 (consolidamento): D5, D6, D7, D8, D4, D15 fatti.** Fase 4 conclusa.
+Suite: **550 passed / 0 failed** (era 554; ~4 test di `hierarchy`/`healer`
+consolidati con D15).
 
-## Ultima sessione (2026-08-29) — D4: bridge `OpenShape`/`ClosedShape` eliminato
+## Ultima sessione (2026-08-29) — D15: `detect()` parametrico, classificazione hole spostata
+
+`heal`/`hierarchy` non producono più `Hole`: `HierarchyBuilder` consegna solo
+l'albero di contenimento (`ForgePart(outer, inners=[ForgeContour...])`, nesting
+appiattito). `ClosedFeature` non porta più `diameter`/`center` (campi D4.2
+rimossi). `detect()` è parametrico:
+- `detect(result)` nudo → solo lane label_map (autoritativa) + pulizia topologia,
+  zero `Hole`;
+- `detect(result, features="holes" | "bending" | "engrave" | "all")` → lane
+  geometriche opt-in;
+- `max_drill_diameter` (default `HOLE_DIAMETER_THRESHOLD` = 32.1) è argomento di
+  `detect()`: Ø < soglia → `Hole`, Ø ≥ soglia → resta `ForgeContour` inner.
+`heal_and_detect(..., features="all")` è la via del 90%.
+Nuovi helper: `core/geometry.py::circular_geometry(polygon, segments)` (stessa
+regola del vecchio `_single_loop_geometry`: gate `len(segments)==1` + aspect
+ratio bbox ≤ 0.15, numeri invariati); `detect._detect_holes` riscritto
+(`_promote_geometric_holes` — countersink da coppia concentrica, plain/threaded,
+migrazione inners→holes); `detect._labeled_hole_from_contour` (lane label_map).
+Prova di equivalenza su tutti i golden DXF (`features="all"`): diff **solo** su
+7 file — `Multipolis`, `Polylines`, `arc_ocs_flip_loop.dxf`, `cerchi_ciambella`,
+`flangia con fori`, `flangia_scantonata`, `fori_spuri` — dove cerchi Ø ≥ 32.1
+migrano da `Hole(role="inner")` a `ForgeContour(role=INNER)`. Golden rigenerati
+uno per uno (`--force --only`), diff verificato a mano. Q1/Q2 chiuse.
+
+## Sessione precedente (2026-08-29) — D4: bridge `OpenShape`/`ClosedShape` eliminato
 
 `heal` produce direttamente `OpenFeature`/`ClosedFeature`; `bridge/shape.py`
 cancellato. `pts`/`length`/`shape_type` ora derivati dai segmenti nativi via
@@ -423,12 +448,12 @@ distinzione "ha polygon / non ce l'ha" è onesta e dà `area`/`bbox` gratis.
   tranne `dev_tools/12`. ✅
 
 Campi buttati: `pts`/`length`/`shape_type` (ora derivati dagli helper `track_*`),
-`origin`, `shape_type` lato closed. `ClosedFeature.diameter`/`center` restano
-ma sono letti solo da `hierarchy` — si tolgono in D15.
+`origin`, `shape_type` lato closed. `ClosedFeature.diameter`/`center` **rimossi
+in D15** (la geometria circolare la ricava `core/geometry.circular_geometry`).
 
-**NB residuo per D15:** `heal` emette ancora `Hole`/`ForgeContour` da
-`hierarchy` con la classificazione strutturale attuale (soglia inclusa). D4 ha
-solo tolto i proxy, non ha toccato dove avviene la classificazione.
+**NB residuo per D15: CHIUSO.** D15 (2026-08-29) ha spostato tutta la
+classificazione hole/inner in `detect()` parametrico; `heal` emette solo
+l'albero di contenimento.
 **Superficie:** `OpenShape`/`ClosedShape` portano campi extra che `OpenFeature`/
 `ClosedFeature` non hanno — `pts`, `length`, `shape_type` (open), `diameter`,
 `center` (closed). Li consumano `hierarchy.py` (diameter/center per la
@@ -531,7 +556,7 @@ fatto ordine. Il seam nella pipeline `detect()` c'è già.
 Federico li usa. Al massimo si aggiunge `.gitignore` per i loro output
 (`*_healed.dxf`, `*.png`, `pipeline_output/`, `_split_debug/`).
 
-### D15 — `detect()` parametrico + classificazione hole spostata lì  ⬜ DA FARE (sessione dedicata)
+### D15 — `detect()` parametrico + classificazione hole spostata lì  ✅ FATTO (sessione 2026-08-29, non committato)
 Deciso 2026-08 (con Federico, dopo aver oscillato — vedi Q1). NON si esegue
 dentro la sessione D4: è una decisione a sé, va progettata a mente fredda.
 
@@ -570,13 +595,12 @@ Prima ipotesi (scartata): la classificazione hole/inner resta in `heal`/
 non più saltabile, contro `laser-cutting-default-cam-enrichment-optional`.
 Risoluzione: la classificazione si sposta in `detect()` parametrico — vedi D15.
 
-### Q2 — valore di `HOLE_DIAMETER_THRESHOLD`
-`32.1` mm è un valore fisso in `rules/thresholds.py`, sospetto (sembra
-ricavato da un file di test). Non è una costante di dominio: è un **parametro
-di processo** — "sotto questo Ø lo faccio con la punta, sopra lo taglio come
-contorno", dipende da macchina e utensile. → diventa argomento di `detect()`
-(`max_drill_diameter`), vedi D15. Nota emersa da `Polylines` (5 cerchi Ø34.31,
-appena sopra soglia, oggi finiscono in inner).
+### Q2 — valore di `HOLE_DIAMETER_THRESHOLD`  → RISOLTA da D15
+`32.1` mm ora è il **default** di `detect(max_drill_diameter=...)` — parametro
+di processo, non costante di dominio. Federico (2026-08-29): lascia `32.1` di
+default per ora ("io ragiono sui fori che magari hanno tolleranza e devono
+essere ripassati"). La costante resta in `rules/thresholds.py` come sorgente del
+default; il chiamante la può override per macchina/utensile.
 
 ---
 
@@ -633,7 +657,7 @@ Suite invariata: **531 passed**.
 - `forge/__init__.py` docstring del modulo aggiornata.
 Suite: **531 passed** (invariata — nessun test dipendeva dal `None`).
 
-**Fase 4 — consolidamento** 🟡 IN CORSO (non committato):
+**Fase 4 — consolidamento** ✅ CONCLUSA (non committato):
 - ✅ D5 — `source`/`confidence` su `BendingLine` + lane geometrica/label_map.
 - ✅ D6 — `parse_loop` → `segments_from_loop` in `core/topology/`; `.reversed()`
       su `LineSeg`/`ArcSeg`/`CircleSeg`.
@@ -645,10 +669,13 @@ Suite: **531 passed** (invariata — nessun test dipendeva dal `None`).
 - ✅ D4 — `OpenShape`/`ClosedShape` eliminati (sessione 2026-08-29, non
       committato). `heal` emette `OpenFeature`/`ClosedFeature`. D4.3 saltato
       (→ D15). 554 passed, golden 145/145. Dettaglio sub-step nella scheda D4.
-- ⬜ D15 — `detect()` parametrico + classificazione hole spostata lì. Sessione
-      a sé, dopo D4. Vedi scheda D15.
+- ✅ D15 — `detect()` parametrico; classificazione hole/inner + `max_drill_diameter`
+      spostati da `hierarchy` a `detect()`. `heal` emette solo l'albero di
+      contenimento. `ClosedFeature.diameter`/`center` rimossi. 7 golden
+      rigenerati (cerchi Ø ≥ 32.1: `Hole(role=inner)` → `ForgeContour`).
+      Vedi scheda D15 + "Ultima sessione".
 
-Suite dopo D5+D6+D7+D8: **550 passed**.
+Suite dopo D5+D6+D7+D8: **550 passed**. Dopo D4+D15: **550 passed**.
 `forge/adapters/dxf/` da 2914 → ~2500 righe (adapter.py -210).
 
 **Dopo:** `to_svg` (D12), poi `detect_engrave` (D13) quando Federico decide.

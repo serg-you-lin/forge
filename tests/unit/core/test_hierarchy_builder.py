@@ -1,7 +1,11 @@
 """
 tests/unit/core/test_hierarchy_builder.py
 
-Test per HierarchyBuilder (Step 4 del refactor).
+Test per HierarchyBuilder.
+
+D15: HierarchyBuilder costruisce SOLO l'albero di contenimento —
+`ForgePart(outer, inners=[ForgeContour...])`, zero `Hole`. La classificazione
+hole / countersink è di `detect()` (vedi tests/unit/test_detect.py).
 
 I proxy ClosedFeature/OpenFeature vengono costruiti direttamente con Polygon
 shapely e primitive native — nessun adapter DXF, nessun file reale.
@@ -21,13 +25,8 @@ from forge.core.healing.hierarchy import HierarchyBuilder
 # Helper
 # ---------------------------------------------------------------------------
 
-def _make_proxy(polygon, *, diameter=None, center=None, role=ContourRole.UNKNOWN):
-    return ClosedFeature(
-        role=role,
-        polygon=polygon,
-        diameter=diameter,
-        center=center,
-    )
+def _make_proxy(polygon, *, role=ContourRole.UNKNOWN):
+    return ClosedFeature(role=role, polygon=polygon)
 
 
 def _make_open_proxy(pts, *, role=ContourRole.UNKNOWN):
@@ -44,7 +43,7 @@ def _circle_proxy(cx, cy, r):
           cy + r * math.sin(a * math.pi / 180))
          for a in range(0, 360, 5)]
     )
-    return _make_proxy(poly, diameter=r * 2, center=(cx, cy))
+    return _make_proxy(poly)
 
 
 def _rect_proxy(x0, y0, x1, y1):
@@ -69,22 +68,21 @@ class TestVirtualModelRemoved(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Test 1 — outer + hole
+# Test 1 — outer + contorno interno
 # ---------------------------------------------------------------------------
 
-class TestOuterConHole(unittest.TestCase):
+class TestOuterConInner(unittest.TestCase):
     """
-    Configurazione:
-        - 1 proxy grande (100×100) → OUTER
-        - 1 proxy circolare d=5 contenuto → HOLE
+    - 1 proxy grande (100×100) → OUTER
+    - 1 proxy circolare d=5 contenuto → inner (heal NON lo promuove a foro)
 
-    Atteso: 1 ForgePart con 1 Hole, 0 inners, trash vuoto.
+    Atteso: 1 ForgePart, 0 holes, 1 inner, trash vuoto.
     """
 
     def setUp(self):
         self.outer = _rect_proxy(0, 0, 100, 100)
-        self.hole  = _circle_proxy(50, 50, 2.5)   # d=5, sotto HOLE_DIAMETER_THRESHOLD
-        self.parts, self.trash = _make_builder().build([self.outer, self.hole])
+        self.inner = _circle_proxy(50, 50, 2.5)
+        self.parts, self.trash = _make_builder().build([self.outer, self.inner])
 
     def test_produce_una_part(self):
         self.assertEqual(len(self.parts), 1)
@@ -92,32 +90,29 @@ class TestOuterConHole(unittest.TestCase):
     def test_outer_area(self):
         self.assertAlmostEqual(self.parts[0].outer.polygon.area, 10000.0, delta=1.0)
 
-    def test_un_hole(self):
-        self.assertEqual(len(self.parts[0].holes), 1)
+    def test_zero_holes(self):
+        self.assertEqual(len(self.parts[0].holes), 0)
 
-    def test_zero_inners(self):
-        self.assertEqual(len(self.parts[0].inners), 0)
-
-    def test_hole_diameter(self):
-        self.assertAlmostEqual(self.parts[0].holes[0].diameter, 5.0, places=3)
+    def test_un_inner(self):
+        self.assertEqual(len(self.parts[0].inners), 1)
+        self.assertEqual(self.parts[0].inners[0].role, ContourRole.INNER)
 
     def test_trash_vuoto(self):
         self.assertEqual(len(self.trash), 0)
 
 
 # ---------------------------------------------------------------------------
-# Test 2 — countersink
+# Test 2 — nesting a tre livelli (countersink): heal appiattisce tutto in inners
 # ---------------------------------------------------------------------------
 
-class TestCountersink(unittest.TestCase):
+class TestNestingFlattened(unittest.TestCase):
     """
-    Configurazione (tre livelli annidati):
-        - outer   : rettangolo 100×100
-        - medio   : cerchio d=20 dentro outer   → anello esterno del countersink
-        - piccolo : cerchio d=8  dentro medio   → foro del countersink
+    - outer   : rettangolo 100×100
+    - medio   : cerchio d=20 dentro outer
+    - piccolo : cerchio d=8  dentro medio
 
-    Atteso: 1 ForgePart, 1 Hole con geometric_hint="countersink" e
-    outer_diameter≈20, 0 inners.
+    heal() non riconosce più il countersink dal nesting (D15): consegna
+    entrambi i cerchi come inners piatti. Il riconoscimento è di detect().
     """
 
     def setUp(self):
@@ -129,17 +124,11 @@ class TestCountersink(unittest.TestCase):
     def test_produce_una_part(self):
         self.assertEqual(len(self.parts), 1)
 
-    def test_un_hole(self):
-        self.assertEqual(len(self.parts[0].holes), 1)
+    def test_zero_holes(self):
+        self.assertEqual(len(self.parts[0].holes), 0)
 
-    def test_countersink_hint(self):
-        self.assertEqual(self.parts[0].holes[0].geometric_hint, "countersink")
-
-    def test_countersink_outer_diameter(self):
-        self.assertAlmostEqual(self.parts[0].holes[0].outer_diameter, 20.0, places=3)
-
-    def test_zero_inners(self):
-        self.assertEqual(len(self.parts[0].inners), 0)
+    def test_due_inners(self):
+        self.assertEqual(len(self.parts[0].inners), 2)
 
 
 # ---------------------------------------------------------------------------
@@ -148,9 +137,8 @@ class TestCountersink(unittest.TestCase):
 
 class TestTrash(unittest.TestCase):
     """
-    Configurazione:
-        - 1 proxy outer (100×100)
-        - 1 OpenFeature role=UNKNOWN fuori dall'outer, non in entities_in_loops
+    - 1 proxy outer (100×100)
+    - 1 OpenFeature role=UNKNOWN fuori dall'outer
 
     Atteso: il proxy aperto flottante finisce in trash, l'outer produce 1 ForgePart.
     """
@@ -175,16 +163,16 @@ class TestTrash(unittest.TestCase):
             )
         )
 
+
 # ---------------------------------------------------------------------------
 # Test 4 — segments copiati dal proxy al model
 # ---------------------------------------------------------------------------
 
 class TestSegmentsCopiati(unittest.TestCase):
     """
-    Verifica che HierarchyBuilder copi proxy.segments su ForgeContour e Hole.
+    HierarchyBuilder copia proxy.segments su outer e inner.
 
-    I segments sono stub — l'importante è che arrivino intatti,
-    non che siano geometricamente corretti.
+    I segments sono stub — l'importante è che arrivino intatti.
     """
 
     def setUp(self):
@@ -196,7 +184,7 @@ class TestSegmentsCopiati(unittest.TestCase):
             LineSeg(start=(100, 100), end=(0, 100)),
             LineSeg(start=(0, 100), end=(0, 0)),
         ]
-        self.seg_hole = [
+        self.seg_inner = [
             ArcSeg(center=(50, 50), radius=2.5,
                    start_angle=0.0, end_angle=6.2831, ccw=True),
         ]
@@ -204,22 +192,17 @@ class TestSegmentsCopiati(unittest.TestCase):
         outer = _rect_proxy(0, 0, 100, 100)
         outer.segments = list(self.seg_outer)
 
-        hole = _circle_proxy(50, 50, 2.5)
-        hole.segments = list(self.seg_hole)
+        inner = _circle_proxy(50, 50, 2.5)
+        inner.segments = list(self.seg_inner)
 
-        self.parts, _ = _make_builder().build([outer, hole])
+        self.parts, _ = _make_builder().build([outer, inner])
 
     def test_outer_segments_copiati(self):
-        self.assertEqual(
-            self.parts[0].outer.segments,
-            self.seg_outer,
-        )
+        self.assertEqual(self.parts[0].outer.segments, self.seg_outer)
 
-    def test_hole_segments_copiati(self):
-        self.assertEqual(
-            self.parts[0].holes[0].segments,
-            self.seg_hole,
-        )
+    def test_inner_segments_copiati(self):
+        self.assertEqual(self.parts[0].inners[0].segments, self.seg_inner)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

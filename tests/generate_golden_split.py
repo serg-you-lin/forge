@@ -79,7 +79,7 @@ def generate(force: bool = False, only: str = None):
                 skipped += 1
                 continue
 
-            forge.detect(result)
+            forge.detect(result, features="all")
 
             forge.split(
                 result,

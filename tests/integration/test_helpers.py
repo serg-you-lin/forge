@@ -79,7 +79,7 @@ def run_pipeline(
 
     if do_detect:
         forge.detect(
-            result
+            result, features="all"
         )
 
     if do_inject:

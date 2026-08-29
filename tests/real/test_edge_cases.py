@@ -41,7 +41,7 @@ def _make_test(dxf_path):
 
         forge_doc = forge.document_from_msp(msp)
         result = forge.heal(forge_doc)
-        forge.detect(result)
+        forge.detect(result, features="all")
         doc_out = forge.to_dxf(result, forge_doc)
         forge.inject(result)
 

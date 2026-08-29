@@ -148,7 +148,7 @@ def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
     result = forge.heal(doc, tolerance=tolerance)
 
     if result.is_valid and result.parts:
-        forge.detect(result)
+        forge.detect(result, features="all")
         drawings = forge.split(
             result,
             doc,

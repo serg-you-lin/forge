@@ -154,7 +154,7 @@ class TestPipelineDetectIdempotency(unittest.TestCase):
         import forge
 
         forge.detect(
-            result
+            result, features="all"
         )
 
         after = result.parts[0].summary["bending_lines"]

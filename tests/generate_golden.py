@@ -100,7 +100,7 @@ def generate(force: bool = False, only: str = None):
                 tolerance=tolerance,
             )
 
-            forge.detect(result)
+            forge.detect(result, features="all")
 
             if not result.is_valid:
                 print(f"  SKIP (non valido): {dxf_path.name} — {result.errors}")
