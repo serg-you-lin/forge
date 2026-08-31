@@ -195,7 +195,7 @@ class HealStep:
         if not self.edges:
             return
 
-        from ..core.topology.loop_finder import LoopFinder, segments_from_loop
+        from ..core.topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
         from ..core.healing.hierarchy import loop_to_closed_feature
         from ..model.role import ContourRole
 
@@ -268,6 +268,7 @@ class HealStep:
             role = loop[0][0].role if loop else ContourRole.UNKNOWN
 
             segments = segments_from_loop(loop)
+            styles = edge_styles_from_loop(loop)
 
             from ..core.primitives.polygon_builder import build_polygon
             from ..core.primitives.segments import DEFAULT_TOLERANCE
@@ -280,6 +281,7 @@ class HealStep:
                 role=role,
                 polygon=polygon,
                 segments=segments,
+                styles=styles,
             )
             if shape is not None:
                 self.closed_shapes.append(shape)
@@ -356,13 +358,14 @@ class HealStep:
                     role=edge.role,
                     polygon=polygon,
                     segments=[seg],
+                    styles=[edge.style],
                 ))
                 continue
 
             if len(track_points([seg])) < 2:
                 continue
 
-            proxies.append(OpenFeature(role=edge.role, segments=[seg]))
+            proxies.append(OpenFeature(role=edge.role, segments=[seg], styles=[edge.style]))
 
         return proxies
 

@@ -178,6 +178,25 @@ def segments_from_loop(loop) -> list:
     return out
 
 
+def edge_styles_from_loop(loop) -> list:
+    """
+    Stili grezzi (linetype/colore) di un loop, allineati 1:1 con
+    `segments_from_loop(loop)` — stesso ordine, stessa espansione per gli Edge
+    di test che portano una lista di segmenti. Lo stile non dipende dal verso
+    di percorrenza: a differenza del segmento nativo non va mai invertito.
+    """
+    out = []
+    for edge, _rev in loop:
+        seg = edge.segment
+        if seg is None:
+            continue
+        if isinstance(seg, list):
+            out.extend([edge.style] * len(seg))
+        else:
+            out.append(edge.style)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Edge → OpenFeature — tracce non consumate da loop strutturali
 # ---------------------------------------------------------------------------
@@ -214,6 +233,6 @@ def edges_to_open_features(edges: list, exclude_ids: set, label_map: dict) -> li
         if len(track_points([seg])) < 2:
             continue
 
-        features.append(OpenFeature(role=edge.role, segments=[seg]))
+        features.append(OpenFeature(role=edge.role, segments=[seg], styles=[edge.style]))
 
     return features

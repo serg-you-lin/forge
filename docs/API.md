@@ -44,6 +44,8 @@ forge.load_dxf(
     tolerance=0.05,
     label_map=None,
     ignore_layers=None,
+    linetype_map=None,
+    color_map=None,
 ) -> ForgeDocument
 ```
 
@@ -59,8 +61,10 @@ funzione il documento `ezdxf` sorgente sparisce.
 | `explode_inserts` | `True` (default): esplode i blocchi in primitive. **Metti `False` solo se vuoi ignorare i blocchi di proposito** — un `INSERT` non esploso viene scartato e la sua geometria sparisce. |
 | `flatten_z_flag` | riporta sul piano le entità con Z ≠ 0. |
 | `tolerance` | tolleranza di arrotondamento dei nodi topologici. Viene salvata in `source_meta` e riletta da `heal()` se non gliela ripassi. |
-| `label_map` | `{nome_layer: work_type}` — assegna il **ruolo** agli `Edge` già in fase di traduzione. Chiavi case-insensitive. `work_type` validi: `outer`, `hole`, `bending`, `frame`, `inner`, `countersink`, `threaded_hole`, `engrave`, `marking`. |
+| `label_map` | `{nome_layer: work_type}` — assegna il **ruolo** agli `Edge` già in fase di traduzione. Chiavi case-insensitive. `work_type` validi: `outer`, `hole`, `bending`, `frame`, `inner`, `countersink`, `threaded_hole`, `engrave`, `marking`. **Lane autoritativa** — se decide lei, `linetype_map`/`color_map` non intervengono più su quell'entità. |
 | `ignore_layers` | lista di layer da escludere dalla geometria. |
+| `linetype_map` | `{nome_linetype: work_type}` (es. `{"DASHED": "bending"}`) — seconda lane di classificazione, sullo **stile della linea** invece che sul layer. Si applica solo alle entità che `label_map` non ha già classificato. Stesso vocabolario `work_type` di `label_map`. Il linetype confrontato è quello **effettivo**: se l'entità è `ByLayer`, viene risolto al linetype del layer che la contiene, non lasciato `"ByLayer"`. |
+| `color_map` | `{colore: work_type}` (es. `{"cyan": "engrave"}`) — come `linetype_map` ma sul **colore ACI** dell'entità. Chiavi: nome standard (`red`, `yellow`, `green`, `cyan`, `blue`, `magenta`, `white`/`black`, `gray`/`grey`, `lightgray`/`lightgrey`, `pink`), intero ACI, o stringa numerica (`"4"`). Anche qui il colore confrontato è quello effettivo — un'entità `color=256` (BYLAYER) viene risolta al colore del layer, non lasciata BYLAYER. |
 
 **Ritorna** un `ForgeDocument`. La diagnostica sul file grezzo (audit, INSERT non
 esplosi, Z≠0, duplicati rimossi, tipi non ri-materializzabili in output) finisce
@@ -75,6 +79,20 @@ doc = forge.load_dxf("pezzo.dxf", tolerance=0.5,
 for w in doc.warnings:
     print("loader:", w)
 ```
+
+Quando il disegno non usa layer dedicati ma porta l'intenzione nello stile
+della linea (pieghe tratteggiate, marcature colorate su un layer qualsiasi):
+
+```python
+doc = forge.load_dxf(
+    "pezzo.dxf",
+    linetype_map={"DOT": "bending", "DASHED": "bending"},
+    color_map={"cyan": "engrave"},
+)
+```
+
+Vedi `14_style_classification.py` per un esempio completo (i tre classificatori
+isolati uno per uno, su un file reale in `tests/examples/`).
 
 #### DWG
 
@@ -121,12 +139,15 @@ forge.document_from_msp(
     label_map=None,
     ignore_layers=None,
     source_path="",
+    linetype_map=None,
+    color_map=None,
 ) -> ForgeDocument
 ```
 
 Costruisce un `ForgeDocument` da un `modelspace` `ezdxf` **già aperto**. Utile per
 i test o per geometria generata a mano. **Non** fa audit / upgrade / sanitize: si
-assume che il `msp` sia già pronto.
+assume che il `msp` sia già pronto. `linetype_map`/`color_map` funzionano come in
+`load_dxf()` — vedi sopra.
 
 ```python
 import ezdxf
@@ -201,8 +222,8 @@ inners=[ForgeContour...])`. La promozione a `Hole` è di `detect(features="holes
 | `label` | etichetta del pezzo, finisce in `part.label` e nei metadati. |
 | `source_file` | nome file sorgente, finisce nei metadati. |
 
-`label_map` **non è un parametro di `heal`** — va passato a `load_dxf()`, che
-assegna i ruoli agli `Edge`.
+`label_map`/`linetype_map`/`color_map` **non sono parametri di `heal`** — vanno
+passati a `load_dxf()`, che assegna i ruoli agli `Edge`.
 
 **Ritorna** un `ForgeResult`. Se non si forma nessun contorno esterno chiuso,
 `result.is_valid` è `False` e `result.errors` è popolato (la `trash_entities`
@@ -233,9 +254,10 @@ forge.detect(
 
 Il passo semantico: classifica le feature dentro le parti già trovate da `heal()`.
 
-`detect(result)` **nudo** fa solo il minimo: la lane `label_map` (autoritativa) e
-la pulizia della topologia. I contorni circolari restano `inners`, nessun `Hole` —
-è il default per il taglio laser.
+`detect(result)` **nudo** fa solo il minimo: la lane `label_map`/`linetype_map`/
+`color_map` (autoritativa, decisa in `load_dxf()`) e la pulizia della topologia.
+I contorni circolari restano `inners`, nessun `Hole` — è il default per il
+taglio laser.
 
 Le lane geometriche sono **opt-in** via `features`:
 
@@ -616,13 +638,16 @@ outer/inner/holes (tipati)/bending/engrave/custom, più `trash_entities`,
 
 ```python
 forge.inspect_file(path, tolerance=0.05, label_map=None,
-                   run_heal=True, run_detect=True, entities=True, coords=False) -> None
+                   run_heal=True, run_detect=True, entities=True, coords=False,
+                   linetype_map=None, color_map=None) -> None
 ```
 Orchestratore: apre il file e stampa i tre livelli in fila. `run_heal=False` /
-`run_detect=False` per fermarti a un livello precedente.
+`run_detect=False` per fermarti a un livello precedente. `linetype_map` /
+`color_map` come in `load_dxf()`.
 
 ```python
 forge.inspect_file("pezzo.dxf", label_map={"Piega": "bending"})
+forge.inspect_file("pezzo.dxf", linetype_map={"DOT": "bending"}, color_map={"cyan": "engrave"})
 ```
 
 ---
@@ -662,7 +687,7 @@ core: dopo di lui, `ezdxf` non si tocca più.
 |---|---|---|
 | `edges` | `list[Edge]` | geometria tradotta in primitive pure — input di `heal()` |
 | `annotations` | `list[Annotation]` | testi e quote della sorgente |
-| `source_meta` | `dict` | `$INSUNITS`, `$MEASUREMENT`, `tolerance`, `label_map`, `ignore_layers` |
+| `source_meta` | `dict` | `$INSUNITS`, `$MEASUREMENT`, `tolerance`, `label_map`, `ignore_layers`, `linetype_map`, `color_map` |
 | `source_path` | `str` | percorso del file |
 | `warnings` | `list[str]` | diagnostica del loader sul file grezzo |
 

@@ -222,6 +222,8 @@ def load_dxf(
     tolerance: float = 0.05,
     label_map: dict = None,
     ignore_layers=None,
+    linetype_map: dict = None,
+    color_map: dict = None,
 ) -> ForgeDocument:
     """
     Apre un documento DXF o DWG e lo traduce in un ForgeDocument.
@@ -249,6 +251,12 @@ def load_dxf(
         label_map:       {nome_layer: work_type} — assegna il ruolo semantico
                          agli Edge in fase di traduzione
         ignore_layers:   layer da escludere dalla geometria
+        linetype_map:    {nome_linetype: work_type} (es. {"DASHED": "bending"})
+                         — seconda lane di classificazione, usata solo dove
+                         label_map non ha già deciso il ruolo dal layer.
+        color_map:       {colore: work_type} — come linetype_map ma sul
+                         colore ACI dell'entità: nome standard ("cyan"),
+                         intero o stringa numerica ("4").
 
     Returns:
         ForgeDocument (edges + annotations + source_meta + warnings) — pronto
@@ -312,6 +320,8 @@ def load_dxf(
         tolerance=tolerance,
         ignore_layers=ignore,
         label_map=label_map,
+        linetype_map=linetype_map,
+        color_map=color_map,
     ).to_edges()
 
     # Dopo explode possono affiorare TEXT/MTEXT che stavano dentro i blocchi:
@@ -327,6 +337,8 @@ def load_dxf(
         "tolerance":     tolerance,
         "label_map":     label_map,
         "ignore_layers": sorted(ignore),
+        "linetype_map":  linetype_map or {},
+        "color_map":     color_map or {},
     }
 
     return ForgeDocument(
@@ -344,6 +356,8 @@ def document_from_msp(
     label_map: dict = None,
     ignore_layers=None,
     source_path: str = "",
+    linetype_map: dict = None,
+    color_map: dict = None,
 ) -> ForgeDocument:
     """
     Costruisce un ForgeDocument da un modelspace ezdxf già aperto.
@@ -351,12 +365,17 @@ def document_from_msp(
     Utile quando il msp non viene da un file (test, geometria generata a mano)
     o è già stato preparato altrove. Non fa audit/upgrade/sanitize: si assume
     che il msp sia già pronto.
+
+    `linetype_map` / `color_map`: vedi `load_dxf()` — seconda lane di
+    classificazione sull'aspetto grezzo, usata solo dove label_map non ha già
+    deciso il ruolo dal layer.
     """
     label_map = label_map or {}
     ignore = {s.lower() for s in (ignore_layers or [])}
 
     edges = DxfAdapter(
         msp, tolerance=tolerance, ignore_layers=ignore, label_map=label_map,
+        linetype_map=linetype_map, color_map=color_map,
     ).to_edges()
     annotations = DxfAnnotationExtractor(msp).extract()
 
@@ -367,6 +386,8 @@ def document_from_msp(
         "tolerance":     tolerance,
         "label_map":     label_map,
         "ignore_layers": sorted(ignore),
+        "linetype_map":  linetype_map or {},
+        "color_map":     color_map or {},
     }
     return ForgeDocument(
         edges=edges, annotations=annotations,
