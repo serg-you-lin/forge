@@ -16,7 +16,7 @@ from .graph import (
     _arrival_direction,
     _angular_deviation,
 )
-from ...adapters.bridge.edge import Edge
+from .edge import Edge
 
 
 class LoopFinder:

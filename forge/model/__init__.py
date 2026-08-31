@@ -41,6 +41,6 @@ __all__ = [
 
 def __getattr__(name):
     if name == "Edge":
-        from ..adapters.bridge.edge import Edge
+        from ..core.topology.edge import Edge
         return Edge
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
