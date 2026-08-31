@@ -263,6 +263,59 @@ class TestWritebackTrash(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Cluster E — linetype della sorgente sempre ripristinato in output. Le linee
+# tratteggiate non devono uscire continue. Il colore invece non si tocca mai:
+# resta quello del layer forge di destinazione (semantico per ruolo — verde
+# outer, rosso trash, ... — rules/palette.py), mai quello della sorgente.
+# ---------------------------------------------------------------------------
+
+class TestWritebackStyle(unittest.TestCase):
+
+    def _multifeature(self):
+        name = "Multifeature.dxf"
+        if not (EXAMPLES_DIR / name).exists():
+            self.skipTest(name)
+        return _pipeline(name, detect=True, label_map={"MARK": "engrave"})
+
+    def test_001_trash_linetype_preserved(self):
+        # 64+ LINE su "02___PRT_ALL_AXES" (assi dei fori) sono CENTER nella
+        # sorgente e finiscono in trash: devono restare CENTER in output, non
+        # ricadere sul BYLAYER continuo del layer Trash.
+        _, msp = self._multifeature()
+        trash = [e for e in msp
+                 if e.dxf.hasattr("layer") and e.dxf.layer == TRASH_LAYER]
+        self.assertTrue(any(e.dxf.linetype == "CENTER" for e in trash))
+
+    def test_002_custom_linetype_registered_with_pattern(self):
+        _, msp = self._multifeature()
+        self.assertIn("CENTER", msp.doc.linetypes)
+        lt = msp.doc.linetypes.get("CENTER")
+        self.assertGreater(len(lt.simplified_line_pattern()), 1)
+
+    def test_003_trash_color_stays_trash_layer_color(self):
+        # Le stesse linee assiali portano un colore esplicito nella sorgente
+        # (ACI 4/7/1, alcune anche con true_color): il trash non ripristina
+        # mai il colore originale, solo il tratteggio. Il colore resta quello
+        # del layer Trash (BYLAYER).
+        _, msp = self._multifeature()
+        trash = [e for e in msp
+                 if e.dxf.hasattr("layer") and e.dxf.layer == TRASH_LAYER]
+        self.assertTrue(trash)
+        for e in trash:
+            self.assertEqual(e.dxf.color, 256)
+            self.assertFalse(e.dxf.hasattr("true_color"))
+
+    def test_004_structural_color_stays_bylayer_despite_source_color(self):
+        # outer/inner/hole restano BYLAYER anche quando la sorgente aveva un
+        # colore esplicito diverso: il colore è una decisione di dominio per
+        # ruolo (rules/palette.py), non un attributo da riportare fedele.
+        result, msp = _pipeline("rect_with_circle_hole.dxf", detect=True)
+        for e in msp.query("LWPOLYLINE"):
+            if e.dxf.layer == LAYER_OUTER:
+                self.assertEqual(e.dxf.color, 256)
+
+
+# ---------------------------------------------------------------------------
 # Annotazioni — testi e quote mai scartati, routing su layer dedicato
 # ---------------------------------------------------------------------------
 

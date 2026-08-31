@@ -49,8 +49,17 @@ Da fare, in ordine:
    per area di `forge.__all__`, default su `tests/examples/` (D14).
 2. ✅ `to_view_model` + `to_svg` / `save_svg` (D12).
 3. `detect_engrave` (D13) — quando Federico decide.
-4. Merge di `refactor/structure` in `main`.
-5. Dashboard — **repo separata** (D16). Rendering nel browser (SVG/Canvas JS)
+4. `forge/io/text_utils.py`: da riordinare (2026-08-31). Oggi mischia
+   *estrazione* da ezdxf (`extract_forge_texts`, quella vera che alimenta
+   `inject()`; `extract_texts_from_msp` resta solo per debug/stampa) e
+   *pulizia del contenuto testuale* (`clean_mtext`). Idea di Federico: un
+   modulo di gestione testi accessibile anche a un agente esterno, che lavori
+   su stringhe pure — zero import di ezdxf dentro. Da decidere: separare in
+   (a) estrazione lato adapter DXF (resta vicino a ezdxf) e (b) un modulo
+   pure-text a valle (matching/pulizia/riconoscimento materiale-spessore-
+   codice) senza dipendenze dal formato. Non ancora iniziato.
+5. Merge di `refactor/structure` in `main`.
+6. Dashboard — **repo separata** (D16). Rendering nel browser (SVG/Canvas JS)
    da `to_view_model`; backend = server Python sottile attorno a
    `heal_and_detect`. `to_svg` resta comodità di libreria (export, thumbnail).
 
@@ -251,3 +260,21 @@ Riferimento: memoria `nesting-out-of-scope`.
   tolleranza e devono essere ripassati"). La costante resta in
   `rules/thresholds.py` come sorgente del default; il chiamante la può override
   per macchina/utensile.
+
+
+
+* Appunti Federico
+** API
+inspect_file: se non gli passo il dxf, ma un altro fiel in entrata?? ce ne freghaimo ora, dal momento che non abbiamo altri input?
+in ispect_dxf, sarebbe meglio avere l'opzione di non printare entità, ome avevamo prima. voglio dire, se hno boisogno solo dela spline o della polilinea, mi devo beccare anche tutto il resto?
+load_dxf: se non faccio poi detection all, la tracciatura dei layer non serve a niente, vero?
+
+Ha senso fare come facciamo noi? l'heal e la detection seeparati? si fa? senza stare li a diventare matti...
+heal: non mi è chairo cosa sia il part label, è il nome che viene assegnato poi al file di usicta? va solo nei metadati?
+split: exclude types può escludere qualunque cosa? o solo text o annotations? prende una lista? vuole to_dxf dopo, o è già compreso nell'api?
+split_to_files: ha exclude types cpme split? se non avessi bisogno dei metadati, potrei fare direttamente   split_to_files senza fare result = ....?
+inject: tolerance=0.1,   # accettato per compat, non più usato che significa? se è inutile, togliamolo, si può? meglio lasciarlo secondo te? non sporca e confonde?
+
+
+** MODULI
+text_utils.py: fa ancora qualcosa? era quell oche usavo per i testi prima del refactoring, sarebbe cda caire se facevo qualcosa di particolare che possa migliorare quello ce faciamo ora, unificare o non so. Comunque un gestore di testo che possa essere accessibile all'esterno, per un agente coem te o uno specifico per i dxf, ci starebbe, testi in stringa però, un modulo li non deve avere dxf dentro.

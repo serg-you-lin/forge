@@ -22,6 +22,7 @@ def loop_to_closed_feature(
     role: ContourRole = ContourRole.UNKNOWN,
     polygon=None,
     segments: list = None,
+    styles: list = None,
 ) -> Optional[ClosedFeature]:
     from ...core.topology.loop_finder import LoopFinder
 
@@ -54,6 +55,7 @@ def loop_to_closed_feature(
             role=role,
             polygon=poly,
             segments=segments or [],
+            styles=styles or [],
         )
     except Exception:
         return None
@@ -95,6 +97,7 @@ def _make_inner(proxy: ClosedFeature, parent_role: ContourRole = ContourRole.UNK
         polygon=proxy.polygon,
         role=role,
         segments=list(proxy.segments),
+        styles=list(getattr(proxy, "styles", []) or []),
     )
 
 
@@ -154,6 +157,7 @@ class HierarchyBuilder:
                 polygon=father_proxy.polygon,
                 role=ContourRole.OUTER,
                 segments=list(father_proxy.segments),
+                styles=list(getattr(father_proxy, "styles", []) or []),
             )
             self._classified_proxies.add(id(father_proxy.polygon))
 

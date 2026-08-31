@@ -179,11 +179,56 @@ Test: `test_special_layers.py` — `TestSpecialLayerNotTrash::test_003_*` /
 `test_004_no_lwpolyline_on_engrave_layer`, nuova classe `TestEngraveArcNative`.
 Suite: 522 passed / 2 xfail. Golden invariati.
 
-## Cluster E — preservare linetype + colore nell'output  ⬜ DA FARE (nuovo, da multifeature)
+## Cluster E — preservare il linetype nell'output  ✅ FATTO (`refactor/structure`, non committato)
 
-Le linee tratteggiate escono continue. L'utente vuole che tipo-linea e colore siano
-mantenuti nel DXF di output, e in prospettiva che il role possa essere dedotto anche
-da linetype/colore. "Due piccioni con una fava."
+multifeature (64 LINE assiali `CENTER` su `02___PRT_ALL_AXES`/`0`, trash).
+
+**Diagnosi:** confermata. Le linee tratteggiate uscivano continue perché nessuno
+stadio della pipeline portava il linetype (né il colore) oltre l'adapter: `Edge`
+non lo captava, `ClosedFeature`/`OpenFeature.segments` sono primitive pure senza
+metadati, l'exporter scriveva sempre `dxfattribs={"layer": ..., "color": 256}`
+senza `linetype` — BYLAYER continuo di fatto.
+
+**Decisione utente:** solo il linetype va ripristinato, il colore mai — nemmeno
+per il trash. "la roba in trash deve avere trash color... io voglio preservare
+lo stile" (il tratteggio), non il colore originale della sorgente. Colore in
+output resta sempre quello del layer forge di destinazione (semantico per
+ruolo — verde outer, rosso trash, ... — `rules/palette.py`), su ogni geometria,
+classificata o no.
+
+**Fix:** nuovo `model/style.py::EdgeStyle` (linetype, pattern grezzo del
+tratteggio, description, color/true_color — questi ultimi due catturati ma non
+riapplicati in output, tenuti per un futuro uso in `detect()` come segnale di
+ruolo insieme al linetype, "due piccioni con una fava"). `Edge.style` lo cattura
+al load (`adapters/dxf/adapter.py::_entity_style`, con `_raw_linetype_pattern`
+che legge i tag grezzi 40/49 dalla tabella linetype del documento sorgente —
+non `Linetype.simplified_line_pattern()`, che è un rendering di sola lettura,
+già senza segno e senza lunghezza totale, e ri-registrato produce un pattern
+degenere). `ClosedFeature`/`OpenFeature` portano `styles: List[EdgeStyle]`,
+allineata a `segments`, propagata attraverso `segments_from_loop` (nuovo
+`edge_styles_from_loop`), `HierarchyBuilder`, `edges_to_open_features`,
+`Hole`/`Engraving` in `detect.py`. L'exporter (`_style_attribs`,
+`_ensure_linetype`) registra il linetype non standard nel documento di output
+al primo uso (col pattern catturato) e lo applica via `dxfattribs["linetype"]`
+su ogni entità scritta — mai il colore. Bending lines fuori scope (non portano
+`segments`/stile: sintetizzate da `bl.geometry`, sempre state così).
+
+Test: `test_writeback.py::TestWritebackStyle` (linetype ripristinato sul
+trash, pattern registrato con successo, colore trash invariato, colore
+strutturale invariato). Suite: 575 passed / 0 xfail.
+
+**Seguito — classificazione da aspetto (`linetype_map`/`color_map`):**
+"due piccioni con una fava" realizzato. `load_dxf()` / `document_from_msp()`
+accettano ora `linetype_map={"DASHED": "bending"}` e `color_map={"cyan": "engrave"}`
+(nomi ACI standard 1-9+pink, o interi/stringhe numeriche) — seconda lane di
+classificazione in `DxfAdapter.to_edges()`, usata solo dove `label_map` (sul
+layer) non ha già deciso il ruolo: stesso vocabolario `work_type`, stessa
+autorità del label_map una volta assegnato. Nessuna modifica a heal()/detect():
+il ruolo assegnato qui rientra nelle lane già esistenti (`_split_labeled` per
+engrave/marking, `_detect_labeled` per il resto) esattamente come un ruolo da
+label_map su layer. Verificato su Multifeature: `linetype_map={"CENTER":
+"bending"}` promuove le 64 linee assiali tratteggiate a bending line (trash
+73→3). Test: `test_detect.py::TestDetectStyleMap`. Suite: 579 passed / 0 xfail.
 
 ## Cluster F — bending detection  🟡 IN CORSO
 

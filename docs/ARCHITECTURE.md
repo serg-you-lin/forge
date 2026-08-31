@@ -208,7 +208,15 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
 
 - **`label_map`**: l'utente dice "il layer `Piega` sono pieghe". Il ruolo è
   assegnato al load, è **autoritativo**, a valle non si rimette in discussione
-  (`source="labeled"`, `confidence=1.0`).
+  (`source="labeled"`, `confidence=1.0`). Stessa autorità, stesso load, per
+  `linetype_map`/`color_map` (`{"DASHED": "bending"}`, `{"cyan": "engrave"}`,
+  Cluster E): quando il disegno porta l'intenzione nello stile della linea
+  invece che nel layer, sono la stessa lane con un altro segnale in ingresso —
+  si applicano solo dove `label_map` non ha già deciso dal layer. Il linetype
+  e il colore confrontati sono quelli **effettivi**: un'entità `ByLayer`
+  eredita lo stile dal layer che la contiene, e `DxfAdapter` lo risolve prima
+  del confronto — altrimenti ogni entità che eredita lo stile dal layer (il
+  caso comune) sfuggirebbe silenziosamente a entrambe le lane.
 - **inferenza geometrica**: `forge` riconosce la feature dalla forma
   (`source="geometric"`, `confidence < 1.0`).
 

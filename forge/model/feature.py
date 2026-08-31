@@ -13,6 +13,11 @@ Tutte le entità del modello ereditano da qui:
 
 Note:
     - segments è List[LineSeg | ArcSeg | SplineSeg] — primitive pure, zero ezdxf
+    - styles è List[EdgeStyle], allineata 1:1 a segments — aspetto grezzo
+      (linetype/colore) dell'entità sorgente di ogni segmento (Cluster E).
+      Può essere più corta di segments o vuota (geometria sintetizzata, es.
+      ponti di gap-closing o il fallback polygonize): chi la consuma in
+      write() tratta un indice mancante come "nessuno stile noto".
     - polygon è Shapely Polygon — calcolato dall'adapter, non dal core
     - role è l'unico canale semantico interno — mai leggere layer DXF nel core
 """
@@ -26,6 +31,7 @@ from shapely.geometry import Polygon
 
 from forge.core.primitives.segments import ArcSeg, LineSeg, SplineSeg
 from forge.model.role import ContourRole
+from forge.model.style import EdgeStyle
 
 
 @dataclass
@@ -52,6 +58,7 @@ class ClosedFeature(Feature):
     """
     polygon:  Polygon                          = field(default=None)
     segments: List[LineSeg | ArcSeg | SplineSeg] = field(default_factory=list)
+    styles:   List[EdgeStyle]                  = field(default_factory=list)
 
     @property
     def area(self) -> float:
@@ -68,3 +75,4 @@ class OpenFeature(Feature):
     Feature con geometria aperta: ha segmenti ma non un polygon.
     """
     segments: List[LineSeg | ArcSeg | SplineSeg] = field(default_factory=list)
+    styles:   List[EdgeStyle]                  = field(default_factory=list)

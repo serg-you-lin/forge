@@ -220,5 +220,75 @@ class TestDetectParametric(unittest.TestCase):
         self.assertEqual(sum(len(p.holes) for p in result.parts), 1)
 
 
+# -------------------------------------------------------------------
+# LINETYPE_MAP / COLOR_MAP — seconda lane di classificazione, sull'aspetto
+# grezzo invece che sul nome layer (usata solo dove label_map non decide).
+# -------------------------------------------------------------------
+
+class TestDetectStyleMap(unittest.TestCase):
+
+    def _rect_with_internal_lines(self, extra_dxfattribs_line1, extra_dxfattribs_line2):
+        doc = ezdxf.new("R2010")
+        doc.linetypes.add("DASHED", pattern=[0.5, 0.25, -0.25], description="dashed")
+        msp = doc.modelspace()
+        msp.add_lwpolyline([(0, 0), (100, 0), (100, 100), (0, 100)], close=True)
+        # linea interna, ep entrambi lontani dal bordo — solo il ruolo conta
+        msp.add_line((20, 20), (80, 80), dxfattribs=extra_dxfattribs_line1)
+        msp.add_line((20, 80), (80, 20), dxfattribs=extra_dxfattribs_line2)
+        return msp
+
+    def test_001_dashed_linetype_becomes_bending(self):
+        msp = self._rect_with_internal_lines(
+            {"linetype": "DASHED"}, {},
+        )
+        doc = forge.document_from_msp(msp, linetype_map={"DASHED": "bending"})
+        result = forge.heal(doc)
+        forge.detect(result)
+
+        part = result.parts[0]
+        self.assertEqual(len(part.bending_lines), 1)
+        self.assertEqual(part.bending_lines[0].role.value, "bending")
+
+    def test_002_cyan_color_becomes_engrave(self):
+        msp = self._rect_with_internal_lines(
+            {}, {"color": 4},  # 4 = cyan ACI
+        )
+        doc = forge.document_from_msp(msp, color_map={"cyan": "engrave"})
+        result = forge.heal(doc)
+        forge.detect(result)
+
+        part = result.parts[0]
+        self.assertEqual(len(part.engrave_lines), 1)
+        self.assertEqual(part.engrave_lines[0].role.value, "engrave")
+
+    def test_003_color_map_accepts_aci_int_and_numeric_string(self):
+        for key in (4, "4"):
+            msp = self._rect_with_internal_lines({}, {"color": 4})
+            doc = forge.document_from_msp(msp, color_map={key: "engrave"})
+            result = forge.heal(doc)
+            forge.detect(result)
+            self.assertEqual(len(result.parts[0].engrave_lines), 1, msg=f"key={key!r}")
+
+    def test_004_label_map_wins_over_color_map(self):
+        # label_map resta la lane autoritativa (D5): se il layer già assegna
+        # un ruolo, linetype_map/color_map non intervengono più.
+        doc = ezdxf.new("R2010")
+        msp = doc.modelspace()
+        msp.add_lwpolyline([(0, 0), (100, 0), (100, 100), (0, 100)], close=True)
+        msp.add_line((20, 20), (80, 80), dxfattribs={"layer": "Piega", "color": 4})
+
+        forge_doc = forge.document_from_msp(
+            msp,
+            label_map={"Piega": "bending"},
+            color_map={"cyan": "engrave"},
+        )
+        result = forge.heal(forge_doc)
+        forge.detect(result)
+
+        part = result.parts[0]
+        self.assertEqual(len(part.bending_lines), 1)
+        self.assertEqual(len(part.engrave_lines), 0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

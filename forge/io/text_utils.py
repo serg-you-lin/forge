@@ -51,53 +51,6 @@ def _extract_content(e) -> str:
         return txt if txt and txt != '<>' else ''
     return ''
 
-def extract_texts(msp, doc):
-    texts = []
-
-    def handle_entity(e):
-        t = e.dxftype()
-
-        # TEXT
-        if t == "TEXT":
-            txt = e.dxf.text.strip()
-            if txt:
-                texts.append(txt)
-
-        # MTEXT
-        elif t == "MTEXT":
-            txt = e.text.strip()
-            if txt:
-                texts.append(clean_mtext(txt))
-
-        # MULTILEADER
-        elif t == "MULTILEADER":
-            txt = handle_mleader(e)
-
-            if txt:
-                texts.append(clean_mtext(txt))
-
-        elif t == "ATTRIB":
-            txt = e.dxf.text.strip()
-            if txt:
-                texts.append(txt)
-                
-        elif t == "INSERT":
-            for attrib in e.attribs:
-                txt = attrib.dxf.text.strip()
-                if txt:
-                    texts.append(txt)
-                    
-        # DIMENSION (solo override)
-        elif t == "DIMENSION":
-            txt = e.dxf.text
-            if txt and txt != "<>":
-                texts.append(txt)
-
-    for e in msp:
-        handle_entity(e)
-
-    return texts
-
 def extract_texts_from_msp(msp) -> list[str]:
     """
     Estrae tutti i testi grezzi da un msp senza bisogno di doc.

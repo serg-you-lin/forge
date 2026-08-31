@@ -33,7 +33,6 @@ def inject(
     result,
     data_injector: Optional[Callable] = None,
     texts: Optional[list[ForgeText]] = None,
-    tolerance: float = 0.1,
 ):
     """
     Arricchisce i ForgePart con i dati estratti da un `data_injector` esterno.
@@ -47,7 +46,6 @@ def inject(
                        mettere in `part.custom` (materiale, spessore, codice, ...).
         texts:         lista di ForgeText (da `extract_texts_from_msp` +
                        costruzione ForgeText, o da un estrattore proprio).
-        tolerance:     accettato per compatibilità di firma; non più usato.
     """
     if not result.parts or data_injector is None:
         return result

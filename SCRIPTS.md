@@ -25,6 +25,7 @@ Gli input di default puntano a `tests/examples/`. Gli output vanno in
 | 10 | `10_metadata_xdata.py` | `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema` | metadati DENTRO il DXF (XDATA) + schema custom |
 | 11 | `11_batch_heal.py` | `load_dxf` + `heal_and_detect` + `to_dxf` | heal di tutti i DXF di una cartella → `X_healed.dxf` + `.json` a fianco |
 | 12 | `12_to_svg.py` | `to_view_model`, `to_svg`, `save_svg` | JSON per un renderer esterno + SVG del modello |
+| 14 | `14_style_classification.py` | `load_dxf(linetype_map=..., color_map=...)` | classificare dal tratteggio/colore quando il layer non basta (Cluster E) |
 
 `11_batch_heal.py` accetta una cartella come argomento (`python 11_batch_heal.py
 path/`) e `--tol`; senza argomenti processa `tests/examples/`. Salta i file già
