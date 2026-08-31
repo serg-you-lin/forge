@@ -103,17 +103,25 @@ def to_dxf(
         written_parts.append(part)
 
         # Contorno esterno
-        write_segments(part.outer.segments, msp, ROLE_TO_LAYER.get(part.outer.role, LAYER_OUTER))
+        write_segments(
+            part.outer.segments, msp,
+            ROLE_TO_LAYER.get(part.outer.role, LAYER_OUTER),
+            styles=part.outer.styles,
+        )
 
         # Contorni interni
         for inner in part.inners:
-            write_segments(inner.segments, msp, ROLE_TO_LAYER.get(inner.role, LAYER_INNER))
+            write_segments(
+                inner.segments, msp,
+                ROLE_TO_LAYER.get(inner.role, LAYER_INNER),
+                styles=inner.styles,
+            )
 
         # Fori
         for hole in part.holes:
             layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
             layer = _work_layer_for_hole(hole) or layer
-            write_segments(hole.segments, msp, layer)
+            write_segments(hole.segments, msp, layer, styles=hole.styles)
 
         # Bending lines (geometria pura)
         _write_bending_lines(msp, part)
@@ -125,7 +133,7 @@ def to_dxf(
         # linea.
         for eng in part.engrave_lines:
             layer_name, _ = WORK_TYPE_TO_LAYER.get("engrave", (TRASH_LAYER, COLOR_TRASH))
-            write_engrave_segments(eng.segments, msp, layer_name)
+            write_engrave_segments(eng.segments, msp, layer_name, styles=eng.styles)
 
     if include_trash and result.trash_entities:
         _write_trash(
@@ -361,7 +369,10 @@ def _write_trash(
 
         segments = list(getattr(trash, "segments", []) or [])
         if segments:
-            write_open_segments(segments, msp, TRASH_LAYER)
+            styles = list(getattr(trash, "styles", []) or [])
+            # Il colore resta quello del layer Trash — solo il linetype
+            # (tratteggio) della sorgente viene ripristinato fedele.
+            write_open_segments(segments, msp, TRASH_LAYER, styles)
 
 
 # ---------------------------------------------------------------------------

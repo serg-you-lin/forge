@@ -10,10 +10,13 @@ Workflow consigliato (file singolo):
     import forge
 
     doc = forge.load_dxf("pezzo.dxf", label_map={"Piega": "bending"})
+    # se il layer non basta: linetype_map={"DASHED": "bending"},
+    # color_map={"cyan": "engrave"} — seconda lane, sull'aspetto grezzo,
+    # usata solo dove label_map non ha già deciso dal layer
 
     result = forge.heal_and_detect(doc, label="pezzo", source_file="pezzo.dxf")
     # equivale a: result = forge.heal(doc, ...); forge.detect(result, "all")
-    # forge.detect(result) nudo classifica solo i ruoli da label_map
+    # forge.detect(result) nudo classifica solo i ruoli da label_map/linetype_map/color_map
 
     doc_out = forge.to_dxf(result, doc)
     forge.inject(result)

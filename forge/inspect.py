@@ -316,18 +316,26 @@ def inspect_file(
     run_detect: bool = True,
     entities: bool = True,
     coords: bool = False,
+    linetype_map: Optional[dict] = None,
+    color_map: Optional[dict] = None,
 ) -> None:
     """
     Apre un file e stampa i tre livelli in fila:
     DXF grezzo → ForgeDocument → ForgeResult.
 
     run_heal / run_detect : disattivali per fermarti a un livello precedente.
+    linetype_map / color_map : come in load_dxf() — seconda lane di
+    classificazione sull'aspetto grezzo, usata solo dove label_map non ha
+    già deciso il ruolo dal layer.
     """
     from .adapters.dxf.loader import load_dxf
 
     inspect_dxf(path, entities=entities)
 
-    doc = load_dxf(path, tolerance=tolerance, label_map=label_map or {})
+    doc = load_dxf(
+        path, tolerance=tolerance, label_map=label_map or {},
+        linetype_map=linetype_map, color_map=color_map,
+    )
     inspect_document(doc)
 
     if not run_heal:

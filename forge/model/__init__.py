@@ -14,6 +14,7 @@ from .result import ForgeResult
 from .engraving import Engraving
 from .bending_line import BendingLine
 from .feature import Feature, ClosedFeature, OpenFeature
+from .style import EdgeStyle
 
 __all__ = [
     "Hole",
@@ -34,6 +35,7 @@ __all__ = [
     "Feature",
     "ClosedFeature",
     "OpenFeature",
+    "EdgeStyle",
 ]
 
 

@@ -386,6 +386,7 @@ def _hole_from_contour(contour, diameter, center, *, hole_type, confidence,
         role=ContourRole.HOLE,
         polygon=contour.polygon,
         segments=list(getattr(contour, "segments", []) or []),
+        styles=list(getattr(contour, "styles", []) or []),
         diameter=diameter,
         center=center,
         hole_type=hole_type,
@@ -406,6 +407,7 @@ def _labeled_hole_from_contour(contour):
         role=contour.role,
         polygon=contour.polygon,
         segments=list(getattr(contour, "segments", []) or []),
+        styles=list(getattr(contour, "styles", []) or []),
         diameter=dia or 0.0,
         center=ctr or (0.0, 0.0),
         hole_type=hole_type,
@@ -447,6 +449,7 @@ def _engraving_from_open(proxy, part_label: str = "",
     return Engraving(
         role=ContourRole.ENGRAVE,
         segments=list(getattr(proxy, "segments", []) or []),
+        styles=list(getattr(proxy, "styles", []) or []),
         length=round(track_length(pts), 4),
         pts=pts,
         geometry=LineString(pts) if len(pts) >= 2 else None,
@@ -457,10 +460,12 @@ def _engraving_from_open(proxy, part_label: str = "",
 
 
 def _engraving_from_closed(polygon, segments, part_label: str = "",
-                           source: str = "labeled", confidence: float = 1.0) -> Engraving:
+                           source: str = "labeled", confidence: float = 1.0,
+                           styles=None) -> Engraving:
     return Engraving(
         role=ContourRole.ENGRAVE,
         segments=list(segments or []),
+        styles=list(styles or []),
         length=round(polygon.exterior.length, 4),
         pts=list(polygon.exterior.coords),
         polygon=polygon,
@@ -509,6 +514,7 @@ def _handle_engrave_closed_trash(proxy, result: ForgeResult) -> bool:
                 proxy.polygon,
                 getattr(proxy, "segments", []),
                 part_label=part.label,
+                styles=getattr(proxy, "styles", []),
             ))
             return True
     return False
@@ -519,6 +525,7 @@ def _handle_engrave_closed(inner, part: ForgePart) -> None:
         inner.polygon,
         getattr(inner, "segments", []),
         part_label=part.label,
+        styles=getattr(inner, "styles", []),
     ))
 
 
