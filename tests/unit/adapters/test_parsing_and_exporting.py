@@ -13,7 +13,7 @@ import math
 from types import SimpleNamespace
 
 from forge.core.primitives import LineSeg, ArcSeg, SplineSeg
-from forge.adapters.bridge.edge import Edge
+from forge.core.topology.edge import Edge
 from forge.adapters.dxf.parser import DxfEntityDispatcher
 from forge.core.topology.loop_finder import segments_from_loop
 from forge.adapters.dxf.exporter import (

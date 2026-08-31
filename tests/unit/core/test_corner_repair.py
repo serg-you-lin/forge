@@ -11,7 +11,7 @@ import unittest
 
 from forge.model.document import ForgeDocument
 from forge.model.role import ContourRole
-from forge.adapters.bridge.edge import Edge
+from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg
 from forge.pipeline.heal import HealStep
 

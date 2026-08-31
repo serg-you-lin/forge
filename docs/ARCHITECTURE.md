@@ -57,12 +57,12 @@ forge/
 ├── adapters/     TRADUZIONE formato → primitive       (conosce ezdxf)
 │   ├── dxf/          load_dxf, DxfAdapter, exporter, annotation_extractor, layers
 │   ├── pdf/          load_pdf — sperimentale, congelato
-│   ├── svg/          (vuoto — futuro)
-│   └── bridge/       Edge — la primitiva topologica di lavoro
+│   └── svg/          (vuoto — futuro)
 │
 ├── core/         MOTORE geometrico puro               (zero ezdxf, zero formato)
 │   ├── primitives/   LineSeg, ArcSeg, SplineSeg, CircleSeg + discretizzazione
-│   ├── topology/     grafo dei nodi, ricerca loop, detection pieghe
+│   ├── topology/     edge.py (Edge — wrapper topologico, non una primitiva),
+│   │                 grafo dei nodi, ricerca loop, detection pieghe
 │   ├── healing/      chiusura gap, normalizzazione, gerarchia
 │   └── classification/  frame detection, fori filettati
 │
@@ -245,3 +245,15 @@ entità→primitiva ora unico (`DxfEntityDispatcher`, D7); `parse_loop` →
 `part.summary` derivato (D8); classificazione hole/inner e soglia
 `max_drill_diameter` spostate da `hierarchy` a `detect()` parametrico (D15) —
 `heal` ora emette solo l'albero di contenimento.
+
+**D19 — `adapters/bridge/` eliminato, `Edge` spostato in `core/topology/edge.py`:**
+`bridge/` era rimasta con un solo file dopo l'eliminazione di `shape.py` (D4) —
+smell segnalato da Federico. Più a fondo: `Edge` viveva sotto `adapters/` ma
+`core/topology/graph.py`, `loop_finder.py`, `bending_detector.py`,
+`core/healing/gap_solver.py` e `core/adapter_base.py` lo importavano tutti da
+lì — **`core` dipendeva da `adapters`**, il contrario esatto della regola di
+dipendenza sopra. `Edge` non è una primitiva (quelle sono math puro in
+`core/primitives/segments.py`): è un wrapper topologico con ruolo/stile/
+provenienza attorno a una primitiva — appartiene a `core/topology/`, dove
+vivono i suoi consumatori veri. Spostato lì; gli adapter (DXF, PDF) ora lo
+importano da `core`, come da regola.

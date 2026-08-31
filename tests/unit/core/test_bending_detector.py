@@ -3,7 +3,7 @@
 import unittest
 from forge.core.topology.graph import build_node_graph
 from forge.core.topology.bending_detector import BendingDetector
-from forge.adapters.bridge.edge import Edge
+from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg
 from forge.model.role import ContourRole
 

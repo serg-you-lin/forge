@@ -16,7 +16,7 @@ Output: set[int]  — id() degli Edge confermati bending
 from shapely.geometry import MultiPoint, Point
 
 from .graph import Graph
-from ...adapters.bridge.edge import Edge
+from .edge import Edge
 
 
 class BendingDetector:

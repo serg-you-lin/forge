@@ -47,7 +47,7 @@ from dataclasses import dataclass, field
 from typing import Tuple, List, Dict
 
 from ..geometry import round_point
-from ...adapters.bridge.edge import Edge
+from .edge import Edge
 
 
 # ---------------------------------------------------------------------------

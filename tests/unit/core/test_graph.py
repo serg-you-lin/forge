@@ -2,7 +2,7 @@
 
 import unittest
 from forge.core.topology.graph import Graph, build_node_graph, cluster_points
-from forge.adapters.bridge.edge import Edge
+from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg
 from forge.model.role import ContourRole
 

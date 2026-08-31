@@ -34,7 +34,7 @@ from ..geometry import (
     _closest_to,
 )
 from ..primitives.segments import LineSeg, ArcSeg, SplineSeg, segment_endpoints
-from ...adapters.bridge.edge import Edge
+from ..topology.edge import Edge
 from ...model.role import ContourRole
 
 Point2D = Tuple[float, float]
