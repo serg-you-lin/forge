@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ...core.primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg, DEFAULT_TOLERANCE
 from ...core.adapter_base import ForgeAdapter
 from ...core.geometry import round_point
-from ..bridge.edge import Edge, Segment
+from ...core.topology.edge import Edge, Segment
 from ...model.role import ContourRole, WORK_TYPE_TO_ROLE, layer_to_role
 from ...model.style import EdgeStyle
 

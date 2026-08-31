@@ -1,15 +1,24 @@
 """
-adapters/bridge/edge.py
+core/topology/edge.py
+----------------------
+Rappresentazione topologica di una entità geometrica lineare — l'unità che
+graph.py / loop_finder.py / bending_detector.py / gap_solver.py usano per
+costruire e percorrere il grafo. Non è una primitiva geometrica (quelle sono
+LineSeg/ArcSeg/SplineSeg/CircleSeg in core/primitives/segments.py, math puro
+senza semantica): `Edge` ne avvolge una con ruolo, provenienza e stile —
+dati di dominio, zero riferimento all'entità sorgente di alcun formato.
+
+Vive in core/ (non più in adapters/bridge/, D18) perché è core il suo
+consumatore principale: ogni adapter (DXF, PDF, ...) costruisce Edge, ma è
+il core a definirne la forma, esattamente come per le primitive.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Tuple, Union
+from dataclasses import dataclass, field
+from typing import Tuple, Union
 
-from dataclasses import field
-
-from ...core.primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg
+from ..primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg
 from ...model.role import ContourRole
 from ...model.style import EdgeStyle
 
@@ -19,10 +28,8 @@ Segment = Union[LineSeg, ArcSeg, SplineSeg, CircleSeg]
 @dataclass
 class Edge:
     """
-    Rappresentazione topologica di una entità geometrica lineare.
-
-    Layer intermedio tra l'entità DXF grezza e il topology engine.
-    Dati puri — nessun riferimento all'entità sorgente.
+    Layer intermedio tra l'entità sorgente grezza (di qualsiasi formato) e il
+    topology engine. Dati puri — nessun riferimento all'entità sorgente.
 
     Campi:
         role       : ruolo semantico — assegnato dall'adapter prima di costruire l'Edge,
@@ -43,4 +50,3 @@ class Edge:
     segment:     Segment
     closed_path: bool = False
     style:       EdgeStyle = field(default_factory=EdgeStyle)
-

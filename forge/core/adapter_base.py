@@ -15,7 +15,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from ..adapters.bridge.edge import Edge
+from .topology.edge import Edge
 from .geometry import node_decimals_for
 
 

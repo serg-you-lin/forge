@@ -245,6 +245,19 @@ fuori da `__all__` e non documentato nel contratto. La serializzazione della
 geometria per renderer/tool è `to_view_model` (D12).
 Riferimento: memoria `nesting-out-of-scope`.
 
+### D19 — `adapters/bridge/` eliminato, `Edge` spostato in `core/topology/edge.py`  ✅
+Segnalato da Federico: `bridge/` era rimasta con un solo file (`edge.py`) dopo
+l'eliminazione di `shape.py` (D4) — smell di cartella. Più a fondo: `Edge`
+viveva sotto `adapters/` ma `core/topology/graph.py`, `loop_finder.py`,
+`bending_detector.py`, `core/healing/gap_solver.py` e `core/adapter_base.py`
+lo importavano tutti da lì — **`core` dipendeva da `adapters`**, il contrario
+esatto della regola di dipendenza (`docs/ARCHITECTURE.md`). `Edge` non è una
+primitiva (quelle sono math puro in `core/primitives/segments.py`): è un
+wrapper topologico con ruolo/stile/provenienza attorno a una primitiva —
+appartiene a `core/topology/`, dove vivono i suoi consumatori veri. Spostato
+lì; adapter DXF/PDF ora lo importano da `core`, come da regola. Nessuna
+modifica di comportamento — solo import aggiornati. Suite: 579 passed.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

@@ -4,7 +4,7 @@ adapters/pdf/graph_adapter.py
 Traduce entità vettoriali sanificate del PDF in Edge topologici per il core.
 """
 
-from ..bridge.edge import Edge
+from ...core.topology.edge import Edge
 from ...core.geometry import round_point
 from ...core.primitives.segments import LineSeg, SplineSeg
 from ...model.role import ContourRole

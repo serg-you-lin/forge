@@ -25,7 +25,7 @@ sys.path.insert(0, str(project_root))
 
 from forge.core.topology.graph import Graph, build_node_graph
 from forge.core.topology.loop_finder import LoopFinder
-from forge.adapters.bridge.edge import Edge
+from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg, ArcSeg
 from forge.model.role import ContourRole
 
