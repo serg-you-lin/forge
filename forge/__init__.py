@@ -69,7 +69,7 @@ from .io.exporter         import (
     set_schema,
 )
 # to_nester_input: SPERIMENTALE, fuori dal contratto pubblico (vedi MAP.md D18).
-# Scritto per un nester mai realizzato — dxf-forge non fa nesting. Resta
+# Scritto per un nester mai realizzato — forge non fa nesting. Resta
 # importabile come forge.to_nester_input, ma non è in __all__ né documentato.
 # Per serializzare la geometria a un renderer/tool usa forge.to_view_model().
 from .io.exporter         import to_nester_input
@@ -79,7 +79,6 @@ from .model         import (
     ForgeResult, ForgePart, ForgeContour, ForgeDocument,
     Annotation, Note, Dimension, Leader,
 )
-from .adapters.dxf.mtext  import clean_mtext
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -122,7 +121,6 @@ __all__ = [
     "read_metadata_from_dxf",
     "set_schema",
     # Utilità
-    "clean_mtext",
     # Ispezione / debug (3 livelli: DXF grezzo → ForgeDocument → ForgeResult)
     "inspect_dxf",
     "inspect_document",
