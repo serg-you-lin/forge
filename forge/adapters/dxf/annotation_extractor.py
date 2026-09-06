@@ -1,38 +1,37 @@
 """
 adapters/dxf/annotation_extractor.py
 ------------------------------------
-Estrae le annotazioni di un modelspace DXF come list[Annotation].
+Legge le entità di annotazione di un modelspace DXF e le traduce nel modello di
+dominio tipato (``Note`` / ``Dimension`` / ``Leader`` di ``model/annotation.py``).
 
-È l'equivalente per testi e quote di quello che DxfAdapter.to_edges() è per la
-geometria di taglio: l'unico punto in cui le entità di annotazione DXF vengono
-lette e tradotte in dati di dominio puri. Dopo extract() il modelspace sorgente
-non serve più.
+È l'equivalente per testi e quote di quello che ``DxfAdapter.to_edges()`` è per
+la geometria di taglio: l'unico punto in cui le annotazioni DXF vengono lette.
+Dopo ``extract()`` il modelspace sorgente non serve più.
+
+Compito: solo conoscenza di formato — dove sta il testo, come si appiattisce il
+blocco anonimo di una quota. NON decide cosa un'annotazione significhi per il
+pezzo: quello è la fase ``interpret_annotations()`` della pipeline.
 
 Tipi gestiti: TEXT, MTEXT, DIMENSION, LEADER, MULTILEADER.
 Non gestisce INSERT — si assume siano già stati esplosi da load_dxf().
 
-TEXT / MTEXT → `Annotation` con `content` + posizione: `write` li riscrive come
-un unico TEXT/MTEXT.
-
 DIMENSION / LEADER / MULTILEADER non hanno una geometria "propria" nei campi
 DXF: la loro immagine (linee di misura, direttrici, frecce, testo) sta in un
-blocco anonimo che ezdxf sa espandere con `virtual_entities()`. La
-appiattiamo QUI in primitive pure (segmenti + testi) e la conserviamo in
-`data["strokes"] / data["fills"] / data["texts"]`, così `write` la
-ri-materializza fedele all'originale invece di piazzare un numero a caso.
+blocco anonimo espandibile con ``virtual_entities()``. La appiattiamo qui in
+primitive pure e la conserviamo in ``annotation.rendered`` (RenderedGeometry),
+così ``write()`` la ri-materializza fedele all'originale.
 """
 
 from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
-from ...model.document import Annotation
-from ...io.text_utils import clean_mtext, handle_mleader
+from ...model.annotation import (
+    Annotation, Note, Dimension, Leader, RenderedGeometry, RenderedText,
+)
+from ...io.text_utils import clean_mtext
 
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
-
-# Tipi che portano l'immagine in un blocco anonimo, non nei campi DXF.
-RENDERED_TYPES = frozenset({"DIMENSION", "LEADER", "MULTILEADER"})
 
 # Errore massimo di corda per discretizzare archi/curve (mm).
 _ARC_SAGITTA = 0.1
@@ -45,33 +44,43 @@ class DxfAnnotationExtractor:
         self.msp = msp
 
     def extract(self) -> List[Annotation]:
-        annotations: List[Annotation] = []
+        out: List[Annotation] = []
         for entity in self.msp:
-            kind = entity.dxftype()
-            if kind not in ANNOTATION_TYPES:
+            if entity.dxftype() not in ANNOTATION_TYPES:
                 continue
+            ann = _to_annotation(entity)
+            if ann is not None:
+                out.append(ann)
+        return out
 
-            position = annotation_anchor(entity)
 
-            if kind in RENDERED_TYPES:
-                # position può essere None per un LEADER: la si ricava dalla
-                # geometria appiattita.
-                ann = _rendered_annotation(entity, position)
-                if ann is not None:
-                    annotations.append(ann)
-                continue
+def _to_annotation(entity) -> Optional[Annotation]:
+    kind = entity.dxftype()
+    layer = entity.dxf.get("layer", "0")
+    pos = annotation_anchor(entity)
 
-            if position is None:
-                continue
+    if kind in ("TEXT", "MTEXT"):
+        content = _extract_content(entity)
+        if not content or pos is None:
+            return None
+        dxf = entity.dxf
+        raw_h = dxf.get("char_height", 2.5) if kind == "MTEXT" else dxf.get("height", 2.5)
+        return Note(
+            position=pos,
+            layer=layer,
+            text=content,
+            height=_f(raw_h) or 2.5,
+            rotation=_f(dxf.get("rotation", 0.0)) or 0.0,
+            source_kind=kind,
+        )
 
-            content = _extract_content(entity)
-            if not content:
-                continue
+    if kind == "DIMENSION":
+        return _dimension_annotation(entity, pos, layer)
 
-            data = _extract_attribs(entity)
-            data["content"] = content
-            annotations.append(Annotation(kind=kind, position=position, data=data))
-        return annotations
+    if kind in ("LEADER", "MULTILEADER"):
+        return _leader_annotation(entity, pos, layer, kind)
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +93,7 @@ def annotation_anchor(entity) -> Optional[Tuple[float, float]]:
 
     TEXT/MTEXT hanno il punto d'inserimento nei campi DXF; MULTILEADER e
     DIMENSION lo tengono in strutture annidate; LEADER non ce l'ha e ricade
-    sul fallback (poi `_rendered_annotation` lo ricava dalla geometria).
+    sul fallback (poi lo si ricava dalla geometria appiattita).
     Ritorna None se nessuna fonte è disponibile.
     """
     t = entity.dxftype()
@@ -143,45 +152,183 @@ def _extract_content(entity) -> str:
     return ""
 
 
-def _extract_attribs(entity) -> dict:
+# ---------------------------------------------------------------------------
+# DIMENSION
+# ---------------------------------------------------------------------------
+
+def _dimension_annotation(entity, pos, layer) -> Optional[Dimension]:
+    rendered = _render_block(entity)
+
+    if rendered.is_empty():
+        # Nessun blocco geometria: ricostruiamo direttrici + linea di misura
+        # dai def-point. Meglio del solo numero.
+        syn_strokes, syn_text = _synthesize_dimension(entity)
+        rendered.strokes.extend(syn_strokes)
+        if syn_text is not None:
+            rendered.texts.append(syn_text)
+
+    dim_type, measured = _dimension_semantics(entity)
+    override = _dimension_override(entity)
+
+    if rendered.is_empty():
+        # Nemmeno i def-point: almeno il valore come testo alla sua posizione.
+        content = _dimension_text(entity)
+        if not content or pos is None:
+            return None
+        rendered.texts.append(RenderedText(content=content, position=pos))
+
+    if pos is None:
+        pos = _bbox_center(
+            rendered.strokes + rendered.fills + [[t.position] for t in rendered.texts]
+        )
+        if pos is None:
+            return None
+
+    return Dimension(
+        position=pos,
+        layer=layer,
+        source_kind="DIMENSION",
+        measured_value=measured,
+        dim_type=dim_type,
+        text_override=override,
+        rendered=rendered,
+    )
+
+
+def _dimension_semantics(entity) -> Tuple[str, Optional[float]]:
+    """(dim_type, valore misurato) di una DIMENSION."""
+    kinds = {0: "linear", 1: "aligned", 2: "angular", 3: "diameter",
+             4: "radius", 5: "angular3p", 6: "ordinate"}
+    try:
+        dim_type = kinds.get(int(entity.dxf.get("dimtype", 0)) & 7, "linear")
+    except (TypeError, ValueError):
+        dim_type = "linear"
+    measured: Optional[float] = None
+    try:
+        m = entity.get_measurement()
+        if isinstance(m, (int, float)):
+            measured = float(m)
+    except Exception:
+        pass
+    return dim_type, measured
+
+
+def _dimension_override(entity) -> Optional[str]:
     """
-    Attributi minimi per riscrivere l'entità nel documento di output.
-    Solo primitivi — nessun riferimento a ezdxf.
+    Override esplicito del testo quota, o None se la quota mostra la misura.
+
+    Campo DXF `text`: "" / "<>" → misura calcolata (nessun override);
+    " " → testo soppresso; "...<>" → prefisso/suffisso; altro → override.
+    `write()` risolve "<>" con la misura.
     """
+    raw = entity.dxf.get("text", "") or ""
+    return None if raw in ("", "<>") else raw
+
+
+def _synthesize_dimension(entity):
+    """
+    Ricostruisce l'immagine di una DIMENSION lineare dai def-point, quando il
+    blocco geometria manca. Ritorna (strokes, RenderedText | None).
+
+    Solo per le quote lineari/allineate/ruotate (dimtype & 7 in {0, 1}); per
+    radiali/diametrali/angolari lasciamo il fallback al solo valore.
+    """
+    import math
+
+    try:
+        dimtype = int(entity.dxf.get("dimtype", 0)) & 7
+    except (TypeError, ValueError):
+        dimtype = 0
+    if dimtype not in (0, 1):
+        return [], None
+
     dxf = entity.dxf
-    data: dict = {"layer": dxf.get("layer", "0")}
+    p  = dxf.get("defpoint")   # punto sulla linea di misura
+    e1 = dxf.get("defpoint2")  # origine 1ª direttrice
+    e2 = dxf.get("defpoint3")  # origine 2ª direttrice
+    if p is None or e1 is None or e2 is None:
+        return [], None
 
+    p  = (float(p[0]), float(p[1]))
+    e1 = (float(e1[0]), float(e1[1]))
+    e2 = (float(e2[0]), float(e2[1]))
+
+    ang = dxf.get("angle")
+    if ang is None:
+        dx, dy = e2[0] - e1[0], e2[1] - e1[1]
+        norm = math.hypot(dx, dy) or 1.0
+        d = (dx / norm, dy / norm)
+    else:
+        a = math.radians(float(ang))
+        d = (math.cos(a), math.sin(a))
+
+    def _proj(q):
+        t = (q[0] - p[0]) * d[0] + (q[1] - p[1]) * d[1]
+        return (p[0] + t * d[0], p[1] + t * d[1])
+
+    f1, f2 = _proj(e1), _proj(e2)
+    strokes = [[e1, f1], [e2, f2], [f1, f2]]
+
+    text_item = None
+    tm = dxf.get("text_midpoint")
+    content = _dimension_text(entity)
+    if content:
+        pos = (float(tm[0]), float(tm[1])) if tm is not None else _bbox_center(strokes)
+        text_item = RenderedText(content=content, position=pos)
+
+    return strokes, text_item
+
+
+# ---------------------------------------------------------------------------
+# LEADER / MULTILEADER
+# ---------------------------------------------------------------------------
+
+def _leader_annotation(entity, pos, layer, source_kind) -> Optional[Leader]:
+    rendered = _render_block(entity)
+    if rendered.is_empty():
+        return None
+
+    text = rendered.texts[0].content if rendered.texts else ""
+    vertices = _leader_vertices(entity)
+
+    if pos is None:
+        pos = (vertices[0] if vertices
+               else _bbox_center(rendered.strokes + rendered.fills))
+        if pos is None:
+            return None
+
+    return Leader(
+        position=pos,
+        layer=layer,
+        source_kind=source_kind,
+        text=text,
+        vertices=vertices,
+        rendered=rendered,
+    )
+
+
+def _leader_vertices(entity) -> List[Tuple[float, float]]:
     t = entity.dxftype()
-    if t == "TEXT":
-        data["height"] = _f(dxf.get("height", 2.5))
-        data["rotation"] = _f(dxf.get("rotation", 0.0))
-        data["style"] = dxf.get("style", "Standard")
-        data["halign"] = int(dxf.get("halign", 0) or 0)
-        data["valign"] = int(dxf.get("valign", 0) or 0)
-    elif t == "MTEXT":
-        data["height"] = _f(dxf.get("char_height", 2.5))
-        data["rotation"] = _f(dxf.get("rotation", 0.0))
-        data["style"] = dxf.get("style", "Standard")
-        data["width"] = _f(dxf.get("width", 0.0))
-        data["attachment_point"] = int(dxf.get("attachment_point", 1) or 1)
-
-    return data
+    try:
+        if t == "LEADER":
+            return [(float(v[0]), float(v[1])) for v in entity.vertices]
+        if t == "MULTILEADER":
+            return [(float(v[0]), float(v[1]))
+                    for v in entity.context.mleader.vertices]
+    except Exception:
+        pass
+    return []
 
 
 # ---------------------------------------------------------------------------
-# DIMENSION / LEADER / MULTILEADER — immagine appiattita in primitive pure
+# Appiattimento del blocco anonimo (DIMENSION / LEADER / MULTILEADER)
 # ---------------------------------------------------------------------------
 
-def _rendered_annotation(entity, position) -> Optional[Annotation]:
-    """
-    Appiattisce l'immagine di una quota/direttrice in segmenti + testi puri.
-
-    Ripiega su `_dimension_text()` (solo valore misurato) se `virtual_entities()`
-    non produce nulla — meglio un numero che il nulla.
-    """
+def _render_block(entity) -> RenderedGeometry:
+    """Espande l'immagine dell'entità in strokes/fills/texts puri."""
     strokes: List[List[Tuple[float, float]]] = []
     fills: List[List[Tuple[float, float]]] = []
-    texts: List[dict] = []
+    texts: List[RenderedText] = []
 
     try:
         vents = list(_flatten_virtual(entity))
@@ -213,123 +360,7 @@ def _rendered_annotation(entity, position) -> Optional[Annotation]:
             if item is not None:
                 texts.append(item)
 
-    if not strokes and not fills and not texts and entity.dxftype() == "DIMENSION":
-        # Nessun blocco geometria (dim non pre-renderizzata): ricostruiamo
-        # direttrici + linea di misura dai def-point. Meglio del numero solo.
-        syn_strokes, syn_text = _synthesize_dimension(entity)
-        strokes.extend(syn_strokes)
-        if syn_text is not None:
-            texts.append(syn_text)
-
-    # Campi semantici (indipendenti dal formato): valore misurato e tipo quota.
-    # Servono al render vettoriale futuro e agli usi lato loader (check scala).
-    semantic = _dimension_semantics(entity) if entity.dxftype() == "DIMENSION" else {}
-
-    if not strokes and not fills and not texts:
-        content = _dimension_text(entity) if entity.dxftype() == "DIMENSION" else ""
-        if not content or position is None:
-            return None
-        data = {"layer": entity.dxf.get("layer", "0"), "content": content, **semantic}
-        return Annotation(kind=entity.dxftype(), position=position, data=data)
-
-    if position is None:
-        position = _bbox_center(strokes + fills + [[t["position"]] for t in texts])
-        if position is None:
-            return None
-
-    return Annotation(
-        kind=entity.dxftype(),
-        position=position,
-        data={
-            "layer": entity.dxf.get("layer", "0"),
-            "content": "",
-            "strokes": strokes,
-            "fills": fills,
-            "texts": texts,
-            **semantic,
-        },
-    )
-
-
-def _dimension_semantics(entity) -> dict:
-    """`value` (misura) + `dim_kind` di una DIMENSION, per usi non-DXF."""
-    kinds = {0: "linear", 1: "aligned", 2: "angular", 3: "diameter",
-             4: "radius", 5: "angular3p", 6: "ordinate"}
-    try:
-        dim_kind = kinds.get(int(entity.dxf.get("dimtype", 0)) & 7, "linear")
-    except (TypeError, ValueError):
-        dim_kind = "linear"
-    out = {"dim_kind": dim_kind}
-    try:
-        m = entity.get_measurement()
-        if isinstance(m, (int, float)):
-            out["value"] = float(m)
-    except Exception:
-        pass
-    return out
-
-
-def _synthesize_dimension(entity):
-    """
-    Ricostruisce l'immagine di una DIMENSION lineare dai def-point, quando il
-    blocco geometria manca. Ritorna (strokes, text_item | None).
-
-    Solo per le quote lineari/allineate/ruotate (dimtype & 7 in {0, 1}); per
-    radiali/diametrali/angolari lasciamo il fallback al solo valore.
-    """
-    import math
-
-    try:
-        dimtype = int(entity.dxf.get("dimtype", 0)) & 7
-    except (TypeError, ValueError):
-        dimtype = 0
-    if dimtype not in (0, 1):
-        return [], None
-
-    dxf = entity.dxf
-    p  = dxf.get("defpoint")   # punto sulla linea di misura
-    e1 = dxf.get("defpoint2")  # origine 1ª direttrice
-    e2 = dxf.get("defpoint3")  # origine 2ª direttrice
-    if p is None or e1 is None or e2 is None:
-        return [], None
-
-    p  = (float(p[0]), float(p[1]))
-    e1 = (float(e1[0]), float(e1[1]))
-    e2 = (float(e2[0]), float(e2[1]))
-
-    ang = dxf.get("angle")
-    if ang is None:
-        # allineata: direzione lungo i due punti origine
-        dx, dy = e2[0] - e1[0], e2[1] - e1[1]
-        norm = math.hypot(dx, dy) or 1.0
-        d = (dx / norm, dy / norm)
-    else:
-        a = math.radians(float(ang))
-        d = (math.cos(a), math.sin(a))
-
-    def _proj(q):
-        t = (q[0] - p[0]) * d[0] + (q[1] - p[1]) * d[1]
-        return (p[0] + t * d[0], p[1] + t * d[1])
-
-    f1, f2 = _proj(e1), _proj(e2)
-    strokes = [[e1, f1], [e2, f2], [f1, f2]]
-
-    text_item = None
-    tm = dxf.get("text_midpoint")
-    content = _dimension_text(entity)
-    if content:
-        pos = (float(tm[0]), float(tm[1])) if tm is not None else _bbox_center(strokes)
-        text_item = {"content": content, "position": pos, "height": 2.5, "rotation": 0.0}
-
-    return strokes, text_item
-
-
-def _bbox_center(polylines) -> Optional[Tuple[float, float]]:
-    xs = [p[0] for pl in polylines for p in pl]
-    ys = [p[1] for pl in polylines for p in pl]
-    if not xs:
-        return None
-    return ((min(xs) + max(xs)) / 2.0, (min(ys) + max(ys)) / 2.0)
+    return RenderedGeometry(strokes=strokes, fills=fills, texts=texts)
 
 
 def _flatten_virtual(entity):
@@ -341,7 +372,7 @@ def _flatten_virtual(entity):
             yield v
 
 
-def _text_item(v) -> Optional[dict]:
+def _text_item(v) -> Optional[RenderedText]:
     t = v.dxftype()
     content = clean_mtext(v.text) if t == "MTEXT" else (v.dxf.get("text", "") or "").strip()
     if not content:
@@ -349,16 +380,21 @@ def _text_item(v) -> Optional[dict]:
     ins = v.dxf.get("insert") or v.dxf.get("align_point")
     if ins is None:
         return None
-    if t == "MTEXT":
-        height = _f(v.dxf.get("char_height", 2.5))
-    else:
-        height = _f(v.dxf.get("height", 2.5))
-    return {
-        "content": content,
-        "position": (float(ins[0]), float(ins[1])),
-        "height": height or 2.5,
-        "rotation": _f(v.dxf.get("rotation", 0.0)) or 0.0,
-    }
+    raw_h = v.dxf.get("char_height", 2.5) if t == "MTEXT" else v.dxf.get("height", 2.5)
+    return RenderedText(
+        content=content,
+        position=(float(ins[0]), float(ins[1])),
+        height=_f(raw_h) or 2.5,
+        rotation=_f(v.dxf.get("rotation", 0.0)) or 0.0,
+    )
+
+
+def _bbox_center(polylines) -> Optional[Tuple[float, float]]:
+    xs = [p[0] for pl in polylines for p in pl]
+    ys = [p[1] for pl in polylines for p in pl]
+    if not xs:
+        return None
+    return ((min(xs) + max(xs)) / 2.0, (min(ys) + max(ys)) / 2.0)
 
 
 def _xy(p) -> Tuple[float, float]:
@@ -398,7 +434,6 @@ def _solid_points(solid) -> List[Tuple[float, float]]:
         p = solid.dxf.get(name)
         if p is not None:
             vs.append((float(p[0]), float(p[1])))
-    # scarta il 4° vertice se coincide col 3° (SOLID triangolare)
     if len(vs) == 4 and vs[2] == vs[3]:
         vs = vs[:3]
     return vs
@@ -406,7 +441,7 @@ def _solid_points(solid) -> List[Tuple[float, float]]:
 
 def _dimension_text(entity) -> str:
     """
-    Fallback: solo il valore della quota, quando l'immagine non è espandibile.
+    Testo visualizzato della quota, quando l'immagine non è espandibile.
 
     Regole DXF sul campo `text`:
       - "" / "<>" → misura calcolata (`get_measurement()`)

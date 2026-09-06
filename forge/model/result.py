@@ -3,6 +3,7 @@ from dataclasses import field
 from typing import List, Set, Any
 from .part import ForgePart
 from .classified import ClassifiedEntity
+from .annotation import Annotation
 
 
 @dataclass
@@ -30,7 +31,7 @@ class ForgeResult:
     warnings:            List[str]              = field(default_factory=list)
     errors:              List[str]              = field(default_factory=list)
     trash_entities:      List[Any]              = field(default_factory=list)
-    annotations:         List[Any]              = field(default_factory=list)
+    annotations:         List[Annotation]       = field(default_factory=list)
     classified_entities: List[ClassifiedEntity] = field(default_factory=list)
     label_map:           dict                   = field(default_factory=dict)
     all_arcs:            List[Any]              = field(default_factory=list)

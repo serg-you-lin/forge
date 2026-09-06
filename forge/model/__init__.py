@@ -8,7 +8,10 @@ from .hole import (
     VALID_HOLE_TYPES,
 )
 from .classified import ClassifiedEntity, BaseInterpreter
-from .document import ForgeDocument, Annotation
+from .annotation import (
+    Annotation, Note, Dimension, Leader, RenderedGeometry, RenderedText,
+)
+from .document import ForgeDocument
 from .part import ForgeContour, ForgePart
 from .result import ForgeResult
 from .engraving import Engraving
@@ -27,6 +30,11 @@ __all__ = [
     "BaseInterpreter",
     "ForgeDocument",
     "Annotation",
+    "Note",
+    "Dimension",
+    "Leader",
+    "RenderedGeometry",
+    "RenderedText",
     "ForgeContour",
     "ForgePart",
     "ForgeResult",

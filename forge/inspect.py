@@ -177,7 +177,7 @@ def inspect_document(doc, graph: bool = True, limit: Optional[int] = 60) -> None
         kinds = Counter(a.kind for a in anns)
         print(f"  per tipo: {dict(kinds)}")
         for a in anns[:20]:
-            content = (a.data.get("content") or "")[:40]
+            content = (a.display_text or "")[:40]
             print(f"  - {a.kind:<10} @ {_p(a.position)}  {content!r}")
 
     if not graph:
