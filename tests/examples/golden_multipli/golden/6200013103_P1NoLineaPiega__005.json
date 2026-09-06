@@ -1,0 +1,16 @@
+{
+  "parent_file": "6200013103_P1NoLineaPiega.dxf",
+  "part_index": 5,
+  "area_mm2": 4400.0,
+  "holes_count": 0,
+  "outer_perimeter_mm": 270.0,
+  "inner_perimeter_mm": 0,
+  "total_perimeter_mm": 270.0,
+  "outer_wkt": "POLYGON ((40.8872080688 35.6625586233, 120.88720806879999 35.6625586233, 120.88720806879999 90.6625586233, 40.8872080688 90.6625586233, 40.8872080688 35.6625586233))",
+  "inners_wkt": [],
+  "outer_layer": "OuterContour",
+  "inners_layers": [],
+  "summary": {
+    "bending_lines": 3
+  }
+}

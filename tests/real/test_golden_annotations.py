@@ -26,6 +26,15 @@ from forge.model.annotation import Note, Dimension, Leader
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"
+_SOURCE_DIRS = [EXAMPLES_DIR, EXAMPLES_DIR / "golden"]
+
+
+def _find_source(name: str):
+    for d in _SOURCE_DIRS:
+        p = d / name
+        if p.exists():
+            return p
+    return None
 
 TOL_POS = 0.05      # mm — tolleranza sulla posizione d'ancoraggio
 TOL_VALUE = 0.01    # mm — tolleranza sul valore misurato
@@ -73,9 +82,9 @@ def _make_test(path: Path):
 
     def test(self):
         golden = json.loads(path.read_text(encoding="utf-8"))
-        dxf_path = EXAMPLES_DIR / golden["source_file"]
-        if not dxf_path.exists():
-            self.skipTest(str(dxf_path))
+        dxf_path = _find_source(golden["source_file"])
+        if dxf_path is None:
+            self.skipTest(golden["source_file"])
 
         doc = forge.load_dxf(
             dxf_path, explode_inserts=True, flatten_z_flag=True, verbose=False

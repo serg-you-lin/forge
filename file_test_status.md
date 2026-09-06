@@ -16,3 +16,7 @@ rect_with_threadad_holes_geometric.dxf --> fori rilevati correttamente e posti s
 two_rects_with_bend.dxf   --> uno dei due rect ha una bl interna i cui ep non combaciano con l'outer per 10mm. ho prevato a fare il detect aumentando la bending tol a 11, ma non viene comunque individuata come bending, quella entità. entità in trash.
 
 
+6200013103_P1NoLineaPiega.dxf  --> file cliente reale (Solid Edge), 6 pezzi, ognuno sul proprio layer 6200013103_1..5 + info per pezzo nei 16 MULTILEADER (CODICE / SPESSORE / PEZZI N°) e 3 MTEXT cartiglio. Aggiunto come fixture perché espone il bug leader-solo-testo (MULTILEADER senza anchor né vertici né geometria venivano scartati in extract -- RISOLTO in b5b2503, ripiego sulla posizione del testo appiattito; golden annotazioni a guardia).
+    BUG NOTO NON RISOLTO: il pezzo _1 (layer 6200013103_1, MULTILEADER "CODICE: 6200013103_1", part area ~127826, bbox ~[30,45,560,825]) genera 1 sola bending line dove Federico se ne aspetta di più. Causa sconosciuta -- da indagare. Il nome del file ("NoLineaPiega") già segnala l'anomalia. I golden (json/ e golden_multipli/) catturano l'output attuale: i loro conteggi bending_lines per questa fixture NON sono ground truth finché il bug non è chiarito.
+
+

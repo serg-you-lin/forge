@@ -36,6 +36,9 @@ from forge.model.annotation import Note, Dimension, Leader
 EXAMPLES_DIR = project_root / "tests" / "examples"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"
 
+# I DXF sorgente vivono sotto tests/examples/ o tests/examples/golden/.
+_SOURCE_DIRS = [EXAMPLES_DIR, EXAMPLES_DIR / "golden"]
+
 _ANNOTATION_DXF_TYPES = {"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"}
 
 
@@ -82,10 +85,15 @@ def _sort_key(entry: dict):
 def generate(force: bool = False, only: str = None) -> None:
     GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
 
-    dxf_files = [
-        f for f in sorted(EXAMPLES_DIR.glob("*.dxf"))
-        if "_healed" not in f.stem and _has_annotations(f)
-    ]
+    candidates = []
+    seen = set()
+    for d in _SOURCE_DIRS:
+        for f in sorted(d.glob("*.dxf")):
+            if f.stem in seen or "_healed" in f.stem:
+                continue
+            seen.add(f.stem)
+            candidates.append(f)
+    dxf_files = [f for f in candidates if _has_annotations(f)]
     if only:
         dxf_files = [f for f in dxf_files if f.stem == only]
 

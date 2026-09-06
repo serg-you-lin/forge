@@ -1,0 +1,393 @@
+{
+  "source_file": "6200013103_P1NoLineaPiega.dxf",
+  "annotation_count": 24,
+  "by_kind": {
+    "MTEXT": 3,
+    "MULTILEADER": 16,
+    "DIMENSION": 5
+  },
+  "annotations": [
+    {
+      "type": "Note",
+      "kind": "MTEXT",
+      "position": [
+        40.887,
+        46.663
+      ],
+      "display_text": "Materiale: S235JR EN 10025",
+      "layer": "Default",
+      "height": 4.0,
+      "rotation": 0.0
+    },
+    {
+      "type": "Note",
+      "kind": "MTEXT",
+      "position": [
+        40.887,
+        56.719
+      ],
+      "display_text": "Codice Articolo: 6200013103",
+      "layer": "Default",
+      "height": 4.0,
+      "rotation": 0.0
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        59.774,
+        98.387
+      ],
+      "display_text": "MARCARE I PRIMI 25 mm",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 2
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        75.358,
+        134.868
+      ],
+      "display_text": "20",
+      "layer": "Default",
+      "dim_type": "aligned",
+      "measured_value": 20.0,
+      "text_override": "\\A1;<>",
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Note",
+      "kind": "MTEXT",
+      "position": [
+        80.887,
+        38.663
+      ],
+      "display_text": "I profili rappresentati sono comprensivi di sovrametallo",
+      "layer": "Default",
+      "height": 2.5,
+      "rotation": 0.0
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        87.149,
+        211.883
+      ],
+      "display_text": "PEZZI N°: 1",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        87.816,
+        247.162
+      ],
+      "display_text": "SPESSORE: 2,00 mm",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        88.519,
+        289.445
+      ],
+      "display_text": "CODICE: 6200013103_5",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        172.543,
+        25.733
+      ],
+      "display_text": "245",
+      "layer": "Default",
+      "dim_type": "aligned",
+      "measured_value": 245.0,
+      "text_override": "\\A1;<>",
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        177.875,
+        87.103
+      ],
+      "display_text": "SPESSORE: 2,00 mm",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        178.048,
+        92.447
+      ],
+      "display_text": "PEZZI N°: 1",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        178.785,
+        81.527
+      ],
+      "display_text": "CODICE: 6200013103_1",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        610.1,
+        88.566
+      ],
+      "display_text": "SPESSORE: 2,00 mm",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        610.215,
+        93.91
+      ],
+      "display_text": "PEZZI N°: 2",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        611.011,
+        82.99
+      ],
+      "display_text": "CODICE: 6200013103_2",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        680.165,
+        589.727
+      ],
+      "display_text": "SPESSORE: 4,00 mm",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        680.267,
+        595.071
+      ],
+      "display_text": "PEZZI N°: 2",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        681.063,
+        584.15
+      ],
+      "display_text": "CODICE: 6200013103_4",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        699.181,
+        782.208
+      ],
+      "display_text": "SPESSORE: 2,00 mm",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        699.296,
+        787.552
+      ],
+      "display_text": "PEZZI N°: 2",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "MULTILEADER",
+      "position": [
+        700.091,
+        776.631
+      ],
+      "display_text": "CODICE: 6200013103_3",
+      "layer": "Default",
+      "vertices": 0,
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        856.542,
+        673.267
+      ],
+      "display_text": "100",
+      "layer": "Default",
+      "dim_type": "linear",
+      "measured_value": 100.0,
+      "text_override": "\\A1;<>",
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        884.364,
+        760.469
+      ],
+      "display_text": "36,5",
+      "layer": "Default",
+      "dim_type": "linear",
+      "measured_value": 36.4694,
+      "text_override": "\\A1;<>",
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        1006.424,
+        521.727
+      ],
+      "display_text": "479,1",
+      "layer": "Default",
+      "dim_type": "linear",
+      "measured_value": 479.1075,
+      "text_override": "\\A1;<>",
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    }
+  ]
+}
