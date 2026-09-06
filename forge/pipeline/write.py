@@ -86,6 +86,12 @@ def to_dxf(
             + " ".join(result.errors)
         )
     doc_out = ezdxf.new(dxfversion="R2010")
+    # ezdxf.new() di default dichiara $INSUNITS=6 (metri): forge lavora sempre
+    # in millimetri, quindi il default va forzato a 4 anche senza source_doc
+    # (es. geometria generata, non caricata da un DXF esistente) — altrimenti
+    # un importatore che rispetta $INSUNITS scala il pezzo di 1000x.
+    doc_out.header["$INSUNITS"]    = 4
+    doc_out.header["$MEASUREMENT"] = 1
     if source_doc is not None:
         doc_out.header["$INSUNITS"]    = source_doc.source_meta.get("$INSUNITS", 4)
         doc_out.header["$MEASUREMENT"] = source_doc.source_meta.get("$MEASUREMENT", 1)
