@@ -1,4 +1,4 @@
-# dxf-forge — TODO
+# forge — TODO
 
 
 Stato attuale: healing funzionante, export JSON/XDATA base, layer centralizzati.
@@ -16,10 +16,6 @@ Forge è un motore per comprendere geometria CAD 2D.
 
 ## PRIORITÀ MEDIA — migliora la qualità
 
-### Leaf bug
-
-Il file lineette bastarde genera ancora bending lines li dove deovrebbe mettere le lineette sul trash e non bestemmio perhcè ho già bestemmiato a sufficienza oggi.
-
 
 ### Apertura files
 
@@ -32,28 +28,7 @@ creare una fingerprint geometrica per validare na forge part.
 ### Cornice
 Capire dove deve lavorare perhcè potrebbe essere parte del plugin per i draft
 
-### Refactoring ForgeSession
-load_dxf(path)  →  ForgeSession   # contiene adapter DXF internamente
-load_svg(path)  →  ForgeSession   # contiene adapter SVG internamente
-load_pdf(path)  →  ForgeSession   # contiene adapter PDF internamente
 
-ForgeSession.heal()    →  ForgeResult   # core puro, zero formato
-ForgeSession.save_dxf(path)            # l'adapter DXF sa come scrivere
-ForgeSession.save_svg(path)            # genera SVG da ForgeResult
-
-
-### Refactoring hierarchy
-DXF adapter → produce List[ShapeProxy] già pronti
-core._collect_proxies → riceve List[ShapeProxy], non sa niente di ezdxf
-    _build_topology(self, proxies)
-Se ti fa senso, potresti eliminare Contour e fare in modo che _loop_to_contour produca direttamente uno ShapeProxy — salteresti un passaggio. Ma è un refactoring separato.
-
-
-
-Il pattern if entity.dxftype() == "ARC" sparso in 150 posti è fragile e non scala.
-Però questa è una terza cosa grossa — separata da ShapeProxy e da ForgeAdapter. E si collega direttamente al discorso di prima: se l'obiettivo è essere format-agnostici, allora il dispatcher per tipo entità è esattamente il problema che ForgeAdapter risolve a livello architetturale. Quando hai DxfAdapter come classe, il dispatcher per tipo diventa un metodo interno all'adapter — e fuori non esiste più.
-2. ForgeAdapter / DxfAdapter        ← elimina il dispatcher sparso
-3. entity_length, entity_to_proxy   ← diventano metodi di DxfAdapter
 
 
 
@@ -77,97 +52,7 @@ Al momento in input posso avere solo dxf, ma mi sono messo in condizione di pote
 
 
 
-### Comprensione futura:
-può essere qualcosa di simile a questo?
-
-parse_geometry()     ← explode INSERT, detect & exclude frame
-build_topology()     ← costruisce il grafo
-heal()               ← healing geometrico puro
-detect_features()    ← detect(), holes, bending lines
-writeback()          ← scrive il DXF
-split()
-inject()
-
-
-  INPUT
-
- DWG
- DXF
- PDF
- STEP (domani)
- SVG  (domani)
-
-      │
-      ▼
-
-  Adapter Layer
-(load, sanitize, convert)
-
-      │
-      ▼
-
- GEOMETRY ENGINE
-
- graph
- loops
- polygon
- healing
- hierarchy
- frame detection
-
-      │
-      ▼
-
- Forge Model
-
- ForgePart
- Hole
- Edge
- Metadata
- GeometryHints
-
-      │
-      ▼
-
-      API
-
- result.parts
- result.holes
- result.edges
-
-      │
-      ▼
-
-    Plugins
-
-
-Domani potrebbe semplicemente fare
-
-parts = forge.load(file).heal().detect().parts
-
-e basta.
-
-Lui non sa cosa sia un arco.
-
-Non sa cos'è un grafo.
-
-Non sa cos'è una spline.
-
-Non gli interessa.
-
-Lo splitter è un plugin
-
-Non è Forge.
-
-È
-
-forge.split(...)
-
-
-
-
-
-I tools possibili sul motore geometrico:
+# I tools possibili sul motore geometrico:
 Interrogazione (query)
 
 measure() — distanze, aree, perimetri, bounding box
@@ -391,341 +276,168 @@ entity → classify → transform → route → output
 Questo è il tuo futuro “kernel”, non geometry.
 
 
+# UNFOLDING
 
+Il ragionamento è solido e l'architettura è pulita. "Unfold" funziona bene — corto, preciso, non dipende da DXF, scala a qualsiasi forma sviluppabile.
 
+Un'unica cosa che aggiungerei alla riflessione prima di partire con la struttura:
 
-models.py          → aggiungi Edge                      ✓ da fare
-core/graph.py      → build_node_graph, find_closed_loops,
-                     classify_loops, loop_to_points,
-                     check_loop_ambiguity               ✓ da fare
-core/virtual.py    → from_loop, from_spline_loop        ✓ da fare
-healer/pipeline.py → _find_loops, entities_in_loops     ✓ da fare
-healer/_helpers.py → _free_endpoints                    ✓ da verificare
-healer/_utils.py   → _deduplicate_loops                 ✓ da verificare
+il confine Forge/Unfold va definito bene subito, perché è il punto che più rischia di diventare ambiguo man mano che cresci. La domanda chiave è:
 
-core/geometry.py   → nessuna modifica                   ✗
-core/gap.py        → nessuna modifica                   ✗
+Unfold sa parlare di entità geometriche "native" (cerchi, archi, linee, facce 3D), o riceve già un modello semantico ("questa è una faccia conica con questi parametri")?
 
+Due opzioni architetturali:
 
+A) Unfold riceve parametri puri
 
+python
+Cone(top_diameter=1600, bottom_diameter=1016, height=1000)
 
+Forge fa tutto il riconoscimento/estrazione, Unfold è un motore matematico puro. Testabilissimo, zero dipendenze.
 
-## LINEA GUIDA SVILUPPO — 
+B) Unfold riceve geometria e la interpreta
 
+python
+unfold.from_forge(drawing)  # Unfold capisce da solo cosa c'è
 
-La verità architetturale (importante)
+Più magico, ma il riconoscimento delle forme diventa un problema non banale e si sovrappone a quello che già fa Forge.
 
-Il sistema NON è:
+La mia lettura è che A è il cuore di Unfold, e il from_forge() che hai disegnato è un adapter — uno strato sottile che siede tra i due e traduce. Non appartiene né a Forge né a Unfold, o appartiene a entrambi come modulo opzionale.
 
-geometry engine generico
+Quindi l'architettura diventa:
 
-È:
+FORGE (parsing, healing, topology)
+    │
+    ▼
+forge.unfold_adapter  ← estrae parametri dalla geometria
+    │
+    ▼
+UNFOLD (matematica pura: Cone, Cylinder, Elbow, Transition...)
+    │
+    ▼
+FlatGeometry  ← oggetto neutro, non è DXF
+    │
+    ▼
+FORGE (nesting, tagging, export → DXF)
 
-topology reconstruction engine (with DXF adapter layer)
+FlatGeometry è il contratto tra i due sistemi. Se lo definisci bene adesso, i due progetti restano davvero indipendenti.
 
-cioè:
+Vale la pena decidere questo prima di scrivere una riga — cambiarlo dopo è costoso. Cosa ne pensi?
 
-🎯 Input:
+Potresti avere API del genere:
 
-qualsiasi geometria “rumorosa”
+from unfold import Cone, Cylinder
 
-🎯 Output:
+cone = Cone(
+    top_diameter=1600,
+    bottom_diameter=1016,
+    height=1000,
+    thickness=5,
+)
 
-grafo consistente + loop chiusi + strutture interpretabili
+flat = cone.develop()
 
-🧠 Il vero modello NON è DXF
+flat.to_dxf("cone.dxf")
 
-Il vero modello è:
+e poi:
 
-👉 “spatial uncertainty graph”
+from unfold import Cylinder
 
-cioè:
+flat = Cylinder(
+    diameter=1016,
+    height=3895,
+    thickness=5,
+).develop()
 
-nodi = punti/feature
-archi = relazioni geometriche
-pesi = tolleranze / errori / ambiguità
+Ma il vero salto sarebbe poter passare geometria proveniente da Forge:
 
-## POSSIBILE REFACTORING IN TAL SENSO
+import forge
+import unfold
 
+drawing = forge.load_dxf("disegno.dxf")
+drawing = drawing.heal()
 
-🔵 1. CORE (NO DXF, NO WORKFLOW, SOLO LOGICA PURA)
-📁 core/geometry.py → RESTA quasi tutto
+part = unfold.from_forge(drawing)
 
-✔️ RESTA:
+flat = part.develop()
 
-line/arc/circle math
-distance, intersection
-arc_endpoint
-circle_line_intersections
-circle_circle_intersections
-closest_to
-entity_length → ⚠️ ma diventa shape_length, non entity
-_line_length, _arc_length, _circle_length
-_polyline_length
-_spline_length
-round_point
-num_segments_for_bulge
-_point_to_line_distance
-are_collinear
-group_collinear_lines
-spline flattening logic (MA SENZA DXF objects)
-polygon conversion logic (MA su Shape, non entity)
-representative point logic (MA su Shape)
+forge.save_dxf(flat, "sviluppo.dxf")
 
-❌ ESCE:
+A quel punto non stai più facendo uno script che calcola un settore anulare.
 
-tutto ciò che usa entity.dxf
-_copy_*
-writeback logic
-qualunque cosa che conosce DXF
+---
 
-👉 RISULTATO:
+# NIPOTI STACCATI (microjoints / linguette di ritenuta)
 
-geometry lavora su primitive: Point, Segment, Arc, Polyline
+Da ragionare con calma, non ora. Idea di Federico: nel taglio lamiera, i contorni
+annidati in profondità (un'isola dentro un foro dentro un pezzo — i "nipoti" nella
+gerarchia di contenimento, non i "figli" diretti) non restano attaccati al pezzo dopo
+il taglio laser: cadono via se non c'è un ponticello di materiale che li tiene. Oggi
+Federico li collega a mano disegnando delle "linguette" (microjoints) sul contorno.
+Domanda: è roba di forge, o no?
 
-
-🟡 2. DOMAIN MODEL (NUOVO - fondamentale)
-
-Questo è quello che oggi ti manca e ti crea confusione.
-
-📁 model/
-Point
-Segment
-Arc
-Circle
-Spline
-Polyline
-Node
-Edge
-Graph
-Shape
-
-👉 questo elimina completamente:
-
-entity
-msp dependency
-DXF mental model dentro il core
-🟠 3. DXF ADAPTER (TUTTO QUELLO CHE TOGLI DAL CORE)
-📁 adapters/dxf/
-
-QUI va tutto ciò che oggi è “sporco ma necessario”:
-
-da geometry.py:
-
-❌ _copy_*
-❌ entity_to_polygon
-❌ pline_to_polygon
-❌ circle_to_lwpolyline
-❌ get_representative_point(entity)
-❌ is_threaded_arc
-❌ is_threaded_hole
-
-da workflow/healer:
-
-❌ _edges_from_msp
-❌ _load
-❌ _deduplicate_entities
-❌ _explode_inserts
-
-👉 OUTPUT adapter:
-
-DXF → GraphState
-GraphState → DXF
-🔴 4. WORKFLOW (IL TUO HEALER ATTUALE)
-📁 workflow/healer/pipeline.py
-
-✔️ RESTA:
-
-HealerPipeline.run
-orchestrazione
-
-❌ ESCE:
-
-logica geometrica
-logica graph
-logica gap
-logica loop
-
-👉 diventa SOLO:
-
-load → preprocess → detect → classify → output
-🟣 5. AGENT (OPZIONALE DOPO)
-
-NON lo metto dentro ora perché hai ragione a dubitare.
-
-Ma diventa:
-
-osserva GraphState
-decide parametri pipeline
-ripete run
-non tocca core
-
-
-
-## STRATEGIA REFACTORING 
-
-🧭 1. Decisione giusta (ordine corretto)
-
-✔️ Step 3 — spostamento logica dal pipeline
-❌ NON: riscrivere pipeline prima
-
-Quindi sì:
-
-prima isoliamo il cazzo di adapter, senza rompere nulla sopra
-
-🧱 2. Punto chiave che hai centrato (fondamentale)
-
-Tu hai detto:
-
-“le entità originali devono sempre essere recuperabili”
-
-Questo cambia tutto.
-
-Perché implica:
-
-❗ vincolo architetturale reale
-
-ogni astrazione NON può essere lossless rispetto a DXF entity
-
-Quindi il modello NON è:
-
-DXF → geometry → graph
-
-ma:
-
-DXF → (Graph + Back-reference to Entity)
-🔥 3. Correzione importante al modello mentale
-
-Il modello “pulito” puro:
-
-geometry senza DXF
-
-NON è completo nel tuo caso industriale.
-
-Quello corretto è:
-
-🟢 CORE = topology + references
-Node
-Edge {
-    geometry: pure shape
-    source_entity_id: optional reference
-}
-
-👉 quindi il core NON è “ignorante del DXF”
-è:
-
-indipendente dal formato, ma non dalla tracciabilità
-
-🧠 4. Questo risolve il tuo dubbio principale
-
-Tu dicevi:
-
-“se tolgo DXF dal core perdo qualcosa”
-
-✔️ vero SOLO se lo togli completamente
-
-Ma la soluzione reale è:
-
-DXF non entra come logica, entra come IDENTITÀ TRACCIATA
-
-🟠 5. QUINDI: cosa diventa l’ADAPTER (vera definizione)
-
-📁 adapters/dxf/
-
-Qui succede tutto il lavoro sporco:
-
-🔹 1. parsing
-def to_primitives(entity) -> Primitive:
-🔹 2. preservazione identità
-@dataclass
-class Primitive:
-    geom: Geometry
-    entity_id: int
-    layer: str
-🔹 3. graph seed
-def build_graph(primitives) -> Graph:
-🔹 4. dedup / explode / normalize
-
-✔️ QUI restano:
-
-_deduplicate_entities
-_explode_inserts
-_normalized_endpoints
-🔹 5. writeback reverse mapping
-def graph_to_dxf(graph) -> msp
-⚙️ 6. cosa cambia nel tuo HealerPipeline ORA
-
-Senza toccare il resto:
-
-PRIMA:
-self._load()
-self._edges_from_msp()
-DOPO:
-graph = dxf_adapter.to_graph(msp, tolerance)
-🔥 7. e questo è il punto cruciale
-
-👉 il pipeline NON cambia ancora
-
-cambia solo questo:
-
-“chi prepara i dati”
-
-🧠 8. perché questo è il punto giusto
-
-Perché:
-
-✔️ non rompi i golden test
-✔️ continui a lavorare su DXF reali
-✔️ non perdi precisione
-✔️ non introduci astrazioni premature
-
-⚠️ 9. sul tuo dubbio “secondo sistema di tipi”
-
-Hai ragione a essere sospettoso.
-
-Quindi la regola giusta è:
-
-❌ NON creare un nuovo CAD model parallelo
-✔️ creare solo:
-
-lightweight geometry + graph + references
-
-🧭 10. quindi roadmap corretta (versione reale, non teorica)
-STEP 1 (adesso)
-
-👉 estrazione adapter DXF
-
-niente pipeline changes
-niente graph refactor
-solo conversion layer
-STEP 2
-
-👉 GraphState introdotto
-
-edge/node
-ma ancora con entity reference
-STEP 3
-
-👉 spostamento logica dal pipeline
-
-STEP 4
-
-👉 solo allora geometry/core pulito
-
-
-✔ Pipeline corretta:
-1. DXF → RAW ENTITIES (MSP)
-2. SPLITTER → PRIMITIVE CANONICHE
-3. HEALER → TOPOLOGY (graph)
-4. WRITER → DXF finale
-
-
-👉 “automatic feature reconstruction engine per CAD/CAM preprocessing”
-
-questo:
-
-è industriale
-è integrabile
-è vendibile come modulo
-è utile anche senza UI
-è usabile in pipeline CAM reali
+Prima lettura di Federico: no — "forge deve solo classificare e lavorare sui suoi
+valori". Il piazzamento delle linguette è una decisione di processo (CAM), stessa
+famiglia del nesting — che è già esplicitamente fuori scope per forge.
+
+Cosa ho trovato guardando `core/healing/hierarchy.py`: l'albero di contenimento a
+profondità arbitraria (padre → figli → nipoti → ...) viene già costruito
+internamente da `_build_tree()`/`_place()` durante `heal()` — ma poi
+`_collect_inners()` lo appiattisce deliberatamente ("appiattisce l'albero di
+contenimento... a qualsiasi profondità") in un'unica lista piatta `part.inners`,
+perdendo l'informazione di profondità e di chi-contiene-chi. Quindi oggi forge non
+espone nemmeno il dato grezzo che un tool di linguette avrebbe bisogno di leggere
+(quali contorni sono nipoti, e di chi).
+
+Ipotesi di confine (da confermare, non decisa): sapere "questo contorno è annidato a
+profondità N dentro questo genitore" è classificazione/topologia — legittimamente
+compito di forge, coerente con "forge classifica". Decidere DOVE tagliare un
+ponticello, quanto largo, in base a spessore/materiale — quello è CAM.
+
+CORREZIONE di Federico: le linguette NON sono un modulo a parte — Smoother lavora
+su file PNG dall'inizio alla fine (immagine → contorni → geometria pulita → DXF), è
+pensato per gestire disegni organici più velocemente in tutta la pipeline. Le
+linguette entrano come uno step in PIÙ, un passo prima dello smoothing finale, nella
+STESSA pipeline/tool. Quindi: 3 moduli, non 4 — forge (classifica, incluso il
+conteggio/profondità di annidamento, riusabile), Unfold (genera sviluppi da
+parametri), Smoother (immagine → contorni → linguette → geometria pulita → DXF,
+tutto in un tool). Il pezzo che forge deve dare a Smoother per le linguette è
+esattamente il dato di nesting che oggi butta via in `_collect_inners()` — va reso
+riusabile (non ricalcolato da Smoother in proprio).
+
+Prossimo passo deciso: costruire `load_geometry()` per primo — serve sia a Unfold
+sia a Smoother (entrambi devono poter consegnare a forge geometria già calcolata/
+ricostruita, non un file).
+
+## classifica_punti — cos'è, e se ha senso spostarlo nel core forge
+
+Vedi `smoother_5.py::classifica_punti()` + `scrivi_contorno()`. Cosa fa davvero:
+prende una sequenza di punti ORDINATA e chiusa (in smoother_5 viene da
+`cv2.findContours`, ma la funzione stessa non sa nulla di immagini) e per ogni punto
+calcola l'angolo interno formato dai due lati adiacenti (vettore verso il punto
+precedente, vettore verso il successivo). Se l'angolo è sotto una soglia (spigolo
+vivo) marca il punto come "corner". `scrivi_contorno()` poi spezza la sequenza sui
+corner: i tratti fra due corner con pochi punti diventano una LINE, quelli con molti
+punti (una curva vera, campionata densamente) diventano una SPLINE rifittata sui
+punti. In sostanza: **ricostruzione di primitive pulite (linea/arco/spline) da una
+nuvola di punti densa/rumorosa**, con rilevamento degli spigoli per non "smussare"
+via un angolo vero.
+
+Questo NON è specifico della computer vision — è una vera e propria voce del core
+motore geometrico, e infatti è già in lista come `simplify()` nella sezione "tools
+possibili sul motore geometrico" più sopra in questo file ("riduzione punti, merge
+di segmenti collineari"). Casi in cui servirebbe anche fuori da Smoother:
+- **DXF con curve già discretizzate**: alcuni software esportano una spline come
+  LWPOLYLINE con centinaia di segmentini invece che come SPLINE/ARC vera — oggi
+  forge la porta in output così com'è, densa e brutta. Con questo tool potrebbe
+  ricostruirla pulita.
+- **PDF**: i path PDF sono spesso bezier appiattite in polilinee dense in export —
+  stesso problema, stesso beneficio per l'adapter PDF.
+- **`load_geometry()` stesso**: se chi chiama consegna punti densi invece di
+  parametri d'arco puliti, questo tool li ripulisce prima che entrino nel modello.
+
+Quindi sì, ha senso che sia forge ad averlo — non come "smoothing PNG" (quello resta
+di Smoother, dipende da opencv), ma come ricostruzione geometrica generale da punti
+ordinati, zero dipendenza da immagini. Nome: da decidere, in inglese (es.
+`simplify_points` / `fit_primitives` / `detect_corners` + refit) — coerente con
+tutto il resto dei nomi pubblici di forge, già tutti in inglese.
