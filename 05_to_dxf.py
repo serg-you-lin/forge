@@ -18,7 +18,7 @@ import os
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"c:\Users\FEDERICO\Documents\Python_Scripts\Projects\DXF\TON_02_09_2026\6200013103 P1NoLineaPiega.dxf"
+INPUT     = r"tests/examples/Multifeature.dxf"
 TOLERANCE = 0.5
 LABEL_MAP = {
     "Filettati": "threaded_hole",
