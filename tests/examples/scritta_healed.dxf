@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461282.6250462965
+2461290.635266204
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461282.6250462965
+2461290.635266204
   9
 $TDUUPDATE
  40
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{7BBC4F17-536B-49E3-8E50-6BC2D8837ECD}
+{F1BB7F7F-8041-4037-B6CD-73B3752C16C0}
   9
 $VERSIONGUID
   2
-{02C7AF4D-CE4C-4DEF-81A4-34BEB7D5E256}
+{325BEBED-3272-4F65-9B35-5E9AB3AF92B8}
   9
 $EXTNAMES
 290
@@ -2272,6 +2272,8 @@ LWPOLYLINE
 AcDbEntity
   8
 OuterContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2400,6 +2402,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2464,6 +2468,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2528,6 +2534,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2552,6 +2560,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -2638,6 +2648,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -2812,6 +2824,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2848,6 +2862,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -2974,6 +2990,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -3060,6 +3078,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -3084,6 +3104,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -3170,6 +3192,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -3194,6 +3218,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -3368,6 +3394,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -3396,6 +3424,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -3428,6 +3458,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -3460,6 +3492,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -3484,6 +3518,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -3738,6 +3774,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -3762,6 +3800,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -4144,6 +4184,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -4518,6 +4560,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -4542,6 +4586,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -4796,6 +4842,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -4820,6 +4868,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -4994,6 +5044,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -5056,6 +5108,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -5080,6 +5134,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -5206,6 +5262,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -5404,6 +5462,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -5428,6 +5488,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -5452,6 +5514,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -5778,6 +5842,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -5802,6 +5868,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -5936,6 +6004,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -5998,6 +6068,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -6022,6 +6094,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -6292,6 +6366,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -6316,6 +6392,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -6586,6 +6664,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -6626,6 +6706,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -6752,6 +6834,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -6776,6 +6860,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -6934,6 +7020,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -6958,6 +7046,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -6982,6 +7072,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -7116,6 +7208,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -7140,6 +7234,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -7274,6 +7370,8 @@ LWPOLYLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -8299,7 +8397,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:04.178545+00:00
+1.4.3 @ 2026-09-06T13:14:47.919541+00:00
   0
 DICTIONARYVAR
   5
@@ -8311,7 +8409,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:04.181548+00:00
+1.4.3 @ 2026-09-06T13:14:47.923044+00:00
   0
 ENDSEC
   0

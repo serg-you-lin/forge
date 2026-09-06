@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461282.625034722
+2461290.6352546294
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461282.625034722
+2461290.6352546294
   9
 $TDUUPDATE
  40
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{26EC4C75-F01E-4FD5-868E-CE5243126741}
+{5BCE239D-1F0F-4DCC-9C86-A29A97513548}
   9
 $VERSIONGUID
   2
-{76E36F5F-B29B-4F5A-AB5D-F8F4EEC5064F}
+{BA72D06F-4DF0-4D92-BECF-8F74A7CDE538}
   9
 $EXTNAMES
 290
@@ -2308,6 +2308,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2328,6 +2330,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2348,6 +2352,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2368,6 +2374,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2388,6 +2396,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2408,6 +2418,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2428,6 +2440,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2448,6 +2462,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2468,6 +2484,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2488,6 +2506,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2508,6 +2528,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2528,6 +2550,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2548,6 +2572,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -3561,7 +3587,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:03.233735+00:00
+1.4.3 @ 2026-09-06T13:14:46.947206+00:00
   0
 DICTIONARYVAR
   5
@@ -3573,7 +3599,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:03.234736+00:00
+1.4.3 @ 2026-09-06T13:14:46.948207+00:00
   0
 ENDSEC
   0

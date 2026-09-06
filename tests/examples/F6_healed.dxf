@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461282.625034722
+2461290.635266204
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461282.625034722
+2461290.635266204
   9
 $TDUUPDATE
  40
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{D22D6C43-AFE7-4955-B63B-CB6C6DAAF85D}
+{73F17473-5658-4A15-AEC0-AE89325B40DD}
   9
 $VERSIONGUID
   2
-{73120B60-27AD-49BA-B6FA-98B33C76F034}
+{9048F4E2-4D23-4BCA-BB54-4CA852CAC629}
   9
 $EXTNAMES
 290
@@ -2272,6 +2272,8 @@ LWPOLYLINE
 AcDbEntity
   8
 OuterContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2308,6 +2310,8 @@ LWPOLYLINE
 AcDbEntity
   8
 Trash
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2332,6 +2336,8 @@ LWPOLYLINE
 AcDbEntity
   8
 Trash
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2356,6 +2362,8 @@ LWPOLYLINE
 AcDbEntity
   8
 Trash
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2380,6 +2388,8 @@ LWPOLYLINE
 AcDbEntity
   8
 Trash
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2404,6 +2414,8 @@ LWPOLYLINE
 AcDbEntity
   8
 Trash
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2428,6 +2440,8 @@ LWPOLYLINE
 AcDbEntity
   8
 Trash
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -3445,7 +3459,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:03.375857+00:00
+1.4.3 @ 2026-09-06T13:14:47.096835+00:00
   0
 DICTIONARYVAR
   5
@@ -3457,7 +3471,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:03.376857+00:00
+1.4.3 @ 2026-09-06T13:14:47.098336+00:00
   0
 ENDSEC
   0

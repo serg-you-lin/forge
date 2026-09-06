@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461282.625034722
+2461290.6352546294
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461282.625034722
+2461290.6352546294
   9
 $TDUUPDATE
  40
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{0D2DAA95-D744-486D-AB13-BDD56B00ED30}
+{0C3952E9-DBE3-4803-9829-16CCDF4EE9D4}
   9
 $VERSIONGUID
   2
-{D823FE13-0F2B-4635-822C-72D978A2E49D}
+{749D7520-59F8-4FC7-BFA6-78CCC8C3002C}
   9
 $EXTNAMES
 290
@@ -2272,6 +2272,8 @@ LWPOLYLINE
 AcDbEntity
   8
 OuterContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2308,6 +2310,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2328,6 +2332,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2348,6 +2354,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2368,6 +2376,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2388,6 +2398,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2408,6 +2420,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2428,6 +2442,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2448,6 +2464,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2468,6 +2486,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2488,6 +2508,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2508,6 +2530,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2528,6 +2552,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -2548,6 +2574,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -3561,7 +3589,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:03.218222+00:00
+1.4.3 @ 2026-09-06T13:14:46.931193+00:00
   0
 DICTIONARYVAR
   5
@@ -3573,7 +3601,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:03.219723+00:00
+1.4.3 @ 2026-09-06T13:14:46.932194+00:00
   0
 ENDSEC
   0

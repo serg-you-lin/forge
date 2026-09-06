@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461282.625034722
+2461290.635266204
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461282.625034722
+2461290.635266204
   9
 $TDUUPDATE
  40
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{4B86348D-D44C-4B50-BA23-17513FD6AC69}
+{17A9E17C-49AF-4087-91C4-33FDDEB74A54}
   9
 $VERSIONGUID
   2
-{C766FFDC-C4A6-44A6-B0A0-AA98CBCCA30D}
+{AAF80E08-AA85-473F-88AA-07C5E3B5AF84}
   9
 $EXTNAMES
 290
@@ -2272,6 +2272,8 @@ LWPOLYLINE
 AcDbEntity
   8
 OuterContour
+  6
+Continuous
 100
 AcDbPolyline
  90
@@ -2304,6 +2306,8 @@ SPLINE
 AcDbEntity
   8
 InnerContour
+  6
+Continuous
 100
 AcDbSpline
  70
@@ -3090,6 +3094,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -3110,6 +3116,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -3130,6 +3138,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -3150,6 +3160,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -3170,6 +3182,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -3190,6 +3204,8 @@ CIRCLE
 AcDbEntity
   8
 Hole
+  6
+Continuous
 100
 AcDbCircle
  10
@@ -4203,7 +4219,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:03.925829+00:00
+1.4.3 @ 2026-09-06T13:14:47.683839+00:00
   0
 DICTIONARYVAR
   5
@@ -4215,7 +4231,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-08-29T13:00:03.926830+00:00
+1.4.3 @ 2026-09-06T13:14:47.684839+00:00
   0
 ENDSEC
   0
