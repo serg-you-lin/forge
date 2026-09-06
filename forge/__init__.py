@@ -47,6 +47,13 @@ from .adapters.dxf.loader import load_dxf, document_from_msp
 # Resta importabile come forge.load_pdf per chi ci lavora sopra, ma non è in
 # __all__ e non è documentato: l'API può cambiare o sparire senza preavviso.
 from .adapters.pdf.loader import load_pdf
+# load_geometry: SPERIMENTALE, fuori dal contratto pubblico (vedi MAP.md).
+# Costruisce un ForgeDocument da geometria pura (dict), non da un file — stesso
+# contratto di ritorno di load_dxf, ma senza sorgente su disco. Pensato per
+# generatori parametrici (es. sviluppi cono/cilindro) e ricostruttori di
+# geometria da punti. Resta importabile come forge.load_geometry, non è in
+# __all__ e non è documentato finché non è stato provato da un caso reale.
+from .adapters.geometry.loader import load_geometry
 from .pipeline            import heal, heal_and_detect, split_to_files
 from .pipeline.inject   import inject
 from .pipeline.write  import to_dxf, split
