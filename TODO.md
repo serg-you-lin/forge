@@ -9,7 +9,26 @@ Forge è un motore per comprendere geometria CAD 2D.
 
 ## PRIORITÀ ALTA — blocca il prodotto
 
+### [PROSSIMA SESSIONE — prima cosa] Refactor `ForgePart` → `ForgeCluster`
 
+`heal()` produce **cluster** (gruppi di geometria separati spazialmente), non
+"parti". La part-ness — se un cluster è un pezzo vero, una vista, o il cartiglio
+— è interpretazione del consumatore (vedi `INTERPRETER.md`). Il modello va reso
+onesto.
+
+- rename meccanico: `ForgePart` → `ForgeCluster`, `result.parts` → `result.clusters`,
+  `part_count` → `cluster_count`, variabili `part` → `cluster`
+- nessuna logica cambia; `detect` / `split` / `split_to_files` restano in forge e
+  consumano cluster
+- golden: cambiano solo le **chiavi** dei JSON (`"parts"` → `"clusters"` ecc.), i
+  valori (aree, WKT, conteggi) sono identici — un rename puro non tocca la
+  geometria. 610 test + golden devono restare verdi.
+- `to_dict()` cambia chiave: unico breaking, ma nessuno consuma ancora il JSON
+- branch `refactor/clusters`, merge a verde, bump a 0.6.3
+- poi riscrivere `INTERPRETER.md` col vocabolario nuovo
+
+Deciso a fine sessione del 2026-09-06 (`main` a 0.6.2). Clean break, come da
+stance sui refactor.
 
   
 ---
