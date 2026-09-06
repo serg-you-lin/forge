@@ -56,6 +56,7 @@ from .adapters.pdf.loader import load_pdf
 from .adapters.geometry.loader import load_geometry
 from .pipeline            import heal, heal_and_detect, split_to_files
 from .pipeline.inject   import inject
+from .pipeline.interpret import interpret_annotations
 from .pipeline.write  import to_dxf, split
 from .pipeline.detect  import detect, ALL_FEATURES
 from .rules.validator     import validate, validate_result
@@ -107,6 +108,7 @@ __all__ = [
     "to_dxf",
     "split",
     "inject",
+    "interpret_annotations",
     "split_to_files",
     # Export
     "to_json",

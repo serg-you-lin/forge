@@ -23,6 +23,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.model.annotation import Note, Dimension, Leader
+from forge.pipeline.interpret import interpret_annotations
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"
@@ -57,6 +58,7 @@ def _actual_dict(a) -> dict:
         "position": [round(a.position[0], 3), round(a.position[1], 3)],
         "display_text": a.display_text,
         "layer": a.layer,
+        "part_ref": a.part_ref,
     }
     if isinstance(a, Note):
         d["height"] = round(a.height, 3)
@@ -89,8 +91,17 @@ def _make_test(path: Path):
         doc = forge.load_dxf(
             dxf_path, explode_inserts=True, flatten_z_flag=True, verbose=False
         )
-        actual = sorted((_actual_dict(a) for a in doc.annotations), key=_sort_key)
+        result = forge.heal_and_detect(doc, features="all")
+        interpret_annotations(result)
+        anns = result.annotations if result.annotations else doc.annotations
+        actual = sorted((_actual_dict(a) for a in anns), key=_sort_key)
         expected = golden["annotations"]
+
+        if "part_count" in golden:
+            self.assertEqual(
+                result.part_count, golden["part_count"],
+                msg=f"{golden['source_file']}: numero parti",
+            )
 
         self.assertEqual(
             len(actual), golden["annotation_count"],
@@ -109,6 +120,7 @@ def _make_test(path: Path):
             self.assertEqual(act["layer"], exp["layer"], msg=f"{ctx}: layer")
             self.assertAlmostEqual(act["position"][0], exp["position"][0], delta=TOL_POS, msg=f"{ctx}: x")
             self.assertAlmostEqual(act["position"][1], exp["position"][1], delta=TOL_POS, msg=f"{ctx}: y")
+            self.assertEqual(act["part_ref"], exp.get("part_ref"), msg=f"{ctx}: part_ref")
 
             if exp["type"] == "Note":
                 self.assertAlmostEqual(act["height"], exp["height"], delta=TOL_VALUE, msg=f"{ctx}: height")

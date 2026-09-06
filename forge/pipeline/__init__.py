@@ -5,6 +5,7 @@ import os
 
 from .heal import HealStep
 from .detect import detect, ALL_FEATURES
+from .interpret import interpret_annotations
 from .write import to_dxf, split, part_passes_min_area, DEFAULT_MIN_PART_AREA
 from ..rules.thresholds import HOLE_DIAMETER_THRESHOLD
 from ..adapters.dxf.layers import LAYER_ANNOTATION

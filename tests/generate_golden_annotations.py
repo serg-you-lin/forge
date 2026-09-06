@@ -32,6 +32,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.model.annotation import Note, Dimension, Leader
+from forge.pipeline.interpret import interpret_annotations
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"
@@ -61,6 +62,7 @@ def _annotation_dict(a) -> dict:
         "position": [round(a.position[0], 3), round(a.position[1], 3)],
         "display_text": a.display_text,
         "layer": a.layer,
+        "part_ref": a.part_ref,
     }
     if isinstance(a, Note):
         d["height"] = round(a.height, 3)
@@ -107,11 +109,15 @@ def generate(force: bool = False, only: str = None) -> None:
         try:
             doc = forge.load_dxf(dxf_path, explode_inserts=True, flatten_z_flag=True,
                                  verbose=False)
-            entries = sorted((_annotation_dict(a) for a in doc.annotations), key=_sort_key)
+            result = forge.heal_and_detect(doc, features="all")
+            interpret_annotations(result)
+            anns = result.annotations if result.annotations else doc.annotations
+            entries = sorted((_annotation_dict(a) for a in anns), key=_sort_key)
             golden = {
                 "source_file": dxf_path.name,
                 "annotation_count": len(entries),
                 "by_kind": dict(Counter(e["kind"] for e in entries)),
+                "part_count": result.part_count,
                 "annotations": entries,
             }
             golden_path.write_text(
