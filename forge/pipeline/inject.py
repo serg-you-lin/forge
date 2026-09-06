@@ -1,13 +1,19 @@
 """
 inject.py
 -----------
-Arricchimento CAM opzionale di un ForgeResult già prodotto da heal() + detect().
+Arricchimento CAM opzionale di un ForgeResult già prodotto da heal() (+ detect()).
 
 Da MAP.md D8: il conteggio delle feature (fori per tipo, pieghe, incisioni) NON
 si fa più qui — è `part.summary`, una property derivata dal modello. `inject()`
-resta solo per il suo lavoro unico: passare i testi che ricadono dentro l'outer
-di ogni parte a un `data_injector` esterno (codice pezzo, materiale, spessore),
-e mettere il dict risultante in `part.custom`.
+resta solo per il suo lavoro unico: passare a un `data_injector` esterno i testi
+che ricadono dentro l'outer di ogni parte (codice pezzo, materiale, spessore) e
+mettere il dict risultante in `part.custom`.
+
+I testi vengono da `result.annotations` (il modello tipato prodotto da
+load_dxf): niente più `msp` o liste sciolte. Filtro per contenimento nell'outer
+della parte — l'equivalente di quello che faceva `interpret_annotations()`, ma
+applicato al volo qui perché `inject()` deve funzionare anche se quella fase non
+è stata chiamata.
 
 Contratto:
     - Opera su un ForgeResult già prodotto da heal() (+ detect()).
@@ -19,21 +25,16 @@ Flusso tipico:
 
     doc    = forge.load_dxf("pezzo.dxf", label_map={"Bend": "bending"})
     result = forge.heal_and_detect(doc)
-    forge.inject(result, data_injector=leggi_cartiglio,
-                 texts=forge.extract_texts_from_msp(msp))
+    forge.inject(result, data_injector=leggi_cartiglio)
     forge.save_json(result, ...)   # i conteggi vengono da part.summary
 """
 
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
-from ..model.text import ForgeText
+from shapely.geometry import Point
 
 
-def inject(
-    result,
-    data_injector: Optional[Callable] = None,
-    texts: Optional[list[ForgeText]] = None,
-):
+def inject(result, data_injector: Optional[Callable] = None):
     """
     Arricchisce i ForgePart con i dati estratti da un `data_injector` esterno.
 
@@ -44,8 +45,6 @@ def inject(
         data_injector: `callable(ForgePart, list[str]) -> dict`. Riceve i testi
                        contenuti nell'outer della parte, restituisce i campi da
                        mettere in `part.custom` (materiale, spessore, codice, ...).
-        texts:         lista di ForgeText (da `extract_texts_from_msp` +
-                       costruzione ForgeText, o da un estrattore proprio).
     """
     if not result.parts or data_injector is None:
         return result
@@ -55,7 +54,7 @@ def inject(
         if outer_poly is None or outer_poly.is_empty:
             continue
 
-        testi = _filter_texts_for_part(texts or [], outer_poly)
+        testi = _texts_inside(result.annotations, outer_poly)
         try:
             injected = data_injector(part, testi)
             if injected:
@@ -68,12 +67,10 @@ def inject(
     return result
 
 
-def _filter_texts_for_part(texts: list[ForgeText], outer_poly) -> list[str]:
-    """
-    Filtra i ForgeText che ricadono dentro l'outer_poly del part.
-    Restituisce list[str] per compatibilità con data_injector esistenti.
-    """
+def _texts_inside(annotations, outer_poly) -> List[str]:
+    """Testi delle annotazioni che ricadono dentro `outer_poly`, come list[str]."""
     return [
-        t.content for t in texts
-        if outer_poly.covers(t.position)
+        ann.display_text
+        for ann in annotations
+        if ann.display_text and outer_poly.covers(Point(ann.position))
     ]
