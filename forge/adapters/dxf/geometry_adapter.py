@@ -99,63 +99,6 @@ def spline_is_closed(spline, tolerance: float = DEFAULT_TOLERANCE) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Lunghezze
-# ---------------------------------------------------------------------------
-
-def entity_length(entity) -> float:
-    """Lunghezza di un'entità DXF."""
-    t = entity.dxftype()
-    
-    if t == 'LINE':
-        return _line_length(entity)
-    elif t == 'ARC':
-        return _arc_length(entity)
-    elif t == 'CIRCLE':
-        return _circle_length(entity)
-    elif t in ('LWPOLYLINE', 'POLYLINE'):
-        return _polyline_length(entity)
-    elif t == 'SPLINE':
-        return _spline_length(entity)
-    
-    return 0.0
-
-
-def _line_length(entity) -> float:
-    return math.hypot(
-        entity.dxf.end.x - entity.dxf.start.x,
-        entity.dxf.end.y - entity.dxf.start.y,
-    )
-
-
-def _arc_length(entity) -> float:
-    sweep = (entity.dxf.end_angle - entity.dxf.start_angle) % 360.0
-    return entity.dxf.radius * math.radians(sweep)
-
-
-def _circle_length(entity) -> float:
-    return 2 * math.pi * entity.dxf.radius
-
-
-def _polyline_length(entity) -> float:
-    pts = _polyline_points_xy(entity)
-    total = 0.0
-    for i in range(len(pts) - 1):
-        total += math.hypot(pts[i+1][0] - pts[i][0], pts[i+1][1] - pts[i][1])
-    return total
-
-
-def _spline_length(entity) -> float:
-    try:
-        pts = list(entity.flattening(DEFAULT_TOLERANCE))
-        total = 0.0
-        for i in range(len(pts) - 1):
-            total += math.hypot(pts[i+1][0] - pts[i][0], pts[i+1][1] - pts[i][1])
-        return total
-    except Exception:
-        return 0.0
-
-
-# ---------------------------------------------------------------------------
 # Punti rappresentativi (per annotazioni, ecc)
 # ---------------------------------------------------------------------------
 
@@ -261,14 +204,6 @@ def _repr_pt_fallback(entity) -> Optional[Tuple[float, float]]:
     return None
 
 
-def entity_midpoint(entity) -> Optional[Tuple[float, float]]:
-    """Punto medio di un'entità."""
-    start, end = entity_endpoints(entity)
-    if start is None or end is None:
-        return None
-    return ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
-
-
 # ---------------------------------------------------------------------------
 # Poligoni da entità (usa build_polygon)
 # ---------------------------------------------------------------------------
@@ -291,8 +226,3 @@ def entity_to_polygon(entity) -> Optional[Polygon]:
         primitives = [prim]
     
     return build_polygon(primitives, DEFAULT_TOLERANCE)
-
-
-def pline_to_polygon(pline) -> Optional[Polygon]:
-    """Converte una LWPOLYLINE chiusa in Polygon."""
-    return entity_to_polygon(pline)
