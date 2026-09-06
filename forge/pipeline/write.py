@@ -19,7 +19,8 @@ from typing import Callable, List, Optional, Set
 import ezdxf
 
 from ..model import ForgeResult, ForgePart
-from ..model.document import ForgeDocument, Annotation
+from ..model.document import ForgeDocument
+from ..model.annotation import Annotation, Note, Dimension, Leader
 from ..model.hole import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..model.role import ContourRole
 from ..adapters.dxf.exporter import (
@@ -270,51 +271,55 @@ def _write_annotations(
 
 
 def _emit_annotation(msp, ann: Annotation, annotation_layer: Optional[str]) -> None:
-    layer = annotation_layer if annotation_layer is not None else ann.data.get("layer", "0")
+    layer = annotation_layer if annotation_layer is not None else ann.layer
     attribs = {"layer": layer, "color": 256}
 
-    strokes = ann.data.get("strokes")
-    fills = ann.data.get("fills")
-    texts = ann.data.get("texts")
-    if strokes or fills or texts:
-        # Quota / direttrice: immagine già appiattita in primitive pure.
-        for pts in strokes or []:
-            if len(pts) >= 2:
-                msp.add_lwpolyline(pts, dxfattribs=attribs, close=False)
-        for pts in fills or []:
-            if len(pts) >= 2:
-                msp.add_lwpolyline(pts, dxfattribs=attribs, close=True)
-        for item in texts or []:
-            content = item.get("content", "")
-            if not content:
-                continue
-            msp.add_text(content, dxfattribs={
-                **attribs,
-                "height": item.get("height") or 2.5,
-                "rotation": item.get("rotation") or 0.0,
-                "insert": item.get("position", ann.position),
-            })
-        return
+    if isinstance(ann, Note):
+        _emit_note(msp, ann, attribs)
+    elif isinstance(ann, (Dimension, Leader)):
+        _emit_rendered(msp, ann, attribs)
 
-    content = ann.data.get("content", "")
-    if not content:
-        return
 
-    if ann.kind == "MTEXT":
-        entity = msp.add_mtext(content, dxfattribs={
+def _emit_note(msp, note: Note, attribs: dict) -> None:
+    if not note.text:
+        return
+    if note.source_kind == "MTEXT":
+        entity = msp.add_mtext(note.text, dxfattribs={
             **attribs,
-            "char_height": ann.data.get("height") or 2.5,
-            "rotation": ann.data.get("rotation") or 0.0,
+            "char_height": note.height or 2.5,
+            "rotation": note.rotation or 0.0,
         })
-        entity.set_location(ann.position)
+        entity.set_location(note.position)
     else:
-        # TEXT anche per DIMENSION/LEADER: la geometria di quota non è nel
-        # modello, ne materializziamo il valore come testo alla sua posizione.
-        msp.add_text(content, dxfattribs={
+        msp.add_text(note.text, dxfattribs={
             **attribs,
-            "height": ann.data.get("height") or 2.5,
-            "rotation": ann.data.get("rotation") or 0.0,
-            "insert": ann.position,
+            "height": note.height or 2.5,
+            "rotation": note.rotation or 0.0,
+            "insert": note.position,
+        })
+
+
+def _emit_rendered(msp, ann, attribs: dict) -> None:
+    """
+    DIMENSION / LEADER: ri-materializza l'immagine appiattita. I testi in
+    `rendered.texts` sono già il testo visualizzato finale (il blocco DXF lo
+    incorpora risolto; i percorsi sintetici passano da `_dimension_text`).
+    """
+    rendered = ann.rendered
+    for pts in rendered.strokes:
+        if len(pts) >= 2:
+            msp.add_lwpolyline(pts, dxfattribs=attribs, close=False)
+    for pts in rendered.fills:
+        if len(pts) >= 2:
+            msp.add_lwpolyline(pts, dxfattribs=attribs, close=True)
+    for rt in rendered.texts:
+        if not rt.content:
+            continue
+        msp.add_text(rt.content, dxfattribs={
+            **attribs,
+            "height": rt.height or 2.5,
+            "rotation": rt.rotation or 0.0,
+            "insert": rt.position,
         })
 
 

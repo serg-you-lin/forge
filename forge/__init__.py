@@ -74,7 +74,10 @@ from .io.exporter         import (
 from .io.exporter         import to_nester_input
 from .io.view_model       import to_view_model
 from .io.svg              import to_svg, save_svg
-from .model         import ForgeResult, ForgePart, ForgeContour, ForgeDocument, Annotation
+from .model         import (
+    ForgeResult, ForgePart, ForgeContour, ForgeDocument,
+    Annotation, Note, Dimension, Leader,
+)
 from .io.text_utils       import extract_texts_from_msp, extract_forge_texts
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
@@ -130,4 +133,7 @@ __all__ = [
     "ForgeContour",
     "ForgeDocument",
     "Annotation",
+    "Note",
+    "Dimension",
+    "Leader",
 ]

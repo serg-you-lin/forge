@@ -59,7 +59,7 @@ DWG_VERSIONS = {
 
 def _annotation_signature(ann) -> tuple:
     return (ann.kind, round(ann.position[0], 3), round(ann.position[1], 3),
-            ann.data.get("content", ""))
+            ann.display_text)
 
 
 def _merge_annotations(base: list, extra: list) -> None:

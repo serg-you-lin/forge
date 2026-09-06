@@ -22,28 +22,12 @@ prodotti dall'adapter, source_meta è un dizionario di primitivi.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List
+
+from .annotation import Annotation
 
 if TYPE_CHECKING:
     from ..core.topology.edge import Edge
-
-
-@dataclass
-class Annotation:
-    """
-    Annotazione testuale estratta dalla sorgente (TEXT, MTEXT, DIMENSION, …).
-
-    Non porta source_ref: `data` contiene tutto il necessario per ricreare
-    l'entità nel documento di output.
-
-        kind     : tipo entità sorgente — "TEXT" | "MTEXT" | "DIMENSION" | …
-        position : punto rappresentativo (x, y) — per il containment check
-        data     : contenuto e attributi necessari alla riscrittura
-                   (testo, altezza, rotazione, allineamento, …)
-    """
-    kind:     str
-    position: Tuple[float, float]
-    data:     Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
