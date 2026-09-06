@@ -2,9 +2,8 @@
 forge/model/annotation.py
 -------------------------
 Le annotazioni come contenuto di dominio: forge le legge, le interpreta e le
-riscrive. Un solo modello tipato per testi, quote e direttrici — sostituisce il
-vecchio ``Annotation(data=dict)`` di ``document.py`` e ``ForgeText`` di
-``text.py``.
+riscrive. Un solo modello tipato per testi, quote e direttrici — ha sostituito
+il vecchio ``Annotation(data=dict)`` e il separato ``ForgeText``.
 
 Divisione dei compiti:
     - adapter (annotation_extractor / exporter) → read/write formato ↔ modello,

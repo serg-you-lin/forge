@@ -29,7 +29,7 @@ from typing import List, Optional, Tuple
 from ...model.annotation import (
     Annotation, Note, Dimension, Leader, RenderedGeometry, RenderedText,
 )
-from ...io.text_utils import clean_mtext
+from .mtext import clean_mtext, mleader_text
 
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
 
@@ -288,7 +288,11 @@ def _leader_annotation(entity, pos, layer, source_kind) -> Optional[Leader]:
     if rendered.is_empty():
         return None
 
-    text = rendered.texts[0].content if rendered.texts else ""
+    # Il testo del leader: prima il campo dedicato dell'entità, poi il primo
+    # testo appiattito nel blocco.
+    text = clean_mtext(mleader_text(entity))
+    if not text and rendered.texts:
+        text = rendered.texts[0].content
     vertices = _leader_vertices(entity)
 
     if pos is None:

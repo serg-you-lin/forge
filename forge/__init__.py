@@ -79,7 +79,7 @@ from .model         import (
     ForgeResult, ForgePart, ForgeContour, ForgeDocument,
     Annotation, Note, Dimension, Leader,
 )
-from .io.text_utils       import extract_texts_from_msp, extract_forge_texts
+from .adapters.dxf.mtext  import clean_mtext
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -122,8 +122,7 @@ __all__ = [
     "read_metadata_from_dxf",
     "set_schema",
     # Utilità
-    "extract_texts_from_msp",
-    "extract_forge_texts",
+    "clean_mtext",
     # Ispezione / debug (3 livelli: DXF grezzo → ForgeDocument → ForgeResult)
     "inspect_dxf",
     "inspect_document",
