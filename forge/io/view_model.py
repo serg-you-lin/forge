@@ -119,9 +119,9 @@ def _annotation_entry(ann) -> dict:
     return {
         "kind":     ann.kind,
         "position": [round(ann.position[0], 4), round(ann.position[1], 4)],
-        "text":     ann.data.get("content", ""),
-        "height":   ann.data.get("height") or 2.5,
-        "rotation": ann.data.get("rotation") or 0.0,
+        "text":     ann.display_text,
+        "height":   getattr(ann, "height", 2.5) or 2.5,
+        "rotation": getattr(ann, "rotation", 0.0) or 0.0,
     }
 
 
