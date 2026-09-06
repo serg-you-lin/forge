@@ -292,8 +292,17 @@ def _leader_annotation(entity, pos, layer, source_kind) -> Optional[Leader]:
     vertices = _leader_vertices(entity)
 
     if pos is None:
-        pos = (vertices[0] if vertices
-               else _bbox_center(rendered.strokes + rendered.fills))
+        # Fallback all'ancora: primo vertice della direttrice (dove punta), poi
+        # il centro dell'immagine. Molti MULTILEADER (es. Solid Edge) non
+        # espongono né anchor né vertici né geometria: lì l'unica ancora è la
+        # posizione del testo appiattito.
+        if vertices:
+            pos = vertices[0]
+        else:
+            pos = _bbox_center(
+                rendered.strokes + rendered.fills
+                + [[t.position] for t in rendered.texts]
+            )
         if pos is None:
             return None
 
