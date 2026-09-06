@@ -1,0 +1,411 @@
+{
+  "source_file": "Multifeature.dxf",
+  "annotation_count": 24,
+  "by_kind": {
+    "DIMENSION": 16,
+    "LEADER": 4,
+    "TEXT": 4
+  },
+  "annotations": [
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        194.727,
+        135.305
+      ],
+      "display_text": "80",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 80.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        204.727,
+        175.305
+      ],
+      "display_text": "25",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 25.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        204.736,
+        150.305
+      ],
+      "display_text": "25",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 25.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        214.727,
+        192.805
+      ],
+      "display_text": "15",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 15.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        230.727,
+        209.305
+      ],
+      "display_text": "R6",
+      "layer": "0",
+      "dim_type": "radius",
+      "measured_value": 6.0,
+      "text_override": "R<>",
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        231.727,
+        225.305
+      ],
+      "display_text": "8.5",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 8.5,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        235.977,
+        245.305
+      ],
+      "display_text": "11.25",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 11.25,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "LEADER",
+      "position": [
+        266.727,
+        96.91
+      ],
+      "display_text": "",
+      "layer": "0",
+      "vertices": 2,
+      "rendered": {
+        "strokes": 1,
+        "fills": 1,
+        "texts": 0
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        266.727,
+        115.305
+      ],
+      "display_text": "32",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 32.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        266.727,
+        115.305
+      ],
+      "display_text": "42",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 42.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "LEADER",
+      "position": [
+        266.727,
+        255.516
+      ],
+      "display_text": "",
+      "layer": "0",
+      "vertices": 2,
+      "rendered": {
+        "strokes": 1,
+        "fills": 1,
+        "texts": 0
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        274.727,
+        125.305
+      ],
+      "display_text": "50",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 50.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Note",
+      "kind": "TEXT",
+      "position": [
+        277.319,
+        89.41
+      ],
+      "display_text": "B",
+      "layer": "0",
+      "height": 5.0,
+      "rotation": 0.0
+    },
+    {
+      "type": "Note",
+      "kind": "TEXT",
+      "position": [
+        277.319,
+        258.016
+      ],
+      "display_text": "B",
+      "layer": "0",
+      "height": 5.0,
+      "rotation": 0.0
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        293.342,
+        179.057
+      ],
+      "display_text": "M8",
+      "layer": "0",
+      "dim_type": "diameter",
+      "measured_value": 8.0,
+      "text_override": "M<>",
+      "rendered": {
+        "strokes": 0,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        294.727,
+        125.305
+      ],
+      "display_text": "20",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 20.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        314.727,
+        125.305
+      ],
+      "display_text": "20",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 20.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "LEADER",
+      "position": [
+        334.227,
+        96.122
+      ],
+      "display_text": "",
+      "layer": "0",
+      "vertices": 2,
+      "rendered": {
+        "strokes": 1,
+        "fills": 1,
+        "texts": 0
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        334.227,
+        235.305
+      ],
+      "display_text": "109.5",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 109.5,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Leader",
+      "kind": "LEADER",
+      "position": [
+        334.227,
+        255.718
+      ],
+      "display_text": "",
+      "layer": "0",
+      "vertices": 2,
+      "rendered": {
+        "strokes": 1,
+        "fills": 1,
+        "texts": 0
+      }
+    },
+    {
+      "type": "Note",
+      "kind": "TEXT",
+      "position": [
+        343.974,
+        88.622
+      ],
+      "display_text": "A",
+      "layer": "0",
+      "height": 5.0,
+      "rotation": 0.0
+    },
+    {
+      "type": "Note",
+      "kind": "TEXT",
+      "position": [
+        343.974,
+        258.218
+      ],
+      "display_text": "A",
+      "layer": "0",
+      "height": 5.0,
+      "rotation": 0.0
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        363.477,
+        245.305
+      ],
+      "display_text": "127.5",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 127.5,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        390.922,
+        193.305
+      ],
+      "display_text": "36",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 36.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    }
+  ]
+}

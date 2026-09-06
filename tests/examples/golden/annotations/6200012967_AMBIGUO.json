@@ -1,0 +1,27 @@
+{
+  "source_file": "6200012967_AMBIGUO.dxf",
+  "annotation_count": 1,
+  "by_kind": {
+    "DIMENSION": 1
+  },
+  "annotations": [
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        56.124,
+        1244.281
+      ],
+      "display_text": "2027.43",
+      "layer": "Default",
+      "dim_type": "aligned",
+      "measured_value": 2027.4301,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    }
+  ]
+}

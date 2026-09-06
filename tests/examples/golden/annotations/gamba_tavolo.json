@@ -1,0 +1,148 @@
+{
+  "source_file": "gamba_tavolo.dxf",
+  "annotation_count": 8,
+  "by_kind": {
+    "DIMENSION": 7,
+    "MTEXT": 1
+  },
+  "annotations": [
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        -944.299,
+        181.534
+      ],
+      "display_text": "50",
+      "layer": "2D$quote",
+      "dim_type": "linear",
+      "measured_value": 50.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 6,
+        "fills": 2,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        -932.088,
+        122.84
+      ],
+      "display_text": "40",
+      "layer": "2D$quote",
+      "dim_type": "linear",
+      "measured_value": 40.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 6,
+        "fills": 2,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        -878.008,
+        221.534
+      ],
+      "display_text": "90",
+      "layer": "2D$quote",
+      "dim_type": "linear",
+      "measured_value": 90.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 6,
+        "fills": 2,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        -869.884,
+        122.84
+      ],
+      "display_text": "50",
+      "layer": "2D$quote",
+      "dim_type": "linear",
+      "measured_value": 50.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 6,
+        "fills": 2,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Note",
+      "kind": "MTEXT",
+      "position": [
+        -848.004,
+        239.813
+      ],
+      "display_text": "SPESSORE 8mm",
+      "layer": "2D$quote",
+      "height": 10.0,
+      "rotation": 0.0
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        -797.681,
+        122.84
+      ],
+      "display_text": "50",
+      "layer": "2D$quote",
+      "dim_type": "linear",
+      "measured_value": 50.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 6,
+        "fills": 2,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        -675.477,
+        122.84
+      ],
+      "display_text": "50",
+      "layer": "2D$quote",
+      "dim_type": "linear",
+      "measured_value": 50.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 6,
+        "fills": 2,
+        "texts": 1
+      }
+    },
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        -665.019,
+        223.172
+      ],
+      "display_text": "91.6",
+      "layer": "2D$quote",
+      "dim_type": "linear",
+      "measured_value": 91.6381,
+      "text_override": null,
+      "rendered": {
+        "strokes": 6,
+        "fills": 2,
+        "texts": 1
+      }
+    }
+  ]
+}

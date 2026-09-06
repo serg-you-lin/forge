@@ -1,0 +1,21 @@
+{
+  "source_file": "7072_U150_30X2.nc_N°1 pz.nc.dxf",
+  "annotation_count": 1,
+  "by_kind": {
+    "TEXT": 1
+  },
+  "annotations": [
+    {
+      "type": "Note",
+      "kind": "TEXT",
+      "position": [
+        50.0,
+        70.0
+      ],
+      "display_text": "7072",
+      "layer": "Signature",
+      "height": 20.0,
+      "rotation": 0.0
+    }
+  ]
+}

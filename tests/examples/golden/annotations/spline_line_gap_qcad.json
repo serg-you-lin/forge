@@ -1,0 +1,27 @@
+{
+  "source_file": "spline_line_gap_qcad.dxf",
+  "annotation_count": 1,
+  "by_kind": {
+    "DIMENSION": 1
+  },
+  "annotations": [
+    {
+      "type": "Dimension",
+      "kind": "DIMENSION",
+      "position": [
+        100.0,
+        -23.081
+      ],
+      "display_text": "100",
+      "layer": "0",
+      "dim_type": "linear",
+      "measured_value": 100.0,
+      "text_override": null,
+      "rendered": {
+        "strokes": 3,
+        "fills": 0,
+        "texts": 1
+      }
+    }
+  ]
+}
