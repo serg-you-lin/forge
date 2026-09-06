@@ -18,7 +18,7 @@ import os
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Multifeature.dxf"
+INPUT     = r"LOCAL_DRAWING.dxf"
 TOLERANCE = 0.5
 LABEL_MAP = {
     "Filettati": "threaded_hole",
