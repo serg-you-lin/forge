@@ -10,7 +10,6 @@ Non gestisce INSERT — assumere che siano già stati esplosi.
 from ezdxf.tools.text import plain_mtext
 from shapely.geometry import Point
 from ..model.text import ForgeText
-from ..adapters.dxf.geometry_adapter import get_representative_point
 
 ANNOTATION_TYPES = {'TEXT', 'MTEXT', 'DIMENSION', 'LEADER', 'MULTILEADER'}
 
@@ -19,11 +18,15 @@ def extract_forge_texts(msp) -> list[ForgeText]:
     Estrae i testi dal msp come ForgeText — contenuto + posizione shapely.
     Prodotto dall'adapter DXF, consumato da inject().
     """
+    # Import locale: annotation_extractor importa da questo modulo (clean_mtext,
+    # handle_mleader), quindi a livello di modulo sarebbe un ciclo.
+    from ..adapters.dxf.annotation_extractor import annotation_anchor
+
     result = []
     for e in msp:
         if e.dxftype() not in ANNOTATION_TYPES:
             continue
-        pt = get_representative_point(e)
+        pt = annotation_anchor(e)
         if pt is None:
             continue
         content = _extract_content(e)

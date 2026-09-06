@@ -28,7 +28,6 @@ from typing import List, Optional, Tuple
 
 from ...model.document import Annotation
 from ...io.text_utils import clean_mtext, handle_mleader
-from .geometry_adapter import get_representative_point
 
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
 
@@ -52,7 +51,7 @@ class DxfAnnotationExtractor:
             if kind not in ANNOTATION_TYPES:
                 continue
 
-            position = get_representative_point(entity)
+            position = annotation_anchor(entity)
 
             if kind in RENDERED_TYPES:
                 # position può essere None per un LEADER: la si ricava dalla
@@ -73,6 +72,61 @@ class DxfAnnotationExtractor:
             data["content"] = content
             annotations.append(Annotation(kind=kind, position=position, data=data))
         return annotations
+
+
+# ---------------------------------------------------------------------------
+# Punto d'ancoraggio — dove `write` riposiziona il testo dell'annotazione
+# ---------------------------------------------------------------------------
+
+def annotation_anchor(entity) -> Optional[Tuple[float, float]]:
+    """
+    Punto d'ancoraggio XY di un'entità di annotazione.
+
+    TEXT/MTEXT hanno il punto d'inserimento nei campi DXF; MULTILEADER e
+    DIMENSION lo tengono in strutture annidate; LEADER non ce l'ha e ricade
+    sul fallback (poi `_rendered_annotation` lo ricava dalla geometria).
+    Ritorna None se nessuna fonte è disponibile.
+    """
+    t = entity.dxftype()
+    if t in ("TEXT", "MTEXT"):
+        return (entity.dxf.insert.x, entity.dxf.insert.y)
+    if t == "MULTILEADER":
+        return _mleader_anchor(entity)
+    if t == "DIMENSION":
+        return _dimension_anchor(entity)
+    return _fallback_anchor(entity)
+
+
+def _mleader_anchor(entity) -> Optional[Tuple[float, float]]:
+    """Primo vertice della direttrice di un MULTILEADER."""
+    try:
+        leader = entity.context.mleader
+        if leader and leader.vertices:
+            v = leader.vertices[0]
+            return (v[0], v[1])
+    except Exception:
+        pass
+    return None
+
+
+def _dimension_anchor(entity) -> Optional[Tuple[float, float]]:
+    """Def-point di una DIMENSION."""
+    try:
+        return (entity.dxf.defpoint.x, entity.dxf.defpoint.y)
+    except Exception:
+        return None
+
+
+def _fallback_anchor(entity) -> Optional[Tuple[float, float]]:
+    """Cerca un qualsiasi attributo-punto usabile."""
+    for attr in ("center", "insert", "start", "defpoint"):
+        if hasattr(entity.dxf, attr):
+            try:
+                pt = getattr(entity.dxf, attr)
+                return (pt.x, pt.y)
+            except Exception:
+                continue
+    return None
 
 
 # ---------------------------------------------------------------------------
