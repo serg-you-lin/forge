@@ -26,11 +26,11 @@ class ContourRole(str, Enum):
     UNKNOWN = "unknown"   # default — l'adapter non sa / non mappato
     OUTER   = "outer"     # profilo esterno della parte
     HOLE    = "hole"      # foro (confermato da detect o da label_map)
-    COUNTERSINK  = "countersink"
-    THREADED_HOLE = "threaded_hole"
+    COUNTERSINK  = "countersink"   # foro svasato(confermato da detect o da label_map)
+    THREADED_HOLE = "threaded_hole"   # foro filettato (confermato da detect o da label_map)
     BEND    = "bending"      # linea / contorno di piega
     FRAME   = "frame"     # cornice / riferimento di lavorazione
-    INNER   = "inner"     # loop interno non ancora classificato come hole
+    INNER   = "inner"     # loop interno che in futuro potrà essere classificato come foro o altra feature
     ENGRAVE = "engrave"
     MARKING = "marking"
 
