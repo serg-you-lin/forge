@@ -258,6 +258,41 @@ appartiene a `core/topology/`, dove vivono i suoi consumatori veri. Spostato
 lì; adapter DXF/PDF ora lo importano da `core`, come da regola. Nessuna
 modifica di comportamento — solo import aggiornati. Suite: 579 passed.
 
+### D20 — Annotazioni: modello tipato + fase `interpret` separata  ✅
+Segnalato da Federico: le annotazioni erano un casino. Due modelli paralleli non
+tipati per la stessa cosa — `Annotation(kind, position, data=dict)` in
+`model/document.py`, prodotto da `annotation_extractor.py` e consumato da
+`write()`, e `ForgeText(content, position: shapely.Point)` in `model/text.py`,
+prodotto da `io/text_utils.extract_forge_texts` e consumato da `inject()` — che
+leggevano la stessa entità DXF due volte. In più `io/text_utils.py` (codice DXF
+puro, ma sotto `io/`) e `annotation_extractor.py` si importavano a vicenda.
+
+Decisione, in linea con `annotations-are-first-class-interpreted-content`:
+
+- **Un solo modello tipato** in `model/annotation.py`: `Annotation` base +
+  `Note` / `Dimension` / `Leader`, più `RenderedGeometry` / `RenderedText` per
+  l'immagine appiattita di quote e direttrici. Niente `data` dict, niente
+  `shapely` nei campi (posizione = tupla). `Annotation(data=dict)` e `ForgeText`
+  eliminati.
+- **Adapter = solo formato.** `annotation_extractor` legge DXF → oggetti tipati;
+  `write` fa l'inverso, fedele. Gli helper stringa MTEXT stanno in
+  `adapters/dxf/mtext.py` (`clean_mtext` riesportata da `forge`).
+- **Interpretazione in una fase a sé**, `forge.interpret_annotations(result)`,
+  **non** dentro `detect()` (che fa già troppo — vedi
+  `keep-detect-focused-prefer-separate-stages`). Oggi popola solo
+  `Annotation.part_ref` (indice della parte contenitrice); `references` /
+  `target` verso le feature sono predisposti ma non ancora calcolati.
+- `inject()` non prende più `texts=` né un `msp`: filtra `result.annotations`
+  per contenimento. `io/text_utils.py`, `extract_texts_from_msp` e
+  `extract_forge_texts` rimossi (nessun chiamante reale, clean break).
+
+Regressione trovata e risolta lungo la strada (`b5b2503`): i MULTILEADER
+solo-testo senza anchor/vertici/geometria (Solid Edge) venivano scartati.
+Fixture `6200013103_P1NoLineaPiega` aggiunta a `golden/` e `golden_multipli/`;
+nuovo golden `golden/annotations/` con `generate_golden_annotations.py`. Due bug
+noti pre-esistenti su quella fixture documentati in `file_test_status.md` (BL
+sotto-rilevate sul pezzo _1; cartiglio rilevato come parte). Suite: 610 passed.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)
