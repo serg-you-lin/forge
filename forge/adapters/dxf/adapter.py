@@ -9,10 +9,12 @@ UNICO punto di conversione DXF → primitive.
 
 from __future__ import annotations
 
-import math
 from typing import Any, Dict, List, Optional, Tuple
 
-from ...core.primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg, DEFAULT_TOLERANCE
+from ...core.primitives.segments import (
+    LineSeg, ArcSeg, SplineSeg, CircleSeg,
+    segment_endpoints, segment_is_closed,
+)
 from ...core.adapter_base import ForgeAdapter
 from ...core.geometry import round_point
 from ...core.topology.edge import Edge, Segment
@@ -20,10 +22,8 @@ from ...model.role import ContourRole, WORK_TYPE_TO_ROLE, layer_to_role
 from ...model.style import EdgeStyle
 
 from .geometry_adapter import (
-    entity_endpoints,
     get_representative_point,
     entity_to_polygon,
-    spline_is_closed,
 )
 from .parser import DxfEntityDispatcher
 
@@ -223,34 +223,6 @@ def _style_role(style: EdgeStyle, linetype_map: Dict[str, str], color_map: Dict[
 # due copie quasi identiche — una qui (`entity_to_primitive`), una in parser.py.
 
 
-def _segment_endpoints(segment: Segment) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-    """Endpoint di un segmento Forge."""
-    if isinstance(segment, LineSeg):
-        return segment.start, segment.end
-    if isinstance(segment, ArcSeg):
-        start = (
-            segment.center[0] + segment.radius * math.cos(segment.start_angle),
-            segment.center[1] + segment.radius * math.sin(segment.start_angle),
-        )
-        end = (
-            segment.center[0] + segment.radius * math.cos(segment.end_angle),
-            segment.center[1] + segment.radius * math.sin(segment.end_angle),
-        )
-        return start, end
-    if isinstance(segment, SplineSeg):
-        if segment.fit_points:
-            start = segment.fit_points[0]
-            end = segment.fit_points[-1]
-            return (start[0], start[1]), (end[0], end[1])
-        if not segment.control_points:
-            return (0.0, 0.0), (0.0, 0.0)
-        return segment.control_points[0], segment.control_points[-1]
-    if isinstance(segment, CircleSeg):
-        pt = (segment.center[0] + segment.radius, segment.center[1])
-        return pt, pt
-    return (0.0, 0.0), (0.0, 0.0)
-
-
 def _segment_key(segment: Segment) -> tuple:
     """Chiave univoca per deduplicazione."""
     if isinstance(segment, LineSeg):
@@ -358,7 +330,7 @@ class DxfAdapter(ForgeAdapter):
             if key in seen_segment_keys:
                 return
             seen_segment_keys.add(key)
-            start, end = _segment_endpoints(segment)
+            start, end = segment_endpoints(segment)
             start_r = round_point(start, self.node_decimals)
             end_r = round_point(end, self.node_decimals)
             if start_r is None or end_r is None:
@@ -391,7 +363,7 @@ class DxfAdapter(ForgeAdapter):
             if dtype == "CIRCLE":
                 prim = DxfEntityDispatcher(entity).parse()
                 if isinstance(prim, CircleSeg):
-                    start, end = _segment_endpoints(prim)
+                    start, end = segment_endpoints(prim)
                     pt = round_point(start, self.node_decimals)
                     if pt is not None:
                         edges.append(Edge(
@@ -403,21 +375,23 @@ class DxfAdapter(ForgeAdapter):
                         ))
                 continue
 
-            # SPLINE chiusa → loop degenere
-            if dtype == "SPLINE" and spline_is_closed(entity):
-                prim = DxfEntityDispatcher(entity).parse()
-                if isinstance(prim, SplineSeg):
-                    start, _ = _segment_endpoints(prim)
+            # SPLINE: parse una volta sola, poi distingui chiusa (loop degenere)
+            # da aperta (gestita più sotto come LINE/ARC).
+            spline_prim: Optional[Segment] = None
+            if dtype == "SPLINE":
+                spline_prim = DxfEntityDispatcher(entity).parse()
+                if isinstance(spline_prim, SplineSeg) and segment_is_closed(spline_prim):
+                    start, _ = segment_endpoints(spline_prim)
                     pt = round_point(start, self.node_decimals)
                     if pt is not None:
                         edges.append(Edge(
                             role=role,
                             start=pt,
                             end=pt,
-                            segment=prim,
+                            segment=spline_prim,
                             style=style,
                         ))
-                continue
+                    continue
 
             # LWPOLYLINE / POLYLINE → segmenti
             if dtype in ("LWPOLYLINE", "POLYLINE"):
@@ -436,14 +410,11 @@ class DxfAdapter(ForgeAdapter):
             if dtype not in _SUPPORTED_TYPES:
                 continue
 
-            start, end = entity_endpoints(entity)
-            if start is None or end is None:
-                continue
-
-            prim = DxfEntityDispatcher(entity).parse()
+            prim = spline_prim if spline_prim is not None else DxfEntityDispatcher(entity).parse()
             if prim is None:
                 continue
 
+            start, end = segment_endpoints(prim)
             start_r = round_point(start, self.node_decimals)
             end_r = round_point(end, self.node_decimals)
             if start_r is None or end_r is None:
