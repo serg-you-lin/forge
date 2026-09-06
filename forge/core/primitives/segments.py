@@ -335,6 +335,17 @@ def segment_endpoints(segment) -> Tuple[Point, Point]:
     return (0.0, 0.0), (0.0, 0.0)
 
 
+def segment_is_closed(segment, tolerance: float = DEFAULT_TOLERANCE) -> bool:
+    """
+    True se gli endpoint del segmento coincidono entro ``tolerance``.
+
+    Unica sede del test di chiusura di un segmento primitivo — usata
+    dall'adapter per riconoscere le spline chiuse (loop degenere).
+    """
+    start, end = segment_endpoints(segment)
+    return math.hypot(start[0] - end[0], start[1] - end[1]) < tolerance
+
+
 @dataclass
 class CircleSeg:
     """Cerchio geometrico puro."""
