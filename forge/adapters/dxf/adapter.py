@@ -11,20 +11,19 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from shapely.geometry import Polygon
+
 from ...core.primitives.segments import (
-    LineSeg, ArcSeg, SplineSeg, CircleSeg,
+    LineSeg, ArcSeg, SplineSeg, CircleSeg, DEFAULT_TOLERANCE,
     segment_endpoints, segment_is_closed,
 )
+from ...core.primitives.polygon_builder import build_polygon
 from ...core.adapter_base import ForgeAdapter
 from ...core.geometry import round_point
 from ...core.topology.edge import Edge, Segment
 from ...model.role import ContourRole, WORK_TYPE_TO_ROLE, layer_to_role
 from ...model.style import EdgeStyle
 
-from .geometry_adapter import (
-    get_representative_point,
-    entity_to_polygon,
-)
 from .parser import DxfEntityDispatcher
 
 
@@ -260,6 +259,19 @@ def _segment_key(segment: Segment) -> tuple:
             round(segment.radius, 6)
         )
     return (type(segment).__name__, repr(segment))
+
+
+def entity_to_polygon(entity, tolerance: float = DEFAULT_TOLERANCE) -> Optional[Polygon]:
+    """
+    Converte un'entità DXF chiusa in un `Polygon` shapely, passando per le
+    primitive del core (parser + `build_polygon`). None se l'entità non è
+    parsabile o non forma un poligono valido.
+    """
+    prim = DxfEntityDispatcher(entity).parse()
+    if prim is None:
+        return None
+    primitives = prim if isinstance(prim, list) else [prim]
+    return build_polygon(primitives, tolerance)
 
 
 # ---------------------------------------------------------------------------

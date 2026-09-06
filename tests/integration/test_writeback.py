@@ -28,7 +28,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.adapters.dxf.geometry_adapter import entity_to_polygon
+from forge.adapters.dxf.adapter import entity_to_polygon
 from forge.adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
     LAYER_COUNTERSINK, LAYER_BENDING, LAYER_ENGRAVE,
