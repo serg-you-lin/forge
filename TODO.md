@@ -56,6 +56,18 @@ invece di schiacciare a `UNKNOWN`; `role_str()` al posto di `.role.value`; type
 hint `role: str`; `VALID_WORK_TYPES` morto rimosso. Un consumatore assegna
 `role="title_block"` e forge lo conserva (Trash, non strutturale). 619 verdi.
 
+### ✅ Predicato strutturale unico + aggancio pre-heal (branch `refactor/consolidate-structural-role`, 0.6.9)
+
+Fatto (MAP.md D30): `is_structural_role()` + `STRUCTURAL_ROLES` in
+`model/role.py`, unico punto di verità — prima il concetto era ridefinito in 4
+posti che non concordavano. `heal._split_labeled` estrae ogni ruolo deciso e
+non strutturale (non più solo engrave/marking): un consumatore marca
+`edge.role` su `doc.edges` prima di `heal` e forge lo tiene fuori dal grafo.
+Bug fisso: `detect()` non trasforma più un ruolo che non conosce in un
+`ClassifiedEntity` scollegato (geometria persa in output) — lo lascia in Trash.
+`forge.normalize_role` / `forge.is_structural_role` pubbliche. Aggancio B di
+`FRAMER.md`. 625 verdi.
+
 heal / detect dentro forge
 
 Sì, ci stanno. Sono l'API semplice per quando le cose vanno già bene. Ma non sono un vincolo: un consumatore può prendere solo la topologia da heal e fare il resto a modo suo (l'unfolder, un nester, tu). È lì il valore — non "una pipeline fissa" ma "oggetti puliti su cui costruire".

@@ -54,6 +54,36 @@ class ContourRole(str, Enum):
 
 
 # ---------------------------------------------------------------------------
+# Tassonomia: quali ruoli sono topologia di contorno di pezzo
+# ---------------------------------------------------------------------------
+# Unico punto di verità per la domanda "questo edge / loop / proxy è struttura
+# della parte, non marcatura né arredo del disegno?". Ci passano heal (ricerca
+# loop e split degli edge già etichettati), hierarchy (cosa tiene un proxy
+# fuori dalla Trash) e detect. Un ruolo fuori da qui — engrave, marking, frame,
+# o uno slug assegnato da un consumatore (``title_block``, ``section``, …) —
+# non è contorno: heal lo tiene fuori dal grafo e l'output lo riscrive come
+# Trash, con la geometria intatta (D27, D30).
+STRUCTURAL_ROLES = frozenset({
+    ContourRole.OUTER,
+    ContourRole.INNER,
+    ContourRole.HOLE,
+    ContourRole.COUNTERSINK,
+    ContourRole.THREADED_HOLE,
+})
+
+
+def is_structural_role(role) -> bool:
+    """
+    True se ``role`` è topologia di contorno di pezzo (vedi ``STRUCTURAL_ROLES``).
+
+    Test di appartenenza puro — accetta sia una costante ``ContourRole`` sia lo
+    slug stringa equivalente (``ContourRole`` eredita da ``str``). Nessun
+    reverse-lookup sull'enum (D27 regola A).
+    """
+    return role in STRUCTURAL_ROLES
+
+
+# ---------------------------------------------------------------------------
 # work_type stringa → ContourRole — mappatura pura, zero dipendenze di formato
 # ---------------------------------------------------------------------------
 WORK_TYPE_TO_ROLE: Dict[str, ContourRole] = {

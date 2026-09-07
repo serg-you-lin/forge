@@ -520,6 +520,47 @@ rimuove gli edge; B: forge estende il filtro non-strutturale a `frame`; C: hook
 
 Nessun codice ancora — solo il documento di progetto.
 
+### D30 — Predicato strutturale unico + `detect()` non tocca i ruoli che non conosce  ✅
+
+Preparazione dell'aggancio di `Framer` (D29): scelta l'**opzione B**. Nessuna
+API nuova su forge, solo consolidamento perché l'aggancio "un consumatore marca
+`edge.role` su `doc.edges` prima di `heal`" fosse un contratto e non una
+coincidenza.
+
+Il concetto "questo ruolo è topologia di contorno di pezzo" era ridefinito a
+mano in quattro punti che **non concordavano** (`thresholds.STRUCTURAL_ROLES` =
+`{OUTER, INNER, HOLE}`; `heal._loop_is_structural` = quei tre più
+`COUNTERSINK, THREADED_HOLE`; `heal._split_labeled` = esclude solo
+`{ENGRAVE, MARKING}`; `hierarchy._collect_trash` = ridefinisce `{OUTER, INNER,
+HOLE}` in locale). Un ruolo custom passava indenne solo perché tutte e quattro,
+per motivi diversi, lo lasciavano fuori.
+
+- **`model/role.STRUCTURAL_ROLES` + `is_structural_role(role)`** — punto unico.
+  `STRUCTURAL_ROLES = {OUTER, INNER, HOLE, COUNTERSINK, THREADED_HOLE}` (l'unione
+  semanticamente corretta). Spostato da `rules/thresholds.py` (era tassonomia di
+  ruoli, non una soglia). I quattro punti sopra ora chiamano `is_structural_role`.
+- **`heal._split_labeled` generalizzato**: estrae dalla topologia **ogni** edge
+  con ruolo deciso e non strutturale (prima solo `ENGRAVE`/`MARKING`; ora anche
+  `frame`, `bending` label-mappato, slug di un consumatore). Quegli edge saltano
+  gap solving, riparazione angoli e detection dei non-contorno — non ci passano
+  più "per fortuna". Finiscono in `trash_entities` col ruolo intatto.
+- **`detect()` non inventa feature da un ruolo che non conosce** (bug: la D27
+  era applicata solo a `heal`). `_detect_labeled` classificava *qualsiasi* proxy
+  in trash con ruolo ≠ UNKNOWN, ne faceva un `ClassifiedEntity` scollegato che
+  `to_dxf` non riscrive → **geometria persa** (verificato su `6200013103` con il
+  cartiglio taggato: 86 entità in output dopo `heal`, 79 dopo `heal + detect`).
+  Ora `detect()` tocca solo `_DETECT_KNOWN_ROLES` = `{HOLE, COUNTERSINK,
+  THREADED_HOLE, ENGRAVE, BEND, MARKING}`; ogni altro ruolo resta in trash.
+- **`forge.normalize_role` / `forge.is_structural_role` in `__all__`** — un
+  consumatore normalizza lo slug e sa se il ruolo è contorno o arredo senza
+  entrare in `forge.model`.
+
+`_loop_is_structural(loop, label_map)` → `_loop_is_structural(loop)` (il
+`label_map` non era usato).
+
+Suite: 625 passed (era 619; +6 in `test_role.py`). Branch
+`refactor/consolidate-structural-role`, merge → `main` 0.6.9.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

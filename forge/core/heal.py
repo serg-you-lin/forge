@@ -134,19 +134,28 @@ class HealStep:
     def _split_labeled(self):
         """
         Estrae dal flusso topologico gli Edge il cui ruolo è già stato deciso
-        da label_map e non è strutturale (engrave, marking).
+        (da label_map o da un consumatore) e non è strutturale: marcatura
+        (engrave, marking) e arredo del disegno (frame, title_block, o uno slug
+        di un layer sopra forge).
 
-        Questi non entrano nel grafo né nella ricerca loop: sono geometria di
-        marcatura, non contorno. L'unico calcolo che li riguarda è il
-        contenimento, fatto da detect(): dentro un cluster → feature del cluster,
-        fuori → trash, esattamente come ogni entità che non sta dentro l'outer.
+        Questi non entrano nel grafo né nella ricerca loop — niente gap solving,
+        niente riparazione angoli, niente detection dei non-contorno. L'unico
+        calcolo che li riguarda è il contenimento, fatto da detect(): dentro un
+        cluster → feature del cluster, fuori → trash, esattamente come ogni
+        entità che non sta dentro un outer. La geometria non si perde: finisce
+        in trash_entities col ruolo intatto e l'output la riscrive nativa.
+
+        È il punto d'aggancio per un consumatore che marca la geometria PRIMA
+        di heal (Framer: cornice / cartiglio) — vedi D30.
         """
-        from ..model.role import ContourRole
+        from ..model.role import ContourRole, is_structural_role
 
-        non_structural = {ContourRole.ENGRAVE, ContourRole.MARKING}
-        self.labeled_edges = [e for e in self.edges if e.role in non_structural]
+        def _is_split(edge):
+            return edge.role != ContourRole.UNKNOWN and not is_structural_role(edge.role)
+
+        self.labeled_edges = [e for e in self.edges if _is_split(e)]
         if self.labeled_edges:
-            self.edges = [e for e in self.edges if e.role not in non_structural]
+            self.edges = [e for e in self.edges if not _is_split(e)]
 
     def _preprocess(self):
         graph_pre = self._build_graph()
@@ -253,7 +262,7 @@ class HealStep:
                     return
 
         structural_loops = [
-            loop for loop in loops if _loop_is_structural(loop, self.result.label_map)
+            loop for loop in loops if _loop_is_structural(loop)
         ]
         self.loop_edge_ids = {
             id(edge)
@@ -436,17 +445,19 @@ def _fallback_polygonize(self):
             "potrebbero essere marcature o geometria aperta."
         )
 
-def _loop_is_structural(loop, label_map) -> bool:
-    from ..model.role import ContourRole
+def _loop_is_structural(loop) -> bool:
+    """
+    Un loop è strutturale se ogni suo edge con ruolo deciso è un ruolo di
+    contorno di pezzo (``is_structural_role``). Un solo edge con ruolo non
+    strutturale — engrave, frame, title_block, … — declassa l'intero loop: non
+    diventa un ClosedFeature, non entra nell'albero di contenimento.
+    """
+    from ..model.role import ContourRole, is_structural_role
 
-    structural_roles = {
-        ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE,
-        ContourRole.COUNTERSINK, ContourRole.THREADED_HOLE,
-    }
     for edge, _ in loop:
         if edge.role == ContourRole.UNKNOWN:
             continue
-        if edge.role not in structural_roles:
+        if not is_structural_role(edge.role):
             return False
     return True
 

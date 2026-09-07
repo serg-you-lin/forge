@@ -6,7 +6,7 @@ from shapely.geometry import Polygon
 from ...model.feature import ClosedFeature
 from ...model.cluster import ForgeCluster
 from ...model.contour import ForgeContour
-from ...model.role import ContourRole
+from ...model.role import ContourRole, is_structural_role
 from ...core.geometry import circular_geometry
 
 
@@ -178,9 +178,8 @@ class HierarchyBuilder:
         return clusters
 
     def _collect_trash(self, proxies: list) -> list:
-        STRUCTURAL_ROLES = {ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE}
         return [
             p for p in proxies
             if id(getattr(p, "polygon", None)) not in self._classified_proxies
-            and getattr(p, "role", ContourRole.UNKNOWN) not in STRUCTURAL_ROLES
+            and not is_structural_role(getattr(p, "role", ContourRole.UNKNOWN))
         ]

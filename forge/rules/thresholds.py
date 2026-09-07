@@ -8,8 +8,10 @@ indipendenti da come il file è scritto (DXF, SVG, PDF, ...).
 
 Chi le usa:
     detect.py     — HOLE_DIAMETER_THRESHOLD come default di
-                    `detect(max_drill_diameter=...)`; STRUCTURAL_ROLES per
-                    sapere quali ruoli sono topologia di contorno
+                    `detect(max_drill_diameter=...)`
+
+La tassonomia dei ruoli (`STRUCTURAL_ROLES`, `is_structural_role`) sta in
+`model/role.py`, non qui: è un fatto sul vocabolario dei ruoli, non una soglia.
 """
 
 # ---------------------------------------------------------------------------
@@ -32,11 +34,3 @@ HOLE_DIAMETER_THRESHOLD: float = 32.1   # mm
 # raggiata di un profilo) NON è un anello filettato: lo si scarta con questa
 # soglia sul rapporto dei raggi.
 THREADED_ARC_MAX_RADIUS_RATIO: float = 1.6
-
-from ..model.role import ContourRole
-
-STRUCTURAL_ROLES = frozenset({
-    ContourRole.OUTER,
-    ContourRole.INNER,
-    ContourRole.HOLE,
-})

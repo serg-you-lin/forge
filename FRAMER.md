@@ -147,25 +147,35 @@ nei flag.
 
 ## L'interfaccia forge ↔ consumatore (il punto sperimentale)
 
-Framer deve dire a `heal` "questi edge non sono contorno di pezzo". Oggi
-`heal._extract_labeled_edges` (`forge/core/heal.py:146`) toglie dal grafo **solo**
-`ContourRole.ENGRAVE` e `ContourRole.MARKING`. Un edge `role="frame"` oggi
-entrerebbe comunque nel grafo e nella ricerca loop.
+Framer deve dire a `heal` "questi edge non sono contorno di pezzo". Prima di
+D30 `heal._split_labeled` toglieva dal grafo **solo** `ContourRole.ENGRAVE` e
+`ContourRole.MARKING`, e un edge `role="frame"` ci passava comunque; `detect()`
+poi lo perdeva. Da D30 `_split_labeled` estrae ogni ruolo deciso e non
+strutturale e `detect()` lascia stare i ruoli che non conosce.
 
-Tre modi di agganciarsi, dal meno al più invasivo su forge — **da decidere, è la
-scelta di design che questo modulo serve a chiarire**:
+Le tre opzioni valutate, dal meno al più invasivo su forge (scelta: **B**):
 
 | # | come | tocca forge? | note |
 |---|---|---|---|
 | A | Framer **rimuove** gli edge di frame/cartiglio da `doc.edges` prima di `heal`, li tiene da parte e li fa riemettere a valle | **no** | rispetta `dont-bolt-adapters-onto-forge-for-external-projects` e "forge resta neutro, l'interprete si adatta" (`INTERPRETER.md`). Costo: chi riemette la geometria di cornice nell'output? |
-| B | Framer setta `edge.role = "frame"` / `"title_block"` su `doc.edges`; forge estende il set non-strutturale di `_extract_labeled_edges` a `FRAME` + ruoli custom non strutturali | sì, minimo | la geometria resta nel modello (`trash_entities`), l'output la riemette già con stile e layer suo. Coerente con D27. |
+| B | Framer setta `edge.role = "frame"` / `"title_block"` su `doc.edges`; forge estende il filtro non-strutturale di `_split_labeled` a `FRAME` + ruoli custom non strutturali | sì, minimo | la geometria resta nel modello (`trash_entities`), l'output la riemette già con stile e layer suo. Coerente con D27. |
 | C | forge espone un hook `role_resolver(edge) -> str \| None` a `load_dxf` / `heal` che il consumatore passa | sì, API nuova | generalizza oltre Framer (l'unfolder ne vuole uno simile per `role="section"`). Più lavoro, decisione più pesante. |
 
-Prima lettura: **B** — è il minimo cambiamento, la geometria non si perde, ed è
-già il comportamento previsto da D27 per `title_block` (manca solo estenderlo a
-`FRAME` nel filtro di `heal`). **A** resta la via se vogliamo zero modifiche a
-forge in questa fase. **C** si valuta quando anche l'unfolder chiede la stessa
-cosa — se due consumatori la vogliono, l'hook è giustificato.
+**Scelta: B** (forge D30). Framer setta `edge.role` sugli `Edge` di `doc.edges`
+prima di `heal` — lo slug ripulito da `forge.normalize_role`. forge non ha
+preso nessuna API nuova: ha solo consolidato il concetto "ruolo strutturale" in
+un punto (`forge.is_structural_role`) e reso l'aggancio un contratto invece che
+una coincidenza —
+- `heal._split_labeled` tira fuori dal grafo **ogni** edge con ruolo deciso e
+  non strutturale (quindi `frame`, `title_block`, slug custom), non più solo
+  `engrave`/`marking`;
+- `detect()` non tocca i ruoli che non conosce: cornice e cartiglio restano in
+  `trash_entities` col ruolo intatto e l'output li riscrive nativi (prima
+  `detect` li perdeva).
+
+**C** (hook `role_resolver`) si valuta quando anche l'unfolder chiede la stessa
+cosa; il consolidamento D30 lo rende banale da aggiungere. **A** era la via a
+zero modifiche ma scaricava su Framer il problema "chi riemette la cornice".
 
 Invariante da rispettare comunque (`INTERPRETER.md`, "Cosa NON ci va"):
 Framer non ragiona *dentro* forge. Framer chiama `forge.load_dxf`, fa il suo
@@ -217,8 +227,9 @@ step `titleblock.py` dell'interprete (`INTERPRETER.md` passo [8]) — o lo è.
 - [ ] recuperare `frame_detector.py` da `ccbb34f^` e riscriverlo sulle primitive
       di forge (`Edge` / `LineSeg` / `closed_path`), niente `RawSegment`, niente
       `print("DEBUG")`
-- [ ] decidere l'interfaccia con `heal` (A / B / C sopra) — **prima cosa da
-      chiudere**, è il motivo per cui questo modulo esiste ora
+- [x] decidere l'interfaccia con `heal` — **B**, chiusa in forge D30
+      (`is_structural_role` unico, `_split_labeled` generalizzato, `detect()`
+      non tocca i ruoli sconosciuti, `forge.normalize_role` pubblica)
 - [ ] rilevamento cartiglio (i segnali combinati, incrocio con `doc.annotations`)
 - [ ] `read_titleblock` — lettura delle celle
 - [ ] repo separato o cartella nel repo dell'interprete? (l'interprete non esiste
