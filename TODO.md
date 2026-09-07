@@ -27,6 +27,21 @@ onesto.
 - branch `refactor/clusters`, merge a verde, bump a 0.6.3
 - poi riscrivere `INTERPRETER.md` col vocabolario nuovo
 
+heal / detect dentro forge
+
+Sì, ci stanno. Sono l'API semplice per quando le cose vanno già bene. Ma non sono un vincolo: un consumatore può prendere solo la topologia da heal e fare il resto a modo suo (l'unfolder, un nester, tu). È lì il valore — non "una pipeline fissa" ma "oggetti puliti su cui costruire".
+
+Il nome
+
+Il concetto: libreria deterministica che ripulisce la matematica pesante e le rotture, e ti dà oggetti CAD pronti. La cosa che ti dà una base di riferimento fidata.
+
+I miei candidati, in ordine:
+
+1. datum — nel disegno meccanico è il riferimento da cui si misura tutto. "il datum layer per la geometria CAD in Python." Termine vero, corto, serio. È esattamente quello che vuoi che sia.
+2. billet — lo spezzone di materiale grezzo, standardizzato e pronto per essere lavorato. forge raffina il file incasinato in un billet su cui l'agente lavora. Tattile, manifatturiero, probabilmente libero su PyPI.
+3. plumb — a piombo, squadrato, giusto. "geometria messa a piombo." Evoca la correttezza.
+
+
 Deciso a fine sessione del 2026-09-06 (`main` a 0.6.2). Clean break, come da
 stance sui refactor.
 
