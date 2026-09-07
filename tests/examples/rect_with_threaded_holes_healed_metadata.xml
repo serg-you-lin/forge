@@ -2,9 +2,9 @@
 <forge>
   <source_file>rect_with_threaded_holes.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label>rect_with_threaded_holes</label>
       <source_file>rect_with_threaded_holes.dxf</source_file>
       <quantity>1</quantity>
@@ -26,6 +26,6 @@
         <maxx>200.0</maxx>
         <maxy>100.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

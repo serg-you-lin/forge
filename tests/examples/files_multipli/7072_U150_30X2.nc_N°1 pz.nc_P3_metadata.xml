@@ -2,13 +2,13 @@
 <forge>
   <source_file/>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
+  <cluster_count>1</cluster_count>
   <warnings>
     <warning>Nessun loop trovato via grafo, uso polygonize come fallback.</warning>
     <warning>LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta.</warning>
   </warnings>
-  <parts>
-    <part>
+  <clusters>
+    <cluster>
       <label/>
       <source_file/>
       <quantity>1</quantity>
@@ -27,6 +27,6 @@
         <maxx>624.998</maxx>
         <maxy>30.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

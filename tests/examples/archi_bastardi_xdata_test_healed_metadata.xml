@@ -2,9 +2,9 @@
 <forge>
   <source_file>archi_bastardi_xdata_test.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label>archi_bastardi_xdata_test</label>
       <source_file>archi_bastardi_xdata_test.dxf</source_file>
       <quantity>1</quantity>
@@ -26,6 +26,6 @@
         <maxx>228.8968</maxx>
         <maxy>229.748</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

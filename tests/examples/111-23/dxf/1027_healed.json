@@ -1,10 +1,10 @@
 {
   "source_file": "1027.dxf",
   "is_valid": true,
-  "part_count": 2,
+  "cluster_count": 2,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "1027",
       "source_file": "1027.dxf",

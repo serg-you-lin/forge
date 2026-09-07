@@ -2,9 +2,9 @@
 <forge>
   <source_file>cerchi_ciambella.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>2</part_count>
-  <parts>
-    <part>
+  <cluster_count>2</cluster_count>
+  <clusters>
+    <cluster>
       <label>cerchi_ciambella</label>
       <source_file>cerchi_ciambella.dxf</source_file>
       <quantity>1</quantity>
@@ -26,8 +26,8 @@
         <maxx>275.0</maxx>
         <maxy>75.0</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>cerchi_ciambella</label>
       <source_file>cerchi_ciambella.dxf</source_file>
       <quantity>1</quantity>
@@ -49,6 +49,6 @@
         <maxx>-150.0</maxx>
         <maxy>50.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

@@ -9,7 +9,7 @@ Due validazioni distinte, entrambe utili:
     validate(doc)        — INPUT, prima di heal(). Prende il ForgeDocument di
                            forge.load_dxf() e segnala i problemi che
                            renderebbero l'healing inutile o sbagliato.
-    validate_result(res) — OUTPUT, dopo heal(). Controlla che i part prodotti
+    validate_result(res) — OUTPUT, dopo heal(). Controlla che i cluster prodotti
                            siano sani (poligono valido, fori contenuti, area).
                            Chiamata automaticamente da pipeline.heal().
 """
@@ -31,7 +31,7 @@ def validate(doc: ForgeDocument) -> ForgeResult:
     Valida l'input prima di heal().
 
     Restituisce un ForgeResult con solo warnings / errors / is_valid
-    (parts vuoto). Non modifica il documento.
+    (clusters vuoto). Non modifica il documento.
 
     Errori (is_valid = False) — il file non è lavorabile:
       - nessuna geometria
@@ -130,18 +130,18 @@ def validate(doc: ForgeDocument) -> ForgeResult:
 
 def validate_result(result: ForgeResult) -> ForgeResult:
     """
-    Valida i ForgePart dentro un ForgeResult già popolato da heal().
+    Valida i ForgeCluster dentro un ForgeResult già popolato da heal().
     Aggiunge warning ed errori direttamente nel result passato.
 
-    Controlli per ogni part:
+    Controlli per ogni cluster:
       - poligono outer valido (non self-intersecting) e non vuoto
       - area outer > 0
       - fori effettivamente contenuti nell'outer
     """
-    for i, part in enumerate(result.parts):
-        label = part.label or f"Part {i}"
+    for i, cluster in enumerate(result.clusters):
+        label = cluster.label or f"Part {i}"
 
-        poly = part.outer.polygon
+        poly = cluster.outer.polygon
         if poly is None:
             result.errors.append(f"{label}: poligono outer è None.")
             result.is_valid = False
@@ -161,7 +161,7 @@ def validate_result(result: ForgeResult) -> ForgeResult:
             result.errors.append(f"{label}: area outer <= 0.")
             result.is_valid = False
 
-        for j, hole in enumerate(part.inners):
+        for j, hole in enumerate(cluster.inners):
             if not poly.contains(hole.polygon):
                 result.warnings.append(
                     f"{label}: foro {j} non completamente contenuto nell'outer."

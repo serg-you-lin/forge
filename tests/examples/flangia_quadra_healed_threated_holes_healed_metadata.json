@@ -1,10 +1,10 @@
 {
   "source_file": "flangia_quadra_healed_threated_holes.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "flangia_quadra_healed_threated_holes",
       "source_file": "flangia_quadra_healed_threated_holes.dxf",

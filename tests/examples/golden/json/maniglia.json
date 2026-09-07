@@ -1,7 +1,7 @@
 {
   "source_file": "maniglia.dxf",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 15893.7604,
       "outer_perimeter_mm": 630.9501,

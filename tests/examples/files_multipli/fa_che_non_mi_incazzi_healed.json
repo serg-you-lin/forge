@@ -1,10 +1,10 @@
 {
   "source_file": "fa_che_non_mi_incazzi.dxf",
   "is_valid": true,
-  "part_count": 3,
+  "cluster_count": 3,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "fa_che_non_mi_incazzi",
       "source_file": "fa_che_non_mi_incazzi.dxf",

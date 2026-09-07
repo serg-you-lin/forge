@@ -43,18 +43,18 @@ class TestGapClose(unittest.TestCase):
                                  tolerance=0.2)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_no_errors(self):
         self.assertEqual(len(self.result.errors), 0)
 
     def test_003_area_correct(self):
-        area = self.result.parts[0].area
+        area = self.result.clusters[0].area
         self.assertAlmostEqual(area, AREA, delta=DELTA,
                                msg=f"Area {area:.4f} != attesa {AREA}")
 
     def test_004_no_holes(self):
-        self.assertEqual(len(self.result.parts[0].inners), 0)
+        self.assertEqual(len(self.result.clusters[0].inners), 0)
 
 
 class TestGapNoClose(unittest.TestCase):
@@ -66,7 +66,7 @@ class TestGapNoClose(unittest.TestCase):
                                  tolerance=0.05)
 
     def test_001_no_parts(self):
-        self.assertEqual(self.result.part_count, 0)
+        self.assertEqual(self.result.cluster_count, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -82,18 +82,18 @@ class TestOverlapClose(unittest.TestCase):
                                  tolerance=0.2)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_no_errors(self):
         self.assertEqual(len(self.result.errors), 0)
 
     def test_003_area_correct(self):
-        area = self.result.parts[0].area
+        area = self.result.clusters[0].area
         self.assertAlmostEqual(area, AREA, delta=DELTA,
                                msg=f"Area {area:.4f} != attesa {AREA}")
 
     def test_004_no_holes(self):
-        self.assertEqual(len(self.result.parts[0].inners), 0)
+        self.assertEqual(len(self.result.clusters[0].inners), 0)
 
 
 class TestOverlapNoClose(unittest.TestCase):
@@ -105,8 +105,8 @@ class TestOverlapNoClose(unittest.TestCase):
                                  tolerance=0.05)
 
     def test_001_one_part_or_warning(self):
-        if self.result.part_count == 1:
-            area = self.result.parts[0].area
+        if self.result.cluster_count == 1:
+            area = self.result.clusters[0].area
             self.assertAlmostEqual(area, AREA, delta=DELTA)
 
 
@@ -126,14 +126,14 @@ class TestParallelClose(unittest.TestCase):
                                  tolerance=0.3)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_no_errors(self):
         print("ERRORS:", self.result.errors)
         self.assertEqual(len(self.result.errors), 0)
 
     def test_003_no_holes(self):
-        self.assertEqual(len(self.result.parts[0].inners), 0)
+        self.assertEqual(len(self.result.clusters[0].inners), 0)
 
 
 class TestParallelNoClose(unittest.TestCase):
@@ -145,7 +145,7 @@ class TestParallelNoClose(unittest.TestCase):
                                  tolerance=0.05)
 
     def test_001_no_parts(self):
-        self.assertEqual(self.result.part_count, 0)
+        self.assertEqual(self.result.cluster_count, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -165,17 +165,17 @@ class TestArcLineGapClose(unittest.TestCase):
                                  tolerance=0.2)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_no_errors(self):
         self.assertEqual(len(self.result.errors), 0)
 
     def test_003_no_holes(self):
-        self.assertEqual(len(self.result.parts[0].inners), 0)
+        self.assertEqual(len(self.result.clusters[0].inners), 0)
 
     def test_004_area_plausible(self):
         """Area deve essere inferiore al rettangolo pieno W*H."""
-        area = self.result.parts[0].area
+        area = self.result.clusters[0].area
         self.assertLess(area, W * H)
         self.assertGreater(area, W * H * 0.8)
 
@@ -188,7 +188,7 @@ class TestArcLineGapNoClose(unittest.TestCase):
                                  tolerance=0.05)
 
     def test_001_no_parts(self):
-        self.assertEqual(self.result.part_count, 0)
+        self.assertEqual(self.result.cluster_count, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -212,18 +212,18 @@ class TestArcArcSameCircleClose(unittest.TestCase):
                                  tolerance=0.2)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_no_errors(self):
         self.assertEqual(len(self.result.errors), 0)
 
     def test_003_area_correct(self):
-        area = self.result.parts[0].area
+        area = self.result.clusters[0].area
         self.assertAlmostEqual(area, self.AREA_C, delta=self.DELTA_C,
                                msg=f"Area {area:.2f} != attesa {self.AREA_C:.2f}")
 
     def test_004_no_holes(self):
-        self.assertEqual(len(self.result.parts[0].inners), 0)
+        self.assertEqual(len(self.result.clusters[0].inners), 0)
 
 
 class TestArcArcSameCircleNoClose(unittest.TestCase):
@@ -235,7 +235,7 @@ class TestArcArcSameCircleNoClose(unittest.TestCase):
                                  tolerance=0.05)
 
     def test_001_no_parts(self):
-        self.assertEqual(self.result.part_count, 0)
+        self.assertEqual(self.result.cluster_count, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -254,16 +254,16 @@ class TestArcArcDifferentCircleClose(unittest.TestCase):
                                  tolerance=0.5)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_no_errors(self):
         self.assertEqual(len(self.result.errors), 0)
 
     def test_003_no_holes(self):
-        self.assertEqual(len(self.result.parts[0].inners), 0)
+        self.assertEqual(len(self.result.clusters[0].inners), 0)
 
     def test_004_area_plausible(self):
-        area = self.result.parts[0].area
+        area = self.result.clusters[0].area
         self.assertGreater(area, 100.0)
 
 
@@ -276,7 +276,7 @@ class TestArcArcDifferentCircleNoClose(unittest.TestCase):
                                  tolerance=0.05)
 
     def test_001_no_parts(self):
-        self.assertEqual(self.result.part_count, 0)
+        self.assertEqual(self.result.cluster_count, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -296,17 +296,17 @@ class TestSplineLineGapClose(unittest.TestCase):
                                  tolerance=0.3)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_no_errors(self):
         self.assertEqual(len(self.result.errors), 0)
 
     def test_003_no_holes(self):
-        self.assertEqual(len(self.result.parts[0].inners), 0)
+        self.assertEqual(len(self.result.clusters[0].inners), 0)
 
     def test_004_area_plausible(self):
         """Area deve essere vicina a W*H — la spline è quasi verticale."""
-        area = self.result.parts[0].area
+        area = self.result.clusters[0].area
         self.assertAlmostEqual(area, W * H, delta=50.0,
                                msg=f"Area {area:.2f} lontana da attesa {W*H}")
 
@@ -320,7 +320,7 @@ class TestSplineLineGapNoClose(unittest.TestCase):
                                  tolerance=0.05)
 
     def test_001_no_parts(self):
-        self.assertEqual(self.result.part_count, 0)
+        self.assertEqual(self.result.cluster_count, 0)
 
 
 if __name__ == "__main__":

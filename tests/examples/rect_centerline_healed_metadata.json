@@ -1,10 +1,10 @@
 {
   "source_file": "rect_centerline.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "rect_centerline",
       "source_file": "rect_centerline.dxf",

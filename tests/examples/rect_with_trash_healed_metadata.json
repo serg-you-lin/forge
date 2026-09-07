@@ -1,13 +1,13 @@
 {
   "source_file": "rect_with_trash.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [
     "Nessun loop trovato via grafo, uso polygonize come fallback.",
     "LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "rect_with_trash",
       "source_file": "rect_with_trash.dxf",

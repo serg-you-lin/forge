@@ -2,9 +2,9 @@
 <forge>
   <source_file/>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label/>
       <source_file/>
       <quantity>1</quantity>
@@ -23,6 +23,6 @@
         <maxx>1206.4903</maxx>
         <maxy>809.6665</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

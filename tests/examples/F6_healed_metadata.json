@@ -1,13 +1,13 @@
 {
   "source_file": "F6.DXF",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [
     "2 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).",
     "detect(): entità bending non contenuta in nessun part (source=special_layers). Registrata in classified_entities."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "F6",
       "source_file": "F6.DXF",

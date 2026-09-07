@@ -4,7 +4,7 @@
   "by_kind": {
     "TEXT": 1
   },
-  "part_count": 1,
+  "cluster_count": 1,
   "annotations": [
     {
       "type": "Note",
@@ -15,7 +15,7 @@
       ],
       "display_text": "REF_001",
       "layer": "TESTO",
-      "part_ref": 0,
+      "cluster_ref": 0,
       "height": 5.0,
       "rotation": 0.0
     }

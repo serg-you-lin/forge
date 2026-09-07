@@ -29,16 +29,16 @@ if not result.is_valid:
     raise SystemExit(f"non valido: {result.errors}")
 
 
-# namer: callable(i, part) -> str — assegna part.label, così il nome file
-# resta ricavabile a valle come f"{part.label}.dxf"
-def namer(i, part):
+# namer: callable(i, cluster) -> str — assegna cluster.label, così il nome file
+# resta ricavabile a valle come f"{cluster.label}.dxf"
+def namer(i, cluster):
     return f"pezzo_{i + 1:02d}"
 
 
-# on_part: hook per parte, callable(part, doc_out), prima che il Drawing
+# on_part: hook per parte, callable(cluster, doc_out), prima che il Drawing
 # entri nella lista — utile per scrivere metadati / marcature sul doc figlio
-def on_part(part, doc_out):
-    forge.write_metadata_to_dxf(doc_out, part)
+def on_part(cluster, doc_out):
+    forge.write_metadata_to_dxf(doc_out, cluster)
 
 
 docs = forge.split(
@@ -51,11 +51,11 @@ docs = forge.split(
     include_annotations=True,
 )
 
-kept = [p for p in result.parts if p.outer.polygon.area >= MIN_AREA]
-for d, part in zip(docs, kept):
-    path = os.path.join(OUTDIR, f"{part.label}.dxf")
+kept = [p for p in result.clusters if p.outer.polygon.area >= MIN_AREA]
+for d, cluster in zip(docs, kept):
+    path = os.path.join(OUTDIR, f"{cluster.label}.dxf")
     d.saveas(path)
-    print(f"   {path}  (area {part.outer.polygon.area:.0f} mm²)")
+    print(f"   {path}  (area {cluster.outer.polygon.area:.0f} mm²)")
 
 for w in result.warnings:
     print(f"   warn: {w}")

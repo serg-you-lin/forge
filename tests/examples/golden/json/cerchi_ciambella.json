@@ -1,7 +1,7 @@
 {
   "source_file": "cerchi_ciambella.dxf",
-  "part_count": 2,
-  "parts": [
+  "cluster_count": 2,
+  "clusters": [
     {
       "area_mm2": 14838.1791,
       "outer_perimeter_mm": 471.1916,

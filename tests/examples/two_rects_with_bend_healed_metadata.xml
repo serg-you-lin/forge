@@ -2,13 +2,13 @@
 <forge>
   <source_file>two_rects_with_bend.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>2</part_count>
+  <cluster_count>2</cluster_count>
   <warnings>
     <warning>Nessun loop trovato via grafo, uso polygonize come fallback.</warning>
     <warning>LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta.</warning>
   </warnings>
-  <parts>
-    <part>
+  <clusters>
+    <cluster>
       <label>two_rects_with_bend</label>
       <source_file>two_rects_with_bend.dxf</source_file>
       <quantity>1</quantity>
@@ -30,8 +30,8 @@
         <maxx>200.0</maxx>
         <maxy>100.0</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>two_rects_with_bend</label>
       <source_file>two_rects_with_bend.dxf</source_file>
       <quantity>1</quantity>
@@ -53,6 +53,6 @@
         <maxx>500.0</maxx>
         <maxy>100.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

@@ -1,7 +1,7 @@
 {
   "source_file": "linee_di_piegatura_interne.dxf",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 894515.4179,
       "outer_perimeter_mm": 4264.3513,
@@ -27,7 +27,7 @@
           ],
           "length": 733.2113,
           "angle_deg": 128.4576,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "0"
         },
         {
@@ -41,7 +41,7 @@
           ],
           "length": 778.234,
           "angle_deg": 47.5415,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "0"
         },
         {
@@ -55,7 +55,7 @@
           ],
           "length": 817.5879,
           "angle_deg": 135.3918,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "0"
         }
       ],

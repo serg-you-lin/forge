@@ -2,9 +2,9 @@
 <forge>
   <source_file>Linee_piegatura.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label>Linee_piegatura</label>
       <source_file>Linee_piegatura.dxf</source_file>
       <quantity>1</quantity>
@@ -26,6 +26,6 @@
         <maxx>110.5633</maxx>
         <maxy>36.9748</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

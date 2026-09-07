@@ -1,7 +1,7 @@
 {
   "source_file": "spline_line_gap.dxf",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 4991.706,
       "outer_perimeter_mm": 300.1294,

@@ -2,12 +2,12 @@
 <forge>
   <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>4</part_count>
+  <cluster_count>4</cluster_count>
   <warnings>
     <warning>1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).</warning>
   </warnings>
-  <parts>
-    <part>
+  <clusters>
+    <cluster>
       <label>7072_U150_30X2.nc_N°1 pz.nc</label>
       <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
       <quantity>1</quantity>
@@ -29,8 +29,8 @@
         <maxx>624.998</maxx>
         <maxy>200.0</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>7072_U150_30X2.nc_N°1 pz.nc</label>
       <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
       <quantity>1</quantity>
@@ -52,8 +52,8 @@
         <maxx>624.998</maxx>
         <maxy>420.0</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>7072_U150_30X2.nc_N°1 pz.nc</label>
       <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
       <quantity>1</quantity>
@@ -75,8 +75,8 @@
         <maxx>624.998</maxx>
         <maxy>30.0</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>7072_U150_30X2.nc_N°1 pz.nc</label>
       <source_file>7072_U150_30X2.nc_N°1 pz.nc.dxf</source_file>
       <quantity>1</quantity>
@@ -98,6 +98,6 @@
         <maxx>624.998</maxx>
         <maxy>250.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

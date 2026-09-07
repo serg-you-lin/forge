@@ -1,14 +1,14 @@
 {
   "source_file": "6200012967_AMBIGUO.dxf",
   "is_valid": true,
-  "part_count": 9,
+  "cluster_count": 9,
   "warnings": [
     "10 INSERT esplosi prima dell'healing.",
     "Rimosse 4 entità duplicate dal msp.",
     "10 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching)."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "6200012967_AMBIGUO",
       "source_file": "6200012967_AMBIGUO.dxf",

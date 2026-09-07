@@ -1,13 +1,13 @@
 {
   "source_file": "two_rects_with_bend.dxf",
   "is_valid": true,
-  "part_count": 2,
+  "cluster_count": 2,
   "warnings": [
     "Nessun loop trovato via grafo, uso polygonize come fallback.",
     "LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "two_rects_with_bend",
       "source_file": "two_rects_with_bend.dxf",

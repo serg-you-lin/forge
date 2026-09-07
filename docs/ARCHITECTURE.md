@@ -69,7 +69,7 @@ forge/
 ├── model/        IL DOMINIO forge                     (dataclass pure + shapely)
 │   ├── document.py   ForgeDocument, Annotation
 │   ├── result.py     ForgeResult
-│   ├── part.py       ForgePart, ForgeContour
+│   ├── cluster.py       ForgeCluster, ForgeContour
 │   ├── feature.py    Feature → ClosedFeature / OpenFeature
 │   ├── hole.py       Hole
 │   ├── engraving.py  Engraving
@@ -133,7 +133,7 @@ Il passo difficile. Lavora su `doc.edges`, zero `ezdxf`. In ordine:
    - ultima spiaggia: `shapely.polygonize` sui segmenti discretizzati
 5. **costruzione gerarchia**: quale loop contiene quale → albero di contenimento
    `outer` / `inner`. `heal` si ferma qui: **non** decide hole vs inner (D15) —
-   ogni loop contenuto è un `ForgeContour` in `part.inners`.
+   ogni loop contenuto è un `ForgeContour` in `cluster.inners`.
 
 Se non si forma **nessun** contorno esterno chiuso, il risultato è dichiarato
 **non valido** (`is_valid = False`) — come il modelspace vuoto. `to_dxf` si
@@ -158,7 +158,7 @@ geometriche sono opt-in: `detect(result, "holes" | "bending" | "engrave" | "all"
   concentrico, raggio di poco maggiore, rapporto ≤ 1.6).
 - **pieghe** → una traccia da bordo a bordo dell'outer, con il punto medio dentro
   il poligono, è una `BendingLine` con il suo angolo.
-- **incisioni** → le tracce con ruolo `engrave` finiscono in `part.engrave_lines`
+- **incisioni** → le tracce con ruolo `engrave` finiscono in `cluster.engrave_lines`
   se contenute in una parte, altrimenti restano in trash.
 
 ### 4. render — `to_dxf` / `split`
@@ -179,10 +179,10 @@ segmenti puri del modello, ognuno sul suo layer forge (vedi tabella in
 
 `save_json` / `save_xml` scrivono i metadati per parte secondo lo schema
 (`rules/metadata_schema.py`). I conteggi delle feature (fori per tipo, pieghe,
-incisioni) vengono da `part.summary` — una property derivata dal modello.
+incisioni) vengono da `cluster.summary` — una property derivata dal modello.
 `inject` serve solo a passare i testi dentro l'outer a un `data_injector`
 esterno che restituisce codice / materiale / spessore, e a metterli in
-`part.custom`.
+`cluster.custom`.
 
 ---
 
@@ -241,8 +241,8 @@ Già risolto in Fase 4: `bridge/shape.py` (`OpenShape`/`ClosedShape`) eliminato,
 `heal` produce direttamente `OpenFeature`/`ClosedFeature` (D4); traduttore
 entità→primitiva ora unico (`DxfEntityDispatcher`, D7); `parse_loop` →
 `segments_from_loop` in `core/topology/` (D6); `source`/`confidence` su
-`BendingLine` (D5); conteggi feature spostati da `inject`→`part.custom` a
-`part.summary` derivato (D8); classificazione hole/inner e soglia
+`BendingLine` (D5); conteggi feature spostati da `inject`→`cluster.custom` a
+`cluster.summary` derivato (D8); classificazione hole/inner e soglia
 `max_drill_diameter` spostate da `hierarchy` a `detect()` parametrico (D15) —
 `heal` ora emette solo l'albero di contenimento.
 

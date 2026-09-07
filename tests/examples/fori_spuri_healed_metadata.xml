@@ -2,9 +2,9 @@
 <forge>
   <source_file>fori_spuri.DXF</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label>fori_spuri</label>
       <source_file>fori_spuri.DXF</source_file>
       <quantity>1</quantity>
@@ -26,6 +26,6 @@
         <maxx>300.0</maxx>
         <maxy>-70.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

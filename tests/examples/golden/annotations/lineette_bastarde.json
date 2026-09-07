@@ -4,7 +4,7 @@
   "by_kind": {
     "DIMENSION": 1
   },
-  "part_count": 1,
+  "cluster_count": 1,
   "annotations": [
     {
       "type": "Dimension",
@@ -15,7 +15,7 @@
       ],
       "display_text": "975.43",
       "layer": "Default",
-      "part_ref": null,
+      "cluster_ref": null,
       "dim_type": "aligned",
       "measured_value": 975.4301,
       "text_override": null,

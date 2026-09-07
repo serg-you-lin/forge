@@ -2,12 +2,12 @@
 <forge>
   <source_file>rect_lines_duplicated.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
+  <cluster_count>1</cluster_count>
   <warnings>
     <warning>Rimosse 4 entità duplicate dal msp.</warning>
   </warnings>
-  <parts>
-    <part>
+  <clusters>
+    <cluster>
       <label>rect_lines_duplicated</label>
       <source_file>rect_lines_duplicated.dxf</source_file>
       <quantity>1</quantity>
@@ -29,6 +29,6 @@
         <maxx>100.0</maxx>
         <maxy>50.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

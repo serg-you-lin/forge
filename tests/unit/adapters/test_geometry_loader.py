@@ -64,10 +64,10 @@ class TestLoadGeometryRectangleWithHole(unittest.TestCase):
     def test_heal_and_detect_finds_one_part_with_one_hole(self):
         result = forge.heal_and_detect(self.doc, label="rect_test")
         self.assertTrue(result.is_valid, result.errors)
-        self.assertEqual(result.part_count, 1)
-        part = result.parts[0]
-        self.assertAlmostEqual(part.outer.area, 100 * 50, delta=1e-6)
-        self.assertEqual(len(part.holes), 1)
+        self.assertEqual(result.cluster_count, 1)
+        cluster = result.clusters[0]
+        self.assertAlmostEqual(cluster.outer.area, 100 * 50, delta=1e-6)
+        self.assertEqual(len(cluster.holes), 1)
 
     def test_to_dxf_writes_a_valid_document(self):
         result = forge.heal_and_detect(self.doc, label="rect_test")
@@ -103,9 +103,9 @@ class TestLoadGeometryConeSector(unittest.TestCase):
     def test_forms_a_single_closed_part_with_correct_area(self):
         result = forge.heal_and_detect(self.doc, label="cono_sector_test")
         self.assertTrue(result.is_valid, result.errors)
-        self.assertEqual(result.part_count, 1)
+        self.assertEqual(result.cluster_count, 1)
         self.assertAlmostEqual(
-            result.parts[0].outer.area, self.expected_area, delta=self.expected_area * 0.01
+            result.clusters[0].outer.area, self.expected_area, delta=self.expected_area * 0.01
         )
 
     def test_to_dxf_keeps_arcs_native_not_discretized(self):

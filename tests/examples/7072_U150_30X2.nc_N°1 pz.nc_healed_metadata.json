@@ -1,12 +1,12 @@
 {
   "source_file": "7072_U150_30X2.nc_N°1 pz.nc.dxf",
   "is_valid": true,
-  "part_count": 4,
+  "cluster_count": 4,
   "warnings": [
     "1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching)."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "7072_U150_30X2.nc_N°1 pz.nc",
       "source_file": "7072_U150_30X2.nc_N°1 pz.nc.dxf",

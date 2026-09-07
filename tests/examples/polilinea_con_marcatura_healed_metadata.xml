@@ -2,14 +2,14 @@
 <forge>
   <source_file>polilinea_con_marcatura.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
+  <cluster_count>1</cluster_count>
   <warnings>
     <warning>Rimosse 1 entità duplicate dal msp.</warning>
     <warning>Nessun loop trovato via grafo, uso polygonize come fallback.</warning>
     <warning>LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta.</warning>
   </warnings>
-  <parts>
-    <part>
+  <clusters>
+    <cluster>
       <label>polilinea_con_marcatura</label>
       <source_file>polilinea_con_marcatura.dxf</source_file>
       <quantity>1</quantity>
@@ -31,6 +31,6 @@
         <maxx>963.9755</maxx>
         <maxy>30.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

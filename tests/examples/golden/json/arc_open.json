@@ -1,7 +1,7 @@
 {
   "source_file": "arc_open.dxf",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 2498.7273,
       "outer_perimeter_mm": 178.7262,

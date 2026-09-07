@@ -2,9 +2,9 @@
 <forge>
   <source_file>rettangolo_foro_centrale.DXF</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label>rettangolo_foro_centrale</label>
       <source_file>rettangolo_foro_centrale.DXF</source_file>
       <quantity>1</quantity>
@@ -26,6 +26,6 @@
         <maxx>-215.4041</maxx>
         <maxy>62.8894</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

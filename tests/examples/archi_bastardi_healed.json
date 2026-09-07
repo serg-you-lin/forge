@@ -1,10 +1,10 @@
 {
   "source_file": "archi_bastardi.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "archi_bastardi",
       "source_file": "archi_bastardi.dxf",

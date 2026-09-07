@@ -1,10 +1,10 @@
 {
   "source_file": "flangia_quadra.DXF",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "flangia_quadra",
       "source_file": "flangia_quadra.DXF",

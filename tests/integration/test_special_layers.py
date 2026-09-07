@@ -163,7 +163,7 @@ class TestSpecialLayerNotOuter(unittest.TestCase):
 
     def test_001_finds_one_part(self):
         self.assertEqual(
-            self.result.part_count,
+            self.result.cluster_count,
             1,
         )
 
@@ -174,7 +174,7 @@ class TestSpecialLayerNotOuter(unittest.TestCase):
         )
 
     def test_003_area_is_rectangle(self):
-        area = self.result.parts[0].area
+        area = self.result.clusters[0].area
 
         self.assertAlmostEqual(
             area,
@@ -184,7 +184,7 @@ class TestSpecialLayerNotOuter(unittest.TestCase):
 
     def test_004_no_holes(self):
         self.assertEqual(
-            len(self.result.parts[0].inners),
+            len(self.result.clusters[0].inners),
             0,
         )
 
@@ -245,11 +245,11 @@ class TestSpecialLayerNotTrash(unittest.TestCase):
 
     def test_002_mark_layer_preserved(self):
         # La LINE su MARK deve sopravvivere come engrave: nel modello
-        # (part.engrave_lines) e materializzata sul layer Engrave del doc_out.
+        # (cluster.engrave_lines) e materializzata sul layer Engrave del doc_out.
         engrave = [
             eng
-            for part in self.result.parts
-            for eng in part.engrave_lines
+            for cluster in self.result.clusters
+            for eng in cluster.engrave_lines
         ]
         self.assertTrue(engrave, "Nessuna engrave line rilevata dal modello")
 
@@ -308,12 +308,12 @@ class TestEngraveLength(unittest.TestCase):
     def test_001_has_custom(self):
 
         self.assertIsNotNone(
-            self.result.parts[0].custom,
+            self.result.clusters[0].custom,
         )
 
     def test_002_engrave_length_present(self):
 
-        summary = self.result.parts[0].summary
+        summary = self.result.clusters[0].summary
 
         self.assertIn(
             'total_engrave_length',
@@ -322,7 +322,7 @@ class TestEngraveLength(unittest.TestCase):
 
     def test_003_engrave_length_correct(self):
 
-        length = self.result.parts[0].summary[
+        length = self.result.clusters[0].summary[
             'total_engrave_length'
         ]
 
@@ -335,7 +335,7 @@ class TestEngraveLength(unittest.TestCase):
     def test_004_no_bending_lines(self):
 
         self.assertEqual(
-            self.result.parts[0].summary['bending_lines'],
+            self.result.clusters[0].summary['bending_lines'],
             0,
         )
 
@@ -359,12 +359,12 @@ class TestBendingLines(unittest.TestCase):
     def test_001_has_custom(self):
 
         self.assertIsNotNone(
-            self.result.parts[0].custom,
+            self.result.clusters[0].custom,
         )
 
     def test_002_bending_lines_present(self):
 
-        summary = self.result.parts[0].summary
+        summary = self.result.clusters[0].summary
 
         self.assertIn(
             'bending_lines',
@@ -373,7 +373,7 @@ class TestBendingLines(unittest.TestCase):
 
     def test_003_bending_lines_correct(self):
 
-        count = self.result.parts[0].summary[
+        count = self.result.clusters[0].summary[
             'bending_lines'
         ]
 
@@ -391,7 +391,7 @@ class TestEngraveDegenerateCircle(unittest.TestCase):
     """
     Un CIRCLE su layer engrave è una traccia già chiusa (loop degenere).
     Non passa dalla ricerca loop: l'unico calcolo è il contenimento.
-    Dentro il part → Engraving(closed=True), mai un foro. Fuori → trash.
+    Dentro il cluster → Engraving(closed=True), mai un foro. Fuori → trash.
     """
 
     def setUp(self):
@@ -403,9 +403,9 @@ class TestEngraveDegenerateCircle(unittest.TestCase):
         msp.add_line((100, 50), (0, 50))
         msp.add_line((0, 50), (0, 0))
 
-        # CIRCLE engrave DENTRO il part
+        # CIRCLE engrave DENTRO il cluster
         msp.add_circle((50, 25), 5, dxfattribs={'layer': 'MARK'})
-        # LINE engrave FUORI dal part
+        # LINE engrave FUORI dal cluster
         msp.add_line((200, 200), (220, 200), dxfattribs={'layer': 'MARK'})
 
         self.result, self.doc_out = _run_pipeline(
@@ -414,14 +414,14 @@ class TestEngraveDegenerateCircle(unittest.TestCase):
         )
 
     def test_001_circle_is_not_a_hole(self):
-        part = self.result.parts[0]
-        self.assertEqual(len(part.holes), 0)
-        self.assertEqual(len(part.inners), 0)
+        cluster = self.result.clusters[0]
+        self.assertEqual(len(cluster.holes), 0)
+        self.assertEqual(len(cluster.inners), 0)
 
     def test_002_circle_becomes_engraving(self):
-        part = self.result.parts[0]
-        self.assertEqual(len(part.engrave_lines), 1)
-        self.assertAlmostEqual(part.engrave_lines[0].length, 2 * 3.14159 * 5, delta=0.5)
+        cluster = self.result.clusters[0]
+        self.assertEqual(len(cluster.engrave_lines), 1)
+        self.assertAlmostEqual(cluster.engrave_lines[0].length, 2 * 3.14159 * 5, delta=0.5)
 
     def test_003_circle_materialized_on_engrave_layer(self):
         on_engrave = [
@@ -431,9 +431,9 @@ class TestEngraveDegenerateCircle(unittest.TestCase):
         self.assertTrue(on_engrave)
 
     def test_004_orphan_engrave_stays_trash(self):
-        # la LINE engrave fuori dal part non è una engrave line del part
-        part = self.result.parts[0]
-        self.assertEqual(len(part.engrave_lines), 1)
+        # la LINE engrave fuori dal cluster non è una engrave line del cluster
+        cluster = self.result.clusters[0]
+        self.assertEqual(len(cluster.engrave_lines), 1)
         # ed è rimasta come trash, non promossa a nulla
         roles = [getattr(t, "role", None) for t in self.result.trash_entities]
         self.assertIn("engrave", [getattr(r, "value", r) for r in roles])
@@ -531,14 +531,14 @@ class TestMixedSpecialLayers(unittest.TestCase):
     def test_001_one_part(self):
 
         self.assertEqual(
-            self.result.part_count,
+            self.result.cluster_count,
             1,
         )
 
     def test_002_bending_lines(self):
 
         self.assertEqual(
-            self.result.parts[0].summary.get(
+            self.result.clusters[0].summary.get(
                 'bending_lines'
             ),
             2,
@@ -546,7 +546,7 @@ class TestMixedSpecialLayers(unittest.TestCase):
 
     def test_003_total_engrave_length(self):
 
-        length = self.result.parts[0].summary.get(
+        length = self.result.clusters[0].summary.get(
             'total_engrave_length',
             0,
         )
@@ -559,7 +559,7 @@ class TestMixedSpecialLayers(unittest.TestCase):
 
     def test_004_bending_lines(self):
 
-        count = self.result.parts[0].summary.get(
+        count = self.result.clusters[0].summary.get(
             'bending_lines',
             0,
         )

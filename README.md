@@ -45,8 +45,8 @@ doc_out = forge.to_dxf(result, doc)                  # -> ezdxf Drawing
 doc_out.saveas("part_healed.dxf")
 
 forge.save_json(result, "part.json")                 # metadata
-print(f"{result.part_count} part(s), "
-      f"{sum(len(p.holes) for p in result.parts)} holes")
+print(f"{result.cluster_count} cluster(s), "
+      f"{sum(len(c.holes) for c in result.clusters)} holes")
 ```
 
 ## Multi-part file
@@ -57,7 +57,7 @@ import forge
 doc    = forge.load_dxf("batch.dxf")
 result = forge.split_to_files(doc, "output/", label="batch")
 # writes output/batch_P1.dxf, output/batch_P2.dxf, ... one per piece
-# (pass namer=lambda i, part: "..." to control the file names)
+# (pass namer=lambda i, cluster: "..." to control the file names)
 forge.save_json(result, "batch.json")
 ```
 
@@ -128,7 +128,7 @@ import forge
 
 forge.inspect_dxf("part.dxf")        # 1 — raw DXF entities: what's in the file
 forge.inspect_document(doc)          # 2 — edges, primitives, node graph: what the adapter understood
-forge.inspect_result(result)         # 3 — the model: parts, typed holes, bends, engraving, trash
+forge.inspect_result(result)         # 3 — the model: clusters, typed holes, bends, engraving, trash
 
 forge.inspect_file("part.dxf", label_map={"Piega": "bending"})   # all three, in order
 ```

@@ -2,7 +2,7 @@
 <forge>
   <source_file>1031.dxf</source_file>
   <is_valid>false</is_valid>
-  <part_count>0</part_count>
+  <cluster_count>0</cluster_count>
   <errors>
     <error>Modelspace vuoto: nessuna geometria trovata.</error>
   </errors>

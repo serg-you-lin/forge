@@ -18,10 +18,9 @@ Nome dell'interprete: da decidere.
 ### Cosa produce (deterministico)
 
 - **cluster** — gruppi di geometria separati spazialmente (un outer, i suoi
-  inner, i suoi segmenti aperti). *Nel codice si chiamano ancora `ForgePart` /
-  `result.parts`; il rename a `ForgeCluster` / `result.clusters` è in TODO.md.*
+  inner, i suoi segmenti aperti). Nel codice: `ForgeCluster` / `result.clusters`.
 - feature dentro un cluster: fori (per tipo), pieghe, incisioni — via `detect`
-- annotazioni tipate e ancorate: `Note` / `Dimension` / `Leader`, con `part_ref`
+- annotazioni tipate e ancorate: `Note` / `Dimension` / `Leader`, con `cluster_ref`
   (quale cluster contiene l'annotazione)
 - bbox, posizione relativa dei cluster
 
@@ -38,7 +37,7 @@ La "part-ness" è interpretazione, ed è del consumatore.
 | `heal` | file → cluster (topologia pulita) |
 | `detect` | classifica la geometria dentro i cluster (fori/pieghe/incisioni → `role`) |
 | `split` / `split_to_files` | divide i cluster, li nomina, li scrive uno per file |
-| `interpret_annotations` | `Annotation.part_ref` — quale cluster contiene l'annotazione (solo geometria) |
+| `interpret_annotations` | `Annotation.cluster_ref` — quale cluster contiene l'annotazione (solo geometria) |
 | `inspect` | ispezione a 3 livelli |
 | `to_dxf` / `to_svg` / `save_json` | export fedele dal modello |
 
@@ -74,7 +73,7 @@ file CAD
    │                                    pezzo (pianta / vista di fianco / sezione
    │                                    A-A), lamiera piegata → c'è uno sviluppo
    ▼
-[6]  forge.interpret_annotations     → part_ref sulle annotazioni (forge)
+[6]  forge.interpret_annotations     → cluster_ref sulle annotazioni (forge)
    │
    ▼
 [7]  callout parsing   (interprete)  → material / thickness / quantity / code per

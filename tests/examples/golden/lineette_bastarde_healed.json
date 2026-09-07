@@ -1,14 +1,14 @@
 {
   "source_file": "lineette_bastarde.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [
     "4 INSERT esplosi prima dell'healing.",
     "1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).",
     "Geometria ambigua: 4 nodi con più di 2 connessioni. Il risultato potrebbe essere impreciso."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "lineette_bastarde",
       "source_file": "lineette_bastarde.dxf",

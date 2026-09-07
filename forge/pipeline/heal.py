@@ -141,7 +141,7 @@ class HealStep:
 
         Questi non entrano nel grafo né nella ricerca loop: sono geometria di
         marcatura, non contorno. L'unico calcolo che li riguarda è il
-        contenimento, fatto da detect(): dentro un part → feature del part,
+        contenimento, fatto da detect(): dentro un cluster → feature del cluster,
         fuori → trash, esattamente come ogni entità che non sta dentro l'outer.
         """
         from ..model.role import ContourRole
@@ -313,12 +313,12 @@ class HealStep:
             entities_in_loops=self.entities_in_loops,
         )
 
-        parts, trash = builder.build(all_proxies)
+        clusters, trash = builder.build(all_proxies)
 
-        self.result.parts          = parts
+        self.result.clusters          = clusters
         self.result.trash_entities = trash + self._labeled_proxies()
 
-        if not parts:
+        if not clusters:
             # La geometria non compone nessun contorno esterno chiuso: il
             # prolungamento dei segmenti (anche via ponte retto) non arriva a
             # un loop. Il risultato NON è un pezzo — è un file non lavorabile.

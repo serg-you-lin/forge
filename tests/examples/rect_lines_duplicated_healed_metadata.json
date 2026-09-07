@@ -1,12 +1,12 @@
 {
   "source_file": "rect_lines_duplicated.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [
     "Rimosse 4 entità duplicate dal msp."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "rect_lines_duplicated",
       "source_file": "rect_lines_duplicated.dxf",

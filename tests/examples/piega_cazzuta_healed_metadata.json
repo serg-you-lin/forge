@@ -1,14 +1,14 @@
 {
   "source_file": "piega_cazzuta.dxf",
   "is_valid": true,
-  "part_count": 2,
+  "cluster_count": 2,
   "warnings": [
     "Rimosse 2 entità duplicate dal msp.",
     "2 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).",
     "Geometria ambigua: 2 nodi con più di 2 connessioni all'interno dei loop chiusi. Verificare il risultato."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "piega_cazzuta",
       "source_file": "piega_cazzuta.dxf",

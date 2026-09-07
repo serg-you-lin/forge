@@ -1,7 +1,7 @@
 {
   "source_file": "old_pline_vec3.dxf",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 251590.2816,
       "outer_perimeter_mm": 2639.3233,

@@ -109,31 +109,31 @@ def generate(force: bool = False, only: str = None):
 
             golden = {
                 "source_file": dxf_path.name,
-                "part_count":  result.part_count,
-                "parts":       [],
+                "cluster_count":  result.cluster_count,
+                "clusters":       [],
             }
 
-            for part in result.parts:
-                holes  = sorted(part.holes,  key=lambda x: x.area, reverse=True)
-                inners = sorted(part.inners, key=lambda x: x.area, reverse=True)
+            for cluster in result.clusters:
+                holes  = sorted(cluster.holes,  key=lambda x: x.area, reverse=True)
+                inners = sorted(cluster.inners, key=lambda x: x.area, reverse=True)
 
                 part_golden = {
                     # — geometria base —
-                    "area_mm2":           round(part.area, 4),
-                    "outer_perimeter_mm": round(part.outer.polygon.exterior.length, 4),
+                    "area_mm2":           round(cluster.area, 4),
+                    "outer_perimeter_mm": round(cluster.outer.polygon.exterior.length, 4),
                     "inner_perimeter_mm": round(
                         sum(h.polygon.exterior.length for h in holes) +
                         sum(i.polygon.exterior.length for i in inners),
                         4,
                     ),
                     "total_perimeter_mm": round(
-                        part.outer.polygon.exterior.length +
+                        cluster.outer.polygon.exterior.length +
                         sum(h.polygon.exterior.length for h in holes) +
                         sum(i.polygon.exterior.length for i in inners),
                         4,
                     ),
                     # — contorno esterno —
-                    "outer_wkt": part.outer.polygon.wkt,
+                    "outer_wkt": cluster.outer.polygon.wkt,
                     # — fori —
                     "holes_count": len(holes),
                     "holes_wkt":   [h.polygon.wkt for h in holes],
@@ -143,26 +143,26 @@ def generate(force: bool = False, only: str = None):
                     "inners_wkt":   [i.polygon.wkt for i in inners],
                     "inners":       [i.to_dict() for i in inners],
                     # — pieghe —
-                    "bending_lines_count": len(part.bending_lines),
-                    "bending_lines":       [bl.to_dict() for bl in part.bending_lines],
+                    "bending_lines_count": len(cluster.bending_lines),
+                    "bending_lines":       [bl.to_dict() for bl in cluster.bending_lines],
                     # — incisioni —
                     "total_engrave_length": round(
-                        sum(e.length for e in part.engrave_lines), 4
+                        sum(e.length for e in cluster.engrave_lines), 4
                     ),
-                    "engrave_lines_count": len(part.engrave_lines),
-                    "engrave_lines":       [e.to_dict() for e in part.engrave_lines],
+                    "engrave_lines_count": len(cluster.engrave_lines),
+                    "engrave_lines":       [e.to_dict() for e in cluster.engrave_lines],
                     # — summary — conteggi feature derivati dal modello (D8).
                     #   Solo le chiavi non-zero, come faceva inject() in custom.
-                    "summary": {k: v for k, v in part.summary.items() if v},
+                    "summary": {k: v for k, v in cluster.summary.items() if v},
                 }
-                golden["parts"].append(part_golden)
+                golden["clusters"].append(part_golden)
 
             golden_path.write_text(
                 json.dumps(golden, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
 
-            print(f"  OK: {dxf_path.name} → {golden_path.name} ({result.part_count} parti)")
+            print(f"  OK: {dxf_path.name} → {golden_path.name} ({result.cluster_count} parti)")
             generated += 1
 
         except Exception as ex:

@@ -1,10 +1,10 @@
 {
   "source_file": "rettangolo_foro_centrale.DXF",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "rettangolo_foro_centrale",
       "source_file": "rettangolo_foro_centrale.DXF",

@@ -1,7 +1,7 @@
 {
   "source_file": "arc_line_gap.dxf",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 4914.0331,
       "outer_perimeter_mm": 291.4128,

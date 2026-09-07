@@ -1,7 +1,7 @@
 {
   "source_file": "intricato_doppio.dxf",
-  "part_count": 2,
-  "parts": [
+  "cluster_count": 2,
+  "clusters": [
     {
       "area_mm2": 4491.7085,
       "outer_perimeter_mm": 306.1486,

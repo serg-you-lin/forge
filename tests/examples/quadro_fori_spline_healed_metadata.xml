@@ -2,9 +2,9 @@
 <forge>
   <source_file>quadro_fori_spline.DXF</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label>quadro_fori_spline</label>
       <source_file>quadro_fori_spline.DXF</source_file>
       <quantity>1</quantity>
@@ -26,6 +26,6 @@
         <maxx>218.5579</maxx>
         <maxy>140.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

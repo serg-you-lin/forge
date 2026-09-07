@@ -2,13 +2,13 @@
 <forge>
   <source_file>rect_with_threaded_holes_geometric.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
+  <cluster_count>1</cluster_count>
   <warnings>
     <warning>Nessun loop trovato via grafo, uso polygonize come fallback.</warning>
     <warning>LINE/ARC non formano loop chiusi — potrebbero essere marcature o geometria aperta.</warning>
   </warnings>
-  <parts>
-    <part>
+  <clusters>
+    <cluster>
       <label>rect_with_threaded_holes_geometric</label>
       <source_file>rect_with_threaded_holes_geometric.dxf</source_file>
       <quantity>1</quantity>
@@ -30,6 +30,6 @@
         <maxx>200.0</maxx>
         <maxy>100.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

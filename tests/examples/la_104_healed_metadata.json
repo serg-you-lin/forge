@@ -1,13 +1,13 @@
 {
   "source_file": "la_104.DXF",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [
     "Rimosse 1 entità duplicate dal msp.",
     "1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching)."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "la_104",
       "source_file": "la_104.DXF",

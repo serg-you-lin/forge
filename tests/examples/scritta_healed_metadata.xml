@@ -2,12 +2,12 @@
 <forge>
   <source_file>scritta.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
+  <cluster_count>1</cluster_count>
   <warnings>
     <warning>1 INSERT esplosi prima dell'healing.</warning>
   </warnings>
-  <parts>
-    <part>
+  <clusters>
+    <cluster>
       <label>scritta</label>
       <source_file>scritta.dxf</source_file>
       <quantity>1</quantity>
@@ -29,6 +29,6 @@
         <maxx>455.0</maxx>
         <maxy>55.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

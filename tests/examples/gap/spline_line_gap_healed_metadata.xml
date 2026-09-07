@@ -2,7 +2,7 @@
 <forge>
   <source_file/>
   <is_valid>false</is_valid>
-  <part_count>0</part_count>
+  <cluster_count>0</cluster_count>
   <warnings>
     <warning>SPLINE con endpoint non connesso trovata — gap tra SPLINE e altre entità non gestibile automaticamente. Verificare il file manualmente.</warning>
     <warning>Nessun loop trovato via grafo, uso polygonize come fallback.</warning>

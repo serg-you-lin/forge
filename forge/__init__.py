@@ -76,7 +76,7 @@ from .io.exporter         import to_nester_input
 from .io.view_model       import to_view_model
 from .io.svg              import to_svg, save_svg
 from .model         import (
-    ForgeResult, ForgePart, ForgeContour, ForgeDocument,
+    ForgeResult, ForgeCluster, ForgeContour, ForgeDocument,
     Annotation, Note, Dimension, Leader,
 )
 from .inspect             import (
@@ -128,7 +128,7 @@ __all__ = [
     "inspect_file",
     # Modelli
     "ForgeResult",
-    "ForgePart",
+    "ForgeCluster",
     "ForgeContour",
     "ForgeDocument",
     "Annotation",

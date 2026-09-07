@@ -1,10 +1,10 @@
 {
   "source_file": "two_parts.dxf",
   "is_valid": true,
-  "part_count": 2,
+  "cluster_count": 2,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "two_parts",
       "source_file": "two_parts.dxf",

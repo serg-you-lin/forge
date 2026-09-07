@@ -1,10 +1,10 @@
 {
   "source_file": "1031.dxf",
   "is_valid": false,
-  "part_count": 0,
+  "cluster_count": 0,
   "warnings": [],
   "errors": [
     "Modelspace vuoto: nessuna geometria trovata."
   ],
-  "parts": []
+  "clusters": []
 }

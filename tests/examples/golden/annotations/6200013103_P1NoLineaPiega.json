@@ -6,7 +6,7 @@
     "MULTILEADER": 16,
     "DIMENSION": 5
   },
-  "part_count": 6,
+  "cluster_count": 6,
   "annotations": [
     {
       "type": "Note",
@@ -17,7 +17,7 @@
       ],
       "display_text": "Materiale: S235JR EN 10025",
       "layer": "Default",
-      "part_ref": 5,
+      "cluster_ref": 5,
       "height": 4.0,
       "rotation": 0.0
     },
@@ -30,7 +30,7 @@
       ],
       "display_text": "Codice Articolo: 6200013103",
       "layer": "Default",
-      "part_ref": 5,
+      "cluster_ref": 5,
       "height": 4.0,
       "rotation": 0.0
     },
@@ -43,7 +43,7 @@
       ],
       "display_text": "MARCARE I PRIMI 25 mm\nPER TUTTI I RIFERIMENTI PIEGA",
       "layer": "Default",
-      "part_ref": null,
+      "cluster_ref": null,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -60,7 +60,7 @@
       ],
       "display_text": "20",
       "layer": "Default",
-      "part_ref": null,
+      "cluster_ref": null,
       "dim_type": "aligned",
       "measured_value": 20.0,
       "text_override": "\\A1;<>",
@@ -79,7 +79,7 @@
       ],
       "display_text": "I profili rappresentati sono comprensivi di sovrametallo",
       "layer": "Default",
-      "part_ref": 5,
+      "cluster_ref": 5,
       "height": 2.5,
       "rotation": 0.0
     },
@@ -92,7 +92,7 @@
       ],
       "display_text": "PEZZI N°: 1",
       "layer": "Default",
-      "part_ref": 3,
+      "cluster_ref": 3,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -109,7 +109,7 @@
       ],
       "display_text": "SPESSORE: 2,00 mm",
       "layer": "Default",
-      "part_ref": 3,
+      "cluster_ref": 3,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -126,7 +126,7 @@
       ],
       "display_text": "CODICE: 6200013103_5",
       "layer": "Default",
-      "part_ref": 3,
+      "cluster_ref": 3,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -143,7 +143,7 @@
       ],
       "display_text": "245",
       "layer": "Default",
-      "part_ref": null,
+      "cluster_ref": null,
       "dim_type": "aligned",
       "measured_value": 245.0,
       "text_override": "\\A1;<>",
@@ -162,7 +162,7 @@
       ],
       "display_text": "SPESSORE: 2,00 mm",
       "layer": "Default",
-      "part_ref": 0,
+      "cluster_ref": 0,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -179,7 +179,7 @@
       ],
       "display_text": "PEZZI N°: 1",
       "layer": "Default",
-      "part_ref": 0,
+      "cluster_ref": 0,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -196,7 +196,7 @@
       ],
       "display_text": "CODICE: 6200013103_1",
       "layer": "Default",
-      "part_ref": 0,
+      "cluster_ref": 0,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -213,7 +213,7 @@
       ],
       "display_text": "SPESSORE: 2,00 mm",
       "layer": "Default",
-      "part_ref": 1,
+      "cluster_ref": 1,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -230,7 +230,7 @@
       ],
       "display_text": "PEZZI N°: 2",
       "layer": "Default",
-      "part_ref": 1,
+      "cluster_ref": 1,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -247,7 +247,7 @@
       ],
       "display_text": "CODICE: 6200013103_2",
       "layer": "Default",
-      "part_ref": 1,
+      "cluster_ref": 1,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -264,7 +264,7 @@
       ],
       "display_text": "SPESSORE: 4,00 mm",
       "layer": "Default",
-      "part_ref": 2,
+      "cluster_ref": 2,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -281,7 +281,7 @@
       ],
       "display_text": "PEZZI N°: 2",
       "layer": "Default",
-      "part_ref": 2,
+      "cluster_ref": 2,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -298,7 +298,7 @@
       ],
       "display_text": "CODICE: 6200013103_4",
       "layer": "Default",
-      "part_ref": 2,
+      "cluster_ref": 2,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -315,7 +315,7 @@
       ],
       "display_text": "SPESSORE: 2,00 mm",
       "layer": "Default",
-      "part_ref": 4,
+      "cluster_ref": 4,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -332,7 +332,7 @@
       ],
       "display_text": "PEZZI N°: 2",
       "layer": "Default",
-      "part_ref": 4,
+      "cluster_ref": 4,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -349,7 +349,7 @@
       ],
       "display_text": "CODICE: 6200013103_3",
       "layer": "Default",
-      "part_ref": 4,
+      "cluster_ref": 4,
       "vertices": 0,
       "rendered": {
         "strokes": 0,
@@ -366,7 +366,7 @@
       ],
       "display_text": "100",
       "layer": "Default",
-      "part_ref": null,
+      "cluster_ref": null,
       "dim_type": "linear",
       "measured_value": 100.0,
       "text_override": "\\A1;<>",
@@ -385,7 +385,7 @@
       ],
       "display_text": "36,5",
       "layer": "Default",
-      "part_ref": null,
+      "cluster_ref": null,
       "dim_type": "linear",
       "measured_value": 36.4694,
       "text_override": "\\A1;<>",
@@ -404,7 +404,7 @@
       ],
       "display_text": "479,1",
       "layer": "Default",
-      "part_ref": null,
+      "cluster_ref": null,
       "dim_type": "linear",
       "measured_value": 479.1075,
       "text_override": "\\A1;<>",

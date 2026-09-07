@@ -1,10 +1,10 @@
 {
   "source_file": "gap_parallelo.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "gap_parallelo",
       "source_file": "gap_parallelo.dxf",

@@ -38,21 +38,21 @@ class TestViewModel(unittest.TestCase):
         json.dumps(self.vm)
 
     def test_top_level_shape(self):
-        for key in ("source_file", "is_valid", "part_count", "bbox",
-                    "parts", "palette", "trash", "annotations"):
+        for key in ("source_file", "is_valid", "cluster_count", "bbox",
+                    "clusters", "palette", "trash", "annotations"):
             self.assertIn(key, self.vm)
-        self.assertEqual(self.vm["part_count"], len(self.vm["parts"]))
-        self.assertEqual(self.vm["part_count"], 4)
+        self.assertEqual(self.vm["cluster_count"], len(self.vm["clusters"]))
+        self.assertEqual(self.vm["cluster_count"], 4)
         self.assertEqual(len(self.vm["bbox"]), 4)
 
     def test_part_outer_geometry(self):
-        part = self.vm["parts"][0]
-        self.assertGreaterEqual(len(part["outer"]["points"]), 3)
-        self.assertTrue(part["outer"]["closed"])
-        self.assertEqual(part["outer"]["color"], "#00ff00")  # verde = outer
+        cluster = self.vm["clusters"][0]
+        self.assertGreaterEqual(len(cluster["outer"]["points"]), 3)
+        self.assertTrue(cluster["outer"]["closed"])
+        self.assertEqual(cluster["outer"]["color"], "#00ff00")  # verde = outer
 
     def test_hole_carries_circle_metadata(self):
-        holes = [h for p in self.vm["parts"] for h in p["holes"]]
+        holes = [h for p in self.vm["clusters"] for h in p["holes"]]
         self.assertTrue(holes)
         h = holes[0]
         self.assertIn(h["hole_type"], ("plain", "countersink", "threaded"))
@@ -60,8 +60,8 @@ class TestViewModel(unittest.TestCase):
         self.assertEqual(len(h["center"]), 2)
 
     def test_every_point_is_xy_pair(self):
-        for part in self.vm["parts"]:
-            for pt in part["outer"]["points"]:
+        for cluster in self.vm["clusters"]:
+            for pt in cluster["outer"]["points"]:
                 self.assertEqual(len(pt), 2)
                 self.assertIsInstance(pt[0], (int, float))
 
@@ -73,18 +73,18 @@ class TestViewModel(unittest.TestCase):
 
     def test_bending_and_engrave_geometry(self):
         vm = forge.to_view_model(_result(SPECIAL, SPECIAL_LM))
-        part = vm["parts"][0]
-        self.assertTrue(part["bending_lines"])
-        self.assertTrue(part["engrave_lines"])
-        for bl in part["bending_lines"]:
+        cluster = vm["clusters"][0]
+        self.assertTrue(cluster["bending_lines"])
+        self.assertTrue(cluster["engrave_lines"])
+        for bl in cluster["bending_lines"]:
             self.assertFalse(bl["closed"])
             self.assertGreaterEqual(len(bl["points"]), 2)
 
     def test_invalid_result_does_not_raise(self):
-        empty = forge.ForgeResult(parts=[], is_valid=False, errors=["boom"])
+        empty = forge.ForgeResult(clusters=[], is_valid=False, errors=["boom"])
         vm = forge.to_view_model(empty)
         self.assertFalse(vm["is_valid"])
-        self.assertEqual(vm["parts"], [])
+        self.assertEqual(vm["clusters"], [])
         self.assertIsNone(vm["bbox"])
 
 
@@ -110,14 +110,14 @@ class TestToSvg(unittest.TestCase):
         self.assertEqual(svg.count("<circle"), 0)
 
     def test_one_group_per_part(self):
-        self.assertEqual(len(re.findall(r'data-part="', self.svg)), 4)
+        self.assertEqual(len(re.findall(r'data-cluster="', self.svg)), 4)
 
     def test_transparent_background(self):
         svg = forge.to_svg(self.result, background=None)
         self.assertNotIn("<rect", svg.split("<g")[0])
 
     def test_empty_result_returns_valid_svg(self):
-        empty = forge.ForgeResult(parts=[], is_valid=False)
+        empty = forge.ForgeResult(clusters=[], is_valid=False)
         ET.fromstring(forge.to_svg(empty))
 
 
@@ -134,7 +134,7 @@ class TestRichExample(unittest.TestCase):
         self.assertIn("#00ff00", svg)                       # outer
         self.assertTrue("#0000ff" in svg or "#00ffff" in svg)  # foro tipato
         vm = forge.to_view_model(result)
-        p = vm["parts"][0]
+        p = vm["clusters"][0]
         self.assertTrue(p["holes"] and p["bending_lines"] and p["engrave_lines"])
 
 

@@ -48,7 +48,7 @@ from forge.adapters.dxf.layers import (
     LAYER_OUTER,
     LAYER_HOLE,
 )
-from forge.pipeline.write import part_passes_min_area, DEFAULT_MIN_PART_AREA
+from forge.pipeline.write import cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
 
 
 MULTIPLI_DIR = project_root / "tests" / "examples" / "golden_multipli"
@@ -147,37 +147,37 @@ def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
     doc = forge.load_dxf(parent_path, explode_inserts=True, tolerance=tolerance)
     result = forge.heal(doc, tolerance=tolerance)
 
-    if result.is_valid and result.parts:
+    if result.is_valid and result.clusters:
         forge.detect(result, features="all")
         drawings = forge.split(
             result,
             doc,
-            namer=lambda i, part: f"{part.label}_P{i + 1:03d}",
+            namer=lambda i, cluster: f"{cluster.label}_P{i + 1:03d}",
         )
         output_folder.mkdir(parents=True, exist_ok=True)
-        kept = [p for p in result.parts
-                if part_passes_min_area(p, DEFAULT_MIN_PART_AREA)]
-        for part, drawing in zip(kept, drawings):
-            drawing.saveas(str(output_folder / f"{part.label}.dxf"))
+        kept = [p for p in result.clusters
+                if cluster_passes_min_area(p, DEFAULT_MIN_CLUSTER_AREA)]
+        for cluster, drawing in zip(kept, drawings):
+            drawing.saveas(str(output_folder / f"{cluster.label}.dxf"))
 
     part_payloads = []
-    for part in result.parts if result.is_valid and result.parts else []:
+    for cluster in result.clusters if result.is_valid and result.clusters else []:
         part_payloads.append({
-            "area": part.area,
-            "holes_count": len(part.holes + part.inners),
-            "outer_perimeter": part.outer.polygon.exterior.length,
-            "inner_perimeter": sum(h.polygon.exterior.length for h in part.holes + part.inners),
-            "outer_wkt": part.outer.polygon.wkt,
-            "inners_wkt": [h.polygon.wkt for h in sorted(part.holes + part.inners, key=lambda x: x.area, reverse=True)],
-            "outer_role": part.outer.role,
-            "inner_roles": [h.role for h in sorted(part.holes + part.inners, key=lambda x: x.area, reverse=True)],
-            "summary": part.summary,
+            "area": cluster.area,
+            "holes_count": len(cluster.holes + cluster.inners),
+            "outer_perimeter": cluster.outer.polygon.exterior.length,
+            "inner_perimeter": sum(h.polygon.exterior.length for h in cluster.holes + cluster.inners),
+            "outer_wkt": cluster.outer.polygon.wkt,
+            "inners_wkt": [h.polygon.wkt for h in sorted(cluster.holes + cluster.inners, key=lambda x: x.area, reverse=True)],
+            "outer_role": cluster.outer.role,
+            "inner_roles": [h.role for h in sorted(cluster.holes + cluster.inners, key=lambda x: x.area, reverse=True)],
+            "summary": cluster.summary,
         })
 
     cached_entry = {
         "output_folder": output_folder,
         "children": sorted(output_folder.glob("*.dxf")),
-        "parts": part_payloads,
+        "clusters": part_payloads,
     }
     _PARENT_PIPELINE_CACHE[cache_key] = cached_entry
     return cached_entry
@@ -241,7 +241,7 @@ def _make_split_test(golden_path: Path):
                     f"Figli generati: {[f.name for f in children]}"
                 )
 
-            part_payload = _PARENT_PIPELINE_CACHE[(parent_path.resolve(), float(tolerance))]["parts"][part_index]
+            part_payload = _PARENT_PIPELINE_CACHE[(parent_path.resolve(), float(tolerance))]["clusters"][part_index]
 
         self.assertIsNotNone(
             part_payload,
@@ -249,9 +249,9 @@ def _make_split_test(golden_path: Path):
         )
 
         self.assertEqual(
-            len(_PARENT_PIPELINE_CACHE[(parent_path.resolve(), float(tolerance))]["parts"]),
+            len(_PARENT_PIPELINE_CACHE[(parent_path.resolve(), float(tolerance))]["clusters"]),
             len(children),
-            f"{child_name}: il numero di parti in cache ({len(_PARENT_PIPELINE_CACHE[(parent_path.resolve(), float(tolerance))]['parts'])}) non coincide con i figli generati ({len(children)})"
+            f"{child_name}: il numero di parti in cache ({len(_PARENT_PIPELINE_CACHE[(parent_path.resolve(), float(tolerance))]['clusters'])}) non coincide con i figli generati ({len(children)})"
         )
 
         label = child_name

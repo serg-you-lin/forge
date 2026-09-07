@@ -1,12 +1,12 @@
 {
   "source_file": "archi_si_no.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [
     "2 candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching)."
   ],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "archi_si_no",
       "source_file": "archi_si_no.dxf",

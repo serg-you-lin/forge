@@ -256,7 +256,7 @@ class TestWritebackTrash(unittest.TestCase):
         doc = forge.load_dxf(EXAMPLES_DIR / "arc_open.dxf", label_map={})
         result = forge.heal(doc)
         self.assertFalse(result.is_valid)
-        self.assertEqual(result.part_count, 0)
+        self.assertEqual(result.cluster_count, 0)
         self.assertTrue(result.errors)
         with self.assertRaises(ValueError):
             forge.to_dxf(result, doc)
@@ -416,8 +416,8 @@ class TestWritebackInsertExplodedByDefault(unittest.TestCase):
         doc = forge.load_dxf(EXAMPLES_DIR / "scritta.dxf")
         self.assertGreater(len(doc.edges), 50)
         result = forge.heal(doc)
-        self.assertEqual(result.part_count, 1)
-        self.assertGreater(len(result.parts[0].inners), 6)
+        self.assertEqual(result.cluster_count, 1)
+        self.assertGreater(len(result.clusters[0].inners), 6)
 
 
 # ---------------------------------------------------------------------------
@@ -459,7 +459,7 @@ class TestWritebackArcRoundTrip(unittest.TestCase):
                 continue
             with self.subTest(example=name):
                 result, msp = _pipeline(name, detect=True)
-                model_area = sum(p.outer.polygon.area for p in result.parts)
+                model_area = sum(p.outer.polygon.area for p in result.clusters)
                 written_area = self._written_outer_area(msp)
                 self.assertAlmostEqual(
                     written_area, model_area, delta=max(1.0, model_area * 1e-4),

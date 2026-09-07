@@ -40,13 +40,13 @@ result = forge.heal_and_detect(
 if not result.is_valid:
     raise SystemExit(f"non valido: {result.errors}")
 
-for i, part in enumerate(result.parts):
-    s = part.summary
-    print(f"Parte {i}  {part.label!r}")
-    print(f"   area           : {part.area:.1f} mm²")
+for i, cluster in enumerate(result.clusters):
+    s = cluster.summary
+    print(f"Parte {i}  {cluster.label!r}")
+    print(f"   area           : {cluster.area:.1f} mm²")
     print(f"   fori piani      : {s['plain_holes_count']}")
     print(f"   svasati         : {s['countersink_count']}")
     print(f"   filettati       : {s['threaded_holes_count']}")
     print(f"   pieghe          : {s['bending_lines']}")
     print(f"   incisioni (mm)  : {s['total_engrave_length']:.1f}")
-    print(f"   contorni interni: {len(part.inners)}")
+    print(f"   contorni interni: {len(cluster.inners)}")

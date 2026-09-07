@@ -1,7 +1,7 @@
 {
   "source_file": "",
   "is_valid": false,
-  "part_count": 0,
+  "cluster_count": 0,
   "warnings": [
     "SPLINE con endpoint non connesso trovata — gap tra SPLINE e altre entità non gestibile automaticamente. Verificare il file manualmente.",
     "Nessun loop trovato via grafo, uso polygonize come fallback.",
@@ -10,5 +10,5 @@
   "errors": [
     "Nessuna geometria chiusa trovata dopo healing."
   ],
-  "parts": []
+  "clusters": []
 }

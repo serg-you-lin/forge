@@ -2,9 +2,9 @@
 <forge>
   <source_file>linee_di_piegatura_interne.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label>linee_di_piegatura_interne</label>
       <source_file>linee_di_piegatura_interne.dxf</source_file>
       <quantity>1</quantity>
@@ -26,6 +26,6 @@
         <maxx>2832.1513</maxx>
         <maxy>1508.2011</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

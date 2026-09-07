@@ -86,7 +86,7 @@ def main(argv):
 
             forge.to_dxf(result, doc).saveas(str(out_dxf))
             ok += 1
-            print(f"OK   {src.name} -> {out_dxf.name}  ({result.part_count} parti)")
+            print(f"OK   {src.name} -> {out_dxf.name}  ({result.cluster_count} parti)")
 
         except Exception as exc:
             failed.append((src.name, f"{type(exc).__name__}: {exc}"))

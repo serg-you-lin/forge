@@ -2,13 +2,13 @@
 <forge>
   <source_file>la_104.DXF</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
+  <cluster_count>1</cluster_count>
   <warnings>
     <warning>Rimosse 1 entità duplicate dal msp.</warning>
     <warning>1 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).</warning>
   </warnings>
-  <parts>
-    <part>
+  <clusters>
+    <cluster>
       <label>la_104</label>
       <source_file>la_104.DXF</source_file>
       <quantity>1</quantity>
@@ -30,6 +30,6 @@
         <maxx>150.0</maxx>
         <maxy>142.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

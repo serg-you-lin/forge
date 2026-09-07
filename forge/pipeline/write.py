@@ -18,7 +18,7 @@ from typing import Callable, List, Optional, Set
 
 import ezdxf
 
-from ..model import ForgeResult, ForgePart
+from ..model import ForgeResult, ForgeCluster
 from ..model.document import ForgeDocument
 from ..model.annotation import Annotation, Note, Dimension, Leader
 from ..model.hole import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
@@ -36,7 +36,7 @@ from ..adapters.dxf.layers import (
 )
 from ..rules.palette import COLOR_TRASH
 
-DEFAULT_MIN_PART_AREA = 50.0  # mm²
+DEFAULT_MIN_CLUSTER_AREA = 50.0  # mm²
 
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
 
@@ -48,7 +48,7 @@ ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEAD
 def to_dxf(
     result: ForgeResult,
     source_doc: Optional[ForgeDocument] = None,
-    filter_part: Optional[Callable[[ForgePart], bool]] = None,
+    filter_cluster: Optional[Callable[[ForgeCluster], bool]] = None,
     include_annotations: bool = True,
     include_trash: bool = True,
     annotation_layer: Optional[str] = LAYER_ANNOTATION,
@@ -56,7 +56,7 @@ def to_dxf(
     """
     Crea un documento DXF nuovo (R2010) e vi materializza il ForgeResult.
 
-    Itera i parts del modello e scrive i segmenti puri di ogni contorno/hole.
+    Itera i clusters del modello e scrive i segmenti puri di ogni contorno/hole.
     Non legge entità DXF esistenti — se passato, `source_doc` serve solo per
     riportare gli header ($INSUNITS, $MEASUREMENT). Testi e quote arrivano da
     `result.annotations` (il modello), non dalla sorgente.
@@ -102,22 +102,22 @@ def to_dxf(
     if annotation_layer and annotation_layer not in doc_out.layers:
         doc_out.layers.new(annotation_layer)
 
-    written_parts: List[ForgePart] = []
+    written_clusters: List[ForgeCluster] = []
 
-    for part in result.parts:
-        if filter_part is not None and not filter_part(part):
+    for cluster in result.clusters:
+        if filter_cluster is not None and not filter_cluster(cluster):
             continue
-        written_parts.append(part)
+        written_clusters.append(cluster)
 
         # Contorno esterno
         write_segments(
-            part.outer.segments, msp,
-            ROLE_TO_LAYER.get(part.outer.role, LAYER_OUTER),
-            styles=part.outer.styles,
+            cluster.outer.segments, msp,
+            ROLE_TO_LAYER.get(cluster.outer.role, LAYER_OUTER),
+            styles=cluster.outer.styles,
         )
 
         # Contorni interni
-        for inner in part.inners:
+        for inner in cluster.inners:
             write_segments(
                 inner.segments, msp,
                 ROLE_TO_LAYER.get(inner.role, LAYER_INNER),
@@ -125,42 +125,42 @@ def to_dxf(
             )
 
         # Fori
-        for hole in part.holes:
+        for hole in cluster.holes:
             layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
             layer = _work_layer_for_hole(hole) or layer
             write_segments(hole.segments, msp, layer, styles=hole.styles)
 
         # Bending lines (geometria pura)
-        _write_bending_lines(msp, part)
+        _write_bending_lines(msp, cluster)
 
         # Engrave lines — geometria nativa, una entità DXF per primitiva
         # (LINE / ARC / SPLINE / CIRCLE), mai LWPOLYLINE. `write_segments`
         # (che chiude il contorno) emetteva una polilinea col solo punto di
         # start di ogni segmento → in output si vedeva un punto al posto della
         # linea.
-        for eng in part.engrave_lines:
+        for eng in cluster.engrave_lines:
             layer_name, _ = WORK_TYPE_TO_LAYER.get("engrave", (TRASH_LAYER, COLOR_TRASH))
             write_engrave_segments(eng.segments, msp, layer_name, styles=eng.styles)
 
     if include_trash and result.trash_entities:
         _write_trash(
-            msp, result, written_parts, result.parts,
-            restrict_to_written=filter_part is not None,
+            msp, result, written_clusters, result.clusters,
+            restrict_to_written=filter_cluster is not None,
         )
 
     if include_annotations and result.annotations:
         _write_annotations(
-            msp, result.annotations, written_parts, result.parts,
+            msp, result.annotations, written_clusters, result.clusters,
             annotation_layer,
-            restrict_to_written=filter_part is not None,
+            restrict_to_written=filter_cluster is not None,
         )
 
     return doc_out
 
 
-def part_passes_min_area(part: ForgePart, min_area: float) -> bool:
+def cluster_passes_min_area(cluster: ForgeCluster, min_area: float) -> bool:
     """True se la parte supera la soglia di area minima (min_area <= 0 = nessun filtro)."""
-    return not (min_area > 0 and part.outer.polygon.area < min_area)
+    return not (min_area > 0 and cluster.outer.polygon.area < min_area)
 
 
 def split(
@@ -168,7 +168,7 @@ def split(
     source_doc: Optional[ForgeDocument] = None,
     namer: Optional[Callable] = None,
     include_annotations: bool = True,
-    min_area: float = DEFAULT_MIN_PART_AREA,
+    min_area: float = DEFAULT_MIN_CLUSTER_AREA,
     exclude_types: Set[str] = None,
     on_part: Optional[Callable] = None,
     annotation_layer: Optional[str] = LAYER_ANNOTATION,
@@ -180,8 +180,8 @@ def split(
     `pipeline.split_to_files()`, o itera il risultato e chiama `.saveas(...)`.
 
     Ritorna i Drawing nell'ordine delle parti tenute (quelle che superano
-    `min_area`). `namer(i, part)` — se passato — assegna `part.label`, così il
-    nome file resta ricavabile a valle come `f"{part.label}.dxf"`.
+    `min_area`). `namer(i, cluster)` — se passato — assegna `cluster.label`, così il
+    nome file resta ricavabile a valle come `f"{cluster.label}.dxf"`.
     Come `to_dxf()`, solleva `ValueError` se `result` non è valido.
     """
     if not result.is_valid:
@@ -192,23 +192,23 @@ def split(
     exclude_types = exclude_types or set()
     drawings: List["ezdxf.document.Drawing"] = []
 
-    for i, part in enumerate(result.parts):
-        if not part_passes_min_area(part, min_area):
+    for i, cluster in enumerate(result.clusters):
+        if not cluster_passes_min_area(cluster, min_area):
             result.warnings.append(
-                f"Part {i} scartato: area {part.outer.polygon.area:.2f} mm² "
+                f"Part {i} scartato: area {cluster.outer.polygon.area:.2f} mm² "
                 f"sotto soglia {min_area} mm²"
             )
             continue
 
-        part.label = namer(i, part) if namer else f"{part.label}_P{i + 1}"
+        cluster.label = namer(i, cluster) if namer else f"{cluster.label}_P{i + 1}"
 
-        def _only_this_part(p: ForgePart, _target=part) -> bool:
+        def _only_this_cluster(p: ForgeCluster, _target=cluster) -> bool:
             return p is _target
 
         doc_out = to_dxf(
             result,
             source_doc,
-            filter_part=_only_this_part,
+            filter_cluster=_only_this_cluster,
             include_annotations=include_annotations,
             annotation_layer=annotation_layer,
         )
@@ -217,7 +217,7 @@ def split(
             _remove_excluded_entities(doc_out.modelspace(), {t.upper() for t in exclude_types})
 
         if on_part is not None:
-            on_part(part, doc_out)
+            on_part(cluster, doc_out)
 
         drawings.append(doc_out)
 
@@ -231,8 +231,8 @@ def split(
 def _write_annotations(
     msp,
     annotations: List[Annotation],
-    written_parts: List[ForgePart],
-    all_parts: List[ForgePart],
+    written_clusters: List[ForgeCluster],
+    all_clusters: List[ForgeCluster],
     annotation_layer: Optional[str],
     restrict_to_written: bool,
 ) -> None:
@@ -250,10 +250,10 @@ def _write_annotations(
     """
     from shapely.geometry import Point
 
-    written_set = set(id(p) for p in written_parts)
+    written_set = set(id(p) for p in written_clusters)
     ref_polys = [
         (p, p.outer.polygon)
-        for p in all_parts
+        for p in all_clusters
         if p.outer is not None and p.outer.polygon is not None
     ]
 
@@ -346,8 +346,8 @@ def _trash_probe_point(trash) -> Optional[tuple]:
 def _write_trash(
     msp,
     result: ForgeResult,
-    written_parts: List[ForgePart],
-    all_parts: List[ForgePart],
+    written_clusters: List[ForgeCluster],
+    all_clusters: List[ForgeCluster],
     restrict_to_written: bool,
 ) -> None:
     """
@@ -360,10 +360,10 @@ def _write_trash(
     """
     from shapely.geometry import Point
 
-    written_set = set(id(p) for p in written_parts)
+    written_set = set(id(p) for p in written_clusters)
     ref_polys = [
         (p, p.outer.polygon)
-        for p in all_parts
+        for p in all_clusters
         if p.outer is not None and p.outer.polygon is not None
     ]
 
@@ -404,7 +404,7 @@ def _work_layer_for_hole(hole) -> Optional[str]:
     return None
 
 
-def _write_bending_lines(msp, part: ForgePart) -> None:
+def _write_bending_lines(msp, cluster: ForgeCluster) -> None:
     """
     Materializza le bending lines da geometria pura (bl.geometry).
     Deduplica per coordinate arrotondate.
@@ -412,7 +412,7 @@ def _write_bending_lines(msp, part: ForgePart) -> None:
     layer_name, _ = WORK_TYPE_TO_LAYER.get("bending", (TRASH_LAYER, COLOR_TRASH))
     seen: Set[tuple] = set()
 
-    for bl in part.bending_lines:
+    for bl in cluster.bending_lines:
         if bl.geometry is None:
             continue
         coords = list(bl.geometry.coords)

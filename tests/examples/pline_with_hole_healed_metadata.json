@@ -1,10 +1,10 @@
 {
   "source_file": "pline_with_hole.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "pline_with_hole",
       "source_file": "pline_with_hole.dxf",

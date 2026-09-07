@@ -2,14 +2,14 @@
 <forge>
   <source_file>6200012967_AMBIGUO.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>9</part_count>
+  <cluster_count>9</cluster_count>
   <warnings>
     <warning>10 INSERT esplosi prima dell'healing.</warning>
     <warning>Rimosse 4 entità duplicate dal msp.</warning>
     <warning>10 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).</warning>
   </warnings>
-  <parts>
-    <part>
+  <clusters>
+    <cluster>
       <label>6200012967_AMBIGUO</label>
       <source_file>6200012967_AMBIGUO.dxf</source_file>
       <quantity>1</quantity>
@@ -31,8 +31,8 @@
         <maxx>1538.8391</maxx>
         <maxy>1089.6135</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>6200012967_AMBIGUO</label>
       <source_file>6200012967_AMBIGUO.dxf</source_file>
       <quantity>1</quantity>
@@ -54,8 +54,8 @@
         <maxx>1259.8391</maxx>
         <maxy>1109.1135</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>6200012967_AMBIGUO</label>
       <source_file>6200012967_AMBIGUO.dxf</source_file>
       <quantity>1</quantity>
@@ -77,8 +77,8 @@
         <maxx>1343.8391</maxx>
         <maxy>1109.1135</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>6200012967_AMBIGUO</label>
       <source_file>6200012967_AMBIGUO.dxf</source_file>
       <quantity>1</quantity>
@@ -100,8 +100,8 @@
         <maxx>518.8391</maxx>
         <maxy>1109.1135</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>6200012967_AMBIGUO</label>
       <source_file>6200012967_AMBIGUO.dxf</source_file>
       <quantity>1</quantity>
@@ -123,8 +123,8 @@
         <maxx>434.8391</maxx>
         <maxy>1109.1135</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>6200012967_AMBIGUO</label>
       <source_file>6200012967_AMBIGUO.dxf</source_file>
       <quantity>1</quantity>
@@ -146,8 +146,8 @@
         <maxx>1259.8391</maxx>
         <maxy>167.1135</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>6200012967_AMBIGUO</label>
       <source_file>6200012967_AMBIGUO.dxf</source_file>
       <quantity>1</quantity>
@@ -169,8 +169,8 @@
         <maxx>1343.8391</maxx>
         <maxy>167.1135</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>6200012967_AMBIGUO</label>
       <source_file>6200012967_AMBIGUO.dxf</source_file>
       <quantity>1</quantity>
@@ -192,8 +192,8 @@
         <maxx>518.8391</maxx>
         <maxy>167.1135</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>6200012967_AMBIGUO</label>
       <source_file>6200012967_AMBIGUO.dxf</source_file>
       <quantity>1</quantity>
@@ -215,6 +215,6 @@
         <maxx>434.8391</maxx>
         <maxy>167.1135</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

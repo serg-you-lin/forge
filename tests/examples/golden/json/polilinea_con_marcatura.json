@@ -1,7 +1,7 @@
 {
   "source_file": "polilinea_con_marcatura.dxf",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 28918.9175,
       "outer_perimeter_mm": 1987.9278,
@@ -22,7 +22,7 @@
         {
           "closed": false,
           "length": 8.4,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             469.3934996385544,
@@ -36,7 +36,7 @@
         {
           "closed": false,
           "length": 8.4,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             469.3934996385544,
@@ -50,7 +50,7 @@
         {
           "closed": false,
           "length": 8.4,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             469.3934996385544,
@@ -64,7 +64,7 @@
         {
           "closed": false,
           "length": 8.4,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             469.3934996385544,
@@ -78,7 +78,7 @@
         {
           "closed": false,
           "length": 14.7,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             486.1934997096735,
@@ -92,7 +92,7 @@
         {
           "closed": false,
           "length": 2.9698,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             486.1934997096735,
@@ -106,7 +106,7 @@
         {
           "closed": false,
           "length": 4.2,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             488.2934997185634,
@@ -120,7 +120,7 @@
         {
           "closed": false,
           "length": 2.9698,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             492.4934997363432,
@@ -134,7 +134,7 @@
         {
           "closed": false,
           "length": 14.7,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             494.5934997452331,

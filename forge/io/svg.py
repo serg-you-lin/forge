@@ -124,16 +124,16 @@ def to_svg(
     out.append(f'<g transform="matrix(1 0 0 -1 0 {flip:.4f})" '
                f'stroke-linejoin="round" stroke-linecap="round">')
 
-    for i, part in enumerate(vm["parts"]):
-        out.append(f'<g data-part="{html.escape(str(part.get("label") or i))}">')
-        out.append(_shape(part["outer"], sw, False))
-        for inner in part["inners"]:
+    for i, cluster in enumerate(vm["clusters"]):
+        out.append(f'<g data-cluster="{html.escape(str(cluster.get("label") or i))}">')
+        out.append(_shape(cluster["outer"], sw, False))
+        for inner in cluster["inners"]:
             out.append(_shape(inner, sw, False))
-        for hole in part["holes"]:
+        for hole in cluster["holes"]:
             out.append(_shape(hole, sw, holes_as_circles))
-        for bl in part["bending_lines"]:
+        for bl in cluster["bending_lines"]:
             out.append(_shape(bl, sw, False))
-        for eng in part["engrave_lines"]:
+        for eng in cluster["engrave_lines"]:
             out.append(_shape(eng, sw, False))
         out.append("</g>")
 
@@ -176,10 +176,10 @@ def _scan_bbox(vm: dict) -> Optional[list]:
         for p in entry.get("points") or []:
             xs.append(p[0]); ys.append(p[1])
 
-    for part in vm.get("parts", []):
-        _collect(part["outer"])
+    for cluster in vm.get("clusters", []):
+        _collect(cluster["outer"])
         for group in ("inners", "holes", "bending_lines", "engrave_lines"):
-            for e in part[group]:
+            for e in cluster[group]:
                 _collect(e)
     for t in vm.get("trash", []):
         _collect(t)

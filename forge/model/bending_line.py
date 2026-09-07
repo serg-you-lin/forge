@@ -21,7 +21,7 @@ class BendingLine(OpenFeature):
     geometry:   LineString    = field(default=None)
     length:     float         = 0.0
     angle_deg:  float         = 0.0
-    part_label: str           = ""
+    cluster_label: str           = ""
     # Doppio binario di provenienza, come Hole ed Engraving (MAP.md D5):
     #   source="labeled"   → ruolo da label_map        (confidence 1.0)
     #   source="geometric" → inferenza in detect()     (confidence < 1.0)
@@ -39,7 +39,7 @@ class BendingLine(OpenFeature):
             "end":        coords[-1],
             "length":     round(self.length, 4),
             "angle_deg":  round(self.angle_deg, 4),
-            "part_label": self.part_label,
+            "cluster_label": self.cluster_label,
             "source":     self.source,
             "confidence": round(self.confidence, 4),
         }

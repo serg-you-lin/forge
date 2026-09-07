@@ -293,6 +293,28 @@ nuovo golden `golden/annotations/` con `generate_golden_annotations.py`. Due bug
 noti pre-esistenti su quella fixture documentati in `file_test_status.md` (BL
 sotto-rilevate sul pezzo _1; cartiglio rilevato come parte). Suite: 610 passed.
 
+### D21 — `ForgePart` → `ForgeCluster`  ✅
+
+`heal()` produce **cluster**: gruppi di geometria separati spazialmente. Un
+cluster *può* essere un pezzo lavorabile, ma anche una vista, una sezione, un
+particolare o il cartiglio — la "part-ness" è interpretazione del consumatore,
+non una cosa che forge decide (vedi `INTERPRETER.md` e la memoria
+`forge-clusters-not-parts`). Il nome `ForgePart` prometteva una semantica che
+forge non fornisce.
+
+Rename meccanico, zero logica cambiata: `ForgePart` → `ForgeCluster`,
+`result.parts` → `result.clusters`, `part_count` → `cluster_count`,
+`Annotation.part_ref` → `cluster_ref`, `*.part_label` → `cluster_label`,
+`filter_part`/`on_part`/`namer(i, part)` → `cluster`, `DEFAULT_MIN_PART_AREA`
+→ `DEFAULT_MIN_CLUSTER_AREA`, file `model/part.py` → `model/cluster.py`. Chiavi
+di output rinominate (`to_dict`, `save_json`, `save_xml` `<clusters><cluster>`,
+`to_view_model`, `data-cluster` in SVG, schema `source="cluster"`). Golden
+rigenerati sulle **sole chiavi** — diff verificato: nessun valore geometrico
+toccato. Suite: 610 passed.
+
+Breaking: le chiavi JSON/XML cambiano nome. Nessun consumatore reale le legge
+ancora. Branch `refactor/clusters`, merge ff, `main` a 0.6.3.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

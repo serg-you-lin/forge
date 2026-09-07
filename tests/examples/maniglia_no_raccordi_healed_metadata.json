@@ -1,10 +1,10 @@
 {
   "source_file": "maniglia_no_raccordi.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "maniglia_no_raccordi",
       "source_file": "maniglia_no_raccordi.dxf",

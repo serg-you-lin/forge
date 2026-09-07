@@ -2,9 +2,9 @@
 <forge>
   <source_file>flangia_scantonata.DXF</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label>flangia_scantonata</label>
       <source_file>flangia_scantonata.DXF</source_file>
       <quantity>1</quantity>
@@ -26,6 +26,6 @@
         <maxx>180.0</maxx>
         <maxy>179.9996</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

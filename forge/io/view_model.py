@@ -125,8 +125,8 @@ def _annotation_entry(ann) -> dict:
     }
 
 
-def _bbox_of(parts) -> Optional[list]:
-    boxes = [p.outer.bbox for p in parts if p.outer is not None and p.outer.polygon is not None]
+def _bbox_of(clusters) -> Optional[list]:
+    boxes = [p.outer.bbox for p in clusters if p.outer is not None and p.outer.polygon is not None]
     if not boxes:
         return None
     return [
@@ -159,28 +159,28 @@ def to_view_model(
     un file che non healizza).
     """
     parts_out = []
-    for part in result.parts:
+    for cluster in result.clusters:
         parts_out.append({
-            "label":  part.label,
-            "bbox":   list(part.bbox),
-            "area":   round(part.area, 4),
-            "outer":  _contour_entry(part.outer, tolerance),
-            "inners": [_contour_entry(i, tolerance) for i in part.inners],
-            "holes":  [_hole_entry(h, tolerance) for h in part.holes],
-            "bending_lines": [_bending_entry(b) for b in part.bending_lines],
-            "engrave_lines": [_engrave_entry(e, tolerance) for e in part.engrave_lines],
-            "summary": part.summary,
-            "custom":  part.custom,
+            "label":  cluster.label,
+            "bbox":   list(cluster.bbox),
+            "area":   round(cluster.area, 4),
+            "outer":  _contour_entry(cluster.outer, tolerance),
+            "inners": [_contour_entry(i, tolerance) for i in cluster.inners],
+            "holes":  [_hole_entry(h, tolerance) for h in cluster.holes],
+            "bending_lines": [_bending_entry(b) for b in cluster.bending_lines],
+            "engrave_lines": [_engrave_entry(e, tolerance) for e in cluster.engrave_lines],
+            "summary": cluster.summary,
+            "custom":  cluster.custom,
         })
 
     vm = {
         "source_file": result.source_file,
         "is_valid":    result.is_valid,
-        "part_count":  result.part_count,
-        "bbox":        _bbox_of(result.parts),
+        "cluster_count":  result.cluster_count,
+        "bbox":        _bbox_of(result.clusters),
         "warnings":    list(result.warnings),
         "errors":      list(result.errors),
-        "parts":       parts_out,
+        "clusters":       parts_out,
         "palette":     _palette_dict(),
     }
     if include_trash:

@@ -1,7 +1,7 @@
 {
   "source_file": "poly_spline_part.DXF",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 1107225.4736,
       "outer_perimeter_mm": 4431.8085,

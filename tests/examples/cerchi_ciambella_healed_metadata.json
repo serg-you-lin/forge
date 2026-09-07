@@ -1,10 +1,10 @@
 {
   "source_file": "cerchi_ciambella.dxf",
   "is_valid": true,
-  "part_count": 2,
+  "cluster_count": 2,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "cerchi_ciambella",
       "source_file": "cerchi_ciambella.dxf",

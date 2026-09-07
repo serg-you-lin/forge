@@ -9,7 +9,7 @@ fa già abbastanza (geometria + feature); l'interpretazione delle annotazioni è
 un concern a sé, che il chiamante attiva quando gli serve
 (es. prima di split() o di inject(), per sapere quale nota va con quale pezzo).
 
-Oggi popola solo ``Annotation.part_ref`` (indice della parte contenitrice).
+Oggi popola solo ``Annotation.cluster_ref`` (indice della parte contenitrice).
 I riferimenti alle feature per quote e direttrici (``references`` / ``target``)
 sono predisposti nel modello ma non ancora calcolati qui.
 """
@@ -25,11 +25,11 @@ from ..model.result import ForgeResult
 
 def interpret_annotations(result: ForgeResult, snap_distance: float = 0.0) -> ForgeResult:
     """
-    Assegna ``part_ref`` a ogni annotazione di ``result.annotations``.
+    Assegna ``cluster_ref`` a ogni annotazione di ``result.annotations``.
 
-    ``part_ref`` è l'indice in ``result.parts`` della parte il cui contorno
+    ``cluster_ref`` è l'indice in ``result.clusters`` della parte il cui contorno
     esterno contiene la posizione dell'annotazione. Le annotazioni fuori da
-    ogni parte (es. il cartiglio) restano con ``part_ref = None``.
+    ogni parte (es. il cartiglio) restano con ``cluster_ref = None``.
 
     ``snap_distance`` > 0: un'annotazione non contenuta da nessuna parte viene
     comunque assegnata alla parte più vicina se dista meno di ``snap_distance``
@@ -40,7 +40,7 @@ def interpret_annotations(result: ForgeResult, snap_distance: float = 0.0) -> Fo
     """
     refs = [
         (i, p.outer.polygon)
-        for i, p in enumerate(result.parts)
+        for i, p in enumerate(result.clusters)
         if p.outer is not None and p.outer.polygon is not None
         and not p.outer.polygon.is_empty
     ]
@@ -48,7 +48,7 @@ def interpret_annotations(result: ForgeResult, snap_distance: float = 0.0) -> Fo
         return result
 
     for ann in result.annotations:
-        ann.part_ref = _assign(ann.position, refs, snap_distance)
+        ann.cluster_ref = _assign(ann.position, refs, snap_distance)
 
     return result
 

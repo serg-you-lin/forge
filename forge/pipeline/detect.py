@@ -11,7 +11,7 @@ from shapely.geometry import LineString, Point
 
 from ..model import (
     ForgeResult,
-    ForgePart,
+    ForgeCluster,
     BendingLine,
     ClassifiedEntity,
     HOLE_TYPE_PLAIN,
@@ -168,14 +168,14 @@ def _detect_labeled(result: ForgeResult) -> None:
         ContourRole.HOLE, ContourRole.COUNTERSINK, ContourRole.THREADED_HOLE,
     )
 
-    for part in result.parts:
+    for cluster in result.clusters:
         remaining = []
-        for inner in part.inners:
+        for inner in cluster.inners:
             # Lane label_map (autoritativa): un contorno con ruolo foro
             # assegnato da label_map diventa un Hole a prescindere dai
             # `features` richiesti (D15).
             if inner.role in _LABELED_HOLE_ROLES:
-                part.holes.append(_labeled_hole_from_contour(inner))
+                cluster.holes.append(_labeled_hole_from_contour(inner))
                 continue
 
             if inner.role == ContourRole.UNKNOWN or inner.role in STRUCTURAL_ROLES:
@@ -183,7 +183,7 @@ def _detect_labeled(result: ForgeResult) -> None:
                 continue
 
             if inner.role == ContourRole.ENGRAVE:
-                _handle_engrave_closed(inner, part)
+                _handle_engrave_closed(inner, cluster)
                 continue
 
             work_type = inner.role.value
@@ -199,7 +199,7 @@ def _detect_labeled(result: ForgeResult) -> None:
             )
             result.classified_entities.append(ce)
             _assign_to_part(ce, result)
-        part.inners = remaining
+        cluster.inners = remaining
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +207,7 @@ def _detect_labeled(result: ForgeResult) -> None:
 # ---------------------------------------------------------------------------
 
 def _deduplicate_boundary_open_segments(result: ForgeResult, tolerance: float = 0.05) -> None:
-    if not result.parts or not result.trash_entities:
+    if not result.clusters or not result.trash_entities:
         return
 
     kept    = []
@@ -221,8 +221,8 @@ def _deduplicate_boundary_open_segments(result: ForgeResult, tolerance: float = 
 
         segment = LineString([pts[0], pts[-1]])
         on_boundary = False
-        for part in result.parts:
-            if part.outer.polygon.boundary.buffer(tolerance).covers(segment):
+        for cluster in result.clusters:
+            if cluster.outer.polygon.boundary.buffer(tolerance).covers(segment):
                 on_boundary = True
                 break
 
@@ -253,8 +253,8 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
         s = Point(pts[0])
         e = Point(pts[-1])
 
-        for part in result.parts:
-            outer    = part.outer.polygon
+        for cluster in result.clusters:
+            outer    = cluster.outer.polygon
             boundary = outer.boundary
 
             if boundary.distance(s) < 1.0 and boundary.distance(e) < 1.0:
@@ -263,7 +263,7 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                     (pts[0][1] + pts[-1][1]) / 2,
                 )
                 if outer.contains(midpoint):
-                    part.bending_lines.append(BendingLine(
+                    cluster.bending_lines.append(BendingLine(
                         role=ContourRole.BEND,
                         geometry=LineString([pts[0], pts[-1]]),
                         length=length,
@@ -271,7 +271,7 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                             pts[-1][1] - pts[0][1],
                             pts[-1][0] - pts[0][0],
                         )) % 180,
-                        part_label=part.label,
+                        cluster_label=cluster.label,
                         source="geometric",
                         confidence=0.9,
                     ))
@@ -299,20 +299,20 @@ def _detect_holes(result: ForgeResult, max_drill_diameter: float = HOLE_DIAMETER
     Lane geometrica: promuove a `Hole` i contorni interni circolari.
 
     heal() non produce più `Hole` (D15): consegna solo l'albero di contenimento
-    con `part.inners` piatto. Qui:
+    con `cluster.inners` piatto. Qui:
       - coppie concentriche (cerchio piccolo dentro cerchio grande) → countersink
         (il piccolo diventa `Hole`, l'anello grande viene assorbito);
       - contorni circolari con Ø < `max_drill_diameter` → foro (plain / threaded);
-      - Ø >= `max_drill_diameter` → restano `ForgeContour` in `part.inners`.
+      - Ø >= `max_drill_diameter` → restano `ForgeContour` in `cluster.inners`.
     """
-    for part in result.parts:
-        _promote_geometric_holes(part, result, max_drill_diameter)
+    for cluster in result.clusters:
+        _promote_geometric_holes(cluster, result, max_drill_diameter)
 
 
-def _circular_inners(part: ForgePart) -> list:
+def _circular_inners(cluster: ForgeCluster) -> list:
     """(contour, diameter, center) per ogni inner geometricamente circolare."""
     out = []
-    for c in part.inners:
+    for c in cluster.inners:
         if c.role not in (ContourRole.UNKNOWN, ContourRole.INNER):
             continue
         dia, ctr = circular_geometry(c.polygon, getattr(c, "segments", []))
@@ -321,9 +321,9 @@ def _circular_inners(part: ForgePart) -> list:
     return out
 
 
-def _promote_geometric_holes(part: ForgePart, result: ForgeResult,
+def _promote_geometric_holes(cluster: ForgeCluster, result: ForgeResult,
                              max_drill_diameter: float) -> None:
-    circ = _circular_inners(part)
+    circ = _circular_inners(cluster)
     if not circ:
         return
 
@@ -368,15 +368,15 @@ def _promote_geometric_holes(part: ForgePart, result: ForgeResult,
         return
 
     new_inners = []
-    for c in part.inners:
+    for c in cluster.inners:
         if id(c) in swallowed:
             continue
         hole = promoted.get(id(c))
         if hole is not None:
-            part.holes.append(hole)
+            cluster.holes.append(hole)
         else:
             new_inners.append(c)
-    part.inners = new_inners
+    cluster.inners = new_inners
 
 
 def _hole_from_contour(contour, diameter, center, *, hole_type, confidence,
@@ -427,7 +427,7 @@ def _detect_engrave(result: ForgeResult, engrave_tolerance: float = 1.0) -> None
     Stesso pattern di `_detect_holes` / `_detect_bending`: le incisioni con
     ruolo esplicito (label_map) sono già state promosse da `_detect_labeled`
     con `source="labeled"`. Qui si guarda ciò che è rimasto non etichettato —
-    `part.inners` con role UNKNOWN e `result.trash_entities` — e si promuove a
+    `cluster.inners` con role UNKNOWN e `result.trash_entities` — e si promuove a
     `Engraving(source="geometric")` quello che geometricamente È un'incisione,
     es.:
       - inner contour costituito da due polilinee ~parallele a distanza
@@ -443,7 +443,7 @@ def _detect_engrave(result: ForgeResult, engrave_tolerance: float = 1.0) -> None
 # Engrave handlers
 # ---------------------------------------------------------------------------
 
-def _engraving_from_open(proxy, part_label: str = "",
+def _engraving_from_open(proxy, cluster_label: str = "",
                          source: str = "labeled", confidence: float = 1.0) -> Engraving:
     pts = _proxy_pts(proxy)
     return Engraving(
@@ -453,13 +453,13 @@ def _engraving_from_open(proxy, part_label: str = "",
         length=round(track_length(pts), 4),
         pts=pts,
         geometry=LineString(pts) if len(pts) >= 2 else None,
-        part_label=part_label,
+        cluster_label=cluster_label,
         source=source,
         confidence=confidence,
     )
 
 
-def _engraving_from_closed(polygon, segments, part_label: str = "",
+def _engraving_from_closed(polygon, segments, cluster_label: str = "",
                            source: str = "labeled", confidence: float = 1.0,
                            styles=None) -> Engraving:
     return Engraving(
@@ -469,7 +469,7 @@ def _engraving_from_closed(polygon, segments, part_label: str = "",
         length=round(polygon.exterior.length, 4),
         pts=list(polygon.exterior.coords),
         polygon=polygon,
-        part_label=part_label,
+        cluster_label=cluster_label,
         source=source,
         confidence=confidence,
     )
@@ -479,8 +479,8 @@ def _handle_engrave_open(proxy: OpenFeature, result: ForgeResult) -> bool:
     """
     Smista una traccia engrave aperta per contenimento.
 
-    Dentro un part → part.engrave_lines (ritorna True).
-    Fuori da ogni part → resta trash: è geometria orfana come ogni altra
+    Dentro un cluster → cluster.engrave_lines (ritorna True).
+    Fuori da ogni cluster → resta trash: è geometria orfana come ogni altra
     entità che non sta dentro un outer (ritorna False).
     """
     pts = _proxy_pts(proxy)
@@ -493,9 +493,9 @@ def _handle_engrave_open(proxy: OpenFeature, result: ForgeResult) -> bool:
         rep = pts[0] if pts else None
 
     probe = Point(rep) if rep else None
-    for part in result.parts:
-        if probe and part.outer.polygon.contains(probe):
-            part.engrave_lines.append(_engraving_from_open(proxy, part_label=part.label))
+    for cluster in result.clusters:
+        if probe and cluster.outer.polygon.contains(probe):
+            cluster.engrave_lines.append(_engraving_from_open(proxy, cluster_label=cluster.label))
             return True
 
     return False
@@ -508,29 +508,29 @@ def _handle_engrave_closed_trash(proxy, result: ForgeResult) -> bool:
     representative point del polygon.
     """
     probe = proxy.polygon.representative_point()
-    for part in result.parts:
-        if part.outer.polygon.contains(probe):
-            part.engrave_lines.append(_engraving_from_closed(
+    for cluster in result.clusters:
+        if cluster.outer.polygon.contains(probe):
+            cluster.engrave_lines.append(_engraving_from_closed(
                 proxy.polygon,
                 getattr(proxy, "segments", []),
-                part_label=part.label,
+                cluster_label=cluster.label,
                 styles=getattr(proxy, "styles", []),
             ))
             return True
     return False
 
 
-def _handle_engrave_closed(inner, part: ForgePart) -> None:
-    part.engrave_lines.append(_engraving_from_closed(
+def _handle_engrave_closed(inner, cluster: ForgeCluster) -> None:
+    cluster.engrave_lines.append(_engraving_from_closed(
         inner.polygon,
         getattr(inner, "segments", []),
-        part_label=part.label,
+        cluster_label=cluster.label,
         styles=getattr(inner, "styles", []),
     ))
 
 
 # ---------------------------------------------------------------------------
-# Assegnazione al part contenitore
+# Assegnazione al cluster contenitore
 # ---------------------------------------------------------------------------
 
 def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
@@ -540,33 +540,33 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
 
     work_type = ce.work_type.lower()
 
-    for part in result.parts:
-        if not part.outer.polygon.contains(probe):
+    for cluster in result.clusters:
+        if not cluster.outer.polygon.contains(probe):
             continue
 
         if work_type == "bending":
-            part.bending_lines.append(_bending_line_from_data(ce.data, part.label))
+            cluster.bending_lines.append(_bending_line_from_data(ce.data, cluster.label))
 
-        _write_custom(ce, part)
+        _write_custom(ce, cluster)
         return
 
     result.warnings.append(
-        f"detect(): forma {ce.work_type} non contenuta in nessun part "
+        f"detect(): forma {ce.work_type} non contenuta in nessun cluster "
         f"(source={ce.source}). Registrata in classified_entities."
     )
 
 
-def _write_custom(ce: ClassifiedEntity, part: ForgePart) -> None:
+def _write_custom(ce: ClassifiedEntity, cluster: ForgeCluster) -> None:
     key_map = {
         "bending": "bending_lines",
         "marking": "marking_entities",
     }
     key = key_map.get(ce.work_type.lower(), f"{ce.work_type.lower()}_entities")
 
-    if key not in part.custom:
-        part.custom[key] = []
+    if key not in cluster.custom:
+        cluster.custom[key] = []
 
-    part.custom[key].append({
+    cluster.custom[key].append({
         **ce.data,
         "confidence": ce.confidence,
         "source":     ce.source,
@@ -638,7 +638,7 @@ def _extract_data_from_source(work_type: str, polygon=None) -> dict:
     return {"representative_point": rep}
 
 
-def _bending_line_from_data(data: dict, part_label: str) -> BendingLine:
+def _bending_line_from_data(data: dict, cluster_label: str) -> BendingLine:
     start = data["start"]
     end   = data["end"]
     return BendingLine(
@@ -646,7 +646,7 @@ def _bending_line_from_data(data: dict, part_label: str) -> BendingLine:
         geometry=LineString([start, end]),
         length=data["length"],
         angle_deg=data["angle_deg"],
-        part_label=part_label,
+        cluster_label=cluster_label,
         source="labeled",
         confidence=1.0,
     )

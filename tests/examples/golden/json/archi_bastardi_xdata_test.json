@@ -1,7 +1,7 @@
 {
   "source_file": "archi_bastardi_xdata_test.dxf",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 63762.6099,
       "outer_perimeter_mm": 1250.9392,

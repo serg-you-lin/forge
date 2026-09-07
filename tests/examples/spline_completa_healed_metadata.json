@@ -1,10 +1,10 @@
 {
   "source_file": "spline_completa.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "spline_completa",
       "source_file": "spline_completa.dxf",

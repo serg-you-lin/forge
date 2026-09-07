@@ -1,10 +1,10 @@
 {
   "source_file": "example_15_flattener.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "example_15_flattener",
       "source_file": "example_15_flattener.dxf",

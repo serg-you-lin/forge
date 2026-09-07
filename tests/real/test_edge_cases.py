@@ -47,11 +47,11 @@ def _make_test(dxf_path):
 
         self.assertIsNotNone(result)
 
-        if result.part_count == 0:
+        if result.cluster_count == 0:
             self.assertTrue(result.has_issues)
             return
 
-        self.assertGreater(result.part_count, 0)
+        self.assertGreater(result.cluster_count, 0)
 
         healed_vertices = _extract_pline_vertices(doc_out.modelspace())
         self.assertGreater(len(healed_vertices), 0)

@@ -2,9 +2,9 @@
 <forge>
   <source_file>intricato_doppio.dxf</source_file>
   <is_valid>true</is_valid>
-  <part_count>2</part_count>
-  <parts>
-    <part>
+  <cluster_count>2</cluster_count>
+  <clusters>
+    <cluster>
       <label>intricato_doppio</label>
       <source_file>intricato_doppio.dxf</source_file>
       <quantity>1</quantity>
@@ -26,8 +26,8 @@
         <maxx>16.2432</maxx>
         <maxy>73.197</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>intricato_doppio</label>
       <source_file>intricato_doppio.dxf</source_file>
       <quantity>1</quantity>
@@ -49,6 +49,6 @@
         <maxx>144.1407</maxx>
         <maxy>33.9191</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

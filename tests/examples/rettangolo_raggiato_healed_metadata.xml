@@ -2,9 +2,9 @@
 <forge>
   <source_file>rettangolo_raggiato.DXF</source_file>
   <is_valid>true</is_valid>
-  <part_count>1</part_count>
-  <parts>
-    <part>
+  <cluster_count>1</cluster_count>
+  <clusters>
+    <cluster>
       <label>rettangolo_raggiato</label>
       <source_file>rettangolo_raggiato.DXF</source_file>
       <quantity>1</quantity>
@@ -26,6 +26,6 @@
         <maxx>-998.0047</maxx>
         <maxy>205.6468</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

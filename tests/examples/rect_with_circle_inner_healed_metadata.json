@@ -1,10 +1,10 @@
 {
   "source_file": "rect_with_circle_inner.dxf",
   "is_valid": true,
-  "part_count": 1,
+  "cluster_count": 1,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "rect_with_circle_inner",
       "source_file": "rect_with_circle_inner.dxf",

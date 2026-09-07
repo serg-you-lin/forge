@@ -1,10 +1,10 @@
 {
   "source_file": "intricato_doppio.dxf",
   "is_valid": true,
-  "part_count": 2,
+  "cluster_count": 2,
   "warnings": [],
   "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "intricato_doppio",
       "source_file": "intricato_doppio.dxf",

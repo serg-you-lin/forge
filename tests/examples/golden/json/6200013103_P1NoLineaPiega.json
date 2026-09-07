@@ -1,7 +1,7 @@
 {
   "source_file": "6200013103_P1NoLineaPiega.dxf",
-  "part_count": 6,
-  "parts": [
+  "cluster_count": 6,
+  "clusters": [
     {
       "area_mm2": 127826.1808,
       "outer_perimeter_mm": 2354.5299,
@@ -118,7 +118,7 @@
           ],
           "length": 245.0,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         }
@@ -245,7 +245,7 @@
           ],
           "length": 308.4383,
           "angle_deg": 90.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         },
@@ -260,7 +260,7 @@
           ],
           "length": 273.3557,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         },
@@ -275,7 +275,7 @@
           ],
           "length": 174.5216,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         }
@@ -372,7 +372,7 @@
           ],
           "length": 20.0,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         },
@@ -387,7 +387,7 @@
           ],
           "length": 20.0,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         },
@@ -402,7 +402,7 @@
           ],
           "length": 20.0,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         },
@@ -417,7 +417,7 @@
           ],
           "length": 20.0,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         }
@@ -473,7 +473,7 @@
           ],
           "length": 80.0,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         },
@@ -488,7 +488,7 @@
           ],
           "length": 80.0,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         },
@@ -503,7 +503,7 @@
           ],
           "length": 80.0,
           "angle_deg": 0.0,
-          "part_label": "",
+          "cluster_label": "",
           "source": "geometric",
           "confidence": 0.9
         }

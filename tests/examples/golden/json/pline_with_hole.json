@@ -1,7 +1,7 @@
 {
   "source_file": "pline_with_hole.dxf",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 13000.0,
       "outer_perimeter_mm": 500.0,

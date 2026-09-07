@@ -1,5 +1,5 @@
 """
-model/part.py
+model/cluster.py
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from forge.model.engraving import Engraving
 
 # Tolleranza per raggruppare le bending line collineari in un'unica piega
 # logica. Era il default di `inject()` prima che il conteggio diventasse
-# `part.summary` (MAP.md D8).
+# `cluster.summary` (MAP.md D8).
 _BENDING_GROUP_TOLERANCE = 0.1
 
 
@@ -34,7 +34,7 @@ class ForgeContour(ClosedFeature):
 
 
 @dataclass
-class ForgePart:
+class ForgeCluster:
     outer:         ForgeContour
     holes:         List[Hole]                              = field(default_factory=list)
     inners:        List[ForgeContour]                      = field(default_factory=list)
@@ -72,10 +72,10 @@ class ForgePart:
     @property
     def summary(self) -> dict:
         """
-        Conteggi delle feature, derivati al volo dalle liste tipate del part.
+        Conteggi delle feature, derivati al volo dalle liste tipate del cluster.
 
         Sostituisce il lavoro di conteggio che `inject()` faceva copiando in
-        `part.custom` (MAP.md D8): gli stessi numeri, ma calcolati dal modello
+        `cluster.custom` (MAP.md D8): gli stessi numeri, ma calcolati dal modello
         invece che tenuti in uno stato a parte che poteva desincronizzarsi.
         `inject()` resta solo per il `data_injector` esterno (materiale,
         spessore, codice pezzo dai testi).

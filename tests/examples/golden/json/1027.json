@@ -1,7 +1,7 @@
 {
   "source_file": "1027.DXF",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 138806.3176,
       "outer_perimeter_mm": 1509.0981,

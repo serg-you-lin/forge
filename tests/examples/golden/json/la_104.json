@@ -1,7 +1,7 @@
 {
   "source_file": "la_104.DXF",
-  "part_count": 1,
-  "parts": [
+  "cluster_count": 1,
+  "clusters": [
     {
       "area_mm2": 19167.3076,
       "outer_perimeter_mm": 550.6102,
@@ -50,7 +50,7 @@
         {
           "closed": false,
           "length": 11.36,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             29.703000000000003,
@@ -64,7 +64,7 @@
         {
           "closed": false,
           "length": 4.26,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             29.703000000000003,
@@ -78,7 +78,7 @@
         {
           "closed": false,
           "length": 2.0082,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             33.963,
@@ -92,7 +92,7 @@
         {
           "closed": false,
           "length": 2.84,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             35.383,
@@ -106,7 +106,7 @@
         {
           "closed": false,
           "length": 2.0082,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             35.383,
@@ -120,7 +120,7 @@
         {
           "closed": false,
           "length": 4.26,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             33.963,
@@ -134,7 +134,7 @@
         {
           "closed": false,
           "length": 11.36,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             38.223,
@@ -148,7 +148,7 @@
         {
           "closed": false,
           "length": 4.26,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             38.223,
@@ -162,7 +162,7 @@
         {
           "closed": false,
           "length": 2.0082,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             42.483,
@@ -176,7 +176,7 @@
         {
           "closed": false,
           "length": 2.84,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             43.903,
@@ -190,7 +190,7 @@
         {
           "closed": false,
           "length": 2.0082,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             43.903,
@@ -204,7 +204,7 @@
         {
           "closed": false,
           "length": 4.26,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             38.223,
@@ -218,7 +218,7 @@
         {
           "closed": false,
           "length": 2.0082,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             42.483,
@@ -232,7 +232,7 @@
         {
           "closed": false,
           "length": 2.84,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             43.903,
@@ -246,7 +246,7 @@
         {
           "closed": false,
           "length": 2.0082,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             43.903,
@@ -260,7 +260,7 @@
         {
           "closed": false,
           "length": 4.26,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             42.483,
@@ -274,7 +274,7 @@
         {
           "closed": false,
           "length": 3.408,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             46.743,
@@ -288,7 +288,7 @@
         {
           "closed": false,
           "length": 11.36,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             54.69500000000001,
@@ -302,7 +302,7 @@
         {
           "closed": false,
           "length": 9.656,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             60.375,
@@ -316,7 +316,7 @@
         {
           "closed": false,
           "length": 1.2049,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             60.375,
@@ -330,7 +330,7 @@
         {
           "closed": false,
           "length": 3.124,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             61.227,
@@ -344,7 +344,7 @@
         {
           "closed": false,
           "length": 1.2049,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             64.351,
@@ -358,7 +358,7 @@
         {
           "closed": false,
           "length": 9.656,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             65.203,
@@ -372,7 +372,7 @@
         {
           "closed": false,
           "length": 1.2049,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             65.203,
@@ -386,7 +386,7 @@
         {
           "closed": false,
           "length": 3.124,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             64.351,
@@ -400,7 +400,7 @@
         {
           "closed": false,
           "length": 1.2049,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             61.227,
@@ -414,7 +414,7 @@
         {
           "closed": false,
           "length": 10.7957,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             60.375,
@@ -428,7 +428,7 @@
         {
           "closed": false,
           "length": 4.828,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             67.617,
@@ -442,7 +442,7 @@
         {
           "closed": false,
           "length": 1.2049,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             67.617,
@@ -456,7 +456,7 @@
         {
           "closed": false,
           "length": 4.828,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             68.46900000000001,
@@ -470,7 +470,7 @@
         {
           "closed": false,
           "length": 11.36,
-          "part_label": "",
+          "cluster_label": "",
           "origin": "MARK",
           "start": [
             73.297,

@@ -4,7 +4,7 @@ tests/unit/core/test_hierarchy_builder.py
 Test per HierarchyBuilder.
 
 D15: HierarchyBuilder costruisce SOLO l'albero di contenimento —
-`ForgePart(outer, inners=[ForgeContour...])`, zero `Hole`. La classificazione
+`ForgeCluster(outer, inners=[ForgeContour...])`, zero `Hole`. La classificazione
 hole / countersink è di `detect()` (vedi tests/unit/test_detect.py).
 
 I proxy ClosedFeature/OpenFeature vengono costruiti direttamente con Polygon
@@ -76,26 +76,26 @@ class TestOuterConInner(unittest.TestCase):
     - 1 proxy grande (100×100) → OUTER
     - 1 proxy circolare d=5 contenuto → inner (heal NON lo promuove a foro)
 
-    Atteso: 1 ForgePart, 0 holes, 1 inner, trash vuoto.
+    Atteso: 1 ForgeCluster, 0 holes, 1 inner, trash vuoto.
     """
 
     def setUp(self):
         self.outer = _rect_proxy(0, 0, 100, 100)
         self.inner = _circle_proxy(50, 50, 2.5)
-        self.parts, self.trash = _make_builder().build([self.outer, self.inner])
+        self.clusters, self.trash = _make_builder().build([self.outer, self.inner])
 
     def test_produce_una_part(self):
-        self.assertEqual(len(self.parts), 1)
+        self.assertEqual(len(self.clusters), 1)
 
     def test_outer_area(self):
-        self.assertAlmostEqual(self.parts[0].outer.polygon.area, 10000.0, delta=1.0)
+        self.assertAlmostEqual(self.clusters[0].outer.polygon.area, 10000.0, delta=1.0)
 
     def test_zero_holes(self):
-        self.assertEqual(len(self.parts[0].holes), 0)
+        self.assertEqual(len(self.clusters[0].holes), 0)
 
     def test_un_inner(self):
-        self.assertEqual(len(self.parts[0].inners), 1)
-        self.assertEqual(self.parts[0].inners[0].role, ContourRole.INNER)
+        self.assertEqual(len(self.clusters[0].inners), 1)
+        self.assertEqual(self.clusters[0].inners[0].role, ContourRole.INNER)
 
     def test_trash_vuoto(self):
         self.assertEqual(len(self.trash), 0)
@@ -119,16 +119,16 @@ class TestNestingFlattened(unittest.TestCase):
         outer   = _rect_proxy(0, 0, 100, 100)
         medio   = _circle_proxy(50, 50, 10)   # d=20
         piccolo = _circle_proxy(50, 50, 4)    # d=8
-        self.parts, self.trash = _make_builder().build([outer, medio, piccolo])
+        self.clusters, self.trash = _make_builder().build([outer, medio, piccolo])
 
     def test_produce_una_part(self):
-        self.assertEqual(len(self.parts), 1)
+        self.assertEqual(len(self.clusters), 1)
 
     def test_zero_holes(self):
-        self.assertEqual(len(self.parts[0].holes), 0)
+        self.assertEqual(len(self.clusters[0].holes), 0)
 
     def test_due_inners(self):
-        self.assertEqual(len(self.parts[0].inners), 2)
+        self.assertEqual(len(self.clusters[0].inners), 2)
 
 
 # ---------------------------------------------------------------------------
@@ -140,16 +140,16 @@ class TestTrash(unittest.TestCase):
     - 1 proxy outer (100×100)
     - 1 OpenFeature role=UNKNOWN fuori dall'outer
 
-    Atteso: il proxy aperto flottante finisce in trash, l'outer produce 1 ForgePart.
+    Atteso: il proxy aperto flottante finisce in trash, l'outer produce 1 ForgeCluster.
     """
 
     def setUp(self):
         self.outer    = _rect_proxy(0, 0, 100, 100)
         self.floating = _make_open_proxy([(200, 200), (210, 200)], role=ContourRole.UNKNOWN)
-        self.parts, self.trash = _make_builder().build([self.outer, self.floating])
+        self.clusters, self.trash = _make_builder().build([self.outer, self.floating])
 
     def test_una_part_prodotta(self):
-        self.assertGreaterEqual(len(self.parts), 1)
+        self.assertGreaterEqual(len(self.clusters), 1)
 
     def test_floating_in_trash(self):
         self.assertIn(self.floating, self.trash)
@@ -195,13 +195,13 @@ class TestSegmentsCopiati(unittest.TestCase):
         inner = _circle_proxy(50, 50, 2.5)
         inner.segments = list(self.seg_inner)
 
-        self.parts, _ = _make_builder().build([outer, inner])
+        self.clusters, _ = _make_builder().build([outer, inner])
 
     def test_outer_segments_copiati(self):
-        self.assertEqual(self.parts[0].outer.segments, self.seg_outer)
+        self.assertEqual(self.clusters[0].outer.segments, self.seg_outer)
 
     def test_inner_segments_copiati(self):
-        self.assertEqual(self.parts[0].inners[0].segments, self.seg_inner)
+        self.assertEqual(self.clusters[0].inners[0].segments, self.seg_inner)
 
 
 if __name__ == "__main__":

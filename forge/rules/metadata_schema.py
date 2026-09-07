@@ -23,8 +23,8 @@ Campi che l'utente deve fornire (o restano al default):
 
 
 METADATA_FIELDS = {
-    "label"                   : ("label",                    "",       "part"),
-    "source_file"             : ("source_file",              "",       "part"),
+    "label"                   : ("label",                    "",       "cluster"),
+    "source_file"             : ("source_file",              "",       "cluster"),
     "quantity"                : ("quantity",                 1,        "custom"),
     "material"                : ("material",                 "S275JR", "custom"),
     "thickness"               : ("thickness_mm",             0.0,      "custom"),

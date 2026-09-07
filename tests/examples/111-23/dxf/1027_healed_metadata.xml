@@ -2,9 +2,9 @@
 <forge>
   <source_file>1027.DXF</source_file>
   <is_valid>true</is_valid>
-  <part_count>2</part_count>
-  <parts>
-    <part>
+  <cluster_count>2</cluster_count>
+  <clusters>
+    <cluster>
       <label>1027</label>
       <source_file>1027.DXF</source_file>
       <quantity>1</quantity>
@@ -23,8 +23,8 @@
         <maxx>400.0</maxx>
         <maxy>370.5</maxy>
       </bbox>
-    </part>
-    <part>
+    </cluster>
+    <cluster>
       <label>1027</label>
       <source_file>1027.DXF</source_file>
       <quantity>1</quantity>
@@ -43,6 +43,6 @@
         <maxx>61.5</maxx>
         <maxy>222.0</maxy>
       </bbox>
-    </part>
-  </parts>
+    </cluster>
+  </clusters>
 </forge>

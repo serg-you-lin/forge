@@ -19,7 +19,7 @@ from shapely.geometry import Polygon, LineString, Point
 
 from forge.model import (
     ForgeContour,
-    ForgePart,
+    ForgeCluster,
     ForgeResult,
     Hole,
     Edge,
@@ -243,7 +243,7 @@ class TestEdge(unittest.TestCase):
 
 class TestBendingLine(unittest.TestCase):
 
-    def _make_bl(self, start=(0, 0), end=(100, 0), part_label=""):
+    def _make_bl(self, start=(0, 0), end=(100, 0), cluster_label=""):
         geom = LineString([start, end])
         import math
         dx = end[0] - start[0]
@@ -254,15 +254,15 @@ class TestBendingLine(unittest.TestCase):
             geometry=geom,
             length=geom.length,
             angle_deg=angle,
-            part_label=part_label,
+            cluster_label=cluster_label,
         )
 
     def test_001_to_dict_keys(self):
         """to_dict ha tutte le chiavi attese."""
-        bl = self._make_bl(part_label="p1")
+        bl = self._make_bl(cluster_label="p1")
         d = bl.to_dict()
         print(f"\n[BendingLine.to_dict] keys={list(d.keys())}")
-        for key in ["start", "end", "length", "angle_deg", "part_label"]:
+        for key in ["start", "end", "length", "angle_deg", "cluster_label"]:
             self.assertIn(key, d)
 
     def test_002_to_dict_length(self):
@@ -279,11 +279,11 @@ class TestBendingLine(unittest.TestCase):
         print(f"[BendingLine.to_dict] angle_deg={d['angle_deg']}")
         self.assertAlmostEqual(d["angle_deg"], 0.0, places=4)
 
-    def test_004_to_dict_part_label(self):
-        """to_dict part_label preservato."""
-        bl = self._make_bl(part_label="pezzo_3")
+    def test_004_to_dict_cluster_label(self):
+        """to_dict cluster_label preservato."""
+        bl = self._make_bl(cluster_label="pezzo_3")
         d = bl.to_dict()
-        self.assertEqual(d["part_label"], "pezzo_3")
+        self.assertEqual(d["cluster_label"], "pezzo_3")
 
     def test_005_to_dict_start_end_are_tuples(self):
         """start e end in to_dict sono tuple (x, y)."""
@@ -296,10 +296,10 @@ class TestBendingLine(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Test ForgePart
+# Test ForgeCluster
 # ---------------------------------------------------------------------------
 
-class TestForgePart(unittest.TestCase):
+class TestForgeCluster(unittest.TestCase):
 
     def _make_outer(self, coords=None):
         if coords is None:
@@ -308,14 +308,14 @@ class TestForgePart(unittest.TestCase):
 
     def test_001_no_holes_area(self):
         """Area corretta senza fori."""
-        part = ForgePart(outer=self._make_outer(), label="test")
-        print(f"\n[ForgePart] area={part.area}, holes={len(part.holes)}")
-        self.assertEqual(part.area, 10000.0)
+        cluster = ForgeCluster(outer=self._make_outer(), label="test")
+        print(f"\n[ForgeCluster] area={cluster.area}, holes={len(cluster.holes)}")
+        self.assertEqual(cluster.area, 10000.0)
 
     def test_002_no_holes_count(self):
         """Lista fori vuota di default."""
-        part = ForgePart(outer=self._make_outer(), label="test")
-        self.assertEqual(len(part.holes), 0)
+        cluster = ForgeCluster(outer=self._make_outer(), label="test")
+        self.assertEqual(len(cluster.holes), 0)
 
     def test_003_with_hole_net_area(self):
         """Area netta = outer - foro."""
@@ -323,52 +323,52 @@ class TestForgePart(unittest.TestCase):
         outer = self._make_outer()
         hole_poly = Point((50, 50)).buffer(5.0, resolution=64)
         hole = Hole(role=ContourRole.HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
-        part = ForgePart(outer=outer, holes=[hole])
+        cluster = ForgeCluster(outer=outer, holes=[hole])
         expected = 10000.0 - math.pi * 25.0
-        print(f"\n[ForgePart with hole] area={part.area:.4f} expected≈{expected:.4f}")
-        self.assertAlmostEqual(part.area, expected, delta=0.01)
+        print(f"\n[ForgeCluster with hole] area={cluster.area:.4f} expected≈{expected:.4f}")
+        self.assertAlmostEqual(cluster.area, expected, delta=0.01)
 
     def test_004_polygon_with_holes(self):
         """polygon_with_holes restituisce Polygon Shapely con foro."""
         outer = self._make_outer()
         hole_poly = Point((50, 50)).buffer(5.0, resolution=64)
         hole = Hole(role=ContourRole.HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
-        part = ForgePart(outer=outer, holes=[hole])
-        result_poly = part.polygon_with_holes
-        print(f"[ForgePart] interiors={len(list(result_poly.interiors))}")
+        cluster = ForgeCluster(outer=outer, holes=[hole])
+        result_poly = cluster.polygon_with_holes
+        print(f"[ForgeCluster] interiors={len(list(result_poly.interiors))}")
         self.assertEqual(len(list(result_poly.interiors)), 1)
 
     def test_005_bbox(self):
         """Bbox corrisponde all'outer."""
-        part = ForgePart(outer=self._make_outer())
-        print(f"[ForgePart] bbox={part.bbox}")
-        self.assertEqual(part.bbox, (0, 0, 100, 100))
+        cluster = ForgeCluster(outer=self._make_outer())
+        print(f"[ForgeCluster] bbox={cluster.bbox}")
+        self.assertEqual(cluster.bbox, (0, 0, 100, 100))
 
     def test_006_bending_lines_default_empty(self):
         """bending_lines è lista vuota di default."""
-        part = ForgePart(outer=self._make_outer())
-        self.assertIsInstance(part.bending_lines, list)
-        self.assertEqual(len(part.bending_lines), 0)
+        cluster = ForgeCluster(outer=self._make_outer())
+        self.assertIsInstance(cluster.bending_lines, list)
+        self.assertEqual(len(cluster.bending_lines), 0)
 
     def test_007_engrave_lines_default_empty(self):
         """engrave_lines è lista vuota di default."""
-        part = ForgePart(outer=self._make_outer())
-        self.assertIsInstance(part.engrave_lines, list)
-        self.assertEqual(len(part.engrave_lines), 0)
+        cluster = ForgeCluster(outer=self._make_outer())
+        self.assertIsInstance(cluster.engrave_lines, list)
+        self.assertEqual(len(cluster.engrave_lines), 0)
 
     def test_008_custom_default_empty(self):
         """custom è dict vuoto di default."""
-        part = ForgePart(outer=self._make_outer())
-        self.assertIsInstance(part.custom, dict)
-        self.assertEqual(len(part.custom), 0)
+        cluster = ForgeCluster(outer=self._make_outer())
+        self.assertIsInstance(cluster.custom, dict)
+        self.assertEqual(len(cluster.custom), 0)
 
     def test_009_inners_independent(self):
-        """Due ForgePart non condividono la stessa lista inners."""
-        p1 = ForgePart(outer=self._make_outer())
-        p2 = ForgePart(outer=self._make_outer())
+        """Due ForgeCluster non condividono la stessa lista inners."""
+        p1 = ForgeCluster(outer=self._make_outer())
+        p2 = ForgeCluster(outer=self._make_outer())
         inner_poly = Polygon([(10,10), (20,10), (20,20), (10,20)])
         p1.inners.append(ForgeContour(role=ContourRole.INNER, polygon=inner_poly))
-        print(f"[ForgePart] p1.inners={len(p1.inners)} p2.inners={len(p2.inners)}")
+        print(f"[ForgeCluster] p1.inners={len(p1.inners)} p2.inners={len(p2.inners)}")
         self.assertEqual(len(p2.inners), 0)
 
 
@@ -381,14 +381,14 @@ class TestForgeResult(unittest.TestCase):
     def _make_result(self):
         outer_poly = Polygon([(0,0), (50,0), (50,50), (0,50)])
         outer = ForgeContour(role=ContourRole.OUTER, polygon=outer_poly)
-        part  = ForgePart(outer=outer, label="pezzo_1", source_file="test.dxf")
-        return ForgeResult(parts=[part], source_file="test.dxf")
+        cluster  = ForgeCluster(outer=outer, label="pezzo_1", source_file="test.dxf")
+        return ForgeResult(clusters=[cluster], source_file="test.dxf")
 
     def test_001_part_count(self):
-        """part_count corretto."""
+        """cluster_count corretto."""
         result = self._make_result()
-        print(f"\n[ForgeResult] part_count={result.part_count}")
-        self.assertEqual(result.part_count, 1)
+        print(f"\n[ForgeResult] cluster_count={result.cluster_count}")
+        self.assertEqual(result.cluster_count, 1)
 
     def test_002_is_valid_default(self):
         """is_valid è True di default."""
@@ -412,8 +412,8 @@ class TestForgeResult(unittest.TestCase):
         result = self._make_result()
         d = result.to_dict()
         print(f"[ForgeResult] keys={list(d.keys())}")
-        self.assertIn("part_count", d)
-        self.assertIn("parts", d)
+        self.assertIn("cluster_count", d)
+        self.assertIn("clusters", d)
         self.assertIn("is_valid", d)
         self.assertIn("source_file", d)
 
@@ -421,9 +421,9 @@ class TestForgeResult(unittest.TestCase):
         """to_dict ha i valori corretti."""
         result = self._make_result()
         d = result.to_dict()
-        print(f"[ForgeResult] part label={d['parts'][0]['label']}")
-        self.assertEqual(d["part_count"], 1)
-        self.assertEqual(d["parts"][0]["label"], "pezzo_1")
+        print(f"[ForgeResult] cluster label={d['clusters'][0]['label']}")
+        self.assertEqual(d["cluster_count"], 1)
+        self.assertEqual(d["clusters"][0]["label"], "pezzo_1")
         self.assertTrue(d["is_valid"])
 
 
