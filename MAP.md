@@ -348,7 +348,8 @@ Nessun cambiamento di comportamento — solo file spostati e import aggiornati.
 
 Il frame (`core/classification/frame_detector.py`,
 `adapters/dxf/frame_adapter_dxf.py`) è concettualmente roba dell'interprete ma
-resta in forge finché quel repo non esiste.
+resta in forge finché quel repo non esiste. → superato da D24: rimosso, era
+codice morto.
 
 ### D23 — Script numerati in `scripts/` + `_paths.py` che fa `chdir`  ✅
 
@@ -373,6 +374,29 @@ Forma finale, **un solo modo**:
 L'output relativo (`pipeline_output/`) finisce comunque sotto la radice del
 repo grazie al `chdir`. `13_ARC_splitter` si sposta in `scripts/` per coerenza
 ma resta fuori serie (path assoluti propri, API pre-refactor, non versionato).
+
+### D24 — Frame detector rimosso da forge (era codice morto)  ✅
+
+Supera la nota in coda a D22 ("resta in forge finché quel repo non esiste").
+
+`core/classification/frame_detector.py` e `adapters/dxf/frame_adapter_dxf.py`
+erano già morti: nessun test o script li chiamava, l'adapter importava da
+`...core.classify.frame_detector` (path inesistente — la cartella è
+`classification`), e `detect_frame()` aveva un `print("DEBUG …")` piantato
+dentro. Il rilevamento cornice/cartiglio è per decisione roba dell'interprete
+(memoria `forge-neutral-substrate-agent-layer-above`): gira *prima* di `heal`
+su geometria grezza, cosa che forge non fa. Tenerlo "solo annotato" significava
+tenere in `core/` un modulo rotto che prometteva una capacità che forge non
+espone.
+
+Entrambi i file cancellati — sono in git history. L'algoritmo (rettangoli con
+ratio ISO √2 ±5% + containment ≥ 80%, conservativo) resta documentato in
+`INTERPRETER.md` come specifica di `frame.py`, da implementare lì quando il repo
+esiste. Il ruolo `ContourRole.FRAME` resta in forge: è solo un'etichetta (un
+importer del layer sopra può assegnarla, `rules/palette` e `adapters/dxf/layers`
+le danno un layer di destinazione), non logica di rilevamento.
+
+Branch `refactor/kill-frame-deadcode`.
 
 ---
 
