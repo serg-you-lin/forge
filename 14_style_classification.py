@@ -40,7 +40,7 @@ os.makedirs(OUTDIR, exist_ok=True)
 
 
 def show(tag, result):
-    p = result.parts[0]
+    p = result.clusters[0]
     print(f"{tag:<24} bending={len(p.bending_lines):<3} engrave={len(p.engrave_lines):<3} "
           f"trash={len(result.trash_entities):<3}")
 
@@ -86,11 +86,11 @@ forge.to_dxf(r_color, doc, include_trash=True).saveas(
 print("\nBending lines promosse da linetype_map (source='labeled' anche se il")
 print("ruolo viene dallo stile, non dal layer — stessa lane di label_map, solo")
 print("un altro segnale in ingresso):")
-for bl in r_linetype.parts[0].bending_lines[:5]:
+for bl in r_linetype.clusters[0].bending_lines[:5]:
     print(f"   len={bl.length:6.1f}  angle={bl.angle_deg:6.1f}  source={bl.source}")
-print(f"   ... {len(r_linetype.parts[0].bending_lines)} totali")
+print(f"   ... {len(r_linetype.clusters[0].bending_lines)} totali")
 
 print("\ncolor_map su questo file (cyan -> engrave) è ridondante: le uniche")
 print("entità cyan sono già su MARK, già coperto da label_map — infatti")
-print(f"bending={len(r_color.parts[0].bending_lines)} qui, non {len(r_linetype.parts[0].bending_lines)}: "
+print(f"bending={len(r_color.clusters[0].bending_lines)} qui, non {len(r_linetype.clusters[0].bending_lines)}: "
       f"conferma che era linetype_map, non color_map, a classificare Bend/DOT.")

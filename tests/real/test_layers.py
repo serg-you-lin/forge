@@ -126,21 +126,21 @@ class TestEntitaBylayer(unittest.TestCase):
         )
 
     def test_outer_contour_su_layer_corretto(self):
-        """Il contorno esterno di ogni part deve essere su OuterContour."""
-        for i, part in enumerate(self.result.parts):
-            with self.subTest(part=i):
+        """Il contorno esterno di ogni cluster deve essere su OuterContour."""
+        for i, cluster in enumerate(self.result.clusters):
+            with self.subTest(cluster=i):
                 self.assertEqual(
-                    ROLE_TO_LAYER.get(part.outer.role),
+                    ROLE_TO_LAYER.get(cluster.outer.role),
                     LAYER_OUTER,
-                    msg=f"Part {i}: outer.role atteso 'outer', trovato '{part.outer.role}'",
+                    msg=f"Part {i}: outer.role atteso 'outer', trovato '{cluster.outer.role}'",
                 )
 
     def test_holes_su_layer_corretto(self):
         """I fori devono avere un role foro-compatibile (hole, inner, threaded_hole, countersink)."""
         role_fori_validi = {ContourRole.HOLE, ContourRole.INNER, ContourRole.THREADED_HOLE, ContourRole.COUNTERSINK}
-        for i, part in enumerate(self.result.parts):
-            for j, hole in enumerate(part.holes):
-                with self.subTest(part=i, hole=j):
+        for i, cluster in enumerate(self.result.clusters):
+            for j, hole in enumerate(cluster.holes):
+                with self.subTest(cluster=i, hole=j):
                     self.assertIn(
                         hole.role,
                         role_fori_validi,
@@ -235,11 +235,11 @@ class TestLineetteBastarde(unittest.TestCase):
         cls.msp = forge.to_dxf(cls.result, src_doc).modelspace()
 
     def test_un_solo_part(self):
-        self.assertEqual(self.result.part_count, 1, "Atteso 1 part")
+        self.assertEqual(self.result.cluster_count, 1, "Atteso 1 cluster")
 
     def test_outer_su_layer_corretto(self):
-        part = self.result.parts[0]
-        self.assertEqual(ROLE_TO_LAYER.get(part.outer.role), LAYER_OUTER)
+        cluster = self.result.clusters[0]
+        self.assertEqual(ROLE_TO_LAYER.get(cluster.outer.role), LAYER_OUTER)
 
     def test_due_entita_su_bending(self):
         bending = [e for e in self.msp if e.dxf.hasattr("layer") and e.dxf.layer == LAYER_BENDING]
@@ -249,7 +249,7 @@ class TestLineetteBastarde(unittest.TestCase):
         """Le LINE non riconosciute come piega non vengono perse: restano nel
         modello come trash_entities (non più spostate su un layer 'Trash').
         Con 2 sole pieghe reali riconosciute, il resto finisce in trash."""
-        self.assertEqual(len(self.result.parts[0].bending_lines), 2)
+        self.assertEqual(len(self.result.clusters[0].bending_lines), 2)
         self.assertGreaterEqual(
             len(self.result.trash_entities), 4,
             f"trash_entities inatteso: {len(self.result.trash_entities)}",
@@ -258,7 +258,7 @@ class TestLineetteBastarde(unittest.TestCase):
     def test_nessuna_line_spuria_su_bending(self):
         """Ogni LINE materializzata su Bending deve corrispondere, per coordinate,
         a una bending line del modello — nessuna LINE bastarda."""
-        part = self.result.parts[0]
+        cluster = self.result.clusters[0]
 
         def _key(a, b):
             pa, pb = sorted([(round(a[0], 3), round(a[1], 3)),
@@ -266,7 +266,7 @@ class TestLineetteBastarde(unittest.TestCase):
             return (pa, pb)
 
         model_keys = set()
-        for bl in part.bending_lines:
+        for bl in cluster.bending_lines:
             if bl.geometry is None:
                 continue
             coords = list(bl.geometry.coords)

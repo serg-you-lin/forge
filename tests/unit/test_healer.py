@@ -3,7 +3,7 @@ test_healer.py
 --------------
 Unit test per forge.heal().
 
-Verifica esclusivamente il ForgeResult — parts, inners, holes, trash.
+Verifica esclusivamente il ForgeResult — clusters, inners, holes, trash.
 NON verifica effetti sul msp (layer, colori, LWPOLYLINE scritte) → test_writeback.py
 
 Prima di lanciare, genera i DXF di esempio:
@@ -46,7 +46,7 @@ class TestHealerRectLines(unittest.TestCase):
         self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_no_errors(self):
         self.assertEqual(len(self.result.errors), 0)
@@ -55,10 +55,10 @@ class TestHealerRectLines(unittest.TestCase):
         self.assertTrue(self.result.is_valid)
 
     def test_004_correct_area(self):
-        self.assertAlmostEqual(self.result.parts[0].area, 5000, delta=50)
+        self.assertAlmostEqual(self.result.clusters[0].area, 5000, delta=50)
 
     def test_005_no_holes(self):
-        self.assertEqual(len(self.result.parts[0].inners), 0)
+        self.assertEqual(len(self.result.clusters[0].inners), 0)
 
     # helper riutilizzabile
     def assert_entity(self, entity, expected_layer, expected_color):
@@ -80,13 +80,13 @@ class TestHealerRectWithHole(unittest.TestCase):
         self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_has_hole(self):
-        self.assertGreaterEqual(len(self.result.parts[0].inners), 1)
+        self.assertGreaterEqual(len(self.result.clusters[0].inners), 1)
 
     def test_003_outer_area(self):
-        self.assertAlmostEqual(self.result.parts[0].outer.area, 20000, delta=200)
+        self.assertAlmostEqual(self.result.clusters[0].outer.area, 20000, delta=200)
 
 
 # ---------------------------------------------------------------------------
@@ -103,12 +103,12 @@ class TestHealerCleanFile(unittest.TestCase):
     def test_002_finds_one_part(self):
         doc = forge.load_dxf(load("pline_with_hole.dxf"))
         result = forge.heal(doc)
-        self.assertEqual(result.part_count, 1)
+        self.assertEqual(result.cluster_count, 1)
 
     def test_003_has_one_inner(self):
         doc = forge.load_dxf(load("pline_with_hole.dxf"))
         result = forge.heal(doc)
-        self.assertEqual(len(result.parts[0].inners), 1)
+        self.assertEqual(len(result.clusters[0].inners), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -122,10 +122,10 @@ class TestHealerCircleOuter(unittest.TestCase):
         self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_inner_classified(self):
-        self.assertGreaterEqual(len(self.result.parts[0].holes) + len(self.result.parts[0].inners), 1)
+        self.assertGreaterEqual(len(self.result.clusters[0].holes) + len(self.result.clusters[0].inners), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -139,23 +139,23 @@ class TestHealerCircleHole(unittest.TestCase):
         self.result = forge.heal(doc)
         # heal() consegna solo il contorno interno; la promozione a foro è di
         # detect(features="holes").
-        self.assertEqual(len(self.result.parts[0].holes), 0)
-        self.assertEqual(len(self.result.parts[0].inners), 1)
+        self.assertEqual(len(self.result.clusters[0].holes), 0)
+        self.assertEqual(len(self.result.clusters[0].inners), 1)
         forge.detect(self.result, features="all")
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_has_hole(self):
-        self.assertGreaterEqual(len(self.result.parts[0].holes), 1)
+        self.assertGreaterEqual(len(self.result.clusters[0].holes), 1)
 
     def test_003_hole_role(self):
         from forge.model.role import ContourRole
-        for hole in self.result.parts[0].holes:
+        for hole in self.result.clusters[0].holes:
             self.assertEqual(hole.role, ContourRole.HOLE)
 
     def test_004_exact_hole_count(self):
-        self.assertEqual(len(self.result.parts[0].holes), 1)
+        self.assertEqual(len(self.result.clusters[0].holes), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -170,10 +170,10 @@ class TestHealerCircleInner(unittest.TestCase):
 
     def test_001_inner_present_and_role(self):
         from forge.model.role import ContourRole
-        inners = self.result.parts[0].inners
+        inners = self.result.clusters[0].inners
         self.assertEqual(len(inners), 1)
         self.assertEqual(inners[0].role, ContourRole.INNER)
-        self.assertEqual(len(self.result.parts[0].holes), 0)
+        self.assertEqual(len(self.result.clusters[0].holes), 0)
 
 
 # ---------------------------------------------------------------------------
@@ -189,12 +189,12 @@ class TestHealerCountersink(unittest.TestCase):
         self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_sees_both_circles_as_inners(self):
         # heal() non distingue countersink — li vede entrambi come inners
-        self.assertEqual(len(self.result.parts[0].holes), 0)
-        self.assertGreaterEqual(len(self.result.parts[0].inners), 2)
+        self.assertEqual(len(self.result.clusters[0].holes), 0)
+        self.assertGreaterEqual(len(self.result.clusters[0].inners), 2)
 
 
 # ---------------------------------------------------------------------------
@@ -208,10 +208,10 @@ class TestHealerInnerLoopInsideLwpolyline(unittest.TestCase):
         self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_inner_loop_classified_as_inner(self):
-        self.assertEqual(len(self.result.parts[0].inners), 1)
+        self.assertEqual(len(self.result.clusters[0].inners), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -225,13 +225,13 @@ class TestHealerDeduplication(unittest.TestCase):
         self.result = forge.heal(doc)
 
     def test_001_finds_one_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_no_errors(self):
         self.assertEqual(len(self.result.errors), 0)
 
     def test_003_correct_area(self):
-        self.assertAlmostEqual(self.result.parts[0].area, 5000, delta=50)
+        self.assertAlmostEqual(self.result.clusters[0].area, 5000, delta=50)
 
 
 # ---------------------------------------------------------------------------

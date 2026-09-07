@@ -61,7 +61,7 @@ def _heal_and_inject(dxf_name, label_map=None, data_injector=None, interpreter=N
     return doc, result
 
 # ---------------------------------------------------------------------------
-# Caso base: result senza parts — inject non deve crashare
+# Caso base: result senza clusters — inject non deve crashare
 # ---------------------------------------------------------------------------
 
 class TestInjectEmptyResult(unittest.TestCase):
@@ -72,7 +72,7 @@ class TestInjectEmptyResult(unittest.TestCase):
         result = forge.heal(doc)
         # non deve esplodere
         forge.inject(result)
-        self.assertEqual(result.parts, [])
+        self.assertEqual(result.clusters, [])
 
 
 # ---------------------------------------------------------------------------
@@ -88,18 +88,18 @@ class TestInjectBendingLines(unittest.TestCase):
         )
 
     def test_001_part_exists(self):
-        self.assertTrue(self.result.parts)
+        self.assertTrue(self.result.clusters)
 
     def test_002_bending_metrics_are_optional(self):
-        custom = self.result.parts[0].custom
+        custom = self.result.clusters[0].custom
         self.assertIsInstance(custom, dict)
 
     def test_003_data_injector_can_add_bending_metric(self):
-        def add_metric(part, testi):
+        def add_metric(cluster, testi):
             return {"bending_lines": 2}
 
         forge.inject(self.result, data_injector=add_metric)
-        self.assertEqual(self.result.parts[0].custom["bending_lines"], 2)
+        self.assertEqual(self.result.clusters[0].custom["bending_lines"], 2)
 
 
 # ---------------------------------------------------------------------------
@@ -115,22 +115,22 @@ class TestInjectEngraveLength(unittest.TestCase):
         )
 
     def test_001_engrave_metric_is_optional(self):
-        custom = self.result.parts[0].custom
+        custom = self.result.clusters[0].custom
         self.assertIsInstance(custom, dict)
 
     def test_002_data_injector_can_add_engrave_metric(self):
-        def add_metric(part, testi):
+        def add_metric(cluster, testi):
             return {"total_engrave_length": 141.42}
 
         forge.inject(self.result, data_injector=add_metric)
-        self.assertAlmostEqual(self.result.parts[0].custom["total_engrave_length"], 141.42, delta=0.1)
+        self.assertAlmostEqual(self.result.clusters[0].custom["total_engrave_length"], 141.42, delta=0.1)
 
     def test_003_engrave_metric_is_float(self):
-        def add_metric(part, testi):
+        def add_metric(cluster, testi):
             return {"total_engrave_length": 141.42}
 
         forge.inject(self.result, data_injector=add_metric)
-        self.assertIsInstance(self.result.parts[0].custom["total_engrave_length"], float)
+        self.assertIsInstance(self.result.clusters[0].custom["total_engrave_length"], float)
 
 
 # ---------------------------------------------------------------------------
@@ -143,15 +143,15 @@ class TestInjectCountersink(unittest.TestCase):
         _, self.result = _heal_and_inject("rect_with_countersink.dxf")
 
     def test_001_countersink_count_present(self):
-        """countersink_count deve comparire in part.summary."""
-        self.assertIn("countersink_count", self.result.parts[0].summary)
+        """countersink_count deve comparire in cluster.summary."""
+        self.assertIn("countersink_count", self.result.clusters[0].summary)
 
     def test_002_countersink_count_value(self):
         """Il DXF ha 1 coppia concentrica → countersink_count == 1."""
-        self.assertEqual(self.result.parts[0].summary["countersink_count"], 1)
+        self.assertEqual(self.result.clusters[0].summary["countersink_count"], 1)
 
     def test_003_countersink_count_is_int(self):
-        val = self.result.parts[0].summary["countersink_count"]
+        val = self.result.clusters[0].summary["countersink_count"]
         self.assertIsInstance(val, int)
 
 
@@ -172,14 +172,14 @@ class TestInjectThreadedHoles(unittest.TestCase):
         )
 
     def test_001_threaded_holes_count_present(self):
-        self.assertIn("threaded_holes_count", self.result.parts[0].summary)
+        self.assertIn("threaded_holes_count", self.result.clusters[0].summary)
 
     def test_002_threaded_holes_count_value(self):
         """Il DXF ha 3 cerchi su layer THREADED → threaded_holes_count == 3."""
-        self.assertEqual(self.result.parts[0].summary["threaded_holes_count"], 3)
+        self.assertEqual(self.result.clusters[0].summary["threaded_holes_count"], 3)
 
     def test_003_threaded_holes_count_is_int(self):
-        val = self.result.parts[0].summary["threaded_holes_count"]
+        val = self.result.clusters[0].summary["threaded_holes_count"]
         self.assertIsInstance(val, int)
 
 
@@ -201,14 +201,14 @@ class TestInjectDataInjector(unittest.TestCase):
         """Il data_injector deve essere chiamato e il risultato finire in custom."""
         forge.inject(
             self.result,
-            data_injector=lambda part, testi: {"materiale": "acciaio"},
+            data_injector=lambda cluster, testi: {"materiale": "acciaio"},
         )
-        self.assertEqual(self.result.parts[0].custom["materiale"], "acciaio")
+        self.assertEqual(self.result.clusters[0].custom["materiale"], "acciaio")
 
     def test_002_data_injector_riceve_lista_testi(self):
         """Il data_injector riceve una lista come secondo argomento."""
         received = {}
-        def spy(part, testi):
+        def spy(cluster, testi):
             received["testi"] = testi
             return {}
         forge.inject(self.result, data_injector=spy)
@@ -222,7 +222,7 @@ class TestInjectDataInjector(unittest.TestCase):
 
     def test_004_data_injector_eccezione_produce_warning(self):
         """Se il data_injector solleva un'eccezione, deve finire in result.warnings."""
-        def bad_injector(part, testi):
+        def bad_injector(cluster, testi):
             raise ValueError("errore simulato")
 
         forge.inject(self.result, data_injector=bad_injector)
@@ -233,7 +233,7 @@ class TestInjectDataInjector(unittest.TestCase):
         """Se il data_injector restituisce None, inject() non deve crashare."""
         forge.inject(
             self.result,
-            data_injector=lambda part, testi: None,
+            data_injector=lambda cluster, testi: None,
         )
         # nessuna eccezione = test passa
 
@@ -241,19 +241,19 @@ class TestInjectDataInjector(unittest.TestCase):
         """Il data_injector può aggiungere dati custom senza interferire con il resto del custom."""
         forge.inject(
             self.result,
-            data_injector=lambda part, testi: {"spessore": 3.0},
+            data_injector=lambda cluster, testi: {"spessore": 3.0},
         )
-        custom = self.result.parts[0].custom
+        custom = self.result.clusters[0].custom
         self.assertIn("spessore", custom)
         self.assertIsInstance(custom, dict)
 
 
 # ---------------------------------------------------------------------------
-# Isolamento tra parts (multi-part)
+# Isolamento tra clusters (multi-cluster)
 # ---------------------------------------------------------------------------
 
 class TestInjectMultiPart(unittest.TestCase):
-    """Verifica che il data injector applichi i valori in modo isolato per ogni part."""
+    """Verifica che il data injector applichi i valori in modo isolato per ogni cluster."""
 
     def setUp(self):
         _, self.result = _heal_and_inject(
@@ -262,20 +262,20 @@ class TestInjectMultiPart(unittest.TestCase):
         )
 
     def test_001_two_parts_found(self):
-        self.assertEqual(self.result.part_count, 2)
+        self.assertEqual(self.result.cluster_count, 2)
 
     def test_002_data_injector_can_target_each_part(self):
-        def add_metric(part, testi):
-            return {"marker": part.outer.polygon.area}
+        def add_metric(cluster, testi):
+            return {"marker": cluster.outer.polygon.area}
 
         forge.inject(self.result, data_injector=add_metric)
-        areas = [part.custom["marker"] for part in self.result.parts]
+        areas = [cluster.custom["marker"] for cluster in self.result.clusters]
         self.assertEqual(len(areas), 2)
         self.assertTrue(all(isinstance(a, float) for a in areas))
 
     def test_003_empty_custom_is_allowed(self):
-        for part in self.result.parts:
-            self.assertIsInstance(part.custom, dict)
+        for cluster in self.result.clusters:
+            self.assertIsInstance(cluster.custom, dict)
 
 
 if __name__ == "__main__":

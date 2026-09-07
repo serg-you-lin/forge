@@ -30,9 +30,9 @@ base = os.path.splitext(os.path.basename(INPUT))[0]
 
 # set_schema: rimappa i nomi dei campi in output sul tuo CAM/gestionale.
 # struttura: {chiave_interna: (nome_output, default, sorgente)}
-# sorgente ∈ {"part", "custom", "calculated"}
+# sorgente ∈ {"cluster", "custom", "calculated"}
 forge.set_schema({
-    "label":        ("codice",        "",       "part"),
+    "label":        ("codice",        "",       "cluster"),
     "material":     ("materiale",     "S275JR", "custom"),
     "thickness":    ("spessore_mm",   0.0,      "custom"),
     "area":         ("area_mm2",      None,     "calculated"),
@@ -42,11 +42,11 @@ forge.set_schema({
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
 result = forge.heal_and_detect(doc, label=base, features="all")
-forge.inject(result, data_injector=lambda part, txt: {"material": "AISI304", "thickness": 3.0})
+forge.inject(result, data_injector=lambda cluster, txt: {"material": "AISI304", "thickness": 3.0})
 
 out = forge.to_dxf(result, doc)
-for part in result.parts:
-    forge.write_metadata_to_dxf(out, part)
+for cluster in result.clusters:
+    forge.write_metadata_to_dxf(out, cluster)
 
 path = os.path.join(OUTDIR, f"{base}_xdata.dxf")
 out.saveas(path)

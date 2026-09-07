@@ -4,10 +4,10 @@ inject.py
 Arricchimento CAM opzionale di un ForgeResult già prodotto da heal() (+ detect()).
 
 Da MAP.md D8: il conteggio delle feature (fori per tipo, pieghe, incisioni) NON
-si fa più qui — è `part.summary`, una property derivata dal modello. `inject()`
+si fa più qui — è `cluster.summary`, una property derivata dal modello. `inject()`
 resta solo per il suo lavoro unico: passare a un `data_injector` esterno i testi
 che ricadono dentro l'outer di ogni parte (codice pezzo, materiale, spessore) e
-mettere il dict risultante in `part.custom`.
+mettere il dict risultante in `cluster.custom`.
 
 I testi vengono da `result.annotations` (il modello tipato prodotto da
 load_dxf): niente più `msp` o liste sciolte. Filtro per contenimento nell'outer
@@ -19,14 +19,14 @@ Contratto:
     - Opera su un ForgeResult già prodotto da heal() (+ detect()).
     - Lavora sul modello: non tocca ezdxf.
     - Il data_injector è opzionale — senza, inject() non fa nulla.
-    - Muta result.parts[i].custom in-place e ritorna il result.
+    - Muta result.clusters[i].custom in-place e ritorna il result.
 
 Flusso tipico:
 
     doc    = forge.load_dxf("pezzo.dxf", label_map={"Bend": "bending"})
     result = forge.heal_and_detect(doc)
     forge.inject(result, data_injector=leggi_cartiglio)
-    forge.save_json(result, ...)   # i conteggi vengono da part.summary
+    forge.save_json(result, ...)   # i conteggi vengono da cluster.summary
 """
 
 from typing import Callable, List, Optional
@@ -36,32 +36,32 @@ from shapely.geometry import Point
 
 def inject(result, data_injector: Optional[Callable] = None):
     """
-    Arricchisce i ForgePart con i dati estratti da un `data_injector` esterno.
+    Arricchisce i ForgeCluster con i dati estratti da un `data_injector` esterno.
 
-    Muta `result.parts[i].custom` in-place e ritorna il `result`.
+    Muta `result.clusters[i].custom` in-place e ritorna il `result`.
 
     Args:
         result:        ForgeResult prodotto da heal() (+ detect()).
-        data_injector: `callable(ForgePart, list[str]) -> dict`. Riceve i testi
+        data_injector: `callable(ForgeCluster, list[str]) -> dict`. Riceve i testi
                        contenuti nell'outer della parte, restituisce i campi da
-                       mettere in `part.custom` (materiale, spessore, codice, ...).
+                       mettere in `cluster.custom` (materiale, spessore, codice, ...).
     """
-    if not result.parts or data_injector is None:
+    if not result.clusters or data_injector is None:
         return result
 
-    for part in result.parts:
-        outer_poly = part.outer.polygon
+    for cluster in result.clusters:
+        outer_poly = cluster.outer.polygon
         if outer_poly is None or outer_poly.is_empty:
             continue
 
         testi = _texts_inside(result.annotations, outer_poly)
         try:
-            injected = data_injector(part, testi)
+            injected = data_injector(cluster, testi)
             if injected:
-                part.custom.update(injected)
+                cluster.custom.update(injected)
         except Exception as ex:
             result.warnings.append(
-                f"data_injector fallito su {part.label}: {ex}"
+                f"data_injector fallito su {cluster.label}: {ex}"
             )
 
     return result

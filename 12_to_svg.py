@@ -39,13 +39,13 @@ result = forge.heal_and_detect(doc, label=base, features="all")
 
 # 1. view model — il JSON per un renderer esterno
 vm = forge.to_view_model(result, tolerance=0.05)
-part = vm["parts"][0]
-print(f"parti          : {vm['part_count']}")
+cluster = vm["clusters"][0]
+print(f"parti          : {vm['cluster_count']}")
 print(f"bbox           : {vm['bbox']}")
-print(f"outer          : {len(part['outer']['points'])} punti, colore {part['outer']['color']}")
-print(f"fori           : {[(h['hole_type'], round(h['diameter'], 1), h['color']) for h in part['holes'][:4]]} …")
-print(f"pieghe         : {len(part['bending_lines'])}")
-print(f"incisioni      : {len(part['engrave_lines'])}")
+print(f"outer          : {len(cluster['outer']['points'])} punti, colore {cluster['outer']['color']}")
+print(f"fori           : {[(h['hole_type'], round(h['diameter'], 1), h['color']) for h in cluster['holes'][:4]]} …")
+print(f"pieghe         : {len(cluster['bending_lines'])}")
+print(f"incisioni      : {len(cluster['engrave_lines'])}")
 print(f"trash          : {len(vm['trash'])}")
 print(f"palette        : {vm['palette']}")
 

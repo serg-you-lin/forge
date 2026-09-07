@@ -6,7 +6,7 @@ import os
 from .heal import HealStep
 from .detect import detect, ALL_FEATURES
 from .interpret import interpret_annotations
-from .write import to_dxf, split, part_passes_min_area, DEFAULT_MIN_PART_AREA
+from .write import to_dxf, split, cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
 from ..rules.thresholds import HOLE_DIAMETER_THRESHOLD
 from ..adapters.dxf.layers import LAYER_ANNOTATION
 from .inject import inject
@@ -32,7 +32,7 @@ def heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeR
     tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
     result = HealStep(doc, tol, label=label, source_file=source_file).run()
 
-    if result.is_valid and result.parts:
+    if result.is_valid and result.clusters:
         from ..rules.validator import validate_result
         validate_result(result)
 
@@ -51,7 +51,7 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
 
     Equivale a:
         result = forge.heal(doc, tolerance=..., label=..., source_file=...)
-        if result.is_valid and result.parts:
+        if result.is_valid and result.clusters:
             forge.detect(result, features="all", ...)
 
     A differenza di `detect()` nudo (che fa solo la lane label_map + pulizia
@@ -68,7 +68,7 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
     """
     result = heal(doc, tolerance=tolerance, label=label, source_file=source_file)
 
-    if result.is_valid and result.parts:
+    if result.is_valid and result.clusters:
         detect(result,
                features=features,
                max_drill_diameter=max_drill_diameter,
@@ -83,7 +83,7 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
 def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
                    tolerance=None, namer=None,
                    include_annotations=True,
-                   min_area=DEFAULT_MIN_PART_AREA,
+                   min_area=DEFAULT_MIN_CLUSTER_AREA,
                    exclude_types=None,
                    annotation_layer=LAYER_ANNOTATION) -> ForgeResult:
     """
@@ -91,11 +91,11 @@ def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
 
     heal → detect → split → `.saveas()` per parte. È l'unica funzione della
     pipeline che tocca il filesystem: `split()` resta puro.
-    Il nome file è `f"{part.label}.dxf"` (part.label lo assegna `namer`).
+    Il nome file è `f"{cluster.label}.dxf"` (cluster.label lo assegna `namer`).
     """
     result = heal(doc, tolerance=tolerance, label=label, source_file=source_file)
 
-    if not result.is_valid or not result.parts:
+    if not result.is_valid or not result.clusters:
         return result
 
     detect(result, features="all")
@@ -105,8 +105,8 @@ def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
                      annotation_layer=annotation_layer)
 
     os.makedirs(output_folder, exist_ok=True)
-    kept = [p for p in result.parts if part_passes_min_area(p, min_area)]
-    for part, drawing in zip(kept, drawings):
-        drawing.saveas(os.path.join(output_folder, f"{part.label}.dxf"))
+    kept = [p for p in result.clusters if cluster_passes_min_area(p, min_area)]
+    for cluster, drawing in zip(kept, drawings):
+        drawing.saveas(os.path.join(output_folder, f"{cluster.label}.dxf"))
 
     return result

@@ -10,12 +10,12 @@ Divisione dei compiti:
       solo conoscenza di formato (dove sta il testo, come si appiattisce il
       blocco di una quota).
     - fase di pipeline ``interpret_annotations()`` → collega l'annotazione alla
-      geometria: popola ``part_ref`` (indice della parte che la contiene) e, in
+      geometria: popola ``cluster_ref`` (indice della parte che la contiene) e, in
       futuro, i riferimenti alle feature per quote e direttrici.
     - agente → legge e modifica questi oggetti (aggiunge una nota, cambia
       l'override di una quota, ri-punta un leader); ``write()`` li riemette.
 
-``part_ref`` è l'indice in ``result.parts`` (stessa convenzione dei file split
+``cluster_ref`` è l'indice in ``result.clusters`` (stessa convenzione dei file split
 ``__000``/``__001``), non un ``id()`` — così resta valido dopo serializzazione.
 ``references`` / ``target`` (label delle feature) sono predisposti ma non ancora
 popolati.
@@ -68,7 +68,7 @@ class Annotation:
     position:    Point
     layer:       str           = "0"
     origin:      Optional[str]  = None   # provenienza nella sorgente — diagnostica
-    part_ref:    Optional[int]  = None   # indice in result.parts della parte che la contiene (fase interpret)
+    cluster_ref:    Optional[int]  = None   # indice in result.clusters della parte che la contiene (fase interpret)
     source_kind: str            = ""
 
     @property

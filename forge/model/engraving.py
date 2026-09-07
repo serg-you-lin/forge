@@ -29,7 +29,7 @@ from forge.model.role import ContourRole
 @dataclass
 class Engraving(OpenFeature):
     length:     float                    = 0.0
-    part_label: str                      = ""
+    cluster_label: str                      = ""
     pts:        List[Tuple[float, float]] = field(default_factory=list)
     geometry:   Optional[LineString]     = None
     polygon:    Optional[Polygon]        = None
@@ -49,7 +49,7 @@ class Engraving(OpenFeature):
         d = {
             "closed":     self.closed,
             "length":     round(self.length, 4),
-            "part_label": self.part_label,
+            "cluster_label": self.cluster_label,
             "source":     self.source,
             "confidence": round(self.confidence, 4),
         }

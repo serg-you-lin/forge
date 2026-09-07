@@ -55,7 +55,7 @@ class TestPipelineBendingRoundtrip(unittest.TestCase):
     def test_001_original_has_bending(self):
         result = self.pipeline["result"]
 
-        bending = result.parts[0].summary["bending_lines"]
+        bending = result.clusters[0].summary["bending_lines"]
 
         print(f"\n[bending original] count={(bending)}")
         self.assertGreater(bending, 0)
@@ -63,8 +63,8 @@ class TestPipelineBendingRoundtrip(unittest.TestCase):
     def test_002_reload_finds_one_part(self):
         reloaded = self.pipeline["reloaded_result"]
 
-        print(f"[reload] part_count={reloaded.part_count}")
-        self.assertEqual(reloaded.part_count, 1)
+        print(f"[reload] cluster_count={reloaded.cluster_count}")
+        self.assertEqual(reloaded.cluster_count, 1)
 
     def test_003_bending_layer_survives_write(self):
         msp = self.pipeline["msp"]
@@ -99,7 +99,7 @@ class TestPipelineCountersinkPersistence(unittest.TestCase):
 
     def test_002_reload_still_has_one_part(self):
         self.assertEqual(
-            self.pipeline["reloaded_result"].part_count,
+            self.pipeline["reloaded_result"].cluster_count,
             1,
         )
 
@@ -149,7 +149,7 @@ class TestPipelineDetectIdempotency(unittest.TestCase):
         result = self.pipeline["result"]
         msp = self.pipeline["msp"]
 
-        before = result.parts[0].summary["bending_lines"]
+        before = result.clusters[0].summary["bending_lines"]
 
         import forge
 
@@ -157,7 +157,7 @@ class TestPipelineDetectIdempotency(unittest.TestCase):
             result, features="all"
         )
 
-        after = result.parts[0].summary["bending_lines"]
+        after = result.clusters[0].summary["bending_lines"]
 
         print(f"\n[idempotency] before={before} after={after}")
         self.assertEqual(before, after)
@@ -180,15 +180,15 @@ class TestPipelineWriteIntegrity(unittest.TestCase):
     def test_001_only_one_outer_exists(self):
         reloaded = self.pipeline["reloaded_result"]
 
-        print(f"\n[write integrity] parts={reloaded.part_count}")
-        self.assertEqual(reloaded.part_count, 1)
+        print(f"\n[write integrity] clusters={reloaded.cluster_count}")
+        self.assertEqual(reloaded.cluster_count, 1)
 
     def test_002_no_extra_holes_created(self):
         reloaded = self.pipeline["reloaded_result"]
-        part = reloaded.parts[0]
+        cluster = reloaded.clusters[0]
 
-        print(f"[write integrity] inners={len(part.inners)}")
-        self.assertGreaterEqual(len(part.inners), 0)
+        print(f"[write integrity] inners={len(cluster.inners)}")
+        self.assertGreaterEqual(len(cluster.inners), 0)
 
 
 class TestSpecialLayersEngrave(unittest.TestCase):

@@ -58,7 +58,7 @@ def _actual_dict(a) -> dict:
         "position": [round(a.position[0], 3), round(a.position[1], 3)],
         "display_text": a.display_text,
         "layer": a.layer,
-        "part_ref": a.part_ref,
+        "cluster_ref": a.cluster_ref,
     }
     if isinstance(a, Note):
         d["height"] = round(a.height, 3)
@@ -97,9 +97,9 @@ def _make_test(path: Path):
         actual = sorted((_actual_dict(a) for a in anns), key=_sort_key)
         expected = golden["annotations"]
 
-        if "part_count" in golden:
+        if "cluster_count" in golden:
             self.assertEqual(
-                result.part_count, golden["part_count"],
+                result.cluster_count, golden["cluster_count"],
                 msg=f"{golden['source_file']}: numero parti",
             )
 
@@ -120,7 +120,7 @@ def _make_test(path: Path):
             self.assertEqual(act["layer"], exp["layer"], msg=f"{ctx}: layer")
             self.assertAlmostEqual(act["position"][0], exp["position"][0], delta=TOL_POS, msg=f"{ctx}: x")
             self.assertAlmostEqual(act["position"][1], exp["position"][1], delta=TOL_POS, msg=f"{ctx}: y")
-            self.assertEqual(act["part_ref"], exp.get("part_ref"), msg=f"{ctx}: part_ref")
+            self.assertEqual(act["cluster_ref"], exp.get("cluster_ref"), msg=f"{ctx}: cluster_ref")
 
             if exp["type"] == "Note":
                 self.assertAlmostEqual(act["height"], exp["height"], delta=TOL_VALUE, msg=f"{ctx}: height")

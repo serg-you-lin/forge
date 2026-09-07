@@ -17,8 +17,8 @@ Gli input di default puntano a `tests/examples/`. Gli output vanno in
 | 02 | `02_heal.py` | `heal`, `validate_result` | ricostruzione topologia → parti, albero outer/inner (niente fori) |
 | 03 | `03_detect.py` | `detect`, `ALL_FEATURES` | classificazione feature: nudo vs `"holes"`/`"bending"`/`"all"`, `max_drill_diameter` |
 | 04 | `04_heal_and_detect.py` | `heal_and_detect` | la via del 90% — heal + detect in un colpo |
-| 05 | `05_to_dxf.py` | `to_dxf` | render del modello in un DXF nuovo; `filter_part`, `include_trash` |
-| 06 | `06_split.py` | `split` | un `Drawing` per parte (puro); `namer`, `on_part`, `exclude_types` |
+| 05 | `05_to_dxf.py` | `to_dxf` | render del modello in un DXF nuovo; `filter_cluster`, `include_trash` |
+| 06 | `06_split.py` | `split` | un `Drawing` per parte (puro); `namer`, `on_cluster`, `exclude_types` |
 | 07 | `07_split_to_files.py` | `split_to_files` | pipeline multi-pezzo completa su disco |
 | 08 | `08_inject.py` | `extract_forge_texts`, `extract_texts_from_msp`, `inject` | arricchimento CAM dai testi del disegno |
 | 09 | `09_export.py` | `to_json`, `save_json`, `save_xml`, `to_nester_input` | metadati fuori da forge |
@@ -31,7 +31,7 @@ Gli input di default puntano a `tests/examples/`. Gli output vanno in
 path/`) e `--tol`; senza argomenti processa `tests/examples/`. Salta i file già
 `*_healed`.
 
-I tipi di dominio (`ForgeResult`, `ForgePart`, `ForgeContour`, `ForgeDocument`,
+I tipi di dominio (`ForgeResult`, `ForgeCluster`, `ForgeContour`, `ForgeDocument`,
 `Annotation`) sono mostrati inline dentro gli script.
 
 ## Fuori serie

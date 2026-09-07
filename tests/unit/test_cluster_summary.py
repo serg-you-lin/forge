@@ -1,15 +1,15 @@
 """
-tests/unit/test_part_summary.py
+tests/unit/test_cluster_summary.py
 -------------------------------
-`ForgePart.summary` (MAP.md D8): i conteggi feature che prima produceva
-`inject()` scrivendo in `part.custom`, ora derivati dal modello.
+`ForgeCluster.summary` (MAP.md D8): i conteggi feature che prima produceva
+`inject()` scrivendo in `cluster.custom`, ora derivati dal modello.
 """
 
 import unittest
 
 from shapely.geometry import Polygon, LineString
 
-from forge.model.part import ForgePart, ForgeContour
+from forge.model.cluster import ForgeCluster, ForgeContour
 from forge.model.hole import (
     Hole, HOLE_TYPE_PLAIN, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED,
 )
@@ -21,7 +21,7 @@ from forge.model.role import ContourRole
 def _part(**kw):
     outer = ForgeContour(polygon=Polygon([(0, 0), (100, 0), (100, 100), (0, 100)]),
                          role=ContourRole.OUTER)
-    return ForgePart(outer=outer, **kw)
+    return ForgeCluster(outer=outer, **kw)
 
 
 def _hole(t):
@@ -70,7 +70,7 @@ class TestPartSummary(unittest.TestCase):
 class TestSummaryMatchesGoldenFixtures(unittest.TestCase):
     """
     Prova di equivalenza: i conteggi salvati nei golden fixture (prodotti dal
-    vecchio inject()) devono coincidere con part.summary della pipeline attuale.
+    vecchio inject()) devono coincidere con cluster.summary della pipeline attuale.
     """
 
     def test_golden_summary_matches_pipeline(self):
@@ -104,9 +104,9 @@ class TestSummaryMatchesGoldenFixtures(unittest.TestCase):
                 continue
             if not result.is_valid:
                 continue
-            for i, (part, pg) in enumerate(zip(result.parts, golden["parts"])):
+            for i, (cluster, pg) in enumerate(zip(result.clusters, golden["clusters"])):
                 for key, expected in (pg.get("summary") or {}).items():
-                    actual = part.summary.get(key)
+                    actual = cluster.summary.get(key)
                     checked += 1
                     if isinstance(expected, float):
                         self.assertAlmostEqual(actual, expected, delta=0.01,

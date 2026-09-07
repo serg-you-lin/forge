@@ -139,20 +139,20 @@ def count_entities_on_layer(msp, layer_name):
 
 def get_part(result, index=0):
     """
-    Restituisce un ForgePart.
+    Restituisce un ForgeCluster.
     """
-    return result.parts[index]
+    return result.clusters[index]
 
 
 def get_custom(result, key, default=None):
     """
     Shortcut per i conteggi/metadati di una parte.
 
-    I conteggi feature vivono in part.summary (MAP.md D8); i dati aggiunti da
-    un data_injector esterno in part.custom. Si guardano entrambi.
+    I conteggi feature vivono in cluster.summary (MAP.md D8); i dati aggiunti da
+    un data_injector esterno in cluster.custom. Si guardano entrambi.
     """
-    part = get_part(result)
-    summary = part.summary
+    cluster = get_part(result)
+    summary = cluster.summary
     if key in summary:
         return summary[key]
-    return part.custom.get(key, default)
+    return cluster.custom.get(key, default)

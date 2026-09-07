@@ -12,7 +12,7 @@ from .annotation import (
     Annotation, Note, Dimension, Leader, RenderedGeometry, RenderedText,
 )
 from .document import ForgeDocument
-from .part import ForgeContour, ForgePart
+from .cluster import ForgeContour, ForgeCluster
 from .result import ForgeResult
 from .engraving import Engraving
 from .bending_line import BendingLine
@@ -36,7 +36,7 @@ __all__ = [
     "RenderedGeometry",
     "RenderedText",
     "ForgeContour",
-    "ForgePart",
+    "ForgeCluster",
     "ForgeResult",
     "Engraving",
     "BendingLine",

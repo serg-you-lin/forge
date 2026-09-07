@@ -125,23 +125,23 @@ def _make_test(path):
 
         forge.detect(result, features="all")
 
-        # --- part count ---
+        # --- cluster count ---
         self.assertEqual(
-            result.part_count,
-            golden["part_count"],
+            result.cluster_count,
+            golden["cluster_count"],
         )
 
-        for idx, (part, expected) in enumerate(
-            zip(result.parts, golden["parts"])
+        for idx, (cluster, expected) in enumerate(
+            zip(result.clusters, golden["clusters"])
         ):
             label = f"{golden['source_file']} parte {idx+1}"
 
-            holes = sorted(part.holes, key=lambda x: x.area, reverse=True)
-            inners = sorted(part.inners, key=lambda x: x.area, reverse=True)
+            holes = sorted(cluster.holes, key=lambda x: x.area, reverse=True)
+            inners = sorted(cluster.inners, key=lambda x: x.area, reverse=True)
 
             # --- area ---
             self.assertAlmostEqual(
-                round(part.area, 4),
+                round(cluster.area, 4),
                 expected["area_mm2"],
                 delta=TOL_AREA,
                 msg=f"{label} area",
@@ -149,7 +149,7 @@ def _make_test(path):
 
             # --- perimetro outer ---
             self.assertAlmostEqual(
-                round(part.outer.polygon.exterior.length, 4),
+                round(cluster.outer.polygon.exterior.length, 4),
                 expected["outer_perimeter_mm"],
                 delta=TOL_PERIMETER,
                 msg=f"{label} outer perimeter",
@@ -170,7 +170,7 @@ def _make_test(path):
 
             # --- total perimeter ---
             actual_total_p = round(
-                part.outer.polygon.exterior.length +
+                cluster.outer.polygon.exterior.length +
                 sum(h.polygon.exterior.length for h in holes) +
                 sum(i.polygon.exterior.length for i in inners),
                 4,
@@ -185,7 +185,7 @@ def _make_test(path):
             # --- outer shape ---
             outer = shapely_wkt.loads(expected["outer_wkt"])
             self.assertLess(
-                part.outer.polygon.symmetric_difference(outer).area,
+                cluster.outer.polygon.symmetric_difference(outer).area,
                 TOL_SHAPE,
                 msg=f"{label} outer shape",
             )
@@ -312,12 +312,12 @@ def _make_test(path):
             # --- bending lines ---
             if "bending_lines" in expected:
                 self.assertEqual(
-                    len(part.bending_lines),
+                    len(cluster.bending_lines),
                     expected.get("bending_lines_count", 0),
                     msg=f"{label} bending_lines count",
                 )
                 for j, (bl, exp_bl) in enumerate(
-                    zip(part.bending_lines, expected["bending_lines"])
+                    zip(cluster.bending_lines, expected["bending_lines"])
                 ):
                     actual_dict = bl.to_dict()
                     for key in ["length", "angle_deg"]:
@@ -337,18 +337,18 @@ def _make_test(path):
             # --- engrave lines ---
             if "engrave_lines" in expected:
                 self.assertAlmostEqual(
-                    round(sum(e.length for e in part.engrave_lines), 4),
+                    round(sum(e.length for e in cluster.engrave_lines), 4),
                     expected.get("total_engrave_length", 0),
                     delta=TOL_PERIMETER,
                     msg=f"{label} total_engrave_length",
                 )
                 self.assertEqual(
-                    len(part.engrave_lines),
+                    len(cluster.engrave_lines),
                     expected.get("engrave_lines_count", 0),
                     msg=f"{label} engrave_lines count",
                 )
                 for j, (eng, exp_eng) in enumerate(
-                    zip(part.engrave_lines, expected["engrave_lines"])
+                    zip(cluster.engrave_lines, expected["engrave_lines"])
                 ):
                     actual_dict = eng.to_dict()
                     for key in ["closed", "length"]:
@@ -372,12 +372,12 @@ def _make_test(path):
                         msg=f"{label} engrave[{j}].role",
                     )
 
-            # --- summary (conteggi feature, ex part.custom via inject) ---
+            # --- summary (conteggi feature, ex cluster.custom via inject) ---
             # Fixture vecchi usano la chiave "custom", i nuovi "summary": stesso
-            # contenuto, ora prodotto da part.summary invece che da inject().
+            # contenuto, ora prodotto da cluster.summary invece che da inject().
             expected_summary = expected.get("summary", expected.get("custom", {}))
             for key, value in expected_summary.items():
-                actual = part.summary.get(key)
+                actual = cluster.summary.get(key)
                 if isinstance(value, float):
                     self.assertAlmostEqual(
                         actual, value, delta=0.01,
@@ -455,17 +455,17 @@ def _make_roundtrip_test(path):
 
         src = golden["source_file"]
         self.assertEqual(
-            rt_result.part_count, result.part_count,
-            msg=f"{src} round-trip part_count "
+            rt_result.cluster_count, result.cluster_count,
+            msg=f"{src} round-trip cluster_count "
                 f"(l'exporter ha perso o inventato una parte)",
         )
 
-        unmatched = list(rt_result.parts)
-        for i, part in enumerate(result.parts):
+        unmatched = list(rt_result.clusters)
+        for i, cluster in enumerate(result.clusters):
             match = min(
                 unmatched,
                 key=lambda p: p.outer.polygon.centroid.distance(
-                    part.outer.polygon.centroid
+                    cluster.outer.polygon.centroid
                 ),
                 default=None,
             )
@@ -474,22 +474,22 @@ def _make_roundtrip_test(path):
             label = f"{src} round-trip parte {i+1}"
 
             self.assertAlmostEqual(
-                match.area, part.area, delta=TOL_AREA, msg=f"{label} area",
+                match.area, cluster.area, delta=TOL_AREA, msg=f"{label} area",
             )
             self.assertAlmostEqual(
                 match.outer.polygon.exterior.length,
-                part.outer.polygon.exterior.length,
+                cluster.outer.polygon.exterior.length,
                 delta=TOL_PERIMETER, msg=f"{label} outer perimeter",
             )
             self.assertLess(
-                match.outer.polygon.symmetric_difference(part.outer.polygon).area,
+                match.outer.polygon.symmetric_difference(cluster.outer.polygon).area,
                 TOL_SHAPE, msg=f"{label} outer shape",
             )
             self.assertEqual(
-                len(match.holes), len(part.holes), msg=f"{label} holes count",
+                len(match.holes), len(cluster.holes), msg=f"{label} holes count",
             )
             self.assertEqual(
-                len(match.inners), len(part.inners), msg=f"{label} inners count",
+                len(match.inners), len(cluster.inners), msg=f"{label} inners count",
             )
 
     test.__name__ = f"test_roundtrip_{path.stem}"

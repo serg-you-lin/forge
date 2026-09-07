@@ -11,7 +11,7 @@ Per aggiungere, rinominare o rimuovere un campo — modificare solo metadata_sch
 import json
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from ..model import ForgeResult, ForgePart
+from ..model import ForgeResult, ForgeCluster
 from ..rules.metadata_schema import METADATA_FIELDS
 
 
@@ -19,35 +19,35 @@ from ..rules.metadata_schema import METADATA_FIELDS
 # Unica fonte di verità per i metadati
 # ---------------------------------------------------------------------------
 
-def build_metadata(part: ForgePart, schema: dict = None) -> dict:
+def build_metadata(cluster: ForgeCluster, schema: dict = None) -> dict:
     """
-    Costruisce il dict dei metadati per un ForgePart
+    Costruisce il dict dei metadati per un ForgeCluster
     applicando lo schema definito in metadata_schema.py.
 
     Legge la sorgente da ogni campo dello schema:
-        "part"       → attributo diretto di ForgePart (label, source_file)
-        "custom"     → part.custom (material, thickness, quantity, ecc.)
+        "cluster"       → attributo diretto di ForgeCluster (label, source_file)
+        "custom"     → cluster.custom (material, thickness, quantity, ecc.)
         "calculated" → calcolato da Shapely (area, perimetri, bbox, holes_count)
 
     Args:
-        part:   ForgePart da cui estrarre i dati
+        cluster:   ForgeCluster da cui estrarre i dati
         schema: schema opzionale — se None usa METADATA_FIELDS da metadata_schema.py
     """
     if schema is None:
         schema = METADATA_FIELDS
 
-    d = part.to_dict()
+    d = cluster.to_dict()
     # I conteggi delle feature (fori per tipo, pieghe, incisioni) vengono da
-    # part.summary — derivati dal modello (MAP.md D8). part.custom porta solo
+    # cluster.summary — derivati dal modello (MAP.md D8). cluster.custom porta solo
     # ciò che un data_injector esterno ha aggiunto (materiale, spessore, ...).
-    custom = {**part.summary, **(d.get("custom", {}) or {})}
+    custom = {**cluster.summary, **(d.get("custom", {}) or {})}
 
     outer_perimeter = 0.0
     inner_perimeter = 0.0
     try:
-        outer_perimeter = round(part.outer.polygon.exterior.length, 4)
+        outer_perimeter = round(cluster.outer.polygon.exterior.length, 4)
         inner_perimeter = round(
-            sum(i.polygon.exterior.length for i in part.inners), 4
+            sum(i.polygon.exterior.length for i in cluster.inners), 4
         )
     except Exception:
         pass
@@ -62,7 +62,7 @@ def build_metadata(part: ForgePart, schema: dict = None) -> dict:
         "total_perimeter" : round(outer_perimeter + inner_perimeter, 4),
     }
 
-    part_fields = {
+    cluster_fields = {
         "label"       : d.get("label", ""),
         "source_file" : d.get("source_file", ""),
     }
@@ -73,8 +73,8 @@ def build_metadata(part: ForgePart, schema: dict = None) -> dict:
             value = calculated.get(forge_key)
         elif source == "custom":
             value = custom.get(forge_key)
-        elif source == "part":
-            value = part_fields.get(forge_key)
+        elif source == "cluster":
+            value = cluster_fields.get(forge_key)
         else:
             value = None
 
@@ -111,10 +111,10 @@ def save_json(result: ForgeResult, path: str, indent: int = 2):
     output = {
         "source_file" : result.source_file,
         "is_valid"    : result.is_valid,
-        "part_count"  : result.part_count,
+        "cluster_count"  : result.cluster_count,
         "warnings"    : result.warnings,
         "errors"      : result.errors,
-        "parts"       : [build_metadata(part) for part in result.parts],
+        "clusters"       : [build_metadata(cluster) for cluster in result.clusters],
     }
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=indent, ensure_ascii=False)
@@ -126,10 +126,10 @@ def to_json(result: ForgeResult, indent: int = 2) -> str:
     output = {
         "source_file" : result.source_file,
         "is_valid"    : result.is_valid,
-        "part_count"  : result.part_count,
+        "cluster_count"  : result.cluster_count,
         "warnings"    : result.warnings,
         "errors"      : result.errors,
-        "parts"       : [build_metadata(part) for part in result.parts],
+        "clusters"       : [build_metadata(cluster) for cluster in result.clusters],
     }
     return json.dumps(output, indent=indent, ensure_ascii=False)
 
@@ -145,23 +145,23 @@ def save_xml(result: ForgeResult, path: str):
         <forge>
             <source_file>...</source_file>
             <is_valid>true</is_valid>
-            <parts>
-                <part>
+            <clusters>
+                <cluster>
                     <label>...</label>
                     <area_mm2>...</area_mm2>
                     <bbox>
                         <minx>...</minx>
                         ...
                     </bbox>
-                </part>
-            </parts>
+                </cluster>
+            </clusters>
         </forge>
     """
     root = ET.Element("forge")
 
     ET.SubElement(root, "source_file").text = result.source_file
     ET.SubElement(root, "is_valid").text    = str(result.is_valid).lower()
-    ET.SubElement(root, "part_count").text  = str(result.part_count)
+    ET.SubElement(root, "cluster_count").text  = str(result.cluster_count)
 
     if result.warnings:
         warnings_el = ET.SubElement(root, "warnings")
@@ -173,11 +173,11 @@ def save_xml(result: ForgeResult, path: str):
         for e in result.errors:
             ET.SubElement(errors_el, "error").text = e
 
-    parts_el = ET.SubElement(root, "parts")
-    for part in result.parts:
-        meta = build_metadata(part)
-        part_el = ET.SubElement(parts_el, "part")
-        _dict_to_xml(meta, part_el)
+    clusters_el = ET.SubElement(root, "clusters")
+    for cluster in result.clusters:
+        meta = build_metadata(cluster)
+        cluster_el = ET.SubElement(clusters_el, "cluster")
+        _dict_to_xml(meta, cluster_el)
 
     xml_str = minidom.parseString(
         ET.tostring(root, encoding='unicode')
@@ -213,24 +213,24 @@ def to_nester_input(result: ForgeResult) -> list:
     Produce l'input per il nester: coordinate grezze + metadati base.
     Non usa metadata_schema — il nester ha bisogno delle coordinate, non dei nomi.
     """
-    parts = []
-    for part in result.parts:
-        parts.append({
-            "label"       : part.label,
-            "source_file" : part.source_file,
-            "area"        : part.area,
-            "bbox"        : part.bbox,
-            "outer_coords": list(part.outer.polygon.exterior.coords),
-            "holes_coords": [list(h.polygon.exterior.coords) for h in part.inners],
+    clusters = []
+    for cluster in result.clusters:
+        clusters.append({
+            "label"       : cluster.label,
+            "source_file" : cluster.source_file,
+            "area"        : cluster.area,
+            "bbox"        : cluster.bbox,
+            "outer_coords": list(cluster.outer.polygon.exterior.coords),
+            "holes_coords": [list(h.polygon.exterior.coords) for h in cluster.inners],
         })
-    return parts
+    return clusters
 
 
 # ---------------------------------------------------------------------------
 # XDATA DXF
 # ---------------------------------------------------------------------------
 
-def write_metadata_to_dxf(doc, part: ForgePart):
+def write_metadata_to_dxf(doc, cluster: ForgeCluster):
     """
     Scrive i metadati come XDATA sull'entità OuterContour.
     I campi seguono metadata_schema.py — stessa fonte di save_json e save_xml.
@@ -261,7 +261,7 @@ def write_metadata_to_dxf(doc, part: ForgePart):
         if app_id not in doc.appids:
             doc.appids.add(app_id)
 
-        meta = build_metadata(part)
+        meta = build_metadata(cluster)
 
         outer_entity.set_xdata(app_id, [
             (1000, json.dumps(meta, ensure_ascii=False)),

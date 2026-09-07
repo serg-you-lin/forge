@@ -39,7 +39,7 @@ print(f"ALL_FEATURES = {forge.ALL_FEATURES}\n")
 
 
 def show(tag, result):
-    p = result.parts[0]
+    p = result.clusters[0]
     print(f"{tag:<28} holes={len(p.holes):<3} inners={len(p.inners):<3} "
           f"bending={len(p.bending_lines):<3} engrave={len(p.engrave_lines):<3}")
 
@@ -64,8 +64,8 @@ show("detect(result, 'all')", r)
 
 # dettaglio fori tipati
 print()
-for i, h in enumerate(r.parts[0].holes):
+for i, h in enumerate(r.clusters[0].holes):
     print(f"   hole {i:<2} type={h.hole_type:<12} Ø={h.diameter:.2f}  "
           f"center={tuple(round(c, 1) for c in h.center)}  "
           f"source={h.source} conf={h.confidence}")
-print("\n   summary:", r.parts[0].summary)
+print("\n   summary:", r.clusters[0].summary)

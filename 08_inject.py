@@ -8,10 +8,10 @@ API forge usate:
     inject                   passa a un data_injector i testi dentro l'outer di ogni parte
 
 inject() è OPZIONALE. Fa una sola cosa: se passi `data_injector` —
-callable(part, list[str]) -> dict — mette il dict restituito in part.custom
+callable(cluster, list[str]) -> dict — mette il dict restituito in cluster.custom
 (codice pezzo, materiale, spessore, ...). Senza data_injector non fa nulla.
 
-I CONTEGGI delle feature NON si fanno qui: sono part.summary (property derivata).
+I CONTEGGI delle feature NON si fanno qui: sono cluster.summary (property derivata).
 
     python 08_inject.py
 """
@@ -38,12 +38,12 @@ result = forge.heal_and_detect(doc, label="P-1024", features="all")
 
 
 # data_injector: riceve la parte e SOLO i testi che ricadono geometricamente
-# dentro il suo outer (già filtrati da inject). Ritorna il dict per part.custom.
+# dentro il suo outer (già filtrati da inject). Ritorna il dict per cluster.custom.
 # NB: in Multifeature.dxf le sigle "A"/"B" sono quote fuori dal contorno, quindi
 # qui `testi_nella_parte` contiene solo i testi interni — è il comportamento
 # corretto (ogni parte prende i propri testi, non quelli del vicino).
-def leggi_cartiglio(part, testi_nella_parte):
-    print(f"   [injector] parte {part.label}: testi interni = {testi_nella_parte}")
+def leggi_cartiglio(cluster, testi_nella_parte):
+    print(f"   [injector] parte {cluster.label}: testi interni = {testi_nella_parte}")
     code = next((t for t in testi_nella_parte if t.strip()), None)
     return {
         "part_code": code or "N/D",
@@ -55,7 +55,7 @@ def leggi_cartiglio(part, testi_nella_parte):
 
 forge.inject(result, data_injector=leggi_cartiglio, texts=texts)
 
-for i, part in enumerate(result.parts):
-    print(f"\nParte {i}  {part.label!r}")
-    print(f"   custom  : {part.custom}")
-    print(f"   summary : {part.summary}")   # conteggi feature — sempre dal modello
+for i, cluster in enumerate(result.clusters):
+    print(f"\nParte {i}  {cluster.label!r}")
+    print(f"   custom  : {cluster.custom}")
+    print(f"   summary : {cluster.summary}")   # conteggi feature — sempre dal modello
