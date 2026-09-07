@@ -33,6 +33,14 @@ cancellati. Il rilevamento cornice/cartiglio è roba dell'interprete (gira prima
 di `heal`); l'algoritmo resta documentato in `INTERPRETER.md`. Ruolo
 `ContourRole.FRAME` tenuto (solo etichetta).
 
+### ✅ `core/classification/` sciolta (branch `refactor/hole-detector-to-tools`, 0.6.6)
+
+Fatto (MAP.md D25): `hole_detector.py` → `forge/tools/`, `possibili_altri.md`
+cancellato, `forge/adapters/bridge/` (vuota) rimossa. `core/` resta solo motore
+geometrico. Nuovi classificatori (bend, engrave, slot, corner…): un modulo
+opt-in per volta sotto `tools/`, `detect` diventa package se cresce — non una
+cartella `classification/`.
+
 heal / detect dentro forge
 
 Sì, ci stanno. Sono l'API semplice per quando le cose vanno già bene. Ma non sono un vincolo: un consumatore può prendere solo la topologia da heal e fare il resto a modo suo (l'unfolder, un nester, tu). È lì il valore — non "una pipeline fissa" ma "oggetti puliti su cui costruire".

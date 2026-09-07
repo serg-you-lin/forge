@@ -1,12 +1,15 @@
 """
-core/classification/hole_detector.py
--------------------------------
+forge/tools/hole_detector.py
+----------------------------
 Rileva fori filettati e svasature da primitive geometriche pure.
 
     is_threaded_hole     — True se il cerchio è un foro filettato
     is_countersink_outer — True se il cerchio è il cerchio esterno di svasatura
 
-Zero dipendenze da formato — lavora su ArcSeg e tuple (x, y).
+Euristiche di riconoscimento usate solo da ``detect()`` — non geometria di base
+riusabile, quindi vivono qui accanto al loro unico consumatore e non in
+``core/`` (MAP.md D25). Zero dipendenze da formato — lavora su ArcSeg e tuple
+(x, y).
 """
 
 import math
