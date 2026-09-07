@@ -7,12 +7,13 @@ from .hole import (
     HOLE_TYPE_THREADED,
     VALID_HOLE_TYPES,
 )
-from .classified import ClassifiedEntity, BaseInterpreter
+from .classified import ClassifiedEntity
 from .annotation import (
     Annotation, Note, Dimension, Leader, RenderedGeometry, RenderedText,
 )
 from .document import ForgeDocument
-from .cluster import ForgeContour, ForgeCluster
+from .contour import ForgeContour
+from .cluster import ForgeCluster
 from .result import ForgeResult
 from .engraving import Engraving
 from .bending_line import BendingLine
@@ -27,7 +28,6 @@ __all__ = [
     "HOLE_TYPE_THREADED",
     "VALID_HOLE_TYPES",
     "ClassifiedEntity",
-    "BaseInterpreter",
     "ForgeDocument",
     "Annotation",
     "Note",

@@ -68,9 +68,9 @@ forge/
 ├── model/        IL DOMINIO forge                     (dataclass pure + shapely)
 │   ├── document.py   ForgeDocument
 │   ├── result.py     ForgeResult
-│   ├── cluster.py    ForgeCluster, ForgeContour
+│   ├── cluster.py    ForgeCluster — il contenitore
 │   ├── feature.py    Feature → ClosedFeature / OpenFeature
-│   ├── hole.py / engraving.py / bending_line.py / classified.py
+│   ├── contour.py / hole.py / engraving.py / bending_line.py / classified.py
 │   └── annotation.py Annotation → Note / Dimension / Leader
 │
 ├── tools/        STADI opzionali su un ForgeResult    (il caller sceglie quali e in che ordine)
