@@ -98,7 +98,7 @@ I passi [1] [3] [4] [6] sono forge invariati. [2] [5] [7]-[10] sono l'interprete
 | modulo | cosa fa |
 |---|---|
 | `pipeline.py` | l'orchestratore: `interpret(path, profile=...) -> Drawing` |
-| `frame.py` | rilevamento cornice / cartiglio. Algoritmo (era il `frame_detector` di forge, rimosso in forge D24 perché gira *prima* di `heal`): tra i rettangoli con ratio ISO √2 (±5%) tieni quello che contiene ≥ 80% della geometria restante; conservativo — se non è sicuro non filtra niente. Marca i contorni frame così `forge.heal` li esclude e l'outer vero emerge |
+| `frame.py` | rilevamento cornice / cartiglio → **scorporato in `FRAMER.md`** (modulo `Framer`): il problema è grosso e serve anche da primo banco di prova dell'interfaccia forge ↔ consumatore. Algoritmo in breve (era il `frame_detector` di forge, rimosso in forge D24 perché gira *prima* di `heal`): tra i rettangoli con ratio ISO √2 (±5%) tieni quello che contiene ≥ 80% della geometria restante; conservativo. Marca i contorni frame così `forge.heal` li esclude e l'outer vero emerge |
 | `views.py` | classificazione viste: raggruppa i cluster che sono viste dello stesso pezzo, distingue pianta / sezione / sviluppo; riconosce una lamiera piegata |
 | `callouts.py` | parser `etichetta: valore` → `{code, material, thickness, quantity, instructions}`. Pattern in un config, sovrascrivibili per reparto |
 | `titleblock.py` | legge i metadati di disegno dalla zona cornice |

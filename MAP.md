@@ -503,6 +503,23 @@ il vocabolario di `detect`. Rinominato, non spostato:
 Nessun cambiamento di comportamento. Branch `refactor/rename-non-contour-edges`,
 merge → `main` 0.6.8.
 
+### D29 — Rilevamento cornice / cartiglio: modulo `Framer`, fuori da forge  → `FRAMER.md`
+
+Il riconoscimento di cornice e cartiglio diventa un **modulo a sé**, `Framer`,
+consumatore di forge e componente dell'interprete (sorella dell'unfolder). Non
+entra in forge: gira *prima* di `heal` sulla geometria grezza, marca gli edge
+con `role="frame"` / `role="title_block"` e li riporta giù a forge — coerente con
+`forge-neutral-substrate-agent-layer-above` e con la rimozione del
+`frame_detector` in D24. Serve anche da primo banco di prova reale
+dell'interfaccia forge ↔ consumatore (come un modulo esterno inietta decisioni
+geometriche prima di `heal`).
+
+Design completo, algoritmo, e le tre opzioni per l'aggancio a `heal` (A: Framer
+rimuove gli edge; B: forge estende il filtro non-strutturale a `frame`; C: hook
+`role_resolver`) in `FRAMER.md`. Prima cosa da chiudere: quale delle tre.
+
+Nessun codice ancora — solo il documento di progetto.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)
