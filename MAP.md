@@ -398,6 +398,31 @@ le danno un layer di destinazione), non logica di rilevamento.
 
 Branch `refactor/kill-frame-deadcode`.
 
+### D25 — `core/classification/` sciolta: `hole_detector` → `tools/`  ✅
+
+Rimasto un solo file dopo D24 (`hole_detector.py`), più un appunto
+(`possibili_altri.md`). Segnalato da Federico: la cartella sembrava un progetto
+a sé dentro `core/`, fuori posto.
+
+`is_threaded_hole` / `is_countersink_outer` sono euristiche di *riconoscimento*
+usate solo da `tools/detect.py`, non geometria di base riusabile (quella è
+`core/geometry.py` / `core/primitives/`). Per la linea di
+`keep-detect-focused-prefer-separate-stages` le preoccupazioni di riconoscimento
+stanno sotto `tools/` accanto al loro consumatore. Spostato a
+`forge/tools/hole_detector.py`; `detect.py` importa `from .hole_detector`.
+`core/` ora è solo il motore geometrico deterministico: `primitives`,
+`topology`, `healing`, `geometry.py`, `heal.py`, `adapter_base.py`.
+
+`possibili_altri.md` cancellato — l'idea (nuovi classificatori = un modulo
+opt-in per volta sotto `tools/`, `detect` diventa package se cresce) è già in
+`keep-detect-focused-prefer-separate-stages` e in TODO.md.
+
+Tolta anche `forge/adapters/bridge/`, cartella vuota rimasta dopo D19 (non
+tracciata da git, solo sul filesystem).
+
+Nessun cambiamento di comportamento. Suite: 610 passed. Branch
+`refactor/hole-detector-to-tools`.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)
