@@ -4,10 +4,10 @@ from pathlib import Path
 if __package__:
     from ..model.result import ForgeResult
     from ..model.document import ForgeDocument
-    from ..core.topology.graph import build_node_graph
-    from ..core.geometry import node_decimals_for
-    from ..core.primitives.segments import ArcSeg, SplineSeg
-    from ..core.healing.gap_solver import (
+    from .topology.graph import build_node_graph
+    from .geometry import node_decimals_for
+    from .primitives.segments import ArcSeg, SplineSeg
+    from .healing.gap_solver import (
         free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes,
         gap_endpoints_at_nodes,
     )
@@ -179,7 +179,7 @@ class HealStep:
 
 
     def _find_bending_candidates(self):
-        from ..core.topology.bending_detector import BendingDetector
+        from .topology.bending_detector import BendingDetector
         graph_full = self._build_graph()
 
         self.candidate_bending_ids = BendingDetector(self.tolerance).detect(graph_full, self.edges)
@@ -195,8 +195,8 @@ class HealStep:
         if not self.edges:
             return
 
-        from ..core.topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
-        from ..core.healing.hierarchy import loop_to_closed_feature
+        from .topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
+        from .healing.hierarchy import loop_to_closed_feature
         from ..model.role import ContourRole
 
         graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
@@ -270,8 +270,8 @@ class HealStep:
             segments = segments_from_loop(loop)
             styles = edge_styles_from_loop(loop)
 
-            from ..core.primitives.polygon_builder import build_polygon
-            from ..core.primitives.segments import DEFAULT_TOLERANCE
+            from .primitives.polygon_builder import build_polygon
+            from .primitives.segments import DEFAULT_TOLERANCE
             polygon = build_polygon(segments, DEFAULT_TOLERANCE)
             if polygon is None:
                 continue
@@ -290,8 +290,8 @@ class HealStep:
         pass
 
     def _build_hierarchy(self):
-        from ..core.topology.loop_finder import edges_to_open_features
-        from ..core.healing.hierarchy import HierarchyBuilder
+        from .topology.loop_finder import edges_to_open_features
+        from .healing.hierarchy import HierarchyBuilder
 
         open_proxies = edges_to_open_features(
             self.edges,
@@ -340,9 +340,9 @@ class HealStep:
         contenimento senza mai rimetterli in discussione.
         """
         from ..model.feature import OpenFeature, ClosedFeature
-        from ..core.primitives.polygon_builder import build_polygon
-        from ..core.primitives.segments import DEFAULT_TOLERANCE
-        from ..core.geometry import track_points
+        from .primitives.polygon_builder import build_polygon
+        from .primitives.segments import DEFAULT_TOLERANCE
+        from .geometry import track_points
 
         proxies = []
         for edge in self.labeled_edges:
@@ -374,24 +374,12 @@ class HealStep:
 # Funzioni module-level
 # ---------------------------------------------------------------------------
 
-if __package__:
-    from ..core.topology.loop_finder import LoopFinder
-    from ..adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
-    from ..rules.palette import COLOR_OUTER, COLOR_INNER
-else:
-    from forge.core.topology.loop_finder import LoopFinder
-    from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
-    from forge.rules.palette import COLOR_OUTER, COLOR_INNER
-
-from shapely.geometry import Polygon
-
-
 def _fallback_polygonize(self):
     import math
     from shapely.ops import unary_union, snap, polygonize
     from shapely.geometry import LineString, Polygon
-    from ..core.primitives.segments import ArcSeg, DEFAULT_TOLERANCE
-    from ..core.healing.hierarchy import loop_to_closed_feature
+    from .primitives.segments import ArcSeg, DEFAULT_TOLERANCE
+    from .healing.hierarchy import loop_to_closed_feature
     from ..model.role import ContourRole
 
     self.result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
@@ -419,7 +407,7 @@ def _fallback_polygonize(self):
                 poly = poly.buffer(0)
             pts = [(x, y) for x, y in poly.exterior.coords]
 
-            from ..core.primitives import LineSeg
+            from .primitives import LineSeg
             fallback_segments = [
                 LineSeg(start=pts[i], end=pts[i + 1])
                 for i in range(len(pts) - 1)
@@ -470,3 +458,32 @@ def _loop_is_structural(loop, label_map) -> bool:
 
 
 HealStep._fallback_polygonize = _fallback_polygonize
+
+
+# ---------------------------------------------------------------------------
+# API pubblica
+# ---------------------------------------------------------------------------
+
+def heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeResult:
+    """
+    Esegue l'healing su un ForgeDocument prodotto da forge.load_dxf().
+
+    tolerance: se None viene ripresa da doc.source_meta['tolerance']
+               (quella usata per arrotondare i nodi in load_dxf).
+    label_map: NON è un parametro — va passato a load_dxf(), che assegna
+               i ruoli agli Edge in fase di traduzione.
+    """
+    if not isinstance(doc, ForgeDocument):
+        raise TypeError(
+            "forge.heal() richiede un ForgeDocument da forge.load_dxf(); "
+            f"ricevuto {type(doc).__name__}"
+        )
+
+    tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
+    result = HealStep(doc, tol, label=label, source_file=source_file).run()
+
+    if result.is_valid and result.clusters:
+        from ..rules.validator import validate_result
+        validate_result(result)
+
+    return result

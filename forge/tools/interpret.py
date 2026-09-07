@@ -1,5 +1,5 @@
 """
-forge/pipeline/interpret.py
+forge/tools/interpret.py
 ---------------------------
 Interpretazione delle annotazioni: collega ogni annotazione del modello alla
 geometria che la riguarda.

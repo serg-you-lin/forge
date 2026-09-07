@@ -7,8 +7,8 @@ Convenzioni di questo documento:
 
 - **firma** — parametri e default reali
 - **prende / ritorna** — i tipi
-- **muta** — se modifica qualcosa in-place (importante: diverse funzioni della
-  pipeline lavorano per effetto collaterale)
+- **muta** — se modifica qualcosa in-place (importante: diversi stadi di
+  elaborazione lavorano per effetto collaterale)
 - **solleva** — le eccezioni che il chiamante deve prevedere
 
 I tipi di dominio (`ForgeDocument`, `ForgeResult`, `ForgeCluster`, …) sono descritti
@@ -20,7 +20,7 @@ in fondo.
 
 1. [Apertura file](#1-apertura-file) — `load_dxf`, `document_from_msp`
 2. [Validazione](#2-validazione) — `validate`, `validate_result`
-3. [Pipeline](#3-pipeline) — `heal`, `detect`, `heal_and_detect`, `to_dxf`, `split`, `split_to_files`, `inject`
+3. [Elaborazione e render](#3-elaborazione-e-render) — `heal` (core), `detect` / `interpret_annotations` / `inject` (tools), `to_dxf` / `split` (io), `heal_and_detect` / `split_to_files` (recipes)
 4. [Export](#4-export) — `save_json`, `to_json`, `save_xml`, `to_view_model`, `to_svg`, `save_svg`
 5. [Metadati XDATA](#5-metadati-xdata) — `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema`
 6. [Ispezione / debug](#6-ispezione--debug) — `inspect_dxf`, `inspect_document`, `inspect_result`, `inspect_file`
@@ -201,7 +201,13 @@ costruisci un `ForgeResult` per altre vie.
 
 ---
 
-## 3. Pipeline
+## 3. Elaborazione e render
+
+`heal` è l'atto del motore (`forge/core/`); `detect` / `interpret_annotations` /
+`inject` sono stadi opzionali su un `ForgeResult` (`forge/tools/`, il caller
+sceglie quali e in che ordine); `to_dxf` / `split` sono renderer del modello
+(`forge/io/`); `heal_and_detect` / `split_to_files` sono le scorciatoie della
+via del 90% (`forge/recipes.py`). Tutto resta accessibile come `forge.<nome>`.
 
 ### `heal`
 
@@ -406,8 +412,8 @@ forge.split_to_files(
 ) -> ForgeResult
 ```
 
-Pipeline completa multi-pezzo + salvataggio su disco: `heal → detect → split →
-.saveas()` per parte. **È l'unica funzione della pipeline che scrive su disco.**
+Flusso completo multi-pezzo + salvataggio su disco: `heal → detect → split →
+.saveas()` per cluster. **È l'unica funzione di forge che scrive su disco.**
 Il nome file è `f"{cluster.label}.dxf"`, dove `cluster.label` è quello che assegna
 `namer(i, cluster)`; senza `namer` diventa `f"{label}_P{i+1}"` (es. `batch_P1.dxf`).
 
@@ -613,7 +619,7 @@ installato con pip e non puoi editare `metadata_schema.py`. Struttura:
 
 ## 6. Ispezione / debug
 
-Tre livelli, in ordine di pipeline. Tutti stampano su stdout.
+Tre livelli, in ordine di elaborazione. Tutti stampano su stdout.
 
 ```python
 forge.inspect_dxf(path, entities=True, limit=40) -> None

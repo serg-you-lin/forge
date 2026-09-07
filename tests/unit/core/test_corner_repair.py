@@ -13,7 +13,7 @@ from forge.model.document import ForgeDocument
 from forge.model.role import ContourRole
 from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg
-from forge.pipeline.heal import HealStep
+from forge.core.heal import HealStep
 
 
 def _edge(seg: LineSeg, decimals: int = 1) -> Edge:

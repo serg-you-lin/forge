@@ -48,7 +48,7 @@ from forge.adapters.dxf.layers import (
     LAYER_OUTER,
     LAYER_HOLE,
 )
-from forge.pipeline.write import cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
+from forge.io.dxf import cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
 
 
 MULTIPLI_DIR = project_root / "tests" / "examples" / "golden_multipli"

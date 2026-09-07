@@ -341,11 +341,11 @@ def inspect_file(
     if not run_heal:
         return
 
-    from .pipeline import heal as _heal
+    from .core.heal import heal as _heal
     result = _heal(doc, tolerance=tolerance)
 
     if run_detect and result.is_valid and result.clusters:
-        from .pipeline.detect import detect as _detect
+        from .tools.detect import detect as _detect
         _detect(result)
 
     inspect_result(result, coords=coords)

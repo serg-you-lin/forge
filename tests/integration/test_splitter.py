@@ -52,7 +52,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.pipeline.write import (
+from forge.io.dxf import (
     split, ANNOTATION_TYPES, DEFAULT_MIN_CLUSTER_AREA, cluster_passes_min_area,
 )
 from forge.adapters.dxf.layers import (

@@ -18,25 +18,16 @@ meccanico `ForgePart`/`result.parts`/`part_count`/`part_ref`/`part_label` +
 variabili, file `model/part.py` → `model/cluster.py`, chiavi JSON/XML/view-model,
 docs. Nessuna logica cambiata; golden rigenerati sulle sole chiavi; 610 verdi.
 
-### [PROSSIMA] Split di `forge/pipeline/` (branch `refactor/module-layout`, 0.6.4)
+### ✅ Split di `forge/pipeline/` (branch `refactor/module-layout`, 0.6.4)
 
-`pipeline/` mescola tre cose diverse. Piano deciso (2026-09-07):
+Fatto (MAP.md D22): `heal` → `core/heal.py`; `detect`/`interpret`/`inject` →
+`tools/`; `to_dxf`/`split` → `io/dxf.py`; `heal_and_detect`/`split_to_files` →
+`recipes.py`; `pipeline/` e `workflow/` cancellate; `ARCHITECTURE.md` + skill
+`python-project-setup` aggiornate. `forge.__all__` invariato, 610 verdi.
 
-- `heal.py` (`HealStep`) → **`forge/core/heal.py`**: è l'atto del motore, non un
-  "tool". Togliere le 3 righe di import morti (`LAYER_OUTER`/`COLOR_OUTER`).
-- `detect.py` / `inject.py` / `interpret.py` → **`forge/tools/`**: stadi
-  opzionali e componibili su un `ForgeResult` — il pattern che l'interprete
-  orchestra dall'alto.
-- `write.py` (`to_dxf` / `split`) → **`forge/io/`**: sono renderer del modello,
-  come `to_svg` / `to_json` / `to_view_model`.
-- `heal_and_detect` / `split_to_files` (via del 90%) → facade in `__init__.py`
-  o `forge/recipes.py`.
-- cancellare `forge/workflow/` e `forge/pipeline/healer/` (vuote).
-- aggiornare `docs/ARCHITECTURE.md` (l'albero dei 4 strati) e la skill
-  `python-project-setup`.
-- frame (`core/classification/frame_detector.py`,
-  `adapters/dxf/frame_adapter_dxf.py`): resta in forge finché non esiste il repo
-  interprete — solo annotato qui.
+Il frame (`core/classification/frame_detector.py`,
+`adapters/dxf/frame_adapter_dxf.py`) resta in forge finché non esiste il repo
+interprete — solo annotato.
 
 heal / detect dentro forge
 

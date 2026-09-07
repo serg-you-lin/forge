@@ -1,5 +1,5 @@
 """
-pipeline/detect.py
+forge/tools/detect.py
 """
 
 from __future__ import annotations

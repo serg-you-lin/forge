@@ -1,5 +1,5 @@
 """
-pipeline/write.py
+forge/io/dxf.py
 -----------------
 Materializza un ForgeResult in uno o più documenti DXF NUOVI, lavorando
 esclusivamente sui segmenti del modello. Zero accesso a source_ref, entity_ids,
@@ -8,7 +8,7 @@ msp sorgente.
 - `to_dxf(result, ...)`  → un Drawing con tutte le parti (o un sottoinsieme).
 - `split(result, ...)`   → un Drawing per parte. Puro: nessun I/O su disco.
 
-L'unica funzione che tocca il disco è `pipeline.split_to_files()`, che è un
+L'unica funzione che tocca il disco è `recipes.split_to_files()`, che è un
 wrapper sottile attorno a `split()`.
 """
 
@@ -177,7 +177,7 @@ def split(
     Materializza un ForgeResult in un Drawing per parte.
 
     Funzione PURA: non tocca il disco. Per salvare i file usa
-    `pipeline.split_to_files()`, o itera il risultato e chiama `.saveas(...)`.
+    `recipes.split_to_files()`, o itera il risultato e chiama `.saveas(...)`.
 
     Ritorna i Drawing nell'ordine delle parti tenute (quelle che superano
     `min_area`). `namer(i, cluster)` — se passato — assegna `cluster.label`, così il

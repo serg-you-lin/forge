@@ -2,7 +2,7 @@
 tests/unit/test_interpret_annotations.py
 ----------------------------------------
 `interpret_annotations()`: assegna `cluster_ref` (indice della parte contenitrice)
-alle annotazioni del modello. Fase separata e opzionale della pipeline.
+alle annotazioni del modello. Fase separata e opzionale (forge/tools/).
 """
 
 import unittest
@@ -13,7 +13,7 @@ from forge.model.cluster import ForgeCluster, ForgeContour
 from forge.model.result import ForgeResult
 from forge.model.role import ContourRole
 from forge.model.annotation import Note
-from forge.pipeline.interpret import interpret_annotations
+from forge.tools.interpret import interpret_annotations
 
 
 def _part(x0, y0, x1, y1):
