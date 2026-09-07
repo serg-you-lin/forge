@@ -86,7 +86,7 @@ output/
 # ===========================================================================
 
 /smoother_5.py
-/13_production_splitter.py
+/scripts/13_production_splitter.py
 
 # ===========================================================================
 # Local configuration / secrets

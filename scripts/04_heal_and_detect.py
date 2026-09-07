@@ -14,12 +14,12 @@ Questo è lo snippet da mettere nel README / negli altri script.
     python 04_heal_and_detect.py
 """
 
+import _paths  # noqa: F401  — chdir alla radice del repo
+
 import forge
 
-from _paths import EXAMPLES
-
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = EXAMPLES / "Multifeature.dxf"
+INPUT     = r"tests/examples/Multifeature.dxf"
 TOLERANCE = 0.5
 LABEL_MAP = {
     "Filettati": "threaded_hole",
