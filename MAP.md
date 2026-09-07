@@ -374,12 +374,7 @@ inspect_file: se non gli passo il dxf, ma un altro fiel in entrata?? ce ne fregh
 in ispect_dxf, sarebbe meglio avere l'opzione di non printare entità, ome avevamo prima. voglio dire, se hno boisogno solo dela spline o della polilinea, mi devo beccare anche tutto il resto?
 load_dxf: se non faccio poi detection all, la tracciatura dei layer non serve a niente, vero?
 
-Ha senso fare come facciamo noi? l'heal e la detection seeparati? si fa? senza stare li a diventare matti...
-heal: non mi è chairo cosa sia il part label, è il nome che viene assegnato poi al file di usicta? va solo nei metadati?
-split: exclude types può escludere qualunque cosa? o solo text o annotations? prende una lista? vuole to_dxf dopo, o è già compreso nell'api?
-split_to_files: ha exclude types cpme split? se non avessi bisogno dei metadati, potrei fare direttamente   split_to_files senza fare result = ....?
-inject: tolerance=0.1,   # accettato per compat, non più usato che significa? se è inutile, togliamolo, si può? meglio lasciarlo secondo te? non sporca e confonde?
+
 
 
 ** MODULI
-text_utils.py: fa ancora qualcosa? era quell oche usavo per i testi prima del refactoring, sarebbe cda caire se facevo qualcosa di particolare che possa migliorare quello ce faciamo ora, unificare o non so. Comunque un gestore di testo che possa essere accessibile all'esterno, per un agente coem te o uno specifico per i dxf, ci starebbe, testi in stringa però, un modulo li non deve avere dxf dentro.
