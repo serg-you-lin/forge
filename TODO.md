@@ -235,3 +235,50 @@ di Smoother, dipende da opencv), ma come ricostruzione geometrica generale da pu
 ordinati, zero dipendenza da immagini. Nome: da decidere, in inglese (es.
 `simplify_points` / `fit_primitives` / `detect_corners` + refit) — coerente con
 tutto il resto dei nomi pubblici di forge, già tutti in inglese.
+
+
+# "BENDING CANDIDATES" IN HEALSTEP — nome che perde vocabolario, e la domanda vera
+
+Da ragionare, non ora. Sollevato da Federico: in `HealStep` c'è
+`_find_bending_candidates()` / `BendingDetector` — sembra roba di `detect`, e in
+`heal` "facciamo cose che boh".
+
+Cosa fa davvero (verificato in `core/topology/bending_detector.py`): NON
+classifica niente come piega. Trova gli edge che hanno **entrambi** gli endpoint
+su nodi di branching (degree > 2) e il centroide interno al convex hull, e li
+**esclude dal grafo dei contorni** così che `_find_loops` possa chiudere outer e
+inner. Una linea che attraversa il pezzo da parte a parte, senza questa
+esclusione, rompe la ricerca dei loop. `candidate_bending_ids` è stato interno
+di `HealStep`: **non finisce mai sul risultato**. Il `ForgeCluster` che `heal`
+ritorna ha sempre `bending_lines=[]` finché non chiami `detect`.
+
+Quindi topologicamente è lavoro di `heal` (produrre cluster puliti); solo il
+**nome** prende in prestito la semantica di `detect`. La semantica vera
+("questa linea è una piega") è già in `detect._detect_bending`, che legge
+`trash_entities` e promuove a `BendingLine` — opt-in, com'è giusto.
+
+Fix minimo: rinominare (`BendingDetector` → filtro edge non-contorno,
+`candidate_bending_ids` → `non_contour_edge_ids`), non spostare.
+
+## La domanda architetturale sotto (dove entra l'agente?)
+
+Già decisa, memoria `forge-neutral-substrate-agent-layer-above` + `INTERPRETER.md`
++ MAP D24: **non un punto solo**. L'interprete *orchestra* forge — prima di
+`heal` (marca cornice/cartiglio sulla geometria grezza), fra gli step (passa
+decisioni giù come `label_map`), dopo (legge cluster+feature e ci mette la
+semantica). forge resta deterministico; l'agente lo chiama, non ci entra.
+
+## Tensione residua ("se il cluster è una vista, le feature non c'entrano")
+
+Il cluster di `heal` è già neutro: `outer` + `inners`, geometria
+provenance-free. Ma la dataclass `ForgeCluster` ha comunque i campi
+`bending_lines` / `holes` / `engrave_lines` **cablati nella struttura** — i
+cassetti da "pezzo di lamiera" nel modello neutro (tensione di
+`forge-clusters-not-parts` non chiusa fino in fondo).
+
+Opzione da valutare: le feature tipizzate in un overlay che `detect`
+ritorna/attacca (`cluster.detected` o un `DetectedFeatures` a parte), non come
+campi fissi. Così `heal → ForgeCluster` = puro contenimento geometrico,
+`detect → feature` = strato semantico opt-in. Refactor non piccolo: prima
+provare che il campo fisso dà davvero fastidio
+(`prove-regression-before-architectural-work`).
