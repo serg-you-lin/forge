@@ -51,8 +51,6 @@ class HealStep:
         if label_map:
             self.result.label_map = label_map
 
-        # Le annotazioni sono dati di dominio: entrano nel modello, non passano
-        # più dal source_doc in to_dxf().
         self.result.annotations = list(doc.annotations)
 
         self.candidate_bending_ids = set()
