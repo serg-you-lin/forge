@@ -1,16 +1,23 @@
 """
-bending_detector.py
--------------------
-Rileva gli edge candidati come linee di piega.
+non_contour_edges.py
+--------------------
+Individua gli edge che NON fanno parte di un contorno e vanno esclusi dal
+grafo prima della ricerca dei loop.
 
-Un edge è confermato bending se:
-  1. Non proviene da un percorso già chiuso (closed_path) — quella è
-     geometria di contorno per definizione, mai una piega
+Non è classificazione di feature: qui non si decide che un edge "è una piega".
+Si decide solo, per topologia, che un edge non chiude contorno — tipicamente
+una linea che attraversa il pezzo da parte a parte (spesso una linea di piega,
+ma anche un asse, una mezzeria, una tracciatura passante). La semantica vera
+sta in `tools/detect._detect_bending`, che li ripesca dalla trash.
+
+Un edge è escluso se:
+  1. Non proviene da un percorso già chiuso (closed_path) — quello è
+     contorno per definizione
   2. Entrambi gli endpoint sono nodi branching nel grafo (degree > 2)
-  3. Il centroide è interno al convex hull — non è un edge di contorno
+  3. Il centroide è interno al convex hull — non corre lungo il bordo
 
 Input:  Graph, list[Edge]
-Output: set[int]  — id() degli Edge confermati bending
+Output: set[int]  — id() degli Edge da escludere dal grafo dei contorni
 """
 
 from shapely.geometry import MultiPoint, Point
@@ -19,7 +26,7 @@ from .graph import Graph
 from .edge import Edge
 
 
-class BendingDetector:
+class NonContourEdgeDetector:
 
     def __init__(self, tolerance: float = 0.1):
         self.tolerance = tolerance
@@ -38,7 +45,7 @@ class BendingDetector:
             return set()
 
         hull = MultiPoint(list(graph.nodes.keys())).convex_hull
-        confirmed = set()
+        excluded = set()
 
         for edge in candidates:
             pts = edge.segment.discretize() if edge.segment else [edge.start, edge.end]
@@ -49,6 +56,6 @@ class BendingDetector:
             centroid = Point(mid_x, mid_y)
             is_interior = hull.boundary.distance(centroid) > self.tolerance
             if is_interior:
-                confirmed.add(id(edge))
+                excluded.add(id(edge))
 
-        return confirmed
+        return excluded

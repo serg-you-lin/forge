@@ -28,8 +28,8 @@ class HealStep:
     """
     Esegue l'healing su un ForgeDocument — zero ezdxf.
 
-    Lavora su doc.edges: gap closing (puro), individuazione bending,
-    ricerca loop, costruzione gerarchia.
+    Lavora su doc.edges: gap closing (puro), esclusione degli edge non di
+    contorno, ricerca loop, costruzione gerarchia.
     """
 
     def __init__(
@@ -53,7 +53,7 @@ class HealStep:
 
         self.result.annotations = list(doc.annotations)
 
-        self.candidate_bending_ids = set()
+        self.non_contour_edge_ids  = set()
         self.loop_edge_ids         = set()
         self.entities_in_loops     = set()
 
@@ -72,9 +72,8 @@ class HealStep:
         self.result.all_arcs = [
             e.segment for e in self.edges if isinstance(e.segment, ArcSeg)
         ]
-        self._find_bending_candidates()
+        self._find_non_contour_edges()
         self._find_loops()
-        self._reintegrate_bending()
         self._build_hierarchy()
         return self.result
 
@@ -176,16 +175,16 @@ class HealStep:
                     break
 
 
-    def _find_bending_candidates(self):
-        from .topology.bending_detector import BendingDetector
+    def _find_non_contour_edges(self):
+        from .topology.non_contour_edges import NonContourEdgeDetector
         graph_full = self._build_graph()
 
-        self.candidate_bending_ids = BendingDetector(self.tolerance).detect(graph_full, self.edges)
+        self.non_contour_edge_ids = NonContourEdgeDetector(self.tolerance).detect(graph_full, self.edges)
 
-        if self.candidate_bending_ids:
+        if self.non_contour_edge_ids:
             self.result.warnings.append(
-                f"{len(self.candidate_bending_ids)} candidate come bending "
-                f"escluse dal grafo (entrambi gli endpoint su nodi di branching)."
+                f"{len(self.non_contour_edge_ids)} edge non di contorno "
+                f"esclusi dal grafo (entrambi gli endpoint su nodi di branching)."
             )
 
 
@@ -197,8 +196,8 @@ class HealStep:
         from .healing.hierarchy import loop_to_closed_feature
         from ..model.role import ContourRole
 
-        graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
-        loops = LoopFinder().find(graph, exclude_ids=self.candidate_bending_ids)
+        graph = self._build_graph(exclude_ids=self.non_contour_edge_ids)
+        loops = LoopFinder().find(graph, exclude_ids=self.non_contour_edge_ids)
 
         if not loops:
             # Il grafo esatto non chiude nessun contorno. Individua col
@@ -210,7 +209,7 @@ class HealStep:
             # si riprova sul grafo esatto: la geometria di output è cucita
             # esatta, non solo tollerata.
             graph_c = self._build_graph(
-                exclude_ids=self.candidate_bending_ids,
+                exclude_ids=self.non_contour_edge_ids,
                 epsilon=self.tolerance,
             )
             n_rep, skipped = self._repair_merged_corners(graph_c)
@@ -218,8 +217,8 @@ class HealStep:
                 self.result.all_arcs = [
                     e.segment for e in self.edges if isinstance(e.segment, ArcSeg)
                 ]
-                graph = self._build_graph(exclude_ids=self.candidate_bending_ids)
-                loops = LoopFinder().find(graph, exclude_ids=self.candidate_bending_ids)
+                graph = self._build_graph(exclude_ids=self.non_contour_edge_ids)
+                loops = LoopFinder().find(graph, exclude_ids=self.non_contour_edge_ids)
                 self.result.warnings.append(
                     f"{n_rep} angoli chiusi all'intersezione reale dopo "
                     f"detection via clustering (epsilon={self.tolerance})."
@@ -230,11 +229,11 @@ class HealStep:
                 # clusterizzato "tollerante" (segmenti nativi, ruoli
                 # preservati; discrepanza residua agli angoli non fusi).
                 graph_c = self._build_graph(
-                    exclude_ids=self.candidate_bending_ids,
+                    exclude_ids=self.non_contour_edge_ids,
                     epsilon=self.tolerance,
                 )
                 loops = LoopFinder().find(
-                    graph_c, exclude_ids=self.candidate_bending_ids
+                    graph_c, exclude_ids=self.non_contour_edge_ids
                 )
                 if loops:
                     corners = [c for c, _ in graph_c.merged_clusters()]
@@ -283,9 +282,6 @@ class HealStep:
             )
             if shape is not None:
                 self.closed_shapes.append(shape)
-
-    def _reintegrate_bending(self):
-        pass
 
     def _build_hierarchy(self):
         from .topology.loop_finder import edges_to_open_features
