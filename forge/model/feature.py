@@ -30,7 +30,6 @@ from typing import List, Tuple
 from shapely.geometry import Polygon
 
 from forge.core.primitives.segments import ArcSeg, LineSeg, SplineSeg
-from forge.model.role import ContourRole
 from forge.model.style import EdgeStyle
 
 
@@ -41,7 +40,7 @@ class Feature:
 
     Non istanziare direttamente — usare ClosedFeature o OpenFeature.
     """
-    role:       ContourRole
+    role:       str          # costante ContourRole, o slug di un consumatore
 
 
 @dataclass

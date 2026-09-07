@@ -19,7 +19,6 @@ from dataclasses import dataclass, field
 from typing import Tuple, Union
 
 from ..primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg
-from ...model.role import ContourRole
 from ...model.style import EdgeStyle
 
 Segment = Union[LineSeg, ArcSeg, SplineSeg, CircleSeg]
@@ -32,8 +31,9 @@ class Edge:
     topology engine. Dati puri — nessun riferimento all'entità sorgente.
 
     Campi:
-        role       : ruolo semantico — assegnato dall'adapter prima di costruire l'Edge,
-                     mai derivato dal layer DXF qui dentro
+        role       : ruolo semantico (stringa: costante ContourRole o slug di un
+                     consumatore) — assegnato dall'adapter prima di costruire
+                     l'Edge, mai derivato dal layer DXF qui dentro
         start      : endpoint arrotondato alla tolerance
         end        : endpoint arrotondato alla tolerance
         segment    : primitiva geometrica nativa — mai discretizzata qui,
@@ -44,7 +44,7 @@ class Edge:
         style      : aspetto grezzo (linetype/colore) dell'entità sorgente —
                      captato dall'adapter, mai interpretato qui (Cluster E).
     """
-    role:        ContourRole
+    role:        str
     start:       Tuple[float, float]
     end:         Tuple[float, float]
     segment:     Segment

@@ -216,7 +216,9 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
 
 - **`label_map`**: l'utente dice "il layer `Piega` sono pieghe". Il ruolo è
   assegnato al load, è **autoritativo**, a valle non si rimette in discussione
-  (`source="labeled"`, `confidence=1.0`). Stessa autorità, stesso load, per
+  (`source="labeled"`, `confidence=1.0`). Il vocabolario dei ruoli è aperto: un
+  work_type che forge non conosce (`title_block`, …) non è un errore — passa per
+  `normalize_role`, viene conservato e trattato come non strutturale (D27). Stessa autorità, stesso load, per
   `linetype_map`/`color_map` (`{"DASHED": "bending"}`, `{"cyan": "engrave"}`,
   Cluster E): quando il disegno porta l'intenzione nello stile della linea
   invece che nel layer, sono la stessa lane con un altro segnale in ingresso —
