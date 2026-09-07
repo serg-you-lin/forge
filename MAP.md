@@ -423,6 +423,61 @@ tracciata da git, solo sul filesystem).
 Nessun cambiamento di comportamento. Suite: 610 passed. Branch
 `refactor/hole-detector-to-tools`.
 
+### D26 — `model/` riordinato: `ForgeContour` in un file proprio  ✅
+
+Segnalato da Federico: `cluster.py` definiva sia il contenitore (`ForgeCluster`)
+sia uno dei suoi elementi (`ForgeContour`), incoerente con `hole.py` /
+`engraving.py` / `bending_line.py` che stanno ognuno per conto suo.
+
+- `ForgeContour` → `model/contour.py`, sorella di `Hole` / `Engraving`.
+  `cluster.py` la importa per i type hint di `outer` / `inners`.
+- `BaseInterpreter` (ABC in `classified.py`) cancellato: nessun implementatore,
+  e la firma citava `msp` (modelspace ezdxf, concetto pre-refactor).
+- `ClassifiedEntity` **resta in `model/`**: `ForgeResult.classified_entities`
+  la contiene, spostarla in `tools/` farebbe dipendere `model/` da `tools/`.
+  Aggiunto un docstring che lo spiega.
+
+Import diretti aggiornati (`core/healing/hierarchy.py`, 2 test). `forge.__all__`
+e `forge.model.__all__` invariati salvo `BaseInterpreter` rimosso. Suite: 610
+passed.
+
+### D27 — `ContourRole` vocabolario aperto  ✅
+
+Sintesi della discussione "ContourRole question" (parere di ChatGPT, condiviso
+da Federico): forge non definisce il mondo, fornisce un linguaggio geometrico +
+ruoli noti su cui altri costruiscono la loro semantica. Un `ContourRole` chiuso
+che rifiuta l'ignoto è contro la direzione "substrato neutro"
+(`forge-neutral-substrate-agent-layer-above`).
+
+Regola:
+
+- **A — enum non autoritativo, mai reverse-lookup da input esterno.**
+  `ContourRole` resta la raccolta dei ruoli noti (costanti comode). Forge fa
+  solo test di appartenenza (`role == ContourRole.OUTER`, `role in
+  STRUCTURAL_ROLES`). Vietati `ContourRole[x]`, `getattr(ContourRole, x)`,
+  `ContourRole(x)` su dati del chiamante, e l'API funzionale `Enum(...)`:
+  sollevano o raggiungono attributi di classe. La mappa stringa→ruolo passa
+  sempre per un `dict.get`.
+- **B — un solo punto di normalizzazione, al load.** `model/role.normalize_role`:
+  `str` o `"unknown"`; minuscole; charset `[a-z0-9_-]` (il resto collassato in
+  `_` — neutralizza i payload di injection); ≤ 64 char; noto → costante,
+  ignoto-valido → slug conservato. `layer_to_role` / `_style_role` (dxf) /
+  `_role_from` (geometry) ci passano invece di schiacciare a `UNKNOWN`.
+- **C — difesa anche ai sink.** `role_to_dxf_layer` / `ROLE_TO_LAYER.get` →
+  ignoto su `TRASH_LAYER` (già così); `role_to_hex` → `COLOR_TRASH`; SVG
+  `html.escape` su qualsiasi ruolo in un attributo. Ridondante rispetto a B,
+  voluto.
+- **D — `role_str(role)`** al posto di `.role.value`, che esplode su una `str`.
+
+Type hint `role: ContourRole` → `role: str` in `model/feature.py`,
+`core/topology/edge.py`, `adapters/geometry/loader.py`. `VALID_WORK_TYPES`
+(era in `rules/thresholds.py`, morto) rimosso. Un ruolo custom (`title_block`)
+sopravvive `load → heal`: geometria in `trash_entities`, ruolo intatto, nessun
+warning. Suite: 619 passed (9 nuovi in `test_role.py`).
+
+Branch `refactor/open-roles` (parte da `refactor/model-tidy`), merge unico →
+`main` 0.6.7.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

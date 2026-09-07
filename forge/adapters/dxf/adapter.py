@@ -21,7 +21,7 @@ from ...core.primitives.polygon_builder import build_polygon
 from ...core.adapter_base import ForgeAdapter
 from ...core.geometry import round_point
 from ...core.topology.edge import Edge, Segment
-from ...model.role import ContourRole, WORK_TYPE_TO_ROLE, layer_to_role
+from ...model.role import ContourRole, layer_to_role, normalize_role
 from ...model.style import EdgeStyle
 
 from .parser import DxfEntityDispatcher
@@ -192,26 +192,24 @@ def _normalize_color_map(color_map) -> Dict[int, str]:
     return out
 
 
-def _style_role(style: EdgeStyle, linetype_map: Dict[str, str], color_map: Dict[int, str]) -> ContourRole:
+def _style_role(style: EdgeStyle, linetype_map: Dict[str, str], color_map: Dict[int, str]) -> str:
     """
     Ruolo dedotto dall'aspetto grezzo di un'entità (linetype poi colore),
-    chiamata solo quando layer_to_role() non ha già assegnato un ruolo.
+    chiamata solo quando layer_to_role() non ha già assegnato un ruolo. Un
+    work_type sconosciuto viene conservato (via normalize_role), non
+    schiacciato a UNKNOWN.
     """
     if linetype_map:
         work_type = linetype_map.get((style.linetype or "").upper())
         if work_type:
-            role = WORK_TYPE_TO_ROLE.get(work_type.lower())
-            if role is not None:
-                return role
+            return normalize_role(work_type)
 
     if color_map:
         work_type = color_map.get(style.color)
         if work_type:
-            role = WORK_TYPE_TO_ROLE.get(work_type.lower())
-            if role is not None:
-                return role
+            return normalize_role(work_type)
 
-    return ContourRole.UNKNOWN
+    return ContourRole.UNKNOWN.value
 
 
 # ---------------------------------------------------------------------------

@@ -8,8 +8,8 @@ indipendenti da come il file è scritto (DXF, SVG, PDF, ...).
 
 Chi le usa:
     detect.py     — HOLE_DIAMETER_THRESHOLD come default di
-                    `detect(max_drill_diameter=...)`; VALID_WORK_TYPES per
-                    validare i role in ingresso
+                    `detect(max_drill_diameter=...)`; STRUCTURAL_ROLES per
+                    sapere quali ruoli sono topologia di contorno
 """
 
 # ---------------------------------------------------------------------------
@@ -32,23 +32,6 @@ HOLE_DIAMETER_THRESHOLD: float = 32.1   # mm
 # raggiata di un profilo) NON è un anello filettato: lo si scarta con questa
 # soglia sul rapporto dei raggi.
 THREADED_ARC_MAX_RADIUS_RATIO: float = 1.6
-
-# ---------------------------------------------------------------------------
-# Work type validi — semantica core
-# Corrispondono ai valori di ContourRole che detect() sa gestire.
-# ---------------------------------------------------------------------------
-VALID_WORK_TYPES = frozenset({
-    "outer",
-    "hole",
-    "bend",
-    "bending",    # alias accettato in ingresso
-    "frame",
-    "inner",
-    "engrave",
-    "marking",
-    "countersink",
-    "threaded_hole",
-})
 
 from ..model.role import ContourRole
 

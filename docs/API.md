@@ -61,7 +61,7 @@ funzione il documento `ezdxf` sorgente sparisce.
 | `explode_inserts` | `True` (default): esplode i blocchi in primitive. **Metti `False` solo se vuoi ignorare i blocchi di proposito** — un `INSERT` non esploso viene scartato e la sua geometria sparisce. |
 | `flatten_z_flag` | riporta sul piano le entità con Z ≠ 0. |
 | `tolerance` | tolleranza di arrotondamento dei nodi topologici. Viene salvata in `source_meta` e riletta da `heal()` se non gliela ripassi. |
-| `label_map` | `{nome_layer: work_type}` — assegna il **ruolo** agli `Edge` già in fase di traduzione. Chiavi case-insensitive. `work_type` validi: `outer`, `hole`, `bending`, `frame`, `inner`, `countersink`, `threaded_hole`, `engrave`, `marking`. **Lane autoritativa** — se decide lei, `linetype_map`/`color_map` non intervengono più su quell'entità. |
+| `label_map` | `{nome_layer: work_type}` — assegna il **ruolo** agli `Edge` già in fase di traduzione. Chiavi case-insensitive. `work_type` che forge conosce: `outer`, `hole`, `bending`, `frame`, `inner`, `countersink`, `threaded_hole`, `engrave`, `marking`. Un valore diverso (`title_block`, `section`, …) **non è un errore**: viene ripulito in uno slug e conservato sul ruolo, forge lo tratta come non strutturale e lo manda su `Trash` (vocabolario aperto, MAP.md D27). **Lane autoritativa** — se decide lei, `linetype_map`/`color_map` non intervengono più su quell'entità. |
 | `ignore_layers` | lista di layer da escludere dalla geometria. |
 | `linetype_map` | `{nome_linetype: work_type}` (es. `{"DASHED": "bending"}`) — seconda lane di classificazione, sullo **stile della linea** invece che sul layer. Si applica solo alle entità che `label_map` non ha già classificato. Stesso vocabolario `work_type` di `label_map`. Il linetype confrontato è quello **effettivo**: se l'entità è `ByLayer`, viene risolto al linetype del layer che la contiene, non lasciato `"ByLayer"`. |
 | `color_map` | `{colore: work_type}` (es. `{"cyan": "engrave"}`) — come `linetype_map` ma sul **colore ACI** dell'entità. Chiavi: nome standard (`red`, `yellow`, `green`, `cyan`, `blue`, `magenta`, `white`/`black`, `gray`/`grey`, `lightgray`/`lightgrey`, `pink`), intero ACI, o stringa numerica (`"4"`). Anche qui il colore confrontato è quello effettivo — un'entità `color=256` (BYLAYER) viene risolta al colore del layer, non lasciata BYLAYER. |
@@ -746,10 +746,16 @@ Metodo `to_dict()` → dizionario JSON-ready (usato internamente dagli export).
 `role` (`ContourRole`), `polygon` (shapely), `segments` (primitive native),
 proprietà `area` e `bbox`.
 
-### `ContourRole` (enum, valori stringa)
+### `ContourRole` (ruoli noti — vocabolario aperto)
 
-`unknown`, `outer`, `hole`, `countersink`, `threaded_hole`, `bending`, `frame`,
-`inner`, `engrave`, `marking`.
+I ruoli che forge conosce e sa classificare: `unknown`, `outer`, `hole`,
+`countersink`, `threaded_hole`, `bending`, `frame`, `inner`, `engrave`,
+`marking`. **Non è un universo chiuso**: un consumatore può assegnare via
+`label_map` un ruolo che forge non conosce (`title_block`, `section`, …).
+Passa per `forge.model.role.normalize_role()` — ripulito in uno slug
+`[a-z0-9_-]` ≤ 64 char — e forge lo conserva senza sollevare, trattandolo come
+non strutturale. `role_str(role)` dà il valore stringa che il ruolo sia una
+costante o uno slug (MAP.md D27).
 
 ---
 
