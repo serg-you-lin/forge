@@ -14,12 +14,12 @@ stampa tutto su stdout.
     python 00_inspect.py
 """
 
+import _paths  # noqa: F401  — chdir alla radice del repo
+
 import forge
 
-from _paths import EXAMPLES
-
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = EXAMPLES / "Multifeature.dxf"   # non tracciato: usa un tuo file se manca
+INPUT     = r"tests/examples/Multifeature.dxf"   # non tracciato: usa un tuo file se manca
 TOLERANCE = 0.5
 LABEL_MAP = {
     "Filettati": "threaded_hole",
