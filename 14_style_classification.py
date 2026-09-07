@@ -23,20 +23,20 @@ differenza fra un ruolo arrivato dal layer o dallo stile.
     python 14_style_classification.py
 """
 
-import os
-
 import forge
 
+from _paths import EXAMPLES, OUTPUT
+
 # --- CONFIG ------------------------------------------------------------
-INPUT     = r"tests/examples/lynetype-color-maps.dxf"
+INPUT     = EXAMPLES / "lynetype-color-maps.dxf"
 TOLERANCE = 0.5
 LABEL_MAP    = {"MARK": "engrave"}     # come negli altri script — layer noto
 LINETYPE_MAP = {"DOT": "bending"}   # le 64 linee assiali tratteggiate, trash oggi
 COLOR_MAP    = {"cyan": "engrave"}     # entità colorate ciano non su un layer noto
-OUTDIR       = "pipeline_output"       # come negli altri script — ignorato da git
+OUTDIR       = OUTPUT                  # come negli altri script — ignorato da git
 # -------------------------------------------------------------------------
 
-os.makedirs(OUTDIR, exist_ok=True)
+OUTDIR.mkdir(parents=True, exist_ok=True)
 
 
 def show(tag, result):
@@ -57,7 +57,7 @@ doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
 r = forge.heal(doc, tolerance=TOLERANCE)
 forge.detect(r)
 show("solo label_map", r)
-forge.to_dxf(r, doc, include_trash=True).saveas(os.path.join(OUTDIR, "14_style_classification_1_label_only.dxf"))
+forge.to_dxf(r, doc, include_trash=True).saveas(OUTDIR / "14_style_classification_1_label_only.dxf")
 
 # 2. SOLO linetype_map (isolato, niente color_map)
 doc = forge.load_dxf(
@@ -68,7 +68,7 @@ r_linetype = forge.heal(doc, tolerance=TOLERANCE)
 forge.detect(r_linetype)
 show("solo linetype_map", r_linetype)
 forge.to_dxf(r_linetype, doc, include_trash=True).saveas(
-    os.path.join(OUTDIR, "14_style_classification_2_linetype_only.dxf")
+    OUTDIR / "14_style_classification_2_linetype_only.dxf"
 )
 
 # 3. SOLO color_map (isolato, niente linetype_map)
@@ -80,7 +80,7 @@ r_color = forge.heal(doc, tolerance=TOLERANCE)
 forge.detect(r_color)
 show("solo color_map", r_color)
 forge.to_dxf(r_color, doc, include_trash=True).saveas(
-    os.path.join(OUTDIR, "14_style_classification_3_color_only.dxf")
+    OUTDIR / "14_style_classification_3_color_only.dxf"
 )
 
 print("\nBending lines promosse da linetype_map (source='labeled' anche se il")

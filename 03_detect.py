@@ -23,8 +23,10 @@ detect() MUTA il result in-place E lo ritorna.
 
 import forge
 
+from _paths import EXAMPLES
+
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Multifeature.dxf"   # ha Filettati/Svasati/Piega/MARK
+INPUT     = EXAMPLES / "Multifeature.dxf"   # ha Filettati/Svasati/Piega/MARK
 TOLERANCE = 0.5
 LABEL_MAP = {
     "Filettati": "threaded_hole",

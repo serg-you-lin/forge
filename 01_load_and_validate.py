@@ -16,8 +16,10 @@ solo su ForgeDocument.edges (primitive pure) e ForgeDocument.annotations.
 import ezdxf
 import forge
 
+from _paths import EXAMPLES
+
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Linee_piegatura.dxf"
+INPUT     = EXAMPLES / "Linee_piegatura.dxf"
 TOLERANCE = 0.5
 LABEL_MAP = {"Piega": "bending", "MARK": "engrave"}   # {layer: work_type}, case-insensitive
 # -------------------------------------------------------------------------

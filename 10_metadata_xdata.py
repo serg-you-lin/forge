@@ -13,20 +13,21 @@ conteggi) senza un JSON a fianco.
     python 10_metadata_xdata.py
 """
 
-import os
 import ezdxf
 import forge
 
+from _paths import EXAMPLES, OUTPUT
+
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Multifeature.dxf"
+INPUT     = EXAMPLES / "Multifeature.dxf"
 TOLERANCE = 0.5
 LABEL_MAP = {"Filettati": "threaded_hole", "Svasati": "countersink",
              "Piega": "bending", "MARK": "engrave"}
-OUTDIR = "pipeline_output"
+OUTDIR = OUTPUT
 # -------------------------------------------------------------------------
 
-os.makedirs(OUTDIR, exist_ok=True)
-base = os.path.splitext(os.path.basename(INPUT))[0]
+OUTDIR.mkdir(parents=True, exist_ok=True)
+base = INPUT.stem
 
 # set_schema: rimappa i nomi dei campi in output sul tuo CAM/gestionale.
 # struttura: {chiave_interna: (nome_output, default, sorgente)}
@@ -48,7 +49,7 @@ out = forge.to_dxf(result, doc)
 for cluster in result.clusters:
     forge.write_metadata_to_dxf(out, cluster)
 
-path = os.path.join(OUTDIR, f"{base}_xdata.dxf")
+path = OUTDIR / f"{base}_xdata.dxf"
 out.saveas(path)
 print(f"scritto: {path}")
 

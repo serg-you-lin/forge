@@ -16,8 +16,10 @@ Questo è lo snippet da mettere nel README / negli altri script.
 
 import forge
 
+from _paths import EXAMPLES
+
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Multifeature.dxf"
+INPUT     = EXAMPLES / "Multifeature.dxf"
 TOLERANCE = 0.5
 LABEL_MAP = {
     "Filettati": "threaded_hole",

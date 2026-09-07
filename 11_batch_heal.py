@@ -18,8 +18,10 @@ from pathlib import Path
 
 import forge
 
+from _paths import EXAMPLES
+
 # --- CONFIG ----------------------------------------------------------------
-DEFAULT_DIR = r"tests/examples"
+DEFAULT_DIR = EXAMPLES
 TOLERANCE   = 0.2
 LABEL_MAP = {
     "MARK":      "engrave",
