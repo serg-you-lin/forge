@@ -61,7 +61,7 @@ funzione il documento `ezdxf` sorgente sparisce.
 | `explode_inserts` | `True` (default): esplode i blocchi in primitive. **Metti `False` solo se vuoi ignorare i blocchi di proposito** — un `INSERT` non esploso viene scartato e la sua geometria sparisce. |
 | `flatten_z_flag` | riporta sul piano le entità con Z ≠ 0. |
 | `tolerance` | tolleranza di arrotondamento dei nodi topologici. Viene salvata in `source_meta` e riletta da `heal()` se non gliela ripassi. |
-| `label_map` | `{nome_layer: work_type}` — assegna il **ruolo** agli `Edge` già in fase di traduzione. Chiavi case-insensitive. `work_type` che forge conosce: `outer`, `hole`, `bending`, `frame`, `inner`, `countersink`, `threaded_hole`, `engrave`, `marking`. Un valore diverso (`title_block`, `section`, …) **non è un errore**: viene ripulito in uno slug e conservato sul ruolo, forge lo tratta come non strutturale e lo manda su `Trash` (vocabolario aperto, MAP.md D27). **Lane autoritativa** — se decide lei, `linetype_map`/`color_map` non intervengono più su quell'entità. |
+| `label_map` | `{nome_layer: work_type}` — assegna il **ruolo** agli `Edge` già in fase di traduzione. Chiavi case-insensitive. `work_type` che forge conosce: `outer`, `hole`, `bending`, `inner`, `countersink`, `threaded_hole`, `engrave`, `marking`. Un valore diverso (`frame`, `title_block`, `section`, …) **non è un errore**: viene ripulito in uno slug e conservato sul ruolo, forge lo tratta come non strutturale e in output lo scrive su un layer col nome dello slug (`unknown` → `Trash`) — vocabolario aperto, MAP.md D27 / D31. **Lane autoritativa** — se decide lei, `linetype_map`/`color_map` non intervengono più su quell'entità. |
 | `ignore_layers` | lista di layer da escludere dalla geometria. |
 | `linetype_map` | `{nome_linetype: work_type}` (es. `{"DASHED": "bending"}`) — seconda lane di classificazione, sullo **stile della linea** invece che sul layer. Si applica solo alle entità che `label_map` non ha già classificato. Stesso vocabolario `work_type` di `label_map`. Il linetype confrontato è quello **effettivo**: se l'entità è `ByLayer`, viene risolto al linetype del layer che la contiene, non lasciato `"ByLayer"`. |
 | `color_map` | `{colore: work_type}` (es. `{"cyan": "engrave"}`) — come `linetype_map` ma sul **colore ACI** dell'entità. Chiavi: nome standard (`red`, `yellow`, `green`, `cyan`, `blue`, `magenta`, `white`/`black`, `gray`/`grey`, `lightgray`/`lightgrey`, `pink`), intero ACI, o stringa numerica (`"4"`). Anche qui il colore confrontato è quello effettivo — un'entità `color=256` (BYLAYER) viene risolta al colore del layer, non lasciata BYLAYER. |
@@ -749,22 +749,24 @@ proprietà `area` e `bbox`.
 ### `ContourRole` (ruoli noti — vocabolario aperto)
 
 I ruoli che forge conosce e sa classificare: `unknown`, `outer`, `hole`,
-`countersink`, `threaded_hole`, `bending`, `frame`, `inner`, `engrave`,
-`marking`. **Non è un universo chiuso**: un consumatore può assegnare via
-`label_map` un ruolo che forge non conosce (`title_block`, `section`, …).
-Passa per `normalize_role()` — ripulito in uno slug `[a-z0-9_-]` ≤ 64 char — e
-forge lo conserva senza sollevare, trattandolo come non strutturale.
+`countersink`, `threaded_hole`, `bending`, `inner`, `engrave`, `marking`.
+**Non è un universo chiuso**: un consumatore può assegnare un ruolo che forge
+non conosce (`frame`, `title_block`, `section`, …). Passa per `normalize_role()`
+— ripulito in uno slug `[a-z0-9_-]` ≤ 64 char — e forge lo conserva senza
+sollevare, trattandolo come non strutturale; in output lo scrive su un layer
+DXF **col nome dello slug**, colore grigio (`unknown` → `Trash`, rosso).
 `role_str(role)` dà il valore stringa che il ruolo sia una costante o uno slug
-(MAP.md D27).
+(MAP.md D27 / D31).
 
 **`forge.normalize_role(value) -> str`** e **`forge.is_structural_role(role) ->
 bool`** sono pubbliche (MAP.md D30). Servono a un consumatore che marca la
 geometria **prima di `heal`**: tiene i riferimenti agli `Edge` di `doc.edges`,
 imposta `edge.role = forge.normalize_role("frame")`, e `heal` li tiene fuori dal
-grafo (l'outer vero dei pezzi emerge, la cornice finisce in `Trash` con la
-geometria intatta). `is_structural_role` dice se un ruolo è contorno di pezzo
-(`outer`, `inner`, `hole`, `countersink`, `threaded_hole`) o marcatura/arredo.
-È l'aggancio usato da `Framer` per cornice e cartiglio (`FRAMER.md`).
+grafo (l'outer vero dei pezzi emerge; la geometria marcata finisce in
+`trash_entities` col ruolo intatto e l'output la scrive sul layer `frame`).
+`is_structural_role` dice se un ruolo è contorno di pezzo (`outer`, `inner`,
+`hole`, `countersink`, `threaded_hole`) o marcatura/arredo. È l'aggancio usato
+da `framer` per cornice e cartiglio (`FRAMER.md`).
 
 ---
 

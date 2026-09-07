@@ -33,6 +33,8 @@ from ..adapters.dxf.layers import (
     WORK_TYPE_TO_LAYER,
     ALL_FORGE_LAYERS,
     ROLE_TO_LAYER,
+    role_to_dxf_layer,
+    color_for_layer,
 )
 from ..rules.palette import COLOR_TRASH
 
@@ -324,7 +326,8 @@ def _emit_rendered(msp, ann, attribs: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Trash — entità non classificate, sempre riportate sul layer Trash
+# Trash — entità fuori dai cluster. Sul layer Trash se non hanno un ruolo;
+# su un layer col nome del ruolo se un consumatore ne ha assegnato uno (D31).
 # ---------------------------------------------------------------------------
 
 def _trash_probe_point(trash) -> Optional[tuple]:
@@ -351,7 +354,12 @@ def _write_trash(
     restrict_to_written: bool,
 ) -> None:
     """
-    Materializza `result.trash_entities` sul layer Trash.
+    Materializza `result.trash_entities`.
+
+    Ogni entità va sul layer del suo ruolo (`role_to_dxf_layer`): `Trash` se il
+    ruolo è `unknown`, un layer col nome dello slug se un consumatore l'ha
+    marcata (`frame`, `title_block`, ...) — D31. Il layer viene creato al volo
+    col suo colore canonico.
 
     In `to_dxf()` (documento intero) le riporta tutte. In `split()` — un file
     per parte — assegna ogni entità trash alla parte più vicina fra TUTTE le
@@ -381,9 +389,11 @@ def _write_trash(
         segments = list(getattr(trash, "segments", []) or [])
         if segments:
             styles = list(getattr(trash, "styles", []) or [])
-            # Il colore resta quello del layer Trash — solo il linetype
-            # (tratteggio) della sorgente viene ripristinato fedele.
-            write_open_segments(segments, msp, TRASH_LAYER, styles)
+            layer = role_to_dxf_layer(getattr(trash, "role", ContourRole.UNKNOWN))
+            _ensure_layer(msp.doc, layer)
+            # Il colore resta quello del layer — solo il linetype (tratteggio)
+            # della sorgente viene ripristinato fedele.
+            write_open_segments(segments, msp, layer, styles)
 
 
 # ---------------------------------------------------------------------------
@@ -441,3 +451,12 @@ def _setup_layers(doc) -> None:
         else:
             layer = doc.layers.get(name)
         layer.color = color
+
+
+def _ensure_layer(doc, name: str) -> None:
+    """
+    Crea il layer `name` col suo colore canonico se non esiste già. Serve per i
+    layer dei ruoli di consumatore (`frame`, ...), non noti a `_setup_layers`.
+    """
+    if name and name not in doc.layers:
+        doc.layers.new(name).color = color_for_layer(name)

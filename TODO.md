@@ -31,7 +31,8 @@ Fatto (MAP.md D24): `core/classification/frame_detector.py` e
 `adapters/dxf/frame_adapter_dxf.py` erano codice morto e con import rotto —
 cancellati. Il rilevamento cornice/cartiglio è roba dell'interprete (gira prima
 di `heal`); l'algoritmo resta documentato in `INTERPRETER.md`. Ruolo
-`ContourRole.FRAME` tenuto (solo etichetta).
+`ContourRole.FRAME` tenuto (solo etichetta). → poi rimosso in D31: `frame` è
+uno slug di consumatore, non un ruolo di forge.
 
 ### ✅ `core/classification/` sciolta (branch `refactor/hole-detector-to-tools`, 0.6.6)
 
@@ -67,6 +68,15 @@ Bug fisso: `detect()` non trasforma più un ruolo che non conosce in un
 `ClassifiedEntity` scollegato (geometria persa in output) — lo lascia in Trash.
 `forge.normalize_role` / `forge.is_structural_role` pubbliche. Aggancio B di
 `FRAMER.md`. 625 verdi.
+
+### ✅ `frame` fuori da forge; ruoli di consumatore su un layer loro (branch `refactor/consumer-roles-out-of-forge`, 0.6.10)
+
+Fatto (MAP.md D31): su un disegno reale con la cornice, la geometria di cornice
+usciva tutta sul layer `Trash` — `io/dxf._write_trash` scriveva ogni entità su
+`TRASH_LAYER` ignorando il ruolo. `ContourRole.FRAME` rimosso (`frame` è uno
+slug di consumatore come `title_block`); `_write_trash` instrada per ruolo: slug
+di consumatore → layer col nome dello slug (grigio), `unknown` → `Trash`.
+626 verdi, nessun golden toccato.
 
 heal / detect dentro forge
 

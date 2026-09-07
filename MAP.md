@@ -561,6 +561,39 @@ per motivi diversi, lo lasciavano fuori.
 Suite: 625 passed (era 619; +6 in `test_role.py`). Branch
 `refactor/consolidate-structural-role`, merge → `main` 0.6.9.
 
+### D31 — `frame` fuori da forge; i ruoli di consumatore vanno su un layer loro  ✅
+
+Verificato su un disegno reale con la cornice (`framer` che tagga `role="frame"`):
+la geometria di cornice usciva in output **tutta sul layer `Trash`**, insieme
+alla spazzatura vera. `io/dxf._write_trash` scriveva ogni entità su `TRASH_LAYER`
+hardcoded, ignorando il `role`. D30 aveva fatto sopravvivere il ruolo fino a
+`trash_entities`, ma il writer lo buttava via.
+
+Federico: *"tutto ciò che è framer, ruolo compreso, anche nell'adapter, deve
+uscire da forge ed essere assegnato in framer."* Quindi:
+
+- **`ContourRole.FRAME` rimosso.** `frame` non è più una costante di forge né
+  una chiave di `WORK_TYPE_TO_ROLE`: è uno slug di consumatore come
+  `title_block` / `section`. `normalize_role("frame")` ora ritorna la stringa
+  `"frame"`, non una costante.
+- **`ROLE_TO_LAYER[FRAME]` e `ROLE_TO_COLOR[FRAME]` rimossi** (erano
+  `LAYER_OUTER` / `COLOR_OUTER`, entrambi placeholder sbagliati — la cornice non
+  è un contorno di taglio).
+- **`_write_trash` instrada per ruolo.** `role_to_dxf_layer(role)`: ruolo noto →
+  il suo layer; slug di consumatore (già sanificato) → **un layer col nome
+  dello slug**; `unknown` → `Trash`. Il layer si crea al volo con
+  `COLOR_CONSUMER` (grigio scuro, ACI 8) — non è spazzatura, non è di taglio.
+  `role_to_color` / `role_to_hex` fanno lo stesso per SVG.
+
+Risultato sul disegno reale: `frame` esce su un layer `frame` (11 entità), la
+spazzatura vera resta su `Trash` (388). Nota separata: su quel disegno i pezzi
+veri non si chiudono in `heal` (archi + linee di costruzione) — è un altro
+problema, non D31.
+
+Suite: 626 passed (+1 in `test_role.py`, `test_role.py:77` aggiornato per la
+rimozione di `FRAME`). Nessun golden toccato. Branch
+`refactor/consumer-roles-out-of-forge`, merge → `main` 0.6.10.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

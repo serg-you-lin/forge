@@ -74,10 +74,12 @@ class TestIsStructuralRole(unittest.TestCase):
 
     def test_marcatura_e_arredo_non_sono_strutturali(self):
         for r in (ContourRole.ENGRAVE, ContourRole.MARKING, ContourRole.BEND,
-                  ContourRole.FRAME, ContourRole.UNKNOWN):
+                  ContourRole.UNKNOWN):
             self.assertFalse(is_structural_role(r))
 
     def test_slug_di_un_consumatore_non_e_strutturale(self):
+        # `frame` non è più una costante di forge (D31): è uno slug come gli altri
+        self.assertFalse(is_structural_role("frame"))
         self.assertFalse(is_structural_role("title_block"))
         self.assertFalse(is_structural_role("section"))
 
@@ -151,6 +153,21 @@ class TestConsumerRolesSurviveDetect(unittest.TestCase):
         # niente ClassifiedEntity scollegato, niente warning "non contenuta"
         self.assertEqual(result.classified_entities, [])
         self.assertFalse([w for w in result.warnings if "non contenuta" in w])
+
+    def test_to_dxf_scrive_il_ruolo_di_consumatore_su_un_layer_suo(self):
+        # D31: la cornice non finisce su "Trash" insieme alla spazzatura vera,
+        # ma su un layer "frame" col suo colore. forge non sa cosa sia — porta
+        # fedele lo slug che il consumatore ha assegnato.
+        doc = self._framed_doc()
+        result = forge.heal(doc)
+        out = forge.to_dxf(result, doc)
+
+        layers = {e.dxf.layer for e in out.modelspace()}
+        self.assertIn("frame", layers)
+
+        frame_ents = [e for e in out.modelspace() if e.dxf.layer == "frame"]
+        self.assertTrue(frame_ents)
+        self.assertIn("frame", out.layers)
 
 
 if __name__ == "__main__":

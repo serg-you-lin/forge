@@ -125,10 +125,11 @@ lavora sul `ForgeDocument`.
 Il passo difficile. Lavora su `doc.edges`, zero `ezdxf`. In ordine:
 
 1. **estrae** gli `Edge` con ruolo deciso e non strutturale (`engrave`,
-   `marking`, `frame`, `bending` da `label_map`, o uno slug di un consumatore):
-   non entrano nel grafo — sono marcatura o arredo del disegno, non contorno.
-   Il predicato è `model/role.is_structural_role` (D30); è il punto d'aggancio
-   per un consumatore che marca la geometria prima di `heal` (Framer)
+   `marking`, `bending` da `label_map`, o uno slug di un consumatore come
+   `frame` / `title_block`): non entrano nel grafo — sono marcatura o arredo
+   del disegno, non contorno. Il predicato è `model/role.is_structural_role`
+   (D30); è il punto d'aggancio per un consumatore che marca la geometria prima
+   di `heal` (framer)
 2. **preprocess**: costruisce il grafo dei nodi, trova gli endpoint liberi entro
    `tolerance`, chiude i gap prolungando i segmenti alla loro intersezione reale
 3. **detection pieghe candidate**: gli `Edge` con entrambi gli endpoint su nodi di
@@ -219,10 +220,11 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
 - **`label_map`**: l'utente dice "il layer `Piega` sono pieghe". Il ruolo è
   assegnato al load, è **autoritativo**, a valle non si rimette in discussione
   (`source="labeled"`, `confidence=1.0`). Il vocabolario dei ruoli è aperto: un
-  work_type che forge non conosce (`title_block`, …) non è un errore — passa per
-  `normalize_role`, viene conservato e trattato come non strutturale: `heal` lo
-  tiene fuori dal grafo, `detect` non lo tocca, l'output lo riscrive come
-  `Trash` con la geometria intatta (D27, D30). Stessa autorità, stesso load, per
+  work_type che forge non conosce (`frame`, `title_block`, …) non è un errore —
+  passa per `normalize_role`, viene conservato e trattato come non strutturale:
+  `heal` lo tiene fuori dal grafo, `detect` non lo tocca, l'output lo scrive su
+  un layer DXF col nome dello slug (non `Trash` — non è spazzatura), geometria
+  intatta (D27, D30, D31). Stessa autorità, stesso load, per
   `linetype_map`/`color_map` (`{"DASHED": "bending"}`, `{"cyan": "engrave"}`,
   Cluster E): quando il disegno porta l'intenzione nello stile della linea
   invece che nel layer, sono la stessa lane con un altro segnale in ingresso —
