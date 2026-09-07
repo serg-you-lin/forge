@@ -230,7 +230,7 @@ def inspect_result(result, coords: bool = False) -> None:
 
     print(f"\nsource_file : {result.source_file}")
     print(f"is_valid    : {result.is_valid}")
-    print(f"part_count  : {result.part_count}")
+    print(f"cluster_count  : {result.cluster_count}")
 
     if result.errors:
         print(f"\nerrori ({len(result.errors)}):")
@@ -241,8 +241,8 @@ def inspect_result(result, coords: bool = False) -> None:
         for w in result.warnings:
             print(f"  warn: {w}")
 
-    for i, part in enumerate(result.parts):
-        _sub_part(i, part, coords)
+    for i, cluster in enumerate(result.clusters):
+        _sub_part(i, cluster, coords)
 
     trash = result.trash_entities or []
     if trash:
@@ -268,37 +268,37 @@ def inspect_result(result, coords: bool = False) -> None:
         print(f"\nannotazioni nel modello: {len(anns)}  ({dict(Counter(a.kind for a in anns))})")
 
 
-def _sub_part(i: int, part, coords: bool) -> None:
-    print(f"\n{_SUB}\nPARTE {i}  label={part.label!r}")
-    o = part.outer
+def _sub_part(i: int, cluster, coords: bool) -> None:
+    print(f"\n{_SUB}\nPARTE {i}  label={cluster.label!r}")
+    o = cluster.outer
     print(f"  outer  : role={_role(o.role):<10} area={o.area:.1f}  "
           f"bbox={tuple(round(v, 1) for v in o.bbox)}  segmenti={len(o.segments)}")
-    print(f"  area netta (outer - fori - inner): {part.area:.1f}")
+    print(f"  area netta (outer - fori - inner): {cluster.area:.1f}")
 
-    if part.inners:
-        print(f"  inners : {len(part.inners)}")
-        for inn in part.inners:
+    if cluster.inners:
+        print(f"  inners : {len(cluster.inners)}")
+        for inn in cluster.inners:
             print(f"    - role={_role(inn.role):<10} area={inn.area:.1f} segmenti={len(inn.segments)}")
 
-    if part.holes:
-        print(f"  holes  : {len(part.holes)}")
-        for hh in part.holes:
+    if cluster.holes:
+        print(f"  holes  : {len(cluster.holes)}")
+        for hh in cluster.holes:
             print(f"    - {hh.hole_type:<11} Ø{hh.diameter:.2f} @ {_p(hh.center)}  "
                   f"source={hh.source or 'n/d'} conf={hh.confidence:.2f}")
 
-    if part.bending_lines:
-        print(f"  bending: {len(part.bending_lines)}")
-        for bl in part.bending_lines:
+    if cluster.bending_lines:
+        print(f"  bending: {len(cluster.bending_lines)}")
+        for bl in cluster.bending_lines:
             print(f"    - len={bl.length:.1f} angle={bl.angle_deg:.1f}°")
 
-    if part.engrave_lines:
-        print(f"  engrave: {len(part.engrave_lines)}")
-        for en in part.engrave_lines:
+    if cluster.engrave_lines:
+        print(f"  engrave: {len(cluster.engrave_lines)}")
+        for en in cluster.engrave_lines:
             print(f"    - {'chiusa' if en.closed else 'aperta'} len={en.length:.2f} "
                   f"source={en.source} conf={en.confidence:.2f}")
 
-    if part.custom:
-        print(f"  custom : {part.custom}")
+    if cluster.custom:
+        print(f"  custom : {cluster.custom}")
 
     if coords:
         print(f"  outer coords: {[tuple(round(c, 1) for c in pt) for pt in o.polygon.exterior.coords]}")
@@ -344,7 +344,7 @@ def inspect_file(
     from .pipeline import heal as _heal
     result = _heal(doc, tolerance=tolerance)
 
-    if run_detect and result.is_valid and result.parts:
+    if run_detect and result.is_valid and result.clusters:
         from .pipeline.detect import detect as _detect
         _detect(result)
 

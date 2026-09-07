@@ -11,7 +11,7 @@ Convenzioni di questo documento:
   pipeline lavorano per effetto collaterale)
 - **solleva** — le eccezioni che il chiamante deve prevedere
 
-I tipi di dominio (`ForgeDocument`, `ForgeResult`, `ForgePart`, …) sono descritti
+I tipi di dominio (`ForgeDocument`, `ForgeResult`, `ForgeCluster`, …) sono descritti
 in fondo.
 
 ---
@@ -168,7 +168,7 @@ forge.validate(doc: ForgeDocument) -> ForgeResult
 ```
 
 Valida l'**input** prima di `heal()`. Non modifica niente. Ritorna un
-`ForgeResult` con solo `warnings` / `errors` / `is_valid` (`parts` vuoto).
+`ForgeResult` con solo `warnings` / `errors` / `is_valid` (`clusters` vuoto).
 
 - **`is_valid = False`** — il file non è lavorabile: nessuna geometria, coordinate
   NaN/inf, tutti i segmenti degeneri.
@@ -193,7 +193,7 @@ forge.validate_result(result: ForgeResult) -> ForgeResult
 ```
 
 Valida l'**output** dopo `heal()`. **Muta** il `result` passato: aggiunge
-`warnings` / `errors` e può mettere `is_valid = False`. Controlla, per ogni part:
+`warnings` / `errors` e può mettere `is_valid = False`. Controlla, per ogni cluster:
 poligono outer valido e non vuoto, area > 0, fori contenuti nell'outer.
 
 Viene **già chiamata automaticamente da `heal()`** — la usi a mano solo se
@@ -213,13 +213,13 @@ Il passo difficile: ricostruzione della topologia. Lavora su `doc.edges`, zero
 `ezdxf`. Chiude i gap, individua le linee di piega candidate, trova i loop chiusi,
 costruisce l'albero di contenimento outer / inner.
 
-`heal()` **non classifica i fori** (D15): consegna solo `ForgePart(outer,
+`heal()` **non classifica i fori** (D15): consegna solo `ForgeCluster(outer,
 inners=[ForgeContour...])`. La promozione a `Hole` è di `detect(features="holes")`.
 
 | parametro | significato |
 |---|---|
 | `tolerance` | se `None`, ripresa da `doc.source_meta["tolerance"]` (quella passata a `load_dxf`). |
-| `label` | etichetta del pezzo, finisce in `part.label` e nei metadati. |
+| `label` | etichetta del pezzo, finisce in `cluster.label` e nei metadati. |
 | `source_file` | nome file sorgente, finisce nei metadati. |
 
 `label_map`/`linetype_map`/`color_map` **non sono parametri di `heal`** — vanno
@@ -324,7 +324,7 @@ if not result.is_valid:
 forge.to_dxf(
     result: ForgeResult,
     source_doc: ForgeDocument = None,
-    filter_part=None,
+    filter_cluster=None,
     include_annotations=True,
     include_trash=True,
     annotation_layer="Annotation",
@@ -337,7 +337,7 @@ entità dalla sorgente: `source_doc` serve solo a riportare gli header
 
 | parametro | significato |
 |---|---|
-| `filter_part` | `callable(ForgePart) -> bool` — scrive solo le parti che passano. |
+| `filter_cluster` | `callable(ForgeCluster) -> bool` — scrive solo le parti che passano. |
 | `include_trash` | `True` (default): la geometria non classificata va sul layer `Trash`. Un operatore CAM deve poter vedere ogni entità del disegno di partenza. |
 | `annotation_layer` | `"Annotation"` → layer forge dedicato; `"Trash"` o altro nome → quel layer; `None` → layer originale della sorgente. Nessuna annotazione viene mai scartata. |
 
@@ -363,7 +363,7 @@ forge.split(
     include_annotations=True,
     min_area=50.0,
     exclude_types=None,
-    on_part=None,
+    on_cluster=None,
     annotation_layer="Annotation",
 ) -> list[ezdxf.document.Drawing]
 ```
@@ -374,17 +374,17 @@ il disco. Le parti sotto `min_area` (mm²) vengono scartate (con warning nel
 
 | parametro | significato |
 |---|---|
-| `namer` | `callable(i, part) -> str` — assegna `part.label`, così il nome file resta `f"{part.label}.dxf"` a valle. |
+| `namer` | `callable(i, cluster) -> str` — assegna `cluster.label`, così il nome file resta `f"{cluster.label}.dxf"` a valle. |
 | `exclude_types` | set di `dxftype` da rimuovere dal documento di ogni parte (es. `{"TEXT"}`). |
-| `on_part` | `callable(part, doc_out)` — hook per parte, prima che il `Drawing` entri nella lista. |
+| `on_cluster` | `callable(cluster, doc_out)` — hook per parte, prima che il `Drawing` entri nella lista. |
 
 **Ritorna** la lista dei `Drawing` nell'ordine delle parti tenute.
 **Solleva `ValueError`** se `result.is_valid` è `False`.
 
 ```python
 docs = forge.split(result, doc, min_area=100.0)
-for d, part in zip(docs, [p for p in result.parts if p.outer.polygon.area >= 100]):
-    d.saveas(f"{part.label}.dxf")
+for d, cluster in zip(docs, [p for p in result.clusters if p.outer.polygon.area >= 100]):
+    d.saveas(f"{cluster.label}.dxf")
 ```
 
 ---
@@ -408,8 +408,8 @@ forge.split_to_files(
 
 Pipeline completa multi-pezzo + salvataggio su disco: `heal → detect → split →
 .saveas()` per parte. **È l'unica funzione della pipeline che scrive su disco.**
-Il nome file è `f"{part.label}.dxf"`, dove `part.label` è quello che assegna
-`namer(i, part)`; senza `namer` diventa `f"{label}_P{i+1}"` (es. `batch_P1.dxf`).
+Il nome file è `f"{cluster.label}.dxf"`, dove `cluster.label` è quello che assegna
+`namer(i, cluster)`; senza `namer` diventa `f"{label}_P{i+1}"` (es. `batch_P1.dxf`).
 
 **Ritorna** il `ForgeResult` (per poterci fare `save_json` dopo). Se il risultato
 non è valido, ritorna il result senza scrivere niente.
@@ -432,10 +432,10 @@ forge.inject(
 ) -> ForgeResult
 ```
 
-Arricchimento CAM **opzionale**. **Muta** `result.parts[i].custom` in-place e
+Arricchimento CAM **opzionale**. **Muta** `result.clusters[i].custom` in-place e
 ritorna il `result`. Fa **una cosa**: se passi `data_injector` —
-`callable(part, list[str]) -> dict` — gli passa i testi che ricadono dentro
-l'outer di ogni parte e mette il dict restituito in `part.custom` (codice pezzo,
+`callable(cluster, list[str]) -> dict` — gli passa i testi che ricadono dentro
+l'outer di ogni parte e mette il dict restituito in `cluster.custom` (codice pezzo,
 materiale, spessore, …). Senza `data_injector`, `inject()` non fa nulla.
 
 `texts` va passato come **`list[ForgeText]`** (`content` + `position`) — il
@@ -444,14 +444,14 @@ filtraggio per parte è geometrico, servono le posizioni. Si ottiene con
 ritorna stringhe nude). Il `data_injector` riceve comunque `list[str]`.
 
 I **conteggi delle feature** (fori per tipo, pieghe, lunghezza incisioni) NON si
-fanno più qui: sono `part.summary`, una property derivata dal modello (MAP.md
+fanno più qui: sono `cluster.summary`, una property derivata dal modello (MAP.md
 D8). `save_json` / `save_xml` li leggono da lì.
 
 ```python
 import ezdxf
 msp = ezdxf.readfile("pezzo.dxf").modelspace()
 
-def leggi_cartiglio(part, testi):
+def leggi_cartiglio(cluster, testi):
     return {"material": next((t for t in testi if t.startswith("S")), "S275JR")}
 
 forge.inject(result, data_injector=leggi_cartiglio,
@@ -479,9 +479,9 @@ Metadati per parte secondo schema — **niente coordinate**. Struttura:
 {
   "source_file": "batch.dxf",
   "is_valid": true,
-  "part_count": 3,
+  "cluster_count": 3,
   "warnings": [], "errors": [],
-  "parts": [
+  "clusters": [
     {
       "label": "P-1", "source_file": "batch.dxf",
       "quantity": 1, "material": "S275JR", "thickness_mm": 0.0,
@@ -502,7 +502,7 @@ Metadati per parte secondo schema — **niente coordinate**. Struttura:
 forge.save_xml(result: ForgeResult, path) -> None
 ```
 
-Stessi campi di `save_json`, in XML (`<forge><parts><part>…`).
+Stessi campi di `save_json`, in XML (`<forge><clusters><cluster>…`).
 
 ### `to_view_model`
 
@@ -531,8 +531,8 @@ disegnare un cerchio vero. Coordinate nel sistema del sorgente (Y in alto).
 
 ```python
 vm = forge.to_view_model(result)
-vm["parts"][0]["outer"]        # {"role": "outer", "color": "#00ff00", "points": [...], "closed": true}
-vm["parts"][0]["holes"][0]     # + hole_type, diameter, center, source, confidence
+vm["clusters"][0]["outer"]        # {"role": "outer", "color": "#00ff00", "points": [...], "closed": true}
+vm["clusters"][0]["holes"][0]     # + hole_type, diameter, center, source, confidence
 vm["palette"]                  # {"outer": "#00ff00", "hole": "#ff00ff", ...}
 ```
 
@@ -559,7 +559,7 @@ forge.save_svg(result, path, **kwargs) -> None
 
 Renderer SVG del modello (MAP.md D12) — **per visualizzazione** (UI/report/
 anteprima). Un colore per ruolo (stessa palette semantica del DXF di output). La
-Y viene ribaltata (modello Y-su → SVG Y-giù). Una parte = un `<g data-part="…">`.
+Y viene ribaltata (modello Y-su → SVG Y-giù). Una parte = un `<g data-cluster="…">`.
 Costruito sopra `to_view_model`.
 
 `size=None` (default) **non** scrive `width`/`height` sull'`<svg>`: l'immagine è
@@ -582,7 +582,7 @@ forge.save_svg(result, "pezzo.svg")
 ### `write_metadata_to_dxf` / `read_metadata_from_dxf`
 
 ```python
-forge.write_metadata_to_dxf(doc, part: ForgePart) -> None
+forge.write_metadata_to_dxf(doc, cluster: ForgeCluster) -> None
 forge.read_metadata_from_dxf(doc) -> dict
 ```
 
@@ -592,7 +592,7 @@ quello restituito da `to_dxf`). `read_` ritorna `{}` se non trova niente.
 
 ```python
 doc_out = forge.to_dxf(result, doc)
-forge.write_metadata_to_dxf(doc_out, result.parts[0])
+forge.write_metadata_to_dxf(doc_out, result.clusters[0])
 doc_out.saveas("out.dxf")
 # più tardi:
 meta = forge.read_metadata_from_dxf(ezdxf.readfile("out.dxf"))
@@ -607,7 +607,7 @@ forge.set_schema(schema: dict) -> None
 Sostituisce lo schema metadati attivo a runtime. Da usare quando `forge` è
 installato con pip e non puoi editare `metadata_schema.py`. Struttura:
 `{chiave_interna: (nome_output, default, sorgente)}` con `sorgente` ∈
-`{"part", "custom", "calculated"}`.
+`{"cluster", "custom", "calculated"}`.
 
 ---
 
@@ -708,7 +708,7 @@ Prodotto da `heal()`, arricchito da `detect()` / `inject()`.
 
 | campo | tipo | contenuto |
 |---|---|---|
-| `parts` | `list[ForgePart]` | un elemento per contorno esterno chiuso |
+| `clusters` | `list[ForgeCluster]` | un elemento per contorno esterno chiuso |
 | `is_valid` | `bool` | **controllalo prima di `to_dxf` / `split`** |
 | `warnings` / `errors` | `list[str]` | diagnostica |
 | `trash_entities` | `list` | geometria non classificata (proxy con `segments`, formato-indipendenti) |
@@ -716,11 +716,11 @@ Prodotto da `heal()`, arricchito da `detect()` / `inject()`.
 | `classified_entities` | `list[ClassifiedEntity]` | feature senza classe dedicata (marking, work_type custom) |
 | `all_arcs` | `list[ArcSeg]` | tutti gli archi — usato dal detector fori filettati |
 | `label_map` | `dict` | configurazione di sessione, non serializzata |
-| `part_count` | property | `len(parts)` |
+| `cluster_count` | property | `len(clusters)` |
 
 Metodo `to_dict()` → dizionario JSON-ready (usato internamente dagli export).
 
-### `ForgePart`
+### `ForgeCluster`
 
 | campo | tipo | contenuto |
 |---|---|---|

@@ -4,7 +4,7 @@ from typing import Optional
 from shapely.geometry import Polygon
 
 from ...model.feature import ClosedFeature
-from ...model.part import ForgePart, ForgeContour
+from ...model.cluster import ForgeCluster, ForgeContour
 from ...model.role import ContourRole
 from ...core.geometry import circular_geometry
 
@@ -109,7 +109,7 @@ def _collect_inners(
 ):
     """
     Appiattisce l'albero di contenimento: ogni discendente di un outer diventa
-    un `ForgeContour` in `part.inners`, a qualsiasi profondità.
+    un `ForgeContour` in `cluster.inners`, a qualsiasi profondità.
 
     heal() si ferma qui — non decide più hole vs inner né riconosce i
     countersink dal nesting (D15). detect(features="holes") ri-deriva il
@@ -133,7 +133,7 @@ class HierarchyBuilder:
         self.label_map   = label_map
         # entities_in_loops tenuto temporaneamente per compatibilità — non usato
 
-    def build(self, proxies: list) -> tuple[list[ForgePart], list]:
+    def build(self, proxies: list) -> tuple[list[ForgeCluster], list]:
         self._classified_proxies: set[int] = set()
 
         valid = [p for p in proxies if getattr(p, "polygon", None) is not None]
@@ -141,14 +141,14 @@ class HierarchyBuilder:
             return [], self._collect_trash(proxies)
 
         tree  = _build_tree(valid)
-        parts = self._build_parts(tree)
+        clusters = self._build_parts(tree)
         trash = self._collect_trash(proxies)
 
-        parts.sort(key=lambda p: p.outer.polygon.area, reverse=True)
-        return parts, trash
+        clusters.sort(key=lambda p: p.outer.polygon.area, reverse=True)
+        return clusters, trash
 
-    def _build_parts(self, tree: list) -> list[ForgePart]:
-        parts = []
+    def _build_parts(self, tree: list) -> list[ForgeCluster]:
+        clusters = []
 
         for root_node in tree:
             father_proxy, children = root_node
@@ -164,7 +164,7 @@ class HierarchyBuilder:
             inners = []
             _collect_inners(children, inners, self._classified_proxies, parent_role=father_proxy.role)
 
-            part = ForgePart(
+            cluster = ForgeCluster(
                 outer=outer,
                 holes=[],
                 inners=inners,
@@ -172,9 +172,9 @@ class HierarchyBuilder:
                 source_file=self.source_file,
                 custom={},
             )
-            parts.append(part)
+            clusters.append(cluster)
 
-        return parts
+        return clusters
 
     def _collect_trash(self, proxies: list) -> list:
         STRUCTURAL_ROLES = {ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE}

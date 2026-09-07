@@ -53,7 +53,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.pipeline.write import (
-    split, ANNOTATION_TYPES, DEFAULT_MIN_PART_AREA, part_passes_min_area,
+    split, ANNOTATION_TYPES, DEFAULT_MIN_CLUSTER_AREA, cluster_passes_min_area,
 )
 from forge.adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
@@ -104,14 +104,14 @@ def _read_children(out_dir: str) -> dict[str, object]:
 
 
 
-def _split_files(result, source_doc, out_dir, *, min_area=DEFAULT_MIN_PART_AREA, **kwargs):
+def _split_files(result, source_doc, out_dir, *, min_area=DEFAULT_MIN_CLUSTER_AREA, **kwargs):
     """split() puro + saveas su disco — riproduce a path il vecchio contratto."""
     os.makedirs(out_dir, exist_ok=True)
     drawings = split(result, source_doc, min_area=min_area, **kwargs)
-    kept = [p for p in result.parts if part_passes_min_area(p, min_area)]
+    kept = [p for p in result.clusters if cluster_passes_min_area(p, min_area)]
     paths = []
-    for part, drawing in zip(kept, drawings):
-        path = os.path.join(out_dir, f"{part.label}.dxf")
+    for cluster, drawing in zip(kept, drawings):
+        path = os.path.join(out_dir, f"{cluster.label}.dxf")
         drawing.saveas(path)
         paths.append(path)
     return paths
@@ -133,7 +133,7 @@ class TestUnitSplitOutput(unittest.TestCase):
 
     def _assert_heal_found_parts(self):
         self.assertGreater(
-            len(self.result.parts), 0,
+            len(self.result.clusters), 0,
             "heal() non ha trovato parti — verifica la geometria della fixture"
         )
 
@@ -170,18 +170,18 @@ class TestUnitSplitOutput(unittest.TestCase):
     def test_004_namer_custom(self):
         """Un namer custom viene rispettato."""
         self._assert_heal_found_parts()
-        namer = lambda i, part: f"pezzo_{i + 1}"
+        namer = lambda i, cluster: f"pezzo_{i + 1}"
         generated = _split_files(self.result, self.doc, self.out_dir,
                           namer=namer)
         self.assertTrue(len(generated) > 0)
         self.assertEqual(Path(generated[0]).stem, "pezzo_1")
 
-    def test_005_part_label_aggiornata(self):
-        """Dopo split(), part.label corrisponde al nome file usato."""
+    def test_005_cluster_label_aggiornata(self):
+        """Dopo split(), cluster.label corrisponde al nome file usato."""
         self._assert_heal_found_parts()
         generated = _split_files(self.result, self.doc, self.out_dir)
         nome_file = Path(generated[0]).stem
-        self.assertEqual(self.result.parts[0].label, nome_file)
+        self.assertEqual(self.result.clusters[0].label, nome_file)
 
     def test_006_min_area_scarta_part_sotto_soglia(self):
         """Part con area sotto min_area vengono scartati e producono un warning."""
@@ -191,7 +191,7 @@ class TestUnitSplitOutput(unittest.TestCase):
                           min_area=999_999)
         self.assertEqual(len(generated), 0, "Part sotto soglia non scartato")
         self.assertTrue(len(self.result.warnings) > 0,
-                        "Nessun warning emesso per part scartato")
+                        "Nessun warning emesso per cluster scartato")
 
     def test_007_output_folder_creata_se_assente(self):
         """split() crea la cartella di output se non esiste."""
@@ -225,7 +225,7 @@ class TestUnitSplitFilters(unittest.TestCase):
             _rect(), extra_entities=[_add_annotations]
         )
         self.assertTrue(
-            len(self.result.parts) > 0,
+            len(self.result.clusters) > 0,
             "heal() non ha trovato parti — verifica la fixture"
         )
 
@@ -304,7 +304,7 @@ class TestUnitSplitLayers(unittest.TestCase):
         self.out_dir = tempfile.mkdtemp()
         self.doc, self.result = _make_via_heal(_rect())
         self.assertTrue(
-            len(self.result.parts) > 0,
+            len(self.result.clusters) > 0,
             "heal() non ha trovato parti — verifica la fixture"
         )
         self.generated = _split_files(self.result, self.doc,
@@ -351,7 +351,7 @@ class TestUnitSplitLayers(unittest.TestCase):
 class TestIntegrationPipeline(unittest.TestCase):
     """
     Testa split_to_files() come black box su file in examples/.
-    Verifica invarianti osservabili: file su disco, part count, layer.
+    Verifica invarianti osservabili: file su disco, cluster count, layer.
     Non entra nei dettagli di split() — quelli sono nei test unit.
     """
 
@@ -382,15 +382,15 @@ class TestIntegrationPipeline(unittest.TestCase):
                 self.fail(f"File figlio non leggibile: {f.name} — {e}")
 
     def test_003_result_ha_parts(self):
-        """split_to_files() ritorna un ForgeResult con parts popolati."""
+        """split_to_files() ritorna un ForgeResult con clusters popolati."""
         result, _ = self._run("two_parts.dxf", "two_parts")
-        self.assertGreater(result.part_count, 0)
+        self.assertGreater(result.cluster_count, 0)
 
     def test_004_part_con_foro(self):
-        """pline_with_hole.dxf → il part ha almeno un inner/hole."""
+        """pline_with_hole.dxf → il cluster ha almeno un inner/hole."""
         result, _ = self._run("pline_with_hole.dxf", "pline_with_hole")
-        self.assertEqual(result.part_count, 1)
-        self.assertGreater(len(result.parts[0].inners), 0,
+        self.assertEqual(result.cluster_count, 1)
+        self.assertGreater(len(result.clusters[0].inners), 0,
                            "Nessun inner/hole trovato")
 
     def test_005_include_annotations_false_propagato(self):
@@ -413,7 +413,7 @@ class TestIntegrationPipeline(unittest.TestCase):
         """Un namer custom passato a split_to_files() viene usato."""
         out_dir = tempfile.mkdtemp()
         doc = ezdxf.readfile(str(EXAMPLES_DIR / "two_parts.dxf"))
-        namer = lambda i, part: f"custom_{i + 1:02d}"
+        namer = lambda i, cluster: f"custom_{i + 1:02d}"
         forge.split_to_files(forge.document_from_msp(doc.modelspace()), output_folder=out_dir,
                              label="two_parts", namer=namer)
         names = {f.stem for f in Path(out_dir).glob("*.dxf")}

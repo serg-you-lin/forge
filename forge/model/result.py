@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from dataclasses import field
 from typing import List, Set, Any
-from .part import ForgePart
+from .cluster import ForgeCluster
 from .classified import ClassifiedEntity
 from .annotation import Annotation
 
@@ -25,7 +25,7 @@ class ForgeResult:
                     futuro to_svg/to_pdf) li disegna dal modello, senza
                     rileggere la sorgente.
     """
-    parts:               List[ForgePart]        = field(default_factory=list)
+    clusters:               List[ForgeCluster]        = field(default_factory=list)
     source_file:         str                    = ""
     is_valid:            bool                   = True
     warnings:            List[str]              = field(default_factory=list)
@@ -38,8 +38,8 @@ class ForgeResult:
     _open_shapes:        List[Any]              = field(default_factory=list)
 
     @property
-    def part_count(self) -> int:
-        return len(self.parts)
+    def cluster_count(self) -> int:
+        return len(self.clusters)
 
     @property
     def has_issues(self) -> bool:
@@ -50,8 +50,8 @@ class ForgeResult:
         return {
             "source_file": self.source_file,
             "is_valid":    self.is_valid,
-            "part_count":  self.part_count,
+            "cluster_count":  self.cluster_count,
             "warnings":    self.warnings,
             "errors":      self.errors,
-            "parts":       [p.to_dict() for p in self.parts],
+            "clusters":       [p.to_dict() for p in self.clusters],
         }

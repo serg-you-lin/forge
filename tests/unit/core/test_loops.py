@@ -340,10 +340,10 @@ class TestSplitArcStubs(unittest.TestCase):
         self.result = forge.heal(ForgeDocument(edges=edges), tolerance=1.0)
 
     def test_un_solo_part(self):
-        self.assertEqual(self.result.part_count, 1)
+        self.assertEqual(self.result.cluster_count, 1)
 
     def test_area_corretta(self):
-        poly = self.result.parts[0].outer.polygon
+        poly = self.result.clusters[0].outer.polygon
         self.assertAlmostEqual(poly.area, 1000.0 * 500.0, delta=500.0)
 
     def test_stub_non_perse_finiscono_in_trash(self):

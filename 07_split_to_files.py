@@ -7,7 +7,7 @@ API forge usate:
                       È L'UNICA funzione della pipeline che scrive su disco.
 
 Ritorna il ForgeResult (per poterci fare save_json dopo). Nome file:
-f"{part.label}.dxf" dove part.label = namer(i, part), senza namer f"{label}_P{i+1}".
+f"{cluster.label}.dxf" dove cluster.label = namer(i, cluster), senza namer f"{label}_P{i+1}".
 
     python 07_split_to_files.py
 """
@@ -28,12 +28,12 @@ result = forge.split_to_files(
     output_folder=OUTDIR,
     label=LABEL,
     source_file=INPUT,
-    namer=lambda i, part: f"{LABEL}_P{i + 1}",
+    namer=lambda i, cluster: f"{LABEL}_P{i + 1}",
     min_area=50.0,
     include_annotations=True,
 )
 
-print(f"parti scritte : {result.part_count}  ->  {OUTDIR}/")
+print(f"parti scritte : {result.cluster_count}  ->  {OUTDIR}/")
 print(f"is_valid      : {result.is_valid}")
 for w in result.warnings:
     print(f"   warn: {w}")

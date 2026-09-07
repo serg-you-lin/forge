@@ -12,7 +12,7 @@ Per ogni DXF padre viene eseguita la pipeline completa:
     heal → detect → write → split
 
 Il golden di ogni parte viene costruito direttamente dal result del padre
-(result.parts[i]) — senza riprocessare il figlio.
+(result.clusters[i]) — senza riprocessare il figlio.
 
 Lancia:
     python generate_golden_split.py
@@ -74,7 +74,7 @@ def generate(force: bool = False, only: str = None):
             doc = forge.load_dxf(parent_path, upgrade=True, explode_inserts=True)
             result = forge.heal(doc, tolerance=tolerance)
 
-            if not result.is_valid or not result.parts:
+            if not result.is_valid or not result.clusters:
                 print(f"  SKIP (non valido): {parent_path.name}")
                 skipped += 1
                 continue
@@ -84,12 +84,12 @@ def generate(force: bool = False, only: str = None):
             forge.split(
                 result,
                 doc,
-                namer=lambda i, part: f"{part.label}_P{i + 1:03d}",
+                namer=lambda i, cluster: f"{cluster.label}_P{i + 1:03d}",
             )
 
-            print(f"  {parent_path.name} → {len(result.parts)} parti")
+            print(f"  {parent_path.name} → {len(result.clusters)} parti")
 
-            for part_index, part in enumerate(result.parts):
+            for part_index, cluster in enumerate(result.clusters):
                 golden_stem = f"{parent_path.stem}__{part_index:03d}"
                 golden_path = GOLDEN_DIR / f"{golden_stem}.json"
 
@@ -99,7 +99,7 @@ def generate(force: bool = False, only: str = None):
                     continue
 
                 all_inners = sorted(
-                    part.holes + part.inners,
+                    cluster.holes + cluster.inners,
                     key=lambda x: x.area,
                     reverse=True,
                 )
@@ -107,20 +107,20 @@ def generate(force: bool = False, only: str = None):
                 golden = {
                     "parent_file":         parent_path.name,
                     "part_index":          part_index,
-                    "area_mm2":            round(part.area, 4),
+                    "area_mm2":            round(cluster.area, 4),
                     "holes_count":         len(all_inners),
-                    "outer_perimeter_mm":  round(part.outer.polygon.exterior.length, 4),
+                    "outer_perimeter_mm":  round(cluster.outer.polygon.exterior.length, 4),
                     "inner_perimeter_mm":  round(sum(i.polygon.exterior.length for i in all_inners), 4),
                     "total_perimeter_mm":  round(
-                        part.outer.polygon.exterior.length +
+                        cluster.outer.polygon.exterior.length +
                         sum(i.polygon.exterior.length for i in all_inners),
                         4,
                     ),
-                    "outer_wkt":     part.outer.polygon.wkt,
+                    "outer_wkt":     cluster.outer.polygon.wkt,
                     "inners_wkt":    [i.polygon.wkt for i in all_inners],
-                    "outer_layer":   ROLE_TO_LAYER.get(part.outer.role),
+                    "outer_layer":   ROLE_TO_LAYER.get(cluster.outer.role),
                     "inners_layers": [ROLE_TO_LAYER.get(i.role, LAYER_INNER) for i in all_inners],
-                    "summary":       {k: v for k, v in part.summary.items() if v},
+                    "summary":       {k: v for k, v in cluster.summary.items() if v},
                 }
 
                 golden_path.write_text(

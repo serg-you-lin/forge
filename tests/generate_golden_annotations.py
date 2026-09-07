@@ -6,7 +6,7 @@ Genera i golden file per il test di regressione sulle annotazioni
 
 Snapshot di `forge.load_dxf(...).annotations` — l'estrazione grezza, prima di
 heal() e prima della futura fase interpret_annotations(). Quando quella fase
-esisterà, questo script si estende con part_ref / target / references.
+esisterà, questo script si estende con cluster_ref / target / references.
 
 DXF sorgente: tests/examples/*.dxf (quelli che contengono annotazioni)
 Golden JSON:  tests/examples/golden/annotations/
@@ -62,7 +62,7 @@ def _annotation_dict(a) -> dict:
         "position": [round(a.position[0], 3), round(a.position[1], 3)],
         "display_text": a.display_text,
         "layer": a.layer,
-        "part_ref": a.part_ref,
+        "cluster_ref": a.cluster_ref,
     }
     if isinstance(a, Note):
         d["height"] = round(a.height, 3)
@@ -117,7 +117,7 @@ def generate(force: bool = False, only: str = None) -> None:
                 "source_file": dxf_path.name,
                 "annotation_count": len(entries),
                 "by_kind": dict(Counter(e["kind"] for e in entries)),
-                "part_count": result.part_count,
+                "cluster_count": result.cluster_count,
                 "annotations": entries,
             }
             golden_path.write_text(

@@ -22,7 +22,7 @@ def _square_result(side: float = 100.0):
         msp.add_line(a, b)
     source_doc = forge.document_from_msp(msp, tolerance=0.5)
     result = forge.heal(source_doc, tolerance=0.5)
-    assert result.is_valid and result.parts
+    assert result.is_valid and result.clusters
     return source_doc, result
 
 
@@ -32,7 +32,7 @@ class TestMetadataXdataRoundtrip(unittest.TestCase):
         source_doc, result = _square_result()
         doc_out = forge.to_dxf(result, source_doc)
 
-        forge.write_metadata_to_dxf(doc_out, result.parts[0])
+        forge.write_metadata_to_dxf(doc_out, result.clusters[0])
         meta = forge.read_metadata_from_dxf(doc_out)
 
         self.assertIsInstance(meta, dict)
