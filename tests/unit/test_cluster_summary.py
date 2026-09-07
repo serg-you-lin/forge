@@ -9,7 +9,8 @@ import unittest
 
 from shapely.geometry import Polygon, LineString
 
-from forge.model.cluster import ForgeCluster, ForgeContour
+from forge.model.cluster import ForgeCluster
+from forge.model.contour import ForgeContour
 from forge.model.hole import (
     Hole, HOLE_TYPE_PLAIN, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED,
 )

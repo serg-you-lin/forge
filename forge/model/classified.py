@@ -1,8 +1,15 @@
+"""
+model/classified.py
+
+DTO di risultato: una entità classificata da `tools/detect()` senza una classe
+di dominio dedicata (marking, work_type custom). Vive in `model/` perché
+`ForgeResult.classified_entities` la contiene — spostarla in `tools/`
+significherebbe far dipendere `model/` da `tools/`.
+"""
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any, Optional, Tuple
-from abc import ABC, abstractmethod
-from shapely.geometry import Polygon
+
 
 @dataclass
 class ClassifiedEntity:
@@ -21,23 +28,5 @@ class ClassifiedEntity:
     confidence: float
     source:     str
     data:       dict = field(default_factory=dict)
-    polygon:    Any  = None  
+    polygon:    Any  = None
     representative_point: Optional[Tuple[float, float]] = None
-
-
-class BaseInterpreter(ABC):
-    """
-    Interfaccia che ogni interpreter deve implementare.
-
-    detect() non sa quale interpreter sta usando — chiama questo metodo e basta.
-    """
-    @abstractmethod
-    def classify(
-        self,
-        entities:    list,
-        outer_poly:  Polygon,
-        inner_polys: list,
-        msp,
-        hints:       dict = None,
-    ) -> list:  # list[ClassifiedEntity]
-        ...

@@ -4,13 +4,11 @@ model/cluster.py
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Set, Tuple
+from typing import List
 
 from shapely.geometry import Polygon
 
-from forge.core.primitives import LineSeg, ArcSeg, CircleSeg, SplineSeg
-from forge.model.feature import ClosedFeature
-from forge.model.role import ContourRole
+from forge.model.contour import ForgeContour
 from forge.model.hole import (
     Hole, HOLE_TYPE_PLAIN, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED,
 )
@@ -21,16 +19,6 @@ from forge.model.engraving import Engraving
 # logica. Era il default di `inject()` prima che il conteggio diventasse
 # `cluster.summary` (MAP.md D8).
 _BENDING_GROUP_TOLERANCE = 0.1
-
-
-@dataclass
-class ForgeContour(ClosedFeature):
-
-    def to_dict(self) -> dict:
-        return {
-            "role": self.role,
-            "area": round(self.area, 4),
-        }
 
 
 @dataclass
