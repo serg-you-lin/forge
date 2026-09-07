@@ -63,7 +63,6 @@ forge/
 │   ├── primitives/   LineSeg, ArcSeg, SplineSeg, CircleSeg + discretizzazione
 │   ├── topology/     edge.py, grafo dei nodi, ricerca loop, detection pieghe
 │   ├── healing/      chiusura gap, normalizzazione, gerarchia
-│   ├── classification/  classificazione fori (filettati, svasature)
 │   └── heal.py       HealStep + heal() — l'atto del motore: file → modello
 │
 ├── model/        IL DOMINIO forge                     (dataclass pure + shapely)
@@ -76,6 +75,7 @@ forge/
 │
 ├── tools/        STADI opzionali su un ForgeResult    (il caller sceglie quali e in che ordine)
 │   ├── detect.py     detect()                — classifica le feature nei cluster
+│   ├── hole_detector.py  euristiche filettato / svasatura usate da detect()
 │   ├── interpret.py  interpret_annotations() — àncora le annotazioni ai cluster
 │   └── inject.py     inject()                — testi del cluster → data_injector esterno
 │

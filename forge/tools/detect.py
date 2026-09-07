@@ -21,7 +21,7 @@ from ..model import (
 from ..model.engraving import Engraving
 from ..model.feature import OpenFeature
 from ..model.role import ContourRole
-from ..core.classification.hole_detector import is_threaded_hole
+from .hole_detector import is_threaded_hole
 from ..core.geometry import (
     track_points, track_length, track_shape_type, circular_geometry,
 )

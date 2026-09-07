@@ -2,7 +2,7 @@
 test_geometry.py
 ----------------
 Test unitari per le funzioni pure di forge.core.geometry e
-forge.core.classification.hole_detector.
+forge.tools.hole_detector.
 
 Copre:
   - is_threaded_hole      : riconosce fori filettati (cerchio + arco a 270°)
@@ -22,7 +22,7 @@ sys.path.insert(0, str(project_root))
 from shapely.geometry import LineString
 
 from forge.core.primitives.segments import ArcSeg, LineSeg
-from forge.core.classification.hole_detector import is_threaded_hole, is_countersink_outer
+from forge.tools.hole_detector import is_threaded_hole, is_countersink_outer
 from forge.core.geometry import (
     are_collinear, group_collinear_lines,
     track_points, track_length, track_shape_type,
