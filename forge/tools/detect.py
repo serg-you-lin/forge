@@ -20,7 +20,7 @@ from ..model import (
 )
 from ..model.engraving import Engraving
 from ..model.feature import OpenFeature
-from ..model.role import ContourRole
+from ..model.role import ContourRole, role_str
 from .hole_detector import is_threaded_hole
 from ..core.geometry import (
     track_points, track_length, track_shape_type, circular_geometry,
@@ -130,7 +130,7 @@ def _detect_labeled(result: ForgeResult) -> None:
             continue
 
         if is_closed:
-            work_type = proxy.role.value
+            work_type = role_str(proxy.role)
             data = _extract_data_from_source(work_type, polygon=proxy.polygon)
             rep  = data.pop("representative_point", None)
             ce = ClassifiedEntity(
@@ -146,7 +146,7 @@ def _detect_labeled(result: ForgeResult) -> None:
             classified_ids.add(id(proxy))
             continue
 
-        work_type = proxy.role.value
+        work_type = role_str(proxy.role)
         data = _extract_data(proxy, work_type)
         rep  = data.pop("representative_point", None)
         ce   = ClassifiedEntity(
@@ -186,7 +186,7 @@ def _detect_labeled(result: ForgeResult) -> None:
                 _handle_engrave_closed(inner, cluster)
                 continue
 
-            work_type = inner.role.value
+            work_type = role_str(inner.role)
             data = _extract_data_from_source(work_type, polygon=inner.polygon)
             rep  = data.pop("representative_point", None)
             ce = ClassifiedEntity(

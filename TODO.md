@@ -41,6 +41,21 @@ geometrico. Nuovi classificatori (bend, engrave, slot, corner…): un modulo
 opt-in per volta sotto `tools/`, `detect` diventa package se cresce — non una
 cartella `classification/`.
 
+### ✅ `model/` riordinato (branch `refactor/model-tidy`, 0.6.7)
+
+Fatto (MAP.md D26): `ForgeContour` → `model/contour.py`, `BaseInterpreter`
+cancellato (ABC morta), `ClassifiedEntity` resta in `model/` (la tiene
+`ForgeResult`).
+
+### ✅ Ruoli come vocabolario aperto (branch `refactor/open-roles`, 0.6.7)
+
+Fatto (MAP.md D27): `ContourRole` è la raccolta dei ruoli noti, non più universo
+chiuso. `model/role.normalize_role()` è l'unico punto d'ingresso (slug sicuro,
+neutralizza injection); `layer_to_role` / `_style_role` / `_role_from` ci passano
+invece di schiacciare a `UNKNOWN`; `role_str()` al posto di `.role.value`; type
+hint `role: str`; `VALID_WORK_TYPES` morto rimosso. Un consumatore assegna
+`role="title_block"` e forge lo conserva (Trash, non strutturale). 619 verdi.
+
 heal / detect dentro forge
 
 Sì, ci stanno. Sono l'API semplice per quando le cose vanno già bene. Ma non sono un vincolo: un consumatore può prendere solo la topologia da heal e fare il resto a modo suo (l'unfolder, un nester, tu). È lì il valore — non "una pipeline fissa" ma "oggetti puliti su cui costruire".
@@ -143,277 +158,8 @@ eventualmente ML/vision.
 
 
 
-## PRIORITÀ INSENSATA — probabilmente mai o comunque non in questo contesto
 
-Agente
 
-1) COSA SIGNIFICA “AGENT READY” DAVVERO
-
-Non è registry, non è OOP, non è eleganza.
-
-È questo:
-
-il sistema può cambiare comportamento senza riscrivere il flusso
-
-2) DOVE IL TUO PROGETTO DIVENTA AGENT-READY
-🔥 Punto 1 — entity → behavior resolution
-
-Questo:
-
-entity_length(entity)
-entity_to_polygon(entity)
-get_representative_point(entity)
-
-👉 è già un mini “action router”
-
-Se lo guardi bene:
-
-DXF ENTITY → decisione → comportamento
-
-Questo è EXACTLY il pattern di un agent tool system.
-
-🔥 Punto 2 — graph building
-build_node_graph(msp)
-find_closed_loops(graph)
-classify_loops(loops)
-
-Qui succede una cosa importante:
-
-👉 stai separando percezione → ragionamento → decisione
-
-graph = perception
-loops = reasoning
-classify = decision layer
-
-Questo è già pipeline agentica.
-
-🔥 Punto 3 — _free_endpoints
-
-Questa è la parte più “agent-like” di tutte:
-
-if len(graph.get(s_r, [])) < 2:
-
-👉 stai già facendo:
-
-anomaly detection + decisione locale
-
-cioè:
-
-"questo nodo è sospetto → fallo uscire nel free set"
-
-Questo è comportamento da agent (trigger-based reasoning)
-
-🔥 Punto 4 — _deduplicate_entities
-
-Questo è il punto opposto:
-
-👉 state mutation + memory cleanup
-
-Gli agenti veri hanno SEMPRE:
-
-memory cleanup
-normalization
-deduplication
-
-Questa è la tua “memory layer”
-
-3) IL VERO SALTO (QUI STA LA RISPOSTA IMPORTANTE)
-
-Il progetto diventa agent-ready quando:
-
-👉 non è più il codice a decidere cosa fare
-👉 ma il codice decide che tool chiamare
-
-Tu sei già a metà strada.
-
-4) COSA TI MANCA PER DIVENTARE DAVVERO AGENT SYSTEM
-1. TOOL BOUNDARY CHIARA
-
-Ora hai funzioni sparse.
-
-Ti serve questo concetto:
-
-TOOLS:
-- geometry tools
-- graph tools
-- mutation tools
-- io tools
-2. DISPATCH LAYER (MANCANTE)
-
-Non hai ancora questo:
-
-Agent / Orchestrator → sceglie tool
-
-Adesso è tutto:
-
-import + call diretto
-3. STATE EXTERNALIZATION
-
-Ora lo stato è:
-
-msp
-graph
-loops
-
-👉 un agent-ready system vuole:
-
-STATE object unico o context container
-
-7) QUANDO SCATTA IL “TRUE AGENT MODE”
-
-Succede quando aggiungi UNA sola cosa:
-
-👉 decision layer
-
-tipo:
-
-tool = decide(entity)
-tool(entity, context)
-
-non:
-
-if dxftype == ...
-
-non:
-
-call function manually
-
----
-
-
-Astrazione ad esempio....
-
-Serve il passo successivo:
-
-❗ dispatch centralizzato
-
-Esempio concettuale:
-
-Invece di:
-
-if dxftype == "LINE":
-elif dxftype == "ARC":
-elif dxftype == "SPLINE":
-
-devi arrivare a:
-
-handler = REGISTRY[dxftype]
-handler(entity)
-
-2. graph.py → SOLO helper registry (NO core)
-
-Se proprio:
-
-endpoint resolver per entity type
-spline/arc adapters
-
-Ma non trasformarlo in dispatcher engine.
-
-3. healer / pipeline → QUI nasce il “kernel”
-
-Il vero salto agent-ready NON è geometry.
-
-È questo layer:
-
-pipeline che decide cosa fare delle entità
-
-Tipo:
-
-entity → classify → transform → route → output
-
-Questo è il tuo futuro “kernel”, non geometry.
-
-
-# UNFOLDING
-
-Il ragionamento è solido e l'architettura è pulita. "Unfold" funziona bene — corto, preciso, non dipende da DXF, scala a qualsiasi forma sviluppabile.
-
-Un'unica cosa che aggiungerei alla riflessione prima di partire con la struttura:
-
-il confine Forge/Unfold va definito bene subito, perché è il punto che più rischia di diventare ambiguo man mano che cresci. La domanda chiave è:
-
-Unfold sa parlare di entità geometriche "native" (cerchi, archi, linee, facce 3D), o riceve già un modello semantico ("questa è una faccia conica con questi parametri")?
-
-Due opzioni architetturali:
-
-A) Unfold riceve parametri puri
-
-python
-Cone(top_diameter=1600, bottom_diameter=1016, height=1000)
-
-Forge fa tutto il riconoscimento/estrazione, Unfold è un motore matematico puro. Testabilissimo, zero dipendenze.
-
-B) Unfold riceve geometria e la interpreta
-
-python
-unfold.from_forge(drawing)  # Unfold capisce da solo cosa c'è
-
-Più magico, ma il riconoscimento delle forme diventa un problema non banale e si sovrappone a quello che già fa Forge.
-
-La mia lettura è che A è il cuore di Unfold, e il from_forge() che hai disegnato è un adapter — uno strato sottile che siede tra i due e traduce. Non appartiene né a Forge né a Unfold, o appartiene a entrambi come modulo opzionale.
-
-Quindi l'architettura diventa:
-
-FORGE (parsing, healing, topology)
-    │
-    ▼
-forge.unfold_adapter  ← estrae parametri dalla geometria
-    │
-    ▼
-UNFOLD (matematica pura: Cone, Cylinder, Elbow, Transition...)
-    │
-    ▼
-FlatGeometry  ← oggetto neutro, non è DXF
-    │
-    ▼
-FORGE (nesting, tagging, export → DXF)
-
-FlatGeometry è il contratto tra i due sistemi. Se lo definisci bene adesso, i due progetti restano davvero indipendenti.
-
-Vale la pena decidere questo prima di scrivere una riga — cambiarlo dopo è costoso. Cosa ne pensi?
-
-Potresti avere API del genere:
-
-from unfold import Cone, Cylinder
-
-cone = Cone(
-    top_diameter=1600,
-    bottom_diameter=1016,
-    height=1000,
-    thickness=5,
-)
-
-flat = cone.develop()
-
-flat.to_dxf("cone.dxf")
-
-e poi:
-
-from unfold import Cylinder
-
-flat = Cylinder(
-    diameter=1016,
-    height=3895,
-    thickness=5,
-).develop()
-
-Ma il vero salto sarebbe poter passare geometria proveniente da Forge:
-
-import forge
-import unfold
-
-drawing = forge.load_dxf("disegno.dxf")
-drawing = drawing.heal()
-
-part = unfold.from_forge(drawing)
-
-flat = part.develop()
-
-forge.save_dxf(flat, "sviluppo.dxf")
-
-A quel punto non stai più facendo uno script che calcola un settore anulare.
-
----
 
 # NIPOTI STACCATI (microjoints / linguette di ritenuta)
 

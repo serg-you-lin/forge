@@ -30,15 +30,17 @@ from ...core.geometry import round_point
 from ...core.primitives.segments import LineSeg, ArcSeg, CircleSeg, segment_endpoints
 from ...core.topology.edge import Edge
 from ...model.document import ForgeDocument
-from ...model.role import ContourRole, WORK_TYPE_TO_ROLE
+from ...model.role import normalize_role
 
 _SUPPORTED_TYPES = frozenset({"line", "arc", "circle", "polyline"})
 
 
-def _role_from(entity: Dict[str, Any]) -> ContourRole:
-    """work_type stringa (stesso vocabolario di label_map) → ContourRole."""
-    work_type = str(entity.get("role") or "").lower()
-    return WORK_TYPE_TO_ROLE.get(work_type, ContourRole.UNKNOWN)
+def _role_from(entity: Dict[str, Any]) -> str:
+    """
+    work_type stringa (stesso vocabolario di label_map) → ruolo. Un work_type
+    sconosciuto viene conservato (via normalize_role), non schiacciato a UNKNOWN.
+    """
+    return normalize_role(entity.get("role"))
 
 
 class GeometryAdapter(ForgeAdapter):
@@ -56,7 +58,7 @@ class GeometryAdapter(ForgeAdapter):
 
     "role" è opzionale — stesso vocabolario di label_map (work_type stringa:
     "outer", "hole", "inner", "bending", "engrave", ...). Se omesso resta
-    ContourRole.UNKNOWN: non è un problema per il contorno più esterno di una
+    "unknown": non è un problema per il contorno più esterno di una
     parte, a cui HierarchyBuilder assegna comunque OUTER per posizione
     nell'albero di contenimento — serve solo per far riconoscere fori/inner
     espliciti prima che detect() li riclassifichi.
@@ -104,7 +106,7 @@ class GeometryAdapter(ForgeAdapter):
     def _round(self, pt: Tuple[float, float]) -> Tuple[float, float]:
         return round_point(pt, self.node_decimals)
 
-    def _line_edge(self, entity: Dict[str, Any], role: ContourRole) -> Edge:
+    def _line_edge(self, entity: Dict[str, Any], role: str) -> Edge:
         start = tuple(entity["start"])
         end = tuple(entity["end"])
         return Edge(
@@ -114,7 +116,7 @@ class GeometryAdapter(ForgeAdapter):
             segment=LineSeg(start=start, end=end),
         )
 
-    def _arc_edge(self, entity: Dict[str, Any], role: ContourRole) -> Edge:
+    def _arc_edge(self, entity: Dict[str, Any], role: str) -> Edge:
         seg = ArcSeg(
             center=tuple(entity["center"]),
             radius=float(entity["radius"]),
@@ -125,13 +127,13 @@ class GeometryAdapter(ForgeAdapter):
         start, end = segment_endpoints(seg)
         return Edge(role=role, start=self._round(start), end=self._round(end), segment=seg)
 
-    def _circle_edge(self, entity: Dict[str, Any], role: ContourRole) -> Edge:
+    def _circle_edge(self, entity: Dict[str, Any], role: str) -> Edge:
         seg = CircleSeg(center=tuple(entity["center"]), radius=float(entity["radius"]))
         start, _ = segment_endpoints(seg)
         pt = self._round(start)
         return Edge(role=role, start=pt, end=pt, segment=seg)
 
-    def _polyline_edges(self, entity: Dict[str, Any], role: ContourRole) -> List[Edge]:
+    def _polyline_edges(self, entity: Dict[str, Any], role: str) -> List[Edge]:
         points = [tuple(p) for p in entity["points"]]
         closed = bool(entity.get("closed", False))
         if closed and points and points[0] != points[-1]:

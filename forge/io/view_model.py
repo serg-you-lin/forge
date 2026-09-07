@@ -23,14 +23,9 @@ from __future__ import annotations
 from typing import Optional
 
 from ..model import ForgeResult
-from ..model.role import ContourRole
+from ..model.role import ContourRole, role_str as _role_str
 from ..rules.palette import role_to_hex
 from ..core.geometry import track_points
-
-
-def _role_str(role) -> str:
-    """Valore stringa di un ContourRole (o la stringa stessa)."""
-    return getattr(role, "value", str(role))
 
 
 def _xy(seq) -> list:
