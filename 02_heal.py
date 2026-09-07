@@ -15,8 +15,10 @@ consegna ForgeCluster(outer, inners=[ForgeContour...]).
 
 import forge
 
+from _paths import EXAMPLES
+
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Linee_piegatura.dxf"
+INPUT     = EXAMPLES / "Linee_piegatura.dxf"
 TOLERANCE = 0.5
 # -------------------------------------------------------------------------
 

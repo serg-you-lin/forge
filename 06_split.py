@@ -11,17 +11,18 @@ split_to_files() (vedi 07). Le parti sotto min_area (mm²) vengono scartate.
     python 06_split.py
 """
 
-import os
 import forge
 
+from _paths import EXAMPLES, OUTPUT
+
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/golden/example_4_polylines.dxf"   # 4 parti
+INPUT     = EXAMPLES / "golden" / "example_4_polylines.dxf"   # 4 parti
 TOLERANCE = 0.5
-OUTDIR    = "pipeline_output/split_demo"
+OUTDIR    = OUTPUT / "split_demo"
 MIN_AREA  = 50.0
 # -------------------------------------------------------------------------
 
-os.makedirs(OUTDIR, exist_ok=True)
+OUTDIR.mkdir(parents=True, exist_ok=True)
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE)
 result = forge.heal_and_detect(doc, label="batch", features="all")
@@ -53,7 +54,7 @@ docs = forge.split(
 
 kept = [p for p in result.clusters if p.outer.polygon.area >= MIN_AREA]
 for d, cluster in zip(docs, kept):
-    path = os.path.join(OUTDIR, f"{cluster.label}.dxf")
+    path = OUTDIR / f"{cluster.label}.dxf"
     d.saveas(path)
     print(f"   {path}  (area {cluster.outer.polygon.area:.0f} mm²)")
 

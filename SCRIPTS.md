@@ -10,6 +10,13 @@ python 00_inspect.py
 Gli input di default puntano a `tests/examples/`. Gli output vanno in
 `pipeline_output/` (ignorato da git).
 
+I percorsi non sono relativi alla cartella di lavoro: ogni script fa
+`from _paths import EXAMPLES, OUTPUT` (vedi `_paths.py` alla radice), quindi
+`python 03_detect.py` e il pulsante Run di VS Code funzionano identici da
+qualsiasi CWD. Per lavorare su un file esterno al progetto, nel blocco `CONFIG`
+si mette un path assoluto al posto di `EXAMPLES / "..."` — niente altro da
+toccare.
+
 | # | script | funzioni forge | cosa mostra |
 |---|--------|----------------|-------------|
 | 00 | `00_inspect.py` | `inspect_file`, `inspect_dxf`, `inspect_document`, `inspect_result` | l'ispettore a 3 livelli — il primo strumento su un file che non torna |
@@ -43,3 +50,5 @@ I tipi di dominio (`ForgeResult`, `ForgeCluster`, `ForgeContour`, `ForgeDocument
   riferimento storico.
 - `dev_tools/` — prototipi (grafo, dashboard, split verify). Base di partenza per
   la futura repo dashboard (MAP.md D16).
+- `_paths.py` — ancore di percorso (`ROOT`, `EXAMPLES`, `OUTPUT`) importate da
+  ogni script della serie. Non fa parte del package.
