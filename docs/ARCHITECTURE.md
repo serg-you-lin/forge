@@ -63,7 +63,7 @@ forge/
 │   ├── primitives/   LineSeg, ArcSeg, SplineSeg, CircleSeg + discretizzazione
 │   ├── topology/     edge.py, grafo dei nodi, ricerca loop, detection pieghe
 │   ├── healing/      chiusura gap, normalizzazione, gerarchia
-│   ├── classification/  frame detection, fori filettati
+│   ├── classification/  classificazione fori (filettati, svasature)
 │   └── heal.py       HealStep + heal() — l'atto del motore: file → modello
 │
 ├── model/        IL DOMINIO forge                     (dataclass pure + shapely)

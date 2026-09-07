@@ -25,9 +25,13 @@ Fatto (MAP.md D22): `heal` → `core/heal.py`; `detect`/`interpret`/`inject` →
 `recipes.py`; `pipeline/` e `workflow/` cancellate; `ARCHITECTURE.md` + skill
 `python-project-setup` aggiornate. `forge.__all__` invariato, 610 verdi.
 
-Il frame (`core/classification/frame_detector.py`,
-`adapters/dxf/frame_adapter_dxf.py`) resta in forge finché non esiste il repo
-interprete — solo annotato.
+### ✅ Frame detector rimosso (branch `refactor/kill-frame-deadcode`)
+
+Fatto (MAP.md D24): `core/classification/frame_detector.py` e
+`adapters/dxf/frame_adapter_dxf.py` erano codice morto e con import rotto —
+cancellati. Il rilevamento cornice/cartiglio è roba dell'interprete (gira prima
+di `heal`); l'algoritmo resta documentato in `INTERPRETER.md`. Ruolo
+`ContourRole.FRAME` tenuto (solo etichetta).
 
 heal / detect dentro forge
 
