@@ -50,46 +50,54 @@ perdita silenziosa.
 
 ---
 
-## I quattro strati
+## La struttura
 
 ```
 forge/
 ├── adapters/     TRADUZIONE formato → primitive       (conosce ezdxf)
 │   ├── dxf/          load_dxf, DxfAdapter, exporter, annotation_extractor, layers
 │   ├── pdf/          load_pdf — sperimentale, congelato
-│   └── svg/          (vuoto — futuro)
+│   └── geometry/     load_geometry — sperimentale (geometria pura, non un file)
 │
 ├── core/         MOTORE geometrico puro               (zero ezdxf, zero formato)
 │   ├── primitives/   LineSeg, ArcSeg, SplineSeg, CircleSeg + discretizzazione
-│   ├── topology/     edge.py (Edge — wrapper topologico, non una primitiva),
-│   │                 grafo dei nodi, ricerca loop, detection pieghe
+│   ├── topology/     edge.py, grafo dei nodi, ricerca loop, detection pieghe
 │   ├── healing/      chiusura gap, normalizzazione, gerarchia
-│   └── classification/  frame detection, fori filettati
+│   ├── classification/  frame detection, fori filettati
+│   └── heal.py       HealStep + heal() — l'atto del motore: file → modello
 │
 ├── model/        IL DOMINIO forge                     (dataclass pure + shapely)
-│   ├── document.py   ForgeDocument, Annotation
+│   ├── document.py   ForgeDocument
 │   ├── result.py     ForgeResult
-│   ├── cluster.py       ForgeCluster, ForgeContour
+│   ├── cluster.py    ForgeCluster, ForgeContour
 │   ├── feature.py    Feature → ClosedFeature / OpenFeature
-│   ├── hole.py       Hole
-│   ├── engraving.py  Engraving
-│   ├── bending_line.py  BendingLine
-│   └── classified.py    ClassifiedEntity
+│   ├── hole.py / engraving.py / bending_line.py / classified.py
+│   └── annotation.py Annotation → Note / Dimension / Leader
 │
-├── pipeline/     LE FASI orchestrate                  (mette insieme core + model)
-│   ├── heal.py       HealStep
-│   ├── detect.py     detect()
-│   ├── write.py      to_dxf(), split()
-│   └── inject.py     inject()
+├── tools/        STADI opzionali su un ForgeResult    (il caller sceglie quali e in che ordine)
+│   ├── detect.py     detect()                — classifica le feature nei cluster
+│   ├── interpret.py  interpret_annotations() — àncora le annotazioni ai cluster
+│   └── inject.py     inject()                — testi del cluster → data_injector esterno
+│
+├── io/           RENDERER del modello + serializzazione
+│   ├── dxf.py        to_dxf(), split()       (ex pipeline/write.py)
+│   ├── svg.py        to_svg(), save_svg()
+│   ├── view_model.py to_view_model()
+│   └── exporter.py   save_json / save_xml / XDATA
 │
 ├── rules/        REGOLE di dominio                     (soglie, palette, schema, validazione)
-├── io/           export (JSON/XML/XDATA, view_model, SVG) + utilità testi
+├── recipes.py    heal_and_detect(), split_to_files()  — la via del 90%
 └── inspect.py    strumento di ispezione a 3 livelli
 ```
 
+`pipeline/` non esiste più (MAP.md D22): metteva insieme tre cose diverse —
+`heal` (l'atto del motore, ora in `core/`), gli stadi opzionali (`tools/`) e i
+renderer (`to_dxf`/`split`, ora in `io/` accanto a `to_svg`/`to_json`).
+
 **Regola di dipendenza:** `core` e `model` non importano mai `adapters`. Gli
-`adapters` importano `core` e `model`. La `pipeline` importa tutto. Il core non sa
-da dove viene la geometria.
+`adapters`, `tools` e `io` importano `core` / `model` / `rules`. `recipes`
+mette in fila `core.heal` + `tools` + `io`. Il core non sa da dove viene la
+geometria.
 
 ---
 
@@ -109,8 +117,8 @@ Unico punto che legge `ezdxf`. In ordine:
 6. sanitize: normalizzazione OCS, appiattimento Z ≠ 0, deduplica
 7. traduzione: ogni entità → uno o più `Edge`; ogni testo/quota → un `Annotation`
 
-Dopo questa funzione l'oggetto `ezdxf` sorgente **sparisce**. Tutto il resto della
-pipeline lavora sul `ForgeDocument`.
+Dopo questa funzione l'oggetto `ezdxf` sorgente **sparisce**. Tutto il resto
+lavora sul `ForgeDocument`.
 
 ### 2. `heal` → `ForgeResult` (topologia)
 
@@ -223,8 +231,8 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
 `Hole` è l'implementazione di riferimento (ha `hole_type` + `geometric_hint` +
 `source` + `confidence`). `Engraving` lo segue. Il design resta aperto al binario
 dell'inferenza anche dove non è ancora implementato — es. `detect._detect_engrave`
-è un placeholder con già il parametro `engrave_tolerance` e il posto nella
-pipeline.
+è un placeholder con già il parametro `engrave_tolerance` e il posto in
+`detect()`.
 
 ---
 

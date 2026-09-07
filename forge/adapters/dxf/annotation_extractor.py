@@ -10,7 +10,7 @@ Dopo ``extract()`` il modelspace sorgente non serve più.
 
 Compito: solo conoscenza di formato — dove sta il testo, come si appiattisce il
 blocco anonimo di una quota. NON decide cosa un'annotazione significhi per il
-pezzo: quello è la fase ``interpret_annotations()`` della pipeline.
+pezzo: quello è la fase ``interpret_annotations()`` della fase tools/.
 
 Tipi gestiti: TEXT, MTEXT, DIMENSION, LEADER, MULTILEADER.
 Non gestisce INSERT — si assume siano già stati esplosi da load_dxf().

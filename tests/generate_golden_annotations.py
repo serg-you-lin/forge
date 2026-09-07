@@ -32,7 +32,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.model.annotation import Note, Dimension, Leader
-from forge.pipeline.interpret import interpret_annotations
+from forge.tools.interpret import interpret_annotations
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"

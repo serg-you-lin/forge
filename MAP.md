@@ -315,6 +315,41 @@ toccato. Suite: 610 passed.
 Breaking: le chiavi JSON/XML cambiano nome. Nessun consumatore reale le legge
 ancora. Branch `refactor/clusters`, merge ff, `main` a 0.6.3.
 
+### D22 — `pipeline/` sciolto: `heal`→core, `tools/`, renderer in `io/`  ✅
+
+Segnalato da Federico: `pipeline/` non era "una cosa", mescolava tre tipi
+diversi di modulo, e il nome implicava una sequenza fissa che la libreria non
+impone ("non una pipeline fissa ma oggetti puliti su cui costruire").
+
+- **`heal.py` (`HealStep` + `heal()`) → `forge/core/heal.py`.** È l'atto del
+  motore: `ForgeDocument` → `ForgeResult`, orchestra tutto `core/topology` +
+  `core/healing`. Non è opzionale — ogni altro passo lavora sul suo output.
+  `core/` già dipendeva da `rules/` (`hole_detector` → `rules.thresholds`;
+  `rules/validator` → `core.topology`), quindi `heal` che usa
+  `rules.validator` non è una violazione nuova. Tolte 3 righe di import morti
+  (`LAYER_OUTER`/`LAYER_INNER`/`COLOR_OUTER`/`COLOR_INNER` + `LoopFinder`
+  module-level, già re-importato in `_find_loops`).
+- **`detect.py` / `interpret.py` / `inject.py` → `forge/tools/`.** Stadi
+  opzionali e componibili su un `ForgeResult`: ognuno lo arricchisce in-place e
+  lo ritorna, il caller sceglie quali e in che ordine. È il pattern che un
+  interprete di disegno (progetto separato) generalizza — vedi `INTERPRETER.md`.
+- **`write.py` (`to_dxf` / `split`) → `forge/io/dxf.py`.** Sono renderer del
+  modello, esattamente come `to_svg` / `to_json` / `to_view_model` — che erano
+  già in `io/`. `ARCHITECTURE.md` li descriveva come renderer mentre il codice
+  li teneva altrove.
+- **`heal_and_detect` / `split_to_files` → `forge/recipes.py`.** Le scorciatoie
+  della "via del 90%": nessuna logica nuova, solo l'ordine comodo.
+- Cancellate `forge/pipeline/` e `forge/workflow/` (quest'ultima vuota da
+  sempre).
+
+Nessun cambiamento di comportamento — solo file spostati e import aggiornati.
+`forge.__all__` invariato. Suite: 610 passed. Branch `refactor/module-layout`,
+`main` a 0.6.4.
+
+Il frame (`core/classification/frame_detector.py`,
+`adapters/dxf/frame_adapter_dxf.py`) è concettualmente roba dell'interprete ma
+resta in forge finché quel repo non esiste.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)
