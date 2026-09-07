@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "forge"
 # Unica fonte di verità della versione. forge.__version__ la legge da qui via
 # importlib.metadata — non duplicarla nel codice (MAP.md D11).
-version = "0.6.5"
+version = "0.6.4"
 description = "DXF geometry preprocessing for manufacturing pipelines"
 readme = "README.md"
 requires-python = ">=3.10"
