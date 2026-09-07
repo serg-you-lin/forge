@@ -239,8 +239,15 @@ tutto il resto dei nomi pubblici di forge, già tutti in inglese.
 
 # "BENDING CANDIDATES" IN HEALSTEP — nome che perde vocabolario, e la domanda vera
 
-Da ragionare, non ora. Sollevato da Federico: in `HealStep` c'è
-`_find_bending_candidates()` / `BendingDetector` — sembra roba di `detect`, e in
+## ✅ Rename fatto (branch `refactor/rename-non-contour-edges`, 0.6.8, MAP D28)
+
+`BendingDetector` → `NonContourEdgeDetector`, `bending_detector.py` →
+`non_contour_edges.py`, `candidate_bending_ids` → `non_contour_edge_ids`,
+`_reintegrate_bending()` (era un `pass`) cancellato. Nessun cambiamento di
+comportamento. Resta aperta la parte sotto (slot unfolder sul cluster).
+
+Sollevato da Federico: in `HealStep` c'era
+`_find_bending_candidates()` / `BendingDetector` — sembrava roba di `detect`, e in
 `heal` "facciamo cose che boh".
 
 Cosa fa davvero (verificato in `core/topology/bending_detector.py`): NON

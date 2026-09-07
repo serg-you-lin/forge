@@ -478,6 +478,31 @@ warning. Suite: 619 passed (9 nuovi in `test_role.py`).
 Branch `refactor/open-roles` (parte da `refactor/model-tidy`), merge unico →
 `main` 0.6.7.
 
+### D28 — `BendingDetector` → `NonContourEdgeDetector` (nome neutro)  ✅
+
+Segnalato da Federico: dentro `HealStep` c'era `_find_bending_candidates()` /
+`BendingDetector`, che sembrava logica di `detect` finita in `heal`.
+
+Verificato: il modulo **non classifica niente come piega**. Per topologia trova
+gli edge con entrambi gli endpoint su nodi di branching e centroide interno al
+convex hull, e li **esclude dal grafo prima della ricerca dei loop** — altrimenti
+una linea che attraversa il pezzo da parte a parte rompe la chiusura dei
+contorni. `non_contour_edge_ids` è stato interno di `HealStep`: non finisce mai
+sul `ForgeResult`. La semantica vera ("questa linea è una piega") resta in
+`tools/detect._detect_bending`, che ripesca queste linee dalla trash — opt-in.
+
+Quindi il lavoro è legittimamente di `heal`; solo il nome prendeva in prestito
+il vocabolario di `detect`. Rinominato, non spostato:
+
+- `core/topology/bending_detector.py` → `non_contour_edges.py`
+- `class BendingDetector` → `NonContourEdgeDetector`
+- `HealStep.candidate_bending_ids` → `non_contour_edge_ids`
+- `_find_bending_candidates()` → `_find_non_contour_edges()`
+- `_reintegrate_bending()` (era un `pass`) → cancellato
+
+Nessun cambiamento di comportamento. Branch `refactor/rename-non-contour-edges`,
+merge → `main` 0.6.8.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)
