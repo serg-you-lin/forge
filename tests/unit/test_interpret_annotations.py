@@ -9,7 +9,8 @@ import unittest
 
 from shapely.geometry import Polygon
 
-from forge.model.cluster import ForgeCluster, ForgeContour
+from forge.model.cluster import ForgeCluster
+from forge.model.contour import ForgeContour
 from forge.model.result import ForgeResult
 from forge.model.role import ContourRole
 from forge.model.annotation import Note

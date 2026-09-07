@@ -4,7 +4,8 @@ from typing import Optional
 from shapely.geometry import Polygon
 
 from ...model.feature import ClosedFeature
-from ...model.cluster import ForgeCluster, ForgeContour
+from ...model.cluster import ForgeCluster
+from ...model.contour import ForgeContour
 from ...model.role import ContourRole
 from ...core.geometry import circular_geometry
 
