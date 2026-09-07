@@ -33,9 +33,9 @@ OUTDIR = r"pipeline_output"                   # scritto in <repo>/pipeline_outpu
 | 03 | `03_detect.py` | `detect`, `ALL_FEATURES` | classificazione feature: nudo vs `"holes"`/`"bending"`/`"all"`, `max_drill_diameter` |
 | 04 | `04_heal_and_detect.py` | `heal_and_detect` | la via del 90% — heal + detect in un colpo |
 | 05 | `05_to_dxf.py` | `to_dxf` | render del modello in un DXF nuovo; `filter_cluster`, `include_trash` |
-| 06 | `06_split.py` | `split` | un `Drawing` per parte (puro); `namer`, `on_cluster`, `exclude_types` |
+| 06 | `06_split.py` | `split` | un `Drawing` per parte (puro); `namer`, `on_part`, `exclude_types` |
 | 07 | `07_split_to_files.py` | `split_to_files` | pipeline multi-pezzo completa su disco |
-| 08 | `08_inject.py` | `extract_forge_texts`, `extract_texts_from_msp`, `inject` | arricchimento CAM dai testi del disegno |
+| 08 | `08_inject.py` | `inject` | arricchimento CAM dai testi del disegno (`result.annotations`, niente ezdxf) |
 | 09 | `09_export.py` | `to_json`, `save_json`, `save_xml`, `to_nester_input` | metadati fuori da forge |
 | 10 | `10_metadata_xdata.py` | `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema` | metadati DENTRO il DXF (XDATA) + schema custom |
 | 11 | `11_batch_heal.py` | `load_dxf` + `heal_and_detect` + `to_dxf` | heal di tutti i DXF di una cartella → `X_healed.dxf` + `.json` a fianco |
