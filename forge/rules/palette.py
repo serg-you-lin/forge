@@ -30,6 +30,9 @@ COLOR_COUNTERSINK   = 5    # blu
 COLOR_THREADED_HOLE = 4    # ciano
 COLOR_TRASH         = 1    # rosso
 COLOR_ANNOTATION    = 7    # bianco/nero (foreground) — testi e quote
+COLOR_CONSUMER      = 8    # grigio scuro — ruolo assegnato da un consumatore
+                           # (frame, title_block, section, ...): forge non sa
+                           # cosa sia, non è spazzatura, non è di taglio
 
 # ---------------------------------------------------------------------------
 # ContourRole → colore semantico
@@ -43,7 +46,6 @@ ROLE_TO_COLOR: dict = {
     ContourRole.COUNTERSINK:   COLOR_COUNTERSINK,
     ContourRole.THREADED_HOLE: COLOR_THREADED_HOLE,
     ContourRole.BEND:          COLOR_BENDING,
-    ContourRole.FRAME:         COLOR_OUTER,    # frame → stesso colore outer per ora
     ContourRole.ENGRAVE:       COLOR_ENGRAVE,
     ContourRole.MARKING:       COLOR_MARKING,
     ContourRole.UNKNOWN:       COLOR_TRASH,
@@ -69,7 +71,20 @@ ACI_TO_HEX: dict = {
 }
 
 
+def role_to_color(role) -> int:
+    """
+    Colore ACI di un ruolo. Ruolo noto → il suo colore semantico;
+    ``unknown`` → rosso trash; slug di un consumatore (``frame``, ...) →
+    ``COLOR_CONSUMER`` (grigio scuro, non spazzatura).
+    """
+    aci = ROLE_TO_COLOR.get(role)
+    if aci is not None:
+        return aci
+    if role and role != ContourRole.UNKNOWN.value:
+        return COLOR_CONSUMER
+    return COLOR_TRASH
+
+
 def role_to_hex(role, fallback: str = "#ff0000") -> str:
-    """ContourRole → colore hex CSS. Passa per ROLE_TO_COLOR + ACI_TO_HEX."""
-    aci = ROLE_TO_COLOR.get(role, COLOR_TRASH)
-    return ACI_TO_HEX.get(aci, fallback)
+    """ContourRole → colore hex CSS. Passa per role_to_color + ACI_TO_HEX."""
+    return ACI_TO_HEX.get(role_to_color(role), fallback)
