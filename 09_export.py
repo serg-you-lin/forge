@@ -15,19 +15,20 @@ coordinate, non nomi.
     python 09_export.py
 """
 
-import os
 import forge
 
+from _paths import EXAMPLES, OUTPUT
+
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Multifeature.dxf"
+INPUT     = EXAMPLES / "Multifeature.dxf"
 TOLERANCE = 0.5
 LABEL_MAP = {"Filettati": "threaded_hole", "Svasati": "countersink",
              "Piega": "bending", "MARK": "engrave"}
-OUTDIR = "pipeline_output"
+OUTDIR = OUTPUT
 # -------------------------------------------------------------------------
 
-os.makedirs(OUTDIR, exist_ok=True)
-base = os.path.splitext(os.path.basename(INPUT))[0]
+OUTDIR.mkdir(parents=True, exist_ok=True)
+base = INPUT.stem
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
 result = forge.heal_and_detect(doc, label=base, source_file=base, features="all")
@@ -36,8 +37,8 @@ result = forge.heal_and_detect(doc, label=base, source_file=base, features="all"
 print(forge.to_json(result, indent=2)[:600], "...\n")
 
 # JSON + XML su file
-forge.save_json(result, os.path.join(OUTDIR, f"{base}.json"))
-forge.save_xml(result,  os.path.join(OUTDIR, f"{base}.xml"))
+forge.save_json(result, OUTDIR / f"{base}.json")
+forge.save_xml(result,  OUTDIR / f"{base}.xml")
 print(f"scritti {base}.json e {base}.xml in {OUTDIR}/")
 
 # input per un nester: coordinate, non nomi

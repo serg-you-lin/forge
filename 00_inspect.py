@@ -16,8 +16,10 @@ stampa tutto su stdout.
 
 import forge
 
+from _paths import EXAMPLES
+
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Multifeature.dxf"   # non tracciato: usa un tuo file se manca
+INPUT     = EXAMPLES / "Multifeature.dxf"   # non tracciato: usa un tuo file se manca
 TOLERANCE = 0.5
 LABEL_MAP = {
     "Filettati": "threaded_hole",
