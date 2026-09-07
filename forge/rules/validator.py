@@ -11,7 +11,7 @@ Due validazioni distinte, entrambe utili:
                            renderebbero l'healing inutile o sbagliato.
     validate_result(res) — OUTPUT, dopo heal(). Controlla che i cluster prodotti
                            siano sani (poligono valido, fori contenuti, area).
-                           Chiamata automaticamente da pipeline.heal().
+                           Chiamata automaticamente da forge.heal().
 """
 
 import math

@@ -54,11 +54,12 @@ from .adapters.pdf.loader import load_pdf
 # geometria da punti. Resta importabile come forge.load_geometry, non è in
 # __all__ e non è documentato finché non è stato provato da un caso reale.
 from .adapters.geometry.loader import load_geometry
-from .pipeline            import heal, heal_and_detect, split_to_files
-from .pipeline.inject   import inject
-from .pipeline.interpret import interpret_annotations
-from .pipeline.write  import to_dxf, split
-from .pipeline.detect  import detect, ALL_FEATURES
+from .core.heal          import heal
+from .recipes            import heal_and_detect, split_to_files
+from .tools.inject       import inject
+from .tools.interpret    import interpret_annotations
+from .tools.detect       import detect, ALL_FEATURES
+from .io.dxf             import to_dxf, split
 from .rules.validator     import validate, validate_result
 from .io.exporter         import (
     to_json,
