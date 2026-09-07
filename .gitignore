@@ -71,6 +71,7 @@ tests/**/outputs/
 **/*golden*.json
 
 pipeline_output/
+mixed_pipeline_output/
 output/
 
 # ===========================================================================
