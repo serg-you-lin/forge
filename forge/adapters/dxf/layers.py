@@ -10,12 +10,12 @@ Se domani scrivi un SvgAdapter, avrà il suo svg/layers.py con
 data-role, classi CSS, colori fill hex — indipendente da questo file.
 """
 
-from ...model.role import ContourRole
+from ...model.role import ContourRole, role_str
 from ...rules.palette import (
     COLOR_OUTER, COLOR_INNER, COLOR_HOLE,
     COLOR_BENDING, COLOR_ENGRAVE, COLOR_MARKING,
     COLOR_COUNTERSINK, COLOR_THREADED_HOLE, COLOR_TRASH,
-    COLOR_ANNOTATION,
+    COLOR_ANNOTATION, COLOR_CONSUMER,
 )
 
 # ---------------------------------------------------------------------------
@@ -60,7 +60,6 @@ ROLE_TO_LAYER: dict[ContourRole, str] = {
     ContourRole.COUNTERSINK:  LAYER_COUNTERSINK,
     ContourRole.THREADED_HOLE: LAYER_THREADED_HOLE,
     ContourRole.BEND:         LAYER_BENDING,
-    ContourRole.FRAME:        LAYER_OUTER,
     ContourRole.ENGRAVE:      LAYER_ENGRAVE,
     ContourRole.MARKING:      LAYER_MARKING,
 }
@@ -83,10 +82,32 @@ WORK_TYPE_TO_LAYER: dict[str, tuple[str, int]] = {
 # Helpers
 # ---------------------------------------------------------------------------
 def color_for_layer(layer_name: str) -> int:
-    """Colore DXF canonico per un layer forge. Fallback: COLOR_TRASH (rosso)."""
-    return ALL_FORGE_LAYERS.get(layer_name, COLOR_TRASH)
+    """
+    Colore DXF canonico per un layer.
+
+    Layer forge → il suo colore semantico. Layer col nome di uno slug di un
+    consumatore (`frame`, `title_block`, ...) → `COLOR_CONSUMER` (grigio scuro).
+    Fallback: `COLOR_TRASH` (rosso).
+    """
+    if layer_name in ALL_FORGE_LAYERS:
+        return ALL_FORGE_LAYERS[layer_name]
+    if layer_name and layer_name != TRASH_LAYER:
+        return COLOR_CONSUMER
+    return COLOR_TRASH
 
 
-def role_to_dxf_layer(role: ContourRole) -> str:
-    """Traduce ContourRole nel nome layer DXF corrispondente."""
-    return ROLE_TO_LAYER.get(role, TRASH_LAYER)
+def role_to_dxf_layer(role) -> str:
+    """
+    Nome layer DXF per un ruolo.
+
+    Ruolo noto a forge → il suo layer dedicato. Ruolo assegnato da un
+    consumatore (slug già sanificato da `normalize_role`, es. `frame`) → un
+    layer **col nome dello slug**: la sua geometria non è spazzatura e va
+    tenuta distinta (D31). `unknown` → `Trash`.
+    """
+    if role in ROLE_TO_LAYER:
+        return ROLE_TO_LAYER[role]
+    slug = role_str(role)
+    if slug and slug != ContourRole.UNKNOWN.value:
+        return slug
+    return TRASH_LAYER

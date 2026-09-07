@@ -82,22 +82,21 @@ grafo. È lì che Framer ha bisogno di agganciarsi.
 
 ### `frame` — la cornice di formato
 
-Il riquadro esterno del foglio. Ruolo già previsto da forge:
-`ContourRole.FRAME = "frame"` (`forge/model/role.py`), tenuto come **etichetta**
-dopo la rimozione del vecchio `frame_detector` (MAP D24). `rules/palette` e
-`adapters/dxf/layers` gli danno già un layer di destinazione.
+Il riquadro esterno del foglio. **Non** è un ruolo di forge (MAP D31 —
+`ContourRole.FRAME` rimosso: la cornice non è un concetto di forge): è uno slug
+di consumatore come `title_block`. `framer` lo assegna con
+`forge.normalize_role("frame")`.
 
 ### `title_block` — il cartiglio
 
-Ruolo **aperto**, non tra le costanti di forge: un consumatore lo assegna e forge
-lo conserva (MAP D27 — "Un consumatore assegna `role='title_block'` e forge lo
-conserva (Trash, non strutturale)"). `normalize_role` lo lascia passare come slug
-sicuro.
+Stessa natura: ruolo **aperto**, non tra le costanti di forge (MAP D27). Un
+consumatore lo assegna e forge lo conserva. `normalize_role` lo lascia passare
+come slug sicuro.
 
-Entrambi i ruoli non sono in `STRUCTURAL_ROLES`
-(`{OUTER, INNER, HOLE}`, `forge/rules/thresholds.py`): geometria non di taglio,
-va in `trash_entities` con lo stile preservato e il colore del layer forge di
-destinazione.
+Nessuno dei due è in `STRUCTURAL_ROLES` (`forge/model/role.py`): geometria non
+di taglio. `heal` li tiene fuori dal grafo, finiscono in `trash_entities` col
+ruolo intatto, e l'output li scrive **su un layer DXF col nome dello slug**
+(`frame`, `title_block`), colore grigio — non su `Trash` (D31).
 
 
 ## Algoritmo
@@ -158,7 +157,7 @@ Le tre opzioni valutate, dal meno al più invasivo su forge (scelta: **B**):
 | # | come | tocca forge? | note |
 |---|---|---|---|
 | A | Framer **rimuove** gli edge di frame/cartiglio da `doc.edges` prima di `heal`, li tiene da parte e li fa riemettere a valle | **no** | rispetta `dont-bolt-adapters-onto-forge-for-external-projects` e "forge resta neutro, l'interprete si adatta" (`INTERPRETER.md`). Costo: chi riemette la geometria di cornice nell'output? |
-| B | Framer setta `edge.role = "frame"` / `"title_block"` su `doc.edges`; forge estende il filtro non-strutturale di `_split_labeled` a `FRAME` + ruoli custom non strutturali | sì, minimo | la geometria resta nel modello (`trash_entities`), l'output la riemette già con stile e layer suo. Coerente con D27. |
+| B | Framer setta `edge.role = "frame"` / `"title_block"` su `doc.edges`; forge estende il filtro non-strutturale di `_split_labeled` a ogni ruolo di consumatore | sì, minimo | la geometria resta nel modello (`trash_entities`) e l'output la scrive su un layer col nome del ruolo (D31). Coerente con D27. |
 | C | forge espone un hook `role_resolver(edge) -> str \| None` a `load_dxf` / `heal` che il consumatore passa | sì, API nuova | generalizza oltre Framer (l'unfolder ne vuole uno simile per `role="section"`). Più lavoro, decisione più pesante. |
 
 **Scelta: B** (forge D30). Framer setta `edge.role` sugli `Edge` di `doc.edges`
@@ -170,8 +169,10 @@ una coincidenza —
   non strutturale (quindi `frame`, `title_block`, slug custom), non più solo
   `engrave`/`marking`;
 - `detect()` non tocca i ruoli che non conosce: cornice e cartiglio restano in
-  `trash_entities` col ruolo intatto e l'output li riscrive nativi (prima
-  `detect` li perdeva).
+  `trash_entities` col ruolo intatto (prima `detect` li perdeva);
+- l'output DXF li scrive su un layer col nome dello slug — `frame`,
+  `title_block` — non su `Trash` (D31: `ContourRole.FRAME` rimosso, i ruoli di
+  consumatore vanno su un layer loro).
 
 **C** (hook `role_resolver`) si valuta quando anche l'unfolder chiede la stessa
 cosa; il consolidamento D30 lo rende banale da aggiungere. **A** era la via a

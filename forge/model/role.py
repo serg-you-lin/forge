@@ -5,9 +5,11 @@ Ruolo semantico di una forma nel contesto manifatturiero.
 
 ``ContourRole`` NON è un universo chiuso: è la raccolta dei ruoli che forge
 conosce e sa classificare. Un consumatore (un layer sopra forge, l'interprete,
-un agente) può assegnare un ruolo che forge non conosce — ``"title_block"``,
-``"section"``, ``"nesting_region"`` — e forge lo conserva, lo tratta come non
-strutturale e lo manda su ``Trash`` in output, senza sollevare. Vedi MAP.md D27.
+un agente) può assegnare un ruolo che forge non conosce — ``"frame"``,
+``"title_block"``, ``"section"``, ``"nesting_region"`` — e forge lo conserva, lo
+tratta come non strutturale e in output lo scrive su un layer col nome dello
+slug (non su ``Trash``: la geometria di un consumatore non è spazzatura). Vedi
+MAP.md D27 e D31.
 
 ``normalize_role()`` è l'unico punto in cui una stringa-ruolo che arriva dal
 chiamante entra nel modello: la ripulisce una volta sola in uno slug sicuro,
@@ -47,10 +49,13 @@ class ContourRole(str, Enum):
     COUNTERSINK   = "countersink"     # foro svasato
     THREADED_HOLE = "threaded_hole"   # foro filettato
     BEND    = "bending"      # linea / contorno di piega
-    FRAME   = "frame"     # cornice / riferimento di lavorazione
     INNER   = "inner"     # loop interno non ancora classificato
     ENGRAVE = "engrave"
     MARKING = "marking"
+    # `frame` NON è qui: la cornice non è un concetto di forge. È un ruolo che
+    # un consumatore (framer) assegna, e che forge conserva come slug e porta
+    # fedele fino a un layer col suo nome, senza saperne il significato
+    # (vocabolario aperto D27, ruoli di consumatore fuori da forge D31).
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +96,6 @@ WORK_TYPE_TO_ROLE: Dict[str, ContourRole] = {
     "hole":          ContourRole.HOLE,
     "bending":       ContourRole.BEND,
     "bend":          ContourRole.BEND,
-    "frame":         ContourRole.FRAME,
     "inner":         ContourRole.INNER,
     "countersink":   ContourRole.COUNTERSINK,
     "threaded_hole": ContourRole.THREADED_HOLE,
