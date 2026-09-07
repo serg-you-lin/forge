@@ -21,12 +21,12 @@ detect() MUTA il result in-place E lo ritorna.
     python 03_detect.py
 """
 
+import _paths  # noqa: F401  — chdir alla radice del repo
+
 import forge
 
-from _paths import EXAMPLES
-
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = EXAMPLES / "Multifeature.dxf"   # ha Filettati/Svasati/Piega/MARK
+INPUT     = r"tests/examples/Multifeature.dxf"   # ha Filettati/Svasati/Piega/MARK
 TOLERANCE = 0.5
 LABEL_MAP = {
     "Filettati": "threaded_hole",

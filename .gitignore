@@ -86,7 +86,7 @@ output/
 # ===========================================================================
 
 /smoother_5.py
-/13_ARC_splitter_injected_fuzzy_new.py
+/scripts/13_ARC_splitter_injected_fuzzy_new.py
 
 # ===========================================================================
 # Local configuration / secrets

@@ -350,6 +350,30 @@ Il frame (`core/classification/frame_detector.py`,
 `adapters/dxf/frame_adapter_dxf.py`) è concettualmente roba dell'interprete ma
 resta in forge finché quel repo non esiste.
 
+### D23 — Script numerati in `scripts/` + `_paths.py` che fa `chdir`  ✅
+
+Aggiorna la parte "alla radice" di D14 (il resto di D14 resta: si tengono, uno
+per funzione, default su `tests/examples/`).
+
+Federico lavora copiando un file dove capita e scrivendo `INPUT = r"..."` a
+mano. Il punto dolente non era *dove* stanno gli script ma che il percorso
+relativo dipende dalla cartella di lavoro: `python scripts/03_detect.py`, il
+pulsante Run di VS Code e un terminale aperto dentro `scripts/` davano CWD
+diversi, quindi `r"tests/examples/x.dxf"` funzionava in un caso e falliva
+nell'altro (stesso problema che ha in snapmark con i DXF di prova).
+
+Forma finale, **un solo modo**:
+
+- gli script stanno in `scripts/` (radice del repo più pulita su GitHub);
+- prima riga di ogni script: `import _paths` — `scripts/_paths.py` fa
+  `os.chdir()` alla radice del repo (`Path(__file__).parent.parent`);
+- nel `CONFIG` si scrive il path grezzo: relativo (parte dal repo) o assoluto
+  (usato com'è). Niente `EXAMPLES / "..."`, nessun pattern da ricordare.
+
+L'output relativo (`pipeline_output/`) finisce comunque sotto la radice del
+repo grazie al `chdir`. `13_ARC_splitter` si sposta in `scripts/` per coerenza
+ma resta fuori serie (path assoluti propri, API pre-refactor, non versionato).
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

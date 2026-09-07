@@ -13,12 +13,12 @@ consegna ForgeCluster(outer, inners=[ForgeContour...]).
     python 02_heal.py
 """
 
+import _paths  # noqa: F401  — chdir alla radice del repo
+
 import forge
 
-from _paths import EXAMPLES
-
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = EXAMPLES / "Linee_piegatura.dxf"
+INPUT     = r"tests/examples/Linee_piegatura.dxf"
 TOLERANCE = 0.5
 # -------------------------------------------------------------------------
 

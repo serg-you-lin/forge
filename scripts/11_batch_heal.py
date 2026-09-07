@@ -13,15 +13,15 @@ pipeline `load_dxf → heal_and_detect → to_dxf`.
     python 11_batch_heal.py path/alla/cartella --tol 0.5
 """
 
+import _paths  # noqa: F401  — chdir alla radice del repo
+
 import sys
 from pathlib import Path
 
 import forge
 
-from _paths import EXAMPLES
-
 # --- CONFIG ----------------------------------------------------------------
-DEFAULT_DIR = EXAMPLES
+DEFAULT_DIR = r"tests/examples"
 TOLERANCE   = 0.2
 LABEL_MAP = {
     "MARK":      "engrave",

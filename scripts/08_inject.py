@@ -16,13 +16,13 @@ I CONTEGGI delle feature NON si fanno qui: sono cluster.summary (property deriva
     python 08_inject.py
 """
 
+import _paths  # noqa: F401  — chdir alla radice del repo
+
 import ezdxf
 import forge
 
-from _paths import EXAMPLES
-
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = EXAMPLES / "Multifeature.dxf"
+INPUT     = r"tests/examples/Multifeature.dxf"
 TOLERANCE = 0.5
 LABEL_MAP = {"Filettati": "threaded_hole", "Svasati": "countersink",
              "Piega": "bending", "MARK": "engrave"}

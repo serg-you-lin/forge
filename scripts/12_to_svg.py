@@ -14,14 +14,15 @@ browser). `to_svg` è il renderer "batterie incluse" per anteprime / report.
     python 12_to_svg.py
 """
 
+import _paths  # noqa: F401  — chdir alla radice del repo
+
 import json
+import os
 
 import forge
 
-from _paths import EXAMPLES, OUTPUT
-
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = EXAMPLES / "Multifeature.dxf"
+INPUT     = r"tests/examples/Multifeature.dxf"
 TOLERANCE = 0.5
 LABEL_MAP = {
     "Filettati": "threaded_hole",
@@ -29,11 +30,11 @@ LABEL_MAP = {
     "Piega":     "bending",
     "MARK":      "engrave",
 }
-OUTDIR = OUTPUT
+OUTDIR = "pipeline_output"
 # -------------------------------------------------------------------------
 
-OUTDIR.mkdir(parents=True, exist_ok=True)
-base = INPUT.stem
+os.makedirs(OUTDIR, exist_ok=True)
+base = os.path.splitext(os.path.basename(INPUT))[0]
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
 result = forge.heal_and_detect(doc, label=base, features="all")
@@ -50,7 +51,7 @@ print(f"incisioni      : {len(cluster['engrave_lines'])}")
 print(f"trash          : {len(vm['trash'])}")
 print(f"palette        : {vm['palette']}")
 
-vm_path = OUTDIR / f"{base}_view.json"
+vm_path = os.path.join(OUTDIR, f"{base}_view.json")
 with open(vm_path, "w", encoding="utf-8") as f:
     json.dump(vm, f, indent=1)
 print(f"\nview model     -> {vm_path}")
@@ -58,7 +59,7 @@ print(f"\nview model     -> {vm_path}")
 # 2. SVG — sfondo scuro, fori come cerchi veri
 forge.save_svg(
     result,
-    OUTDIR / f"{base}.svg",
+    os.path.join(OUTDIR, f"{base}.svg"),
     tolerance=0.05,
     include_trash=True,
     background="#1e1e1e",
@@ -68,7 +69,7 @@ forge.save_svg(
 # variante: sfondo trasparente, senza trash, per incollarlo in un documento
 forge.save_svg(
     result,
-    OUTDIR / f"{base}_clean.svg",
+    os.path.join(OUTDIR, f"{base}_clean.svg"),
     include_trash=False,
     include_annotations=False,
     background=None,
