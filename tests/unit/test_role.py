@@ -15,7 +15,10 @@ Copre:
 import unittest
 
 import forge
-from forge.model.role import ContourRole, normalize_role, role_str, layer_to_role
+from forge.model.role import (
+    ContourRole, normalize_role, role_str, layer_to_role,
+    is_structural_role, STRUCTURAL_ROLES,
+)
 
 
 class TestNormalizeRole(unittest.TestCase):
@@ -61,6 +64,29 @@ class TestLayerToRole(unittest.TestCase):
         self.assertEqual(layer_to_role("Boh", {"altro": "outer"}), "unknown")
 
 
+class TestIsStructuralRole(unittest.TestCase):
+    """Predicato unico 'questo ruolo è contorno di pezzo?' (MAP.md D30)."""
+
+    def test_ruoli_di_contorno(self):
+        for r in (ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE,
+                  ContourRole.COUNTERSINK, ContourRole.THREADED_HOLE):
+            self.assertTrue(is_structural_role(r))
+
+    def test_marcatura_e_arredo_non_sono_strutturali(self):
+        for r in (ContourRole.ENGRAVE, ContourRole.MARKING, ContourRole.BEND,
+                  ContourRole.FRAME, ContourRole.UNKNOWN):
+            self.assertFalse(is_structural_role(r))
+
+    def test_slug_di_un_consumatore_non_e_strutturale(self):
+        self.assertFalse(is_structural_role("title_block"))
+        self.assertFalse(is_structural_role("section"))
+
+    def test_accetta_lo_slug_stringa_equivalente(self):
+        # ContourRole eredita da str: "outer" == ContourRole.OUTER
+        self.assertTrue(is_structural_role("outer"))
+        self.assertIn("hole", STRUCTURAL_ROLES)
+
+
 class TestCustomRoleSurvivesHeal(unittest.TestCase):
 
     def test_ruolo_custom_conservato_non_schiacciato_a_unknown(self):
@@ -81,6 +107,50 @@ class TestCustomRoleSurvivesHeal(unittest.TestCase):
 
         self.assertIn("title_block", all_roles)
         self.assertEqual(result.clusters[0].outer.role, ContourRole.OUTER)
+
+
+class TestConsumerRolesSurviveDetect(unittest.TestCase):
+    """
+    D30: un ruolo che forge non classifica (cornice, cartiglio, slug di un
+    consumatore) sopravvive TUTTA la pipeline — load → heal → detect — con
+    geometria e ruolo intatti. Prima detect() ne faceva un ClassifiedEntity
+    scollegato che l'exporter non riscriveva → geometria persa.
+    """
+
+    def _framed_doc(self):
+        # cornice grande + due pezzi dentro, tutti geometricamente distinti
+        return forge.load_geometry([
+            {"type": "polyline", "closed": True, "role": "frame",
+             "points": [(0, 0), (400, 0), (400, 300), (0, 300)]},
+            {"type": "polyline", "closed": True, "role": "outer",
+             "points": [(20, 20), (120, 20), (120, 120), (20, 120)]},
+            {"type": "polyline", "closed": True, "role": "outer",
+             "points": [(200, 20), (300, 20), (300, 120), (200, 120)]},
+        ])
+
+    def test_la_cornice_non_e_un_cluster_ne_mangia_i_pezzi(self):
+        result = forge.heal(self._framed_doc())
+        self.assertEqual(len(result.clusters), 2)
+        for c in result.clusters:
+            self.assertEqual(c.outer.role, ContourRole.OUTER)
+            self.assertLess(c.outer.polygon.area, 20000)  # non è la cornice
+
+    def test_detect_non_sposta_il_ruolo_custom_fuori_dalla_trash(self):
+        result = forge.heal(self._framed_doc())
+        trash_prima = len(result.trash_entities)
+        frame_prima = sum(1 for t in result.trash_entities
+                          if role_str(getattr(t, "role", "")) == "frame")
+        self.assertGreater(frame_prima, 0)
+
+        forge.detect(result, features="all")
+
+        frame_dopo = sum(1 for t in result.trash_entities
+                         if role_str(getattr(t, "role", "")) == "frame")
+        self.assertEqual(frame_dopo, frame_prima)
+        self.assertEqual(len(result.trash_entities), trash_prima)
+        # niente ClassifiedEntity scollegato, niente warning "non contenuta"
+        self.assertEqual(result.classified_entities, [])
+        self.assertFalse([w for w in result.warnings if "non contenuta" in w])
 
 
 if __name__ == "__main__":

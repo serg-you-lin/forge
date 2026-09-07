@@ -752,10 +752,19 @@ I ruoli che forge conosce e sa classificare: `unknown`, `outer`, `hole`,
 `countersink`, `threaded_hole`, `bending`, `frame`, `inner`, `engrave`,
 `marking`. **Non è un universo chiuso**: un consumatore può assegnare via
 `label_map` un ruolo che forge non conosce (`title_block`, `section`, …).
-Passa per `forge.model.role.normalize_role()` — ripulito in uno slug
-`[a-z0-9_-]` ≤ 64 char — e forge lo conserva senza sollevare, trattandolo come
-non strutturale. `role_str(role)` dà il valore stringa che il ruolo sia una
-costante o uno slug (MAP.md D27).
+Passa per `normalize_role()` — ripulito in uno slug `[a-z0-9_-]` ≤ 64 char — e
+forge lo conserva senza sollevare, trattandolo come non strutturale.
+`role_str(role)` dà il valore stringa che il ruolo sia una costante o uno slug
+(MAP.md D27).
+
+**`forge.normalize_role(value) -> str`** e **`forge.is_structural_role(role) ->
+bool`** sono pubbliche (MAP.md D30). Servono a un consumatore che marca la
+geometria **prima di `heal`**: tiene i riferimenti agli `Edge` di `doc.edges`,
+imposta `edge.role = forge.normalize_role("frame")`, e `heal` li tiene fuori dal
+grafo (l'outer vero dei pezzi emerge, la cornice finisce in `Trash` con la
+geometria intatta). `is_structural_role` dice se un ruolo è contorno di pezzo
+(`outer`, `inner`, `hole`, `countersink`, `threaded_hole`) o marcatura/arredo.
+È l'aggancio usato da `Framer` per cornice e cartiglio (`FRAMER.md`).
 
 ---
 

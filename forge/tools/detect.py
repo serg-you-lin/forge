@@ -20,12 +20,27 @@ from ..model import (
 )
 from ..model.engraving import Engraving
 from ..model.feature import OpenFeature
-from ..model.role import ContourRole, role_str
+from ..model.role import ContourRole, role_str, is_structural_role
 from .hole_detector import is_threaded_hole
 from ..core.geometry import (
     track_points, track_length, track_shape_type, circular_geometry,
 )
-from ..rules.thresholds import STRUCTURAL_ROLES, HOLE_DIAMETER_THRESHOLD
+from ..rules.thresholds import HOLE_DIAMETER_THRESHOLD
+
+
+# Ruoli che detect() sa collocare come feature di un cluster. Un proxy con un
+# ruolo deciso ma fuori da qui — frame, title_block, o uno slug di un
+# consumatore — è arredo del disegno: heal() l'ha messo in trash e detect() ce
+# lo lascia, geometria e ruolo intatti (D27, D30). Prima detect() ne faceva un
+# ClassifiedEntity scollegato che l'exporter non riscriveva → geometria persa.
+_DETECT_KNOWN_ROLES = frozenset({
+    ContourRole.HOLE,
+    ContourRole.COUNTERSINK,
+    ContourRole.THREADED_HOLE,
+    ContourRole.ENGRAVE,
+    ContourRole.BEND,
+    ContourRole.MARKING,
+})
 
 
 # Lane geometriche attivabili da detect(). `detect(result)` nudo non ne esegue
@@ -117,6 +132,10 @@ def _detect_labeled(result: ForgeResult) -> None:
     for proxy in result.trash_entities:
         if proxy.role == ContourRole.UNKNOWN:
             continue
+        if proxy.role not in _DETECT_KNOWN_ROLES:
+            # Arredo del disegno o ruolo di un consumatore: resta in trash,
+            # geometria e ruolo intatti, riscritto in output (D27, D30).
+            continue
 
         is_closed = getattr(proxy, "polygon", None) is not None
 
@@ -178,7 +197,13 @@ def _detect_labeled(result: ForgeResult) -> None:
                 cluster.holes.append(_labeled_hole_from_contour(inner))
                 continue
 
-            if inner.role == ContourRole.UNKNOWN or inner.role in STRUCTURAL_ROLES:
+            if inner.role == ContourRole.UNKNOWN or is_structural_role(inner.role):
+                remaining.append(inner)
+                continue
+
+            if inner.role not in _DETECT_KNOWN_ROLES:
+                # Ruolo di un consumatore su un loop interno: forge non lo
+                # classifica, resta un inner del cluster (D27, D30).
                 remaining.append(inner)
                 continue
 
