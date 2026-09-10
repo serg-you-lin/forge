@@ -1,16 +1,18 @@
 # forge
 
-**Preprocessore di geometria 2D per la fabbricazione di lamiera / piastra.**
+**Motore di geometria 2D deterministico per la fabbricazione di lamiera / piastra.**
 
-`forge` prende un disegno 2D disordinato — una matassa di `LINE`/`ARC` sputata da
-una macchina CAM, il DXF di un cliente, un file R12 vecchio — e ne ricava un
-modello pulito e strutturato: profili esterni chiusi, aperture interne, fori
-(passanti / svasati / filettati), linee di piega, tracce di incisione. Quel
-modello si può poi riscrivere in DXF (un file per pezzo), esportare come metadati
-JSON/XML, o passare al nesting.
+`forge` prende un disegno 2D disordinato e ne ricava un modello pulito e
+strutturato — profili esterni chiusi, aperture interne, fori (passanti / svasati /
+filettati), linee di piega, tracce di incisione — poi lo riscrive in DXF (un file
+per pezzo), metadati JSON/XML, o un view model per una UI. Il prodotto è il
+modello; un formato CAD è solo una porta di entrata o di uscita. Oggi quella porta
+è il DXF (DWG via ODA), gestita da un solo adapter — tutto ciò che sta a valle
+lavora sul modello neutro rispetto al formato.
 
-La parte che nessun'altra libreria DXF fa per te è l'**healing**: ricucire la
-geometria rotta in contorni chiusi.
+La parte che nessun altro strumento fa per te è l'**healing**: ricucire la
+geometria rotta — matasse di `LINE`/`ARC` da un export CAM, il DXF di un cliente,
+un vecchio file R12 — in contorni chiusi.
 
 > Stato: **alpha**. In produzione per la preparazione al taglio laser/plasma, ma
 > l'API si muove ancora. Vedi `MAP.md` per le decisioni di design correnti.
@@ -83,3 +85,11 @@ vedere dove si rompe la catena.
 - **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — com'è fatto dentro e
   perché: gli strati, il flusso, il principio "il prodotto è il modello".
 - **`MAP.md`** — le decisioni di design prese, in ordine cronologico.
+
+---
+
+## Licenza
+
+MIT — vedi [`LICENSE`](LICENSE). Copyright (c) 2026 Federico Sidraschi. Usalo
+liberamente; mantieni la nota di copyright. È incluso un [`CITATION.cff`](CITATION.cff)
+per la citazione formale.
