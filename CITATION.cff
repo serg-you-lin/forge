@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use forge in your work, please cite it as below."
+title: "forge — deterministic 2D-geometry engine for sheet/plate manufacturing"
+authors:
+  - family-names: Sidraschi
+    given-names: Federico
+repository-code: "https://github.com/serg-you-lin/forge"
+license: MIT
