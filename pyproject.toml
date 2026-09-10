@@ -6,15 +6,15 @@ build-backend = "setuptools.build_meta"
 name = "forge"
 # Unica fonte di verità della versione. forge.__version__ la legge da qui via
 # importlib.metadata — non duplicarla nel codice (MAP.md D11).
-version = "0.6.10"
-description = "DXF geometry preprocessing for manufacturing pipelines"
+version = "0.6.11"
+description = "Deterministic 2D-geometry engine for sheet/plate manufacturing"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
     { name = "Federico Sidraschi" }
 ]
-keywords = ["dxf", "cad", "manufacturing", "geometry", "nesting", "cam", "laser cut"]
+keywords = ["cad", "geometry", "manufacturing", "sheet-metal", "laser-cutting", "cam", "dxf"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

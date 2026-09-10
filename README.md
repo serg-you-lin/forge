@@ -1,15 +1,17 @@
 # forge
 
-**2D geometry preprocessor for sheet/plate manufacturing.**
+**Deterministic 2D-geometry engine for sheet/plate manufacturing.**
 
-`forge` takes a messy 2D drawing — scattered `LINE`/`ARC` soup exported by a CAM
-machine, a client's DXF, a legacy R12 file — and turns it into a clean, structured
-model: closed part profiles, inner cutouts, holes (plain / countersink / threaded),
-bend lines, engraving traces. That model can then be rendered back to DXF (one file
-per part), exported as JSON/XML metadata, or fed to nesting.
+`forge` turns a messy 2D drawing into a clean, structured model — closed part
+profiles, inner cutouts, holes (plain / countersink / threaded), bend lines,
+engraving traces — then renders it back to DXF (one file per part), JSON/XML
+metadata, or a view model for a UI. The model is the product; a CAD format is
+only a door in or out of it. Today that door is DXF (DWG via ODA), handled by a
+single adapter — everything downstream works on the format-neutral model.
 
-The distinctive part is the **healing**: reconnecting broken geometry into closed
-contours. No other DXF library does that for you.
+The distinctive part is the **healing**: reconnecting broken geometry — `LINE`/`ARC`
+soup from a CAM export, a client's DXF, a legacy R12 file — into closed contours.
+No other tool does that for you.
 
 > Status: **alpha**. Used in production for laser/plasma cutting prep, but the API
 > still moves. See `MAP.md` for the current design decisions.
@@ -170,3 +172,11 @@ right and you need to see where in the chain it breaks.
 ## Full API reference
 
 See [`docs/API.md`](docs/API.md). Architecture and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+---
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). Copyright (c) 2026 Federico Sidraschi. Use it
+freely; keep the copyright notice. A [`CITATION.cff`](CITATION.cff) is included
+for formal citation.
