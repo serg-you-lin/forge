@@ -177,6 +177,6 @@ See [`docs/API.md`](docs/API.md). Architecture and rationale: [`docs/ARCHITECTUR
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). Copyright (c) 2026 Federico Sidraschi. Use it
-freely; keep the copyright notice. A [`CITATION.cff`](CITATION.cff) is included
-for formal citation.
+All rights reserved — see [`LICENSE`](LICENSE). Copyright (c) 2026 Federico
+Sidraschi. This is not open source; if you'd like to try or use it, get in
+touch: smia4punto6@gmail.com.
