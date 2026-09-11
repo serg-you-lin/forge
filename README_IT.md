@@ -90,6 +90,6 @@ vedere dove si rompe la catena.
 
 ## Licenza
 
-MIT — vedi [`LICENSE`](LICENSE). Copyright (c) 2026 Federico Sidraschi. Usalo
-liberamente; mantieni la nota di copyright. È incluso un [`CITATION.cff`](CITATION.cff)
-per la citazione formale.
+Tutti i diritti riservati — vedi [`LICENSE`](LICENSE). Copyright (c) 2026
+Federico Sidraschi. Non è open source; per provarlo o usarlo, scrivimi:
+smia4punto6@gmail.com.
