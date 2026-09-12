@@ -594,6 +594,73 @@ Suite: 626 passed (+1 in `test_role.py`, `test_role.py:77` aggiornato per la
 rimozione di `FRAME`). Nessun golden toccato. Branch
 `refactor/consumer-roles-out-of-forge`, merge → `main` 0.6.10.
 
+### D32 — `load_geometry` pubblico  ✅
+
+Era sperimentale (fuori da `forge.__all__`) in attesa di un caso reale.
+Verificato: `bendly` (l'ex `unfold_generator`) lo usa già in produzione in
+`io/dxf.py` per portare gli sviluppi che genera a `ForgeDocument` senza passare
+da un file — il caso reale c'era da tempo, la nota non era mai stata aggiornata.
+Federico, guardando avanti a Smoother (che lo userà per i contorni ricostruiti
+da immagine): *"lo pubblichiamo, perché lo useranno di sicuro."*
+
+Nessun cambio di comportamento: `load_geometry` entra in `forge.__all__`,
+`docs/API.md` guadagna una sezione (schema `line`/`arc`/`circle`/`polyline`,
+`role` opzionale), tolti i commenti "SPERIMENTALE" da `__init__.py` e dal
+docstring del modulo.
+
+### D33 — `simplify_points`: ricostruzione punti→primitive spostata in forge  ✅
+
+Analisi di una sessione precedente (vedi sezione più sopra in questo file):
+`classifica_punti()`/`scrivi_contorno()` di `smoother_5.py` non hanno nulla di
+specifico alle immagini — prendono una sequenza di punti ordinata e chiusa,
+rilevano gli spigoli per angolo e rifittano ogni tratto in linea o spline.
+Federico ha confermato di chiudere l'analisi e ha posto una condizione precisa:
+*"devono essere parametri gestibili dal chiamante"* — le due soglie
+dell'originale (angolo di spigolo, cardinalità minima per una spline) erano
+costanti hardcoded nello script.
+
+`forge/tools/simplify_points.py`: `detect_corners()` (spigoli da soglia
+angolare, parametro del chiamante) + `fit_primitives()` (spezza sui corner,
+rifitta ogni tratto in `LineSeg` o `SplineSeg` di `core/primitives/segments.py`
+via `ezdxf.math.BSpline.from_fit_points`, grado e soglia-punti-minimi
+parametri) + `simplify_points()` che le incatena. Stesso trattamento
+sperimentale di `load_geometry`/`load_pdf` prima di D32: importabile come
+`forge.simplify_points`, fuori da `__all__` e non documentato finché non è
+provato da un caso reale (Smoother).
+
+Suite: 636 passed (+10 in `tests/unit/test_simplify_points.py`). Branch
+`refactor/load-geometry-simplify-points`.
+
+### D34 — `ForgeContour.depth` / `.parent`: l'albero di contenimento non si perde più  ✅
+
+Sezione "NIPOTI STACCATI" più sopra in questo file: per piazzare le linguette
+sui contorni annidati in profondità, uno strumento a valle (Smoother) deve
+sapere non solo "sei annidato" ma "dentro quale contorno esattamente" — col
+solo conteggio di profondità non si distinguono due fori fratelli con
+un'isola ciascuno. Federico ha ragionato anche sul caso in cui si aggiunge
+un contenitore esterno dopo (es. la lamiera attorno a un ingranaggio già
+tracciato): non serve un'operazione di "reparent" — `_build_tree` ricalcola
+il contenimento da zero per geometria a ogni `heal()`, quindi basta includere
+il nuovo contorno esterno nello stesso batch di `load_geometry()` e outer/
+figlio/nipote si aggiustano da soli. La disciplina che ne segue (non taggare
+`role="outer"` su un contorno finché non sai se resterà la radice) è
+responsabilità di chi chiama, non di forge.
+
+`hierarchy.py` costruiva già l'albero vero (`_build_tree`/`_place`, padre →
+figli → nipoti) e lo appiattiva deliberatamente in `_collect_inners()`,
+perdendo chi-contiene-chi. Ora ogni `ForgeContour` porta `depth: int` (0
+outer, 1 figlio, 2 nipote, ...) e `parent: Optional[ForgeContour]` (il
+contorno che lo contiene direttamente), passati giù durante la stessa
+ricorsione che già visitava l'albero — nessun ricalcolo. Additivo: `role`
+resta con la stessa logica di ereditarietà di prima (D15), `cluster.inners`
+resta piatto, nessun consumer esistente (`detect`, `io/dxf`, l'exporter
+JSON/XML) tocca i due campi nuovi.
+
+Suite: 639 passed (+3 in `tests/unit/core/test_hierarchy_builder.py`,
+`TestNestingDepthAndParent` sulla stessa gerarchia a tre livelli di
+`TestNestingFlattened`). Nessun golden toccato. Branch
+`refactor/load-geometry-simplify-points`.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

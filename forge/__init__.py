@@ -47,13 +47,14 @@ from .adapters.dxf.loader import load_dxf, document_from_msp
 # Resta importabile come forge.load_pdf per chi ci lavora sopra, ma non è in
 # __all__ e non è documentato: l'API può cambiare o sparire senza preavviso.
 from .adapters.pdf.loader import load_pdf
-# load_geometry: SPERIMENTALE, fuori dal contratto pubblico (vedi MAP.md).
-# Costruisce un ForgeDocument da geometria pura (dict), non da un file — stesso
-# contratto di ritorno di load_dxf, ma senza sorgente su disco. Pensato per
-# generatori parametrici (es. sviluppi cono/cilindro) e ricostruttori di
-# geometria da punti. Resta importabile come forge.load_geometry, non è in
-# __all__ e non è documentato finché non è stato provato da un caso reale.
 from .adapters.geometry.loader import load_geometry
+# simplify_points: SPERIMENTALE, fuori dal contratto pubblico (vedi MAP.md D33).
+# Ricostruisce linee/spline da una sequenza di punti densa e ordinata (spigoli
+# + refit) — generico, zero dipendenza da immagini. Resta importabile come
+# forge.simplify_points, non è in __all__ e non è documentato finché non è
+# stato provato da un caso reale (Smoother). detect_corners/fit_primitives
+# restano accessibili da forge.tools.simplify_points per chi vuole comporli.
+from .tools.simplify_points import simplify_points
 from .core.heal          import heal
 from .recipes            import heal_and_detect, split_to_files
 from .tools.inject       import inject
@@ -102,6 +103,7 @@ __all__ = [
     # Apertura file
     "load_dxf",
     "document_from_msp",
+    "load_geometry",
     # Validazione
     "validate",
     "validate_result",
