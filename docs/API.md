@@ -18,7 +18,7 @@ in fondo.
 
 ## Indice
 
-1. [Apertura file](#1-apertura-file) — `load_dxf`, `document_from_msp`
+1. [Apertura file](#1-apertura-file) — `load_dxf`, `document_from_msp`, `load_geometry`
 2. [Validazione](#2-validazione) — `validate`, `validate_result`
 3. [Elaborazione e render](#3-elaborazione-e-render) — `heal` (core), `detect` / `interpret_annotations` / `inject` (tools), `to_dxf` / `split` (io), `heal_and_detect` / `split_to_files` (recipes)
 4. [Export](#4-export) — `save_json`, `to_json`, `save_xml`, `to_view_model`, `to_svg`, `save_svg`
@@ -156,6 +156,44 @@ msp.add_line((0, 0), (100, 0)); msp.add_line((100, 0), (100, 50))
 # ...
 document = forge.document_from_msp(msp, tolerance=0.5)
 ```
+
+### `load_geometry`
+
+```python
+forge.load_geometry(
+    entities,
+    tolerance=0.05,
+    source_path="",
+) -> ForgeDocument
+```
+
+Costruisce un `ForgeDocument` da geometria pura — dict Python, non un file.
+Stesso contratto di ritorno di `load_dxf`/`document_from_msp`, ma la sorgente è
+chi chiama: un generatore parametrico (uno sviluppo cono/cilindro calcolato
+altrove) o un ricostruttore di contorni da punti (una traccia vettorializzata da
+computer vision). Chi chiama non importa nessun tipo interno di forge.
+
+| parametro | significato |
+|---|---|
+| `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polyline` (`points`, `closed`). `role` è opzionale su ogni entità — stesso vocabolario di `label_map` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
+| `tolerance` | tolleranza di arrotondamento dei nodi topologici — stesso significato di `load_dxf(tolerance=...)`. |
+| `source_path` | etichetta libera per `ForgeDocument.source_path`; non è un file, serve solo per diagnostica. |
+
+```python
+doc = forge.load_geometry([
+    {"type": "arc",  "center": (0, 0), "radius": 50,
+     "start_angle": -30, "end_angle": 30, "role": "outer"},
+    {"type": "line", "start": (43.3, -25.0), "end": (34.6, -20.0), "role": "outer"},
+    {"type": "arc",  "center": (0, 0), "radius": 40,
+     "start_angle": -30, "end_angle": 30, "role": "outer"},
+    {"type": "line", "start": (34.6, 20.0), "end": (43.3, 25.0), "role": "outer"},
+])
+result = forge.heal_and_detect(doc, label="sviluppo_cono")
+forge.to_dxf(result)
+```
+
+Provato da un caso reale (`bendly`, che lo usa per portare gli sviluppi che
+genera a `ForgeDocument` senza passare da un file — vedi MAP.md D32).
 
 ---
 

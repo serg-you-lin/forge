@@ -221,9 +221,21 @@ tutto in un tool). Il pezzo che forge deve dare a Smoother per le linguette è
 esattamente il dato di nesting che oggi butta via in `_collect_inners()` — va reso
 riusabile (non ricalcolato da Smoother in proprio).
 
-Prossimo passo deciso: costruire `load_geometry()` per primo — serve sia a Unfold
-sia a Smoother (entrambi devono poter consegnare a forge geometria già calcolata/
-ricostruita, non un file).
+✅ `load_geometry()` esisteva già (non era mai stato un passo da fare) ed è
+già provato da un caso reale: `bendly` (l'ex Unfold) lo usa in `io/dxf.py` per
+consegnare a forge gli sviluppi che genera, senza passare da un file. Reso
+pubblico in MAP.md D32 — Smoother lo userà allo stesso modo per i contorni
+ricostruiti da immagine.
+
+✅ Fatto (MAP.md D34): `ForgeContour.depth`/`.parent` — l'albero di
+contenimento che `hierarchy.py` costruisce internamente non viene più
+appiattito senza lasciare traccia. Un nipote porta il riferimento diretto al
+suo genitore (non solo un conteggio di profondità): serve a distinguere due
+fori fratelli con un'isola ciascuno, cosa che il solo `depth` non permette.
+Il caso "aggiungo un contenitore esterno dopo" (es. la lamiera attorno a un
+ingranaggio già tracciato) non richiede nulla in più da forge: basta
+includere il nuovo contorno esterno nello stesso batch di `load_geometry()`,
+il contenimento per geometria si ricalcola da solo a ogni `heal()`.
 
 ## classifica_punti — cos'è, e se ha senso spostarlo nel core forge
 
@@ -254,9 +266,14 @@ di segmenti collineari"). Casi in cui servirebbe anche fuori da Smoother:
 
 Quindi sì, ha senso che sia forge ad averlo — non come "smoothing PNG" (quello resta
 di Smoother, dipende da opencv), ma come ricostruzione geometrica generale da punti
-ordinati, zero dipendenza da immagini. Nome: da decidere, in inglese (es.
-`simplify_points` / `fit_primitives` / `detect_corners` + refit) — coerente con
-tutto il resto dei nomi pubblici di forge, già tutti in inglese.
+ordinati, zero dipendenza da immagini.
+
+✅ Fatto (MAP.md D33): `forge/tools/simplify_points.py` — `detect_corners()` +
+`fit_primitives()` (+ `simplify_points()` che le incatena). Le due soglie
+dell'originale (`SOGLIA_SPIGOLO`, il limite punti-per-riga-vs-spline) sono
+parametri del chiamante, non più costanti hardcoded. Sperimentale, importabile
+come `forge.simplify_points`, non ancora in `__all__` finché non è provato da
+Smoother.
 
 
 # "BENDING CANDIDATES" IN HEALSTEP — nome che perde vocabolario, e la domanda vera
