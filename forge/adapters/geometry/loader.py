@@ -12,9 +12,8 @@ puri. La traduzione in Edge (arrotondamento nodi, ruolo semantico) è identica
 nello spirito a quella di DxfAdapter — stessa tolleranza, stessa logica di
 arrotondamento — cambia solo la sorgente da tradurre.
 
-SPERIMENTALE: come load_pdf, è fuori dal contratto pubblico documentato
-(forge.__all__) finché non è stato usato da un caso reale (vedi MAP.md). Resta
-importabile come forge.load_geometry.
+Pubblico da MAP.md D32 — provato da un caso reale (`bendly`, che lo usa in
+`io/dxf.py` per portare uno sviluppo generato a `ForgeDocument`).
 
 Funzioni pubbliche:
     load_geometry — traduce una lista di descrizioni geometriche in ForgeDocument
