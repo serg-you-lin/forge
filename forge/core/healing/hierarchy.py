@@ -88,7 +88,12 @@ def _build_tree(proxies: list) -> list:
 # Costruzione semantica
 # ---------------------------------------------------------------------------
 
-def _make_inner(proxy: ClosedFeature, parent_role: ContourRole = ContourRole.UNKNOWN) -> ForgeContour:
+def _make_inner(
+    proxy: ClosedFeature,
+    parent_role: ContourRole = ContourRole.UNKNOWN,
+    depth: int = 1,
+    parent: Optional[ForgeContour] = None,
+) -> ForgeContour:
     role = (
         proxy.role if proxy.role not in (ContourRole.UNKNOWN, ContourRole.INNER)
         else parent_role if parent_role not in (ContourRole.UNKNOWN, ContourRole.INNER)
@@ -99,6 +104,8 @@ def _make_inner(proxy: ClosedFeature, parent_role: ContourRole = ContourRole.UNK
         role=role,
         segments=list(proxy.segments),
         styles=list(getattr(proxy, "styles", []) or []),
+        depth=depth,
+        parent=parent,
     )
 
 
@@ -107,10 +114,18 @@ def _collect_inners(
     inners: list,
     classified_proxies: set,
     parent_role: ContourRole = ContourRole.UNKNOWN,
+    depth: int = 1,
+    parent: Optional[ForgeContour] = None,
 ):
     """
-    Appiattisce l'albero di contenimento: ogni discendente di un outer diventa
-    un `ForgeContour` in `cluster.inners`, a qualsiasi profondità.
+    Appiattisce l'albero di contenimento in `cluster.inners` (ogni discendente
+    di un outer diventa un `ForgeContour`, a qualsiasi profondità), ma non
+    butta via la forma dell'albero: ogni contorno porta con sé `depth` (0 per
+    l'outer, 1 per un figlio diretto, 2 per un nipote, ...) e `parent` (il
+    `ForgeContour` che lo contiene direttamente). Chi consuma il cluster può
+    quindi risalire la catena di contenimento senza doverla ricalcolare da
+    zero — è il dato che uno strumento di microjoint/linguette (Smoother) deve
+    leggere per sapere quali contorni sono "nipoti" e di chi.
 
     heal() si ferma qui — non decide più hole vs inner né riconosce i
     countersink dal nesting (D15). detect(features="holes") ri-deriva il
@@ -118,9 +133,13 @@ def _collect_inners(
     """
     for child_proxy, grandchildren in children:
         classified_proxies.add(id(child_proxy.polygon))
-        inners.append(_make_inner(child_proxy, parent_role=parent_role))
+        contour = _make_inner(child_proxy, parent_role=parent_role, depth=depth, parent=parent)
+        inners.append(contour)
         if grandchildren:
-            _collect_inners(grandchildren, inners, classified_proxies, parent_role=parent_role)
+            _collect_inners(
+                grandchildren, inners, classified_proxies,
+                parent_role=parent_role, depth=depth + 1, parent=contour,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -159,11 +178,16 @@ class HierarchyBuilder:
                 role=ContourRole.OUTER,
                 segments=list(father_proxy.segments),
                 styles=list(getattr(father_proxy, "styles", []) or []),
+                depth=0,
+                parent=None,
             )
             self._classified_proxies.add(id(father_proxy.polygon))
 
             inners = []
-            _collect_inners(children, inners, self._classified_proxies, parent_role=father_proxy.role)
+            _collect_inners(
+                children, inners, self._classified_proxies,
+                parent_role=father_proxy.role, depth=1, parent=outer,
+            )
 
             cluster = ForgeCluster(
                 outer=outer,

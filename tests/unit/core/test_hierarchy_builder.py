@@ -132,6 +132,45 @@ class TestNestingFlattened(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Test 2bis — stessa gerarchia, ma depth/parent non vengono più persi
+# ---------------------------------------------------------------------------
+
+class TestNestingDepthAndParent(unittest.TestCase):
+    """
+    Stessa gerarchia a tre livelli di TestNestingFlattened: outer (100x100) →
+    medio (d=20) → piccolo (d=8). heal() appiattisce comunque tutto in
+    `cluster.inners`, ma ogni ForgeContour porta con sé `depth`/`parent` — il
+    dato che uno strumento di linguette (Smoother) legge per sapere chi è
+    nipote di chi, invece di ricalcolare il contenimento da solo.
+    """
+
+    def setUp(self):
+        self.outer_proxy   = _rect_proxy(0, 0, 100, 100)
+        self.medio_proxy   = _circle_proxy(50, 50, 10)   # d=20, figlio diretto
+        self.piccolo_proxy = _circle_proxy(50, 50, 4)    # d=8,  nipote
+        self.clusters, _ = _make_builder().build(
+            [self.outer_proxy, self.medio_proxy, self.piccolo_proxy]
+        )
+        self.cluster = self.clusters[0]
+        # area decrescente: inners[0] è sempre il medio, inners[1] il piccolo
+        # (_build_tree ordina i proxy per area prima di piazzarli).
+        self.medio, self.piccolo = self.cluster.inners
+
+    def test_outer_depth_zero_senza_genitore(self):
+        self.assertEqual(self.cluster.outer.depth, 0)
+        self.assertIsNone(self.cluster.outer.parent)
+
+    def test_figlio_diretto_depth_uno_genitore_e_outer(self):
+        self.assertEqual(self.medio.depth, 1)
+        self.assertIs(self.medio.parent, self.cluster.outer)
+
+    def test_nipote_depth_due_genitore_e_il_figlio_non_l_outer(self):
+        self.assertEqual(self.piccolo.depth, 2)
+        self.assertIs(self.piccolo.parent, self.medio)
+        self.assertIsNot(self.piccolo.parent, self.cluster.outer)
+
+
+# ---------------------------------------------------------------------------
 # Test 3 — trash
 # ---------------------------------------------------------------------------
 
