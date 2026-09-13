@@ -275,6 +275,55 @@ parametri del chiamante, non più costanti hardcoded. Sperimentale, importabile
 come `forge.simplify_points`, non ancora in `__all__` finché non è provato da
 Smoother.
 
+### 🔧 IN CORSO — `fit_primitives` deve accettare anche arco/cerchio, non solo linea/spline
+
+Manca esattamente il terzo caso previsto qui sopra ("linea/**arco**/spline"):
+oggi un tratto fra due corner con tanti punti diventa sempre una `SplineSeg`,
+anche quando è in realtà un arco a raggio costante (un raccordo, un foro
+tracciato a mano) — che al laser taglia meglio di una spline generica ed è
+banale da spezzare in due (utile per Smoother, che deve poterci tagliare una
+linguetta senza smontare una curva NURBS — vedi `smoother/MAP.md` D5/D6 nel
+repo `smoother`: linguette restano lì, il fit ad arco è confermato lavoro di
+forge).
+
+Design deciso (sessione 2026-09-13), da implementare in
+`forge/tools/simplify_points.py`:
+
+- **Nuovo parametro** `arc_fit_tolerance: Optional[float] = None` su
+  `fit_primitives()` e `simplify_points()` — stesso trattamento delle altre
+  soglie (parametro del chiamante, mai hardcoded). **Default `None` = disattivato**:
+  nessun cambio di comportamento per chi già chiama la funzione senza
+  specificarlo (i test esistenti, incluso quello in `dxf-forge`
+  `tests/unit/adapters/test_geometry_loader.py` che fitta un 16-gono e si
+  aspetta un'unica `SplineSeg`, devono restare verdi invariati).
+- Per ogni tratto candidato-spline (stesso punto in cui oggi si chiama
+  `_fit_spline`), se `arc_fit_tolerance` non è `None`: fittare un cerchio ai
+  minimi quadrati (metodo algebrico di Kasa: minimizza `x²+y²+Dx+Ey+F=0`,
+  centro `(-D/2,-E/2)`, raggio da `D,E,F`) e calcolare lo scostamento massimo
+  dei punti dal cerchio. Se lo scostamento massimo è `<= arc_fit_tolerance`,
+  accettare il cerchio; altrimenti fallback alla spline di oggi.
+- Se il cerchio è accettato:
+  - tratto **chiuso su se stesso** (primo e ultimo punto coincidenti entro
+    `duplicate_tolerance` — il caso "contorno chiuso senza spigoli") →
+    `CircleSeg(center, radius)`.
+  - tratto **aperto** (fra due corner veri) → `ArcSeg(center, radius,
+    start_angle, end_angle, ccw)`. Gli angoli si calcolano dagli angoli reali
+    dei punti rispetto al centro (`atan2`), "srotolati" (unwrap, come
+    `numpy.unwrap`) lungo la sequenza per non confondere un arco > 180° con
+    uno più corto nel verso sbagliato — non bastano solo primo/ultimo punto
+    presi da soli.
+- `numpy` è già una dipendenza di forge (`pyproject.toml`) — usarlo per il
+  fit ai minimi quadrati (`np.linalg.lstsq`), non serve altro.
+- Test in `tests/unit/test_simplify_points.py`: un arco vero (punti su un
+  cerchio noto, raggio/centro noti) deve dare un `ArcSeg` con quel
+  centro/raggio entro tolleranza; un profilo irregolare (es. una spline vera,
+  non circolare) deve continuare a dare `SplineSeg` anche con
+  `arc_fit_tolerance` impostato; senza `arc_fit_tolerance` il comportamento
+  deve essere identico a prima (nessuna regressione).
+- Branch: `refactor/simplify-points-arc-fit`. Aggiornare `docs/API.md` (sezione
+  `simplify_points`, se esiste — verificare, oggi potrebbe non essere ancora
+  documentata) e `MAP.md` con la decisione a lavoro finito.
+
 
 # "BENDING CANDIDATES" IN HEALSTEP — nome che perde vocabolario, e la domanda vera
 
