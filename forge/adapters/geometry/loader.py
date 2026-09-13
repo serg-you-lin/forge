@@ -26,12 +26,12 @@ from typing import Any, Dict, List, Tuple
 
 from ...core.adapter_base import ForgeAdapter
 from ...core.geometry import round_point
-from ...core.primitives.segments import LineSeg, ArcSeg, CircleSeg, segment_endpoints
+from ...core.primitives.segments import LineSeg, ArcSeg, CircleSeg, SplineSeg, segment_endpoints
 from ...core.topology.edge import Edge
 from ...model.document import ForgeDocument
 from ...model.role import normalize_role
 
-_SUPPORTED_TYPES = frozenset({"line", "arc", "circle", "polyline"})
+_SUPPORTED_TYPES = frozenset({"line", "arc", "circle", "polyline", "spline"})
 
 
 def _role_from(entity: Dict[str, Any]) -> str:
@@ -54,6 +54,9 @@ class GeometryAdapter(ForgeAdapter):
         circle:   {"type": "circle", "center": (x,y), "radius": r, "role": "hole"}
         polyline: {"type": "polyline", "points": [(x,y), ...],
                    "closed": True, "role": "outer"}
+        spline:   {"type": "spline", "control_points": [(x,y), ...], "knots": [...],
+                   "degree": 3, "weights": [...], "fit_points": [(x,y), ...],
+                   "closed": False, "role": "outer"}
 
     "role" è opzionale — stesso vocabolario di label_map (work_type stringa:
     "outer", "hole", "inner", "bending", "engrave", ...). Se omesso resta
@@ -64,6 +67,12 @@ class GeometryAdapter(ForgeAdapter):
 
     Gli angoli di "arc" sono in GRADI (convenzione DXF/CAD, non i radianti di
     ArcSeg) — più naturale per chi consegna numeri calcolati a mano.
+
+    Lo schema di "spline" ricalca 1:1 i campi di SplineSeg (control_points,
+    knots, degree, weights, fit_points, closed): chi ha in mano l'oggetto
+    restituito da simplify_points() lo passa quasi senza toccarlo — vedi
+    forge.tools.simplify_points. Solo "control_points"/"knots"/"degree" sono
+    obbligatori, il resto è opzionale.
     """
 
     def __init__(self, entities: List[Dict[str, Any]], tolerance: float = 0.05):
@@ -88,6 +97,8 @@ class GeometryAdapter(ForgeAdapter):
                 edges.append(self._circle_edge(entity, role))
             elif kind == "polyline":
                 edges.extend(self._polyline_edges(entity, role))
+            elif kind == "spline":
+                edges.append(self._spline_edge(entity, role))
             else:
                 raise ValueError(
                     f"load_geometry(): tipo non supportato all'indice {i}: "
@@ -132,6 +143,20 @@ class GeometryAdapter(ForgeAdapter):
         pt = self._round(start)
         return Edge(role=role, start=pt, end=pt, segment=seg)
 
+    def _spline_edge(self, entity: Dict[str, Any], role: str) -> Edge:
+        weights = entity.get("weights")
+        fit_points_raw = entity.get("fit_points")
+        seg = SplineSeg(
+            degree=int(entity.get("degree", 3)),
+            control_points=[tuple(p) for p in entity["control_points"]],
+            knots=[float(k) for k in entity["knots"]],
+            weights=[float(w) for w in weights] if weights else None,
+            fit_points=[tuple(p) for p in fit_points_raw] if fit_points_raw else None,
+            closed=bool(entity.get("closed", False)),
+        )
+        start, end = segment_endpoints(seg)
+        return Edge(role=role, start=self._round(start), end=self._round(end), segment=seg)
+
     def _polyline_edges(self, entity: Dict[str, Any], role: str) -> List[Edge]:
         points = [tuple(p) for p in entity["points"]]
         closed = bool(entity.get("closed", False))
@@ -166,7 +191,7 @@ def load_geometry(
     vettorializzati da immagine, ...).
 
     Vedi GeometryAdapter per lo schema di ogni "type" di entità supportato
-    (line / arc / circle / polyline).
+    (line / arc / circle / polyline / spline).
 
     Esempio — settore anulare di uno sviluppo di cono:
         doc = forge.load_geometry([

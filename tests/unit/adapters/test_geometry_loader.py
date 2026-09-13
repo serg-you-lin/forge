@@ -42,6 +42,22 @@ class TestGeometryAdapter(unittest.TestCase):
         with self.assertRaises(ValueError):
             GeometryAdapter([{"type": "hexagon"}]).to_edges()
 
+    def test_spline_edge_endpoints_from_control_points(self):
+        # senza fit_points/approx_points, segment_endpoints ricade sui
+        # control_points: primo e ultimo control point sono gli estremi.
+        edge = GeometryAdapter([], tolerance=0.05)._spline_edge(
+            {
+                "control_points": [(0, 0), (5, 10), (10, 0)],
+                "knots": [0, 0, 0, 1, 1, 1],
+                "degree": 2,
+                "role": "outer",
+            },
+            ContourRole.OUTER,
+        )
+        self.assertEqual(edge.start, (0.0, 0.0))
+        self.assertEqual(edge.end, (10.0, 0.0))
+        self.assertEqual(edge.role, ContourRole.OUTER)
+
 
 class TestLoadGeometryRectangleWithHole(unittest.TestCase):
     """Rettangolo (polyline chiusa) con un foro circolare — caso semplice."""
@@ -119,6 +135,56 @@ class TestLoadGeometryConeSector(unittest.TestCase):
         polylines = list(msp.query("LWPOLYLINE"))
         self.assertEqual(len(polylines), 1)
         self.assertTrue(any(abs(b) > 1e-9 for _, _, _, _, b in polylines[0].get_points()))
+
+
+class TestLoadGeometrySplineFromSimplifyPoints(unittest.TestCase):
+    """
+    Il caso reale che ha aperto il tipo "spline": un contorno ricostruito da
+    forge.simplify_points() (Smoother) — la SplineSeg risultante deve poter
+    tornare in load_geometry() senza reinventare i suoi campi a mano.
+    """
+
+    def setUp(self):
+        # poligono regolare a 16 lati: angoli interni (157.5°) ben sopra la
+        # soglia di default di simplify_points -> nessuno spigolo rilevato,
+        # l'intero contorno rifitta in un'unica SplineSeg.
+        n, r = 16, 50.0
+        points = [
+            (r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n))
+            for i in range(n)
+        ]
+        segments = forge.simplify_points(points, closed=True)
+        self.assertEqual(len(segments), 1)
+        seg = segments[0]
+
+        self.doc = load_geometry([
+            {
+                "type": "spline",
+                "control_points": seg.control_points,
+                "knots": seg.knots,
+                "degree": seg.degree,
+                "fit_points": seg.fit_points,
+                "closed": seg.closed,
+                "role": "outer",
+            },
+        ])
+        # area del 16-gono che i punti approssimano — riferimento per il test
+        self.polygon_area = 0.5 * n * r * r * math.sin(2 * math.pi / n)
+
+    def test_heal_and_detect_finds_one_closed_part(self):
+        result = forge.heal_and_detect(self.doc, label="spline_loop_test")
+        self.assertTrue(result.is_valid, result.errors)
+        self.assertEqual(result.cluster_count, 1)
+        self.assertAlmostEqual(
+            result.clusters[0].outer.area, self.polygon_area, delta=self.polygon_area * 0.1
+        )
+
+    def test_to_dxf_keeps_spline_native_not_discretized(self):
+        result = forge.heal_and_detect(self.doc, label="spline_loop_test")
+        doc_out = forge.to_dxf(result)
+        msp = doc_out.modelspace()
+        self.assertEqual(len(list(msp.query("SPLINE"))), 1)
+        self.assertEqual(len(list(msp.query("LWPOLYLINE"))), 0)
 
 
 if __name__ == "__main__":
