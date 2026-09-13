@@ -391,6 +391,7 @@ forge.to_dxf(
     include_annotations=True,
     include_trash=True,
     annotation_layer="Annotation",
+    role_styles: dict[str, RoleStyle] = None,
 ) -> ezdxf.document.Drawing
 ```
 
@@ -403,6 +404,12 @@ entità dalla sorgente: `source_doc` serve solo a riportare gli header
 | `filter_cluster` | `callable(ForgeCluster) -> bool` — scrive solo le parti che passano. |
 | `include_trash` | `True` (default): la geometria non classificata va sul layer `Trash`. Un operatore CAM deve poter vedere ogni entità del disegno di partenza. |
 | `annotation_layer` | `"Annotation"` → layer forge dedicato; `"Trash"` o altro nome → quel layer; `None` → layer originale della sorgente. Nessuna annotazione viene mai scartata. |
+| `role_styles` | override esplicito, per ruolo, di colore/linetype/lineweight (vedi `RoleStyle` sotto). Agisce sul layer — tutto ciò che forge scrive è BYLAYER. `None` (default) = nessun cambiamento rispetto alla palette di `rules/palette.py`. |
+
+```python
+# la cornice (ruolo "frame", assegnato da un consumatore come framer) in nero
+forge.to_dxf(result, doc, role_styles={"frame": forge.RoleStyle(color=(0, 0, 0))})
+```
 
 **Ritorna** un `Drawing` `ezdxf`. Sta a te fare `doc_out.saveas(...)`.
 
@@ -428,6 +435,7 @@ forge.split(
     exclude_types=None,
     on_cluster=None,
     annotation_layer="Annotation",
+    role_styles: dict[str, RoleStyle] = None,
 ) -> list[ezdxf.document.Drawing]
 ```
 
@@ -448,6 +456,36 @@ il disco. Le parti sotto `min_area` (mm²) vengono scartate (con warning nel
 docs = forge.split(result, doc, min_area=100.0)
 for d, cluster in zip(docs, [p for p in result.clusters if p.outer.polygon.area >= 100]):
     d.saveas(f"{cluster.label}.dxf")
+```
+
+---
+
+### `RoleStyle`
+
+```python
+@dataclass(frozen=True)
+class RoleStyle:
+    color:      tuple[int, int, int] | None = None   # RGB 0-255, canonico
+    linetype:   str | None = None                     # nome standard ezdxf, es. "DASHED"
+    lineweight: float | None = None                   # mm
+```
+
+Override, indipendente dal formato, dell'aspetto visivo di un ruolo in
+output — noto a forge (`"hole"`, `"outer"`, ...) o assegnato da un
+consumatore (`"frame"`, `"title_block"`, ...). Ogni campo lasciato `None`
+resta il default di forge per quel ruolo. Passato a `to_dxf`/`split` come
+`role_styles={ruolo: RoleStyle(...)}` — dizionario esplicito del chiamante,
+stesso idioma di `label_map`, riusabile su più chiamate/formati.
+
+Pensato per crescere per aggiunta: un futuro campo si aggiunge alla
+dataclass senza toccare la firma di `to_dxf`/`split` né rompere chi già
+passa un `RoleStyle` con meno campi.
+
+```python
+forge.to_dxf(result, doc, role_styles={
+    "frame":   forge.RoleStyle(color=(0, 0, 0)),          # cornice: nero
+    "unknown": forge.RoleStyle(lineweight=0.05),          # trash: linea sottilissima
+})
 ```
 
 ---
