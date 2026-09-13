@@ -9,10 +9,12 @@ Solo math, numpy, shapely.
 Importato da:
     - core/healing/gap_solver.py  (intersezioni per la chiusura dei gap)
     - core/topology/               (utilità topologiche)
+    - tools/simplify_points.py     (spigoli/fit su una sequenza di punti)
 """
 
 import math
 from typing import Optional, Tuple, List
+import numpy as np
 from shapely.geometry import LineString
 
 Point = Tuple[float, float]
@@ -199,6 +201,134 @@ def circular_geometry(polygon, segments=None):
         return None, None
 
     return min(width, height), ((minx + maxx) / 2, (miny + maxy) / 2)
+
+
+# ---------------------------------------------------------------------------
+# Sequenze di punti — angolo interno, deduplica, fit a cerchio (D38)
+# ---------------------------------------------------------------------------
+# Matematica generica su una sequenza ordinata di punti (x, y): non sa nulla
+# di primitive forge (LineSeg/ArcSeg/...) né di come il chiamante la userà.
+# Nata dentro tools/simplify_points.py (D33/D36), spostata qui perché un
+# secondo consumatore (un futuro tool linguette) ne ha bisogno senza
+# duplicarla — `tools/simplify_points.py` resta l'orchestratore che decide
+# quando/come usarla per ricostruire linee/archi/spline.
+
+DEFAULT_ANGLE_THRESHOLD_DEG = 50.0
+DEFAULT_DUPLICATE_TOLERANCE = 1e-6
+
+
+def interior_angle_deg(prev_pt: Point, curr_pt: Point, next_pt: Point) -> float:
+    """Angolo interno (gradi) in curr_pt fra i lati verso prev_pt e next_pt."""
+    v1 = (prev_pt[0] - curr_pt[0], prev_pt[1] - curr_pt[1])
+    v2 = (next_pt[0] - curr_pt[0], next_pt[1] - curr_pt[1])
+    n1, n2 = math.hypot(*v1), math.hypot(*v2)
+    if n1 == 0 or n2 == 0:
+        return 180.0
+    cos_a = (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)
+    cos_a = max(-1.0, min(1.0, cos_a))
+    return math.degrees(math.acos(cos_a))
+
+
+def detect_corners(
+    points: List[Point],
+    angle_threshold_deg: float = DEFAULT_ANGLE_THRESHOLD_DEG,
+    closed: bool = True,
+) -> List[bool]:
+    """
+    Per ogni punto, True se l'angolo formato dai due lati adiacenti è sotto
+    `angle_threshold_deg` (spigolo vivo da non smussare via col refit spline).
+
+    Args:
+        points:               sequenza di punti (x, y), ordinata
+        angle_threshold_deg:  soglia in gradi sotto cui un punto è uno spigolo
+        closed:               True se `points` è un contorno chiuso (il primo
+                               e l'ultimo punto sono adiacenti). False per una
+                               polilinea aperta: i due estremi non hanno due
+                               lati adiacenti veri e non sono mai spigoli.
+    """
+    n = len(points)
+    if n < 3:
+        return [False] * n
+
+    corners = [False] * n
+    rng = range(n) if closed else range(1, n - 1)
+    for i in rng:
+        prev_pt = points[(i - 1) % n]
+        curr_pt = points[i]
+        next_pt = points[(i + 1) % n]
+        if interior_angle_deg(prev_pt, curr_pt, next_pt) < angle_threshold_deg:
+            corners[i] = True
+    return corners
+
+
+def drop_duplicate_points(
+    points: List[Point], tolerance: float = DEFAULT_DUPLICATE_TOLERANCE
+) -> List[Point]:
+    """Rimuove punti consecutivi coincidenti entro `tolerance`."""
+    if not points:
+        return []
+    cleaned = [points[0]]
+    for p in points[1:]:
+        last = cleaned[-1]
+        if math.hypot(p[0] - last[0], p[1] - last[1]) > tolerance:
+            cleaned.append(p)
+    return cleaned
+
+
+def fit_circle_kasa(points: List[Point]) -> Optional[Tuple[Point, float, float]]:
+    """
+    Fit algebrico (Kasa) ai minimi quadrati di un cerchio su `points`: minimizza
+    `x²+y²+Dx+Ey+F=0`, che è un cerchio di centro `(-D/2,-E/2)` e raggio
+    ricavabile da `D,E,F`. Ritorna `(center, radius, max_residual)` —
+    `max_residual` è lo scostamento massimo di un punto dal cerchio fittato,
+    per decidere se accettarlo. `None` se il fit è degenere (meno di 3 punti,
+    punti quasi collineari, raggio non reale).
+    """
+    if len(points) < 3:
+        return None
+
+    pts = np.asarray(points, dtype=float)
+    x, y = pts[:, 0], pts[:, 1]
+    a_matrix = np.column_stack([x, y, np.ones_like(x)])
+    b_vector = -(x**2 + y**2)
+    try:
+        (d, e, f), *_ = np.linalg.lstsq(a_matrix, b_vector, rcond=None)
+    except np.linalg.LinAlgError:
+        return None
+
+    center = (-d / 2.0, -e / 2.0)
+    radius_sq = (d**2 + e**2) / 4.0 - f
+    if radius_sq <= 0:
+        return None
+    radius = math.sqrt(radius_sq)
+
+    residuals = np.hypot(x - center[0], y - center[1]) - radius
+    max_residual = float(np.max(np.abs(residuals)))
+    return center, radius, max_residual
+
+
+def arc_angles(points: List[Point], center: Point) -> Tuple[float, float, bool]:
+    """
+    `(start_angle, end_angle, ccw)` in radianti di un arco che passa per
+    `points` (in ordine) intorno a `center`. Segue la rotazione reale della
+    sequenza "srotolando" gli angoli (come `numpy.unwrap`) invece di guardare
+    solo primo e ultimo punto — altrimenti un arco sopra i 180° si confonde
+    con uno più corto nel verso sbagliato.
+    """
+    raw = [math.atan2(p[1] - center[1], p[0] - center[0]) for p in points]
+    unwrapped = [raw[0]]
+    for angle in raw[1:]:
+        delta = angle - unwrapped[-1]
+        # riporta il delta fra due punti consecutivi in (-pi, pi]
+        while delta > math.pi:
+            delta -= 2 * math.pi
+        while delta <= -math.pi:
+            delta += 2 * math.pi
+        unwrapped.append(unwrapped[-1] + delta)
+
+    total = unwrapped[-1] - unwrapped[0]
+    ccw = total >= 0
+    return raw[0], raw[0] + total, ccw
 
 
 # ---------------------------------------------------------------------------
