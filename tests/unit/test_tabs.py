@@ -1,11 +1,9 @@
 """
 test_tabs.py
 ------------
-Test unitari per forge.tools.tabs.cut_tabs (MAP.md D39).
-
-Nota: la rappresentazione della posizione di una linguetta (oggi un indice in
-`points`) non è ancora una decisione definitiva — questi test coprono il
-comportamento della prima implementazione, non blindano la forma dell'API.
+Test unitari per forge.tools.tabs (MAP.md D40): `bridge_tabs` (una coppia,
+una posizione) e `bridge_nested_tabs` (cammina la gerarchia, N linguette per
+coppia, a qualunque profondità).
 """
 
 import math
@@ -13,65 +11,107 @@ import unittest
 from pathlib import Path
 import sys
 
+from shapely.geometry import Polygon
+
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from forge.tools.tabs import cut_tabs
+import forge
+from forge.core.primitives.segments import CircleSeg
+from forge.model.contour import ForgeContour
+from forge.tools.tabs import bridge_tabs, bridge_nested_tabs
 
 
-class TestCutTabsOpenSequence(unittest.TestCase):
-
-    def test_001_no_tabs_returns_unchanged(self):
-        pts = [(0, 0), (1, 0), (2, 0), (3, 0)]
-        self.assertEqual(cut_tabs(pts, closed=False, tab_positions=[], tab_width=1.0), [pts])
-
-    def test_002_single_tab_splits_into_two_stretches(self):
-        pts = [(i, 0) for i in range(11)]  # 0..10, spaziatura 1
-        stretches = cut_tabs(pts, closed=False, tab_positions=[5], tab_width=2.0)
-        self.assertEqual(len(stretches), 2)
-        # gap = [center-1, center+1] = [4, 6] inclusi -> restano 0..3 e 7..10
-        self.assertEqual(stretches[0][-1], (3, 0))
-        self.assertEqual(stretches[1][0], (7, 0))
-
-    def test_003_tab_at_start_only_trims_one_side(self):
-        pts = [(i, 0) for i in range(11)]
-        stretches = cut_tabs(pts, closed=False, tab_positions=[0], tab_width=2.0)
-        self.assertEqual(len(stretches), 1)
-        self.assertEqual(stretches[0][0], (2, 0))
+def _circle_points(center, radius, n=200):
+    cx, cy = center
+    return [
+        (cx + radius * math.cos(2 * math.pi * i / n), cy + radius * math.sin(2 * math.pi * i / n))
+        for i in range(n)
+    ]
 
 
-class TestCutTabsClosedSequence(unittest.TestCase):
+class TestBridgeTabs(unittest.TestCase):
+    """Una coppia genitore/figlio, una sola posizione — la meccanica di base."""
 
-    def _circle(self, n=24, r=10.0):
-        return [
-            (r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n))
-            for i in range(n)
-        ]
+    def setUp(self):
+        self.center = (0.0, 0.0)
+        self.parent_points = _circle_points(self.center, radius=9.0)
+        self.child_points = _circle_points(self.center, radius=4.0)
 
-    def test_001_no_tabs_returns_reclosed_loop(self):
-        pts = self._circle()
-        result = cut_tabs(pts, closed=True, tab_positions=[], tab_width=1.0)
-        self.assertEqual(result, [pts])
+    def test_001_tab_edges_span_the_radial_gap(self):
+        # linguetta a destra (angolo 0): anchor esatti sui due cerchi
+        anchor_child = (4.0, 0.0)
+        anchor_parent = (9.0, 0.0)
+        bridge = bridge_tabs(self.parent_points, self.child_points, anchor_parent, anchor_child, tab_width=1.0)
+        self.assertEqual(len(bridge.tab_edges), 2)
+        for edge in bridge.tab_edges:
+            length = math.hypot(edge.end[0] - edge.start[0], edge.end[1] - edge.start[1])
+            # il fianco e' leggermente piu' lungo del gap radiale puro (9-4=5)
+            # perche' e' offsettato di tab_width/2 dal centro esatto — ma non di molto.
+            self.assertAlmostEqual(length, 5.0, delta=0.05)
 
-    def test_002_one_tab_on_circle_gives_one_open_stretch(self):
-        pts = self._circle(n=36, r=10.0)
-        # spaziatura fra punti ~ 2*pi*10/36 ~ 1.75; una linguetta larga 3 copre ~2 punti
-        stretches = cut_tabs(pts, closed=True, tab_positions=[0], tab_width=3.0)
-        self.assertEqual(len(stretches), 1)
-        # il tratto tenuto è tutto tranne l'intorno dell'indice 0
-        self.assertNotIn(pts[0], stretches[0])
+    def test_002_cuts_land_close_to_the_anchor(self):
+        anchor_child = (4.0, 0.0)
+        anchor_parent = (9.0, 0.0)
+        bridge = bridge_tabs(self.parent_points, self.child_points, anchor_parent, anchor_child, tab_width=1.0)
+        for cut_pt, _ in (bridge.child_cut_a, bridge.child_cut_b):
+            self.assertAlmostEqual(math.hypot(*cut_pt), 4.0, delta=0.05)
+        for cut_pt, _ in (bridge.parent_cut_a, bridge.parent_cut_b):
+            self.assertAlmostEqual(math.hypot(*cut_pt), 9.0, delta=0.05)
 
-    def test_003_four_tabs_give_four_stretches(self):
-        n = 40
-        pts = self._circle(n=n, r=10.0)
-        positions = [0, n // 4, n // 2, 3 * n // 4]
-        stretches = cut_tabs(pts, closed=True, tab_positions=positions, tab_width=2.0)
-        self.assertEqual(len(stretches), 4)
+    def test_003_too_wide_tab_raises(self):
+        anchor_child = (4.0, 0.0)
+        anchor_parent = (9.0, 0.0)
+        with self.assertRaises(ValueError):
+            bridge_tabs(self.parent_points, self.child_points, anchor_parent, anchor_child, tab_width=100.0)
 
-    def test_004_tabs_covering_everything_returns_empty(self):
-        pts = self._circle(n=8, r=10.0)
-        stretches = cut_tabs(pts, closed=True, tab_positions=list(range(8)), tab_width=100.0)
-        self.assertEqual(stretches, [])
+
+def _make_contour(radius, depth, parent=None, center=(0.0, 0.0)):
+    poly = Polygon(_circle_points(center, radius, n=64))
+    return ForgeContour(role="unknown", polygon=poly, segments=[CircleSeg(center=center, radius=radius)],
+                         depth=depth, parent=parent)
+
+
+class _FakeCluster:
+    def __init__(self, outer, inners):
+        self.outer = outer
+        self.inners = inners
+
+
+class TestBridgeNestedTabs(unittest.TestCase):
+    """Cammina la gerarchia — a qualunque profondita', mai un livello saltato."""
+
+    def test_001_single_pair_on_real_fixture(self):
+        doc = forge.load_dxf(str(project_root / "tests/examples/cerchi_concentrici_detect_is_counter_tabs_join.dxf"))
+        result = forge.heal(doc)
+        cluster = result.clusters[0]
+
+        bridges = bridge_nested_tabs(cluster, tab_width=2.0, tab_count=4, discretize_tolerance=0.05)
+
+        self.assertEqual(len(bridges), 1)
+        bridge = bridges[0]
+        self.assertEqual(bridge.child_contour.depth, 2)
+        self.assertEqual(bridge.parent_contour.depth, 1)
+        self.assertEqual(len(bridge.child_stretches), 4)
+        self.assertEqual(len(bridge.parent_stretches), 4)
+        self.assertEqual(len(bridge.tab_edges), 8)  # 2 fianchi x 4 linguette
+
+    def test_002_four_level_chain_pairs_by_immediate_parent(self):
+        # outer (depth0) -> figlio depth1 (vuoto) -> nipote depth2 (isola)
+        # -> pronipote depth3 (vuoto) -> pro-pronipote depth4 (isola)
+        outer = _make_contour(radius=20.0, depth=0)
+        figlio = _make_contour(radius=15.0, depth=1, parent=outer)
+        nipote = _make_contour(radius=10.0, depth=2, parent=figlio)
+        pronipote = _make_contour(radius=6.0, depth=3, parent=nipote)
+        pro_pronipote = _make_contour(radius=3.0, depth=4, parent=pronipote)
+
+        cluster = _FakeCluster(outer=outer, inners=[figlio, nipote, pronipote, pro_pronipote])
+        bridges = bridge_nested_tabs(cluster, tab_width=0.5, tab_count=4, discretize_tolerance=0.05)
+
+        # solo le profondita' pari >= 2 generano un ponte, ognuna col SUO genitore diretto
+        self.assertEqual(len(bridges), 2)
+        pairs = {(b.child_contour.depth, b.parent_contour.depth) for b in bridges}
+        self.assertEqual(pairs, {(2, 1), (4, 3)})
 
 
 if __name__ == "__main__":

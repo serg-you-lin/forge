@@ -853,6 +853,89 @@ Suite: 670 passed (+7 in `tests/unit/test_tabs.py`). Branch
 `refactor/point-sequence-math` (stesso branch di D38: la matematica condivisa
 e il suo primo consumatore vanno verificati insieme).
 
+### D40 — `cut_tabs` cancellato, sostituito da `bridge_tabs`  ✅
+
+`cut_tabs` (D39) tagliava un gap dentro UN contorno solo — nato dal caso
+reale sbagliato: lo script 15/16 lo applicava all'anello r=9 legato al
+rettangolo esterno, ma il bisogno vero su quel fixture
+(`cerchi_concentrici_detect_is_counter_tabs_join.dxf`) è tenere il nipote
+(cerchio interno r≈4.12) attaccato al suo genitore diretto (anello r=9) — un
+ponte fra DUE contorni distinti, non un gap in uno solo. Verificato che
+`cut_tabs` non risolve questo: cancellati `cut_tabs`, `tests/unit/test_tabs.py`,
+`scripts/15_cut_tabs.py`, `scripts/16_cut_tabs_on_fixture.py` — nessun
+compat shim, la funzione non aveva un secondo uso reale indipendente.
+
+Disegno di `bridge_tabs` (da implementare):
+
+- **Generalizza a profondità arbitraria, a coppie**: ogni isola (profondità
+  pari — nipote, pro-pronipote, ...) si lega al vuoto immediatamente sopra di
+  lei nella gerarchia (il suo genitore diretto — figlio, pronipote, ...), mai
+  a un livello saltato. Serve `ForgeContour.depth`/`.parent` (D34) — un
+  wrapper cammina la gerarchia e chiama `bridge_tabs` per ogni coppia
+  isola↔genitore-diretto trovata, a qualunque profondità.
+- **Costruzione geometrica**: linea ideale fra un punto sul figlio e il punto
+  corrispondente sul genitore → offset di `±tab_width/2` (perpendicolare) →
+  due linee reali, i fianchi della linguetta → intersezione di ciascuna con
+  ENTRAMBI i contorni (genitore e figlio) → due nuovi `LineSeg` (dall'incrocio
+  sul figlio a quello sul genitore) + rimozione del tratto/arco che cade in
+  mezzo su entrambi i contorni. `tab_width` è quindi una distanza reale
+  (offset perpendicolare), non una lunghezza d'arco come in `cut_tabs` —
+  necessario perché genitore e figlio hanno raggi/geometrie diverse, la
+  stessa larghezza fisica dà lunghezze d'arco diverse sui due.
+- **Math di core riusata, non duplicata**: l'intersezione retta-cerchio è già
+  `_circle_line_intersections` in `core/geometry.py`, la stessa usata da
+  `core/healing/gap_solver.py`. Nessuna nuova math per il caso cerchio-cerchio.
+- **Scope**: genitore/figlio possono essere linea, arco, polilinea o cerchio —
+  **non spline**, per ora (nessuna intersezione retta-spline in core).
+  Generalizzare oltre richiede una nuova funzione di core, rimandata finché
+  non serve davvero.
+- **Nome**: modulo `forge/tools/tabs.py` invariato (tiene il dominio
+  "linguette"); funzione `bridge_tabs` (verbo+dominio, stesso pattern di
+  `cut_tabs`) — non `bridge()` da solo, troppo generico per una funzione
+  pubblica di tool.
+
+**Implementato.** `bridge_tabs(parent_points, child_points, anchor_parent,
+anchor_child, tab_width)` — una coppia, una posizione, ritorna i 2 fianchi
+(`LineSeg`) e i 4 punti di taglio (con indice di lato, per chi deve spezzare
+il contorno). `bridge_nested_tabs(cluster, tab_width, tab_count, ...)` cammina
+`cluster.inners` (che porta `depth`/`parent`, D34), trova ogni profondità pari
+>= 2, e per ciascuna piazza `tab_count` linguette equispaziate (raggio dal
+centroide dell'isola, intersecato coi due contorni via la nuova
+`core.geometry.polyline_line_intersections` — generalizza
+`_circle_line_intersections` a qualunque punto già discretizzato, non solo
+cerchi analitici). Split multi-linguetta sullo stesso contorno: tutti i tagli
+di tutte le linguette della coppia si calcolano prima sul contorno originale
+intatto, poi UN solo passo li ordina per posizione cumulata e tiene solo gli
+archi fra linguette diverse (quello sotto la stessa linguetta si scarta) —
+evita il problema di ritagliare uno stretch già aperto linguetta per linguetta.
+
+**Trovato facendo il lavoro, corregge il disegno sopra**: l'override
+`forced_corners` in `detect_corners` non serve — `fit_primitives(points,
+is_corner, ...)` prende `is_corner` già come parametro esterno, quindi un
+domani un chiamante che vuole forzare uno spigolo può calcolare
+`detect_corners()` e mettere `True` a mano sugli indici che vuole, senza
+nessuna modifica a `core/geometry.py`. E nell'architettura scelta qui il
+problema non si presenta nemmeno: ogni stretch rifittato (`child_stretches`/
+`parent_stretches`) contiene SOLO punti del contorno originale, mai i punti
+dei fianchi — i fianchi sono `LineSeg` già tipizzati, mai passati per
+`simplify_points`. Verificato sul fixture reale: le 8 arcate (4+4) rifittano
+tutte pulite a `ArcSeg`, zero `SplineSeg` spuri, senza bisogno di forzare nulla.
+
+**Limite noto, non risolto**: due contorni fratelli con lo stesso genitore
+diretto (es. due isole distinte dentro lo stesso vuoto) verrebbero tagliati
+indipendentemente sullo stesso `parent_points`, senza sapere l'uno dell'altro
+— i tagli si sovrapporrebbero. Non è il caso del fixture attuale (una sola
+catena lineare); da risolvere se/quando serve davvero.
+
+Test: `tests/unit/test_tabs.py` (5 test — `bridge_tabs` sintetico a due
+cerchi, `bridge_nested_tabs` sul fixture reale e su una catena sintetica a 4
+livelli che verifica l'accoppiamento nipote↔figlio / pro-pronipote↔pronipote,
+mai un livello saltato). Script `scripts/16_bridge_tabs_on_fixture.py`
+(stesso numero del vecchio `cut_tabs`, libero dopo la cancellazione) — DXF
+prodotto ispezionato visivamente (renderizzato a PNG): 4 archi esterni + 4
+archi interni + 8 fianchi radiali, esattamente la "girandola a 4 razze"
+attesa. Suite: 668 passed. Branch `refactor/point-sequence-math`.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

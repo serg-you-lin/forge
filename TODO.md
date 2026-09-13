@@ -380,95 +380,25 @@ provare che il campo fisso dà davvero fastidio
 
 ---
 
-# RIPRENDI QUI — linguette (`cut_tabs`)
+# linguette (`bridge_tabs`) — fatto (MAP.md D40)
 
-Scritto apposta per ripartire dopo un `/clear`, senza dover rispiegare tutto.
-Se stai leggendo questo in una sessione nuova: leggi tutta questa sezione
-prima di scrivere codice, e fai la domanda in fondo a Federico prima di
-proseguire — **c'è un sospetto di fraintendimento non ancora chiarito**.
+`forge/tools/tabs.py::bridge_tabs` (una coppia genitore/figlio, una
+posizione) + `bridge_nested_tabs` (cammina `ForgeContour.depth`/`.parent`,
+D34, e piazza `tab_count` linguette su ogni coppia isola↔genitore-diretto, a
+qualunque profondità — nipote↔figlio, pro-pronipote↔pronipote, mai un
+livello saltato). `cut_tabs` (gap in un contorno solo) cancellato: era la
+risposta al problema sbagliato, il bisogno vero è sempre un ponte fra due
+contorni distinti.
 
-## Stato attuale (fatto, testato, non ancora deciso se giusto)
+Verificato sul fixture reale (`cerchi_concentrici_detect_is_counter_tabs_join.dxf`,
+script `scripts/16_bridge_tabs_on_fixture.py`) e a occhio sul DXF prodotto
+(renderizzato a PNG): 4 linguette fra l'anello r=9 e il cerchio interno
+r≈4.12, girandola a 4 razze come atteso. Test in `tests/unit/test_tabs.py`
+(5, incluso un caso sintetico a 4 livelli di annidamento). Suite: 668 passed.
 
-Branch `refactor/point-sequence-math` su `dxf-forge` (non mergiato in
-`main` — verifica `git branch` e `git log main..refactor/point-sequence-math`
-per lo stato esatto quando riprendi).
-
-- `forge/core/geometry.py`: matematica generica su sequenze di punti
-  (`detect_corners`, `fit_circle_kasa`, `arc_angles`, ecc. — MAP.md D38),
-  spostata qui da `tools/simplify_points.py`.
-- `forge/tools/tabs.py::cut_tabs(points, closed, tab_positions, tab_width)`
-  (MAP.md D39): **taglia un gap di larghezza nota, centrato su una posizione
-  nota, in UNA sequenza di punti chiusa o aperta**. Ritorna gli stretch
-  aperti risultanti. Raggiungibile solo come `forge.tools.tabs.cut_tabs`,
-  non `forge.cut_tabs` (stessa policy di `detect_corners`/`fit_primitives`
-  prima di `simplify_points`, D33) — un utente che si aspetta `forge.*`
-  sempre ricostruttivo non deve incappare per caso in qualcosa che aggiunge
-  un gap che nel disegno non c'era.
-- Test: `tests/unit/test_tabs.py` (7 test, sintetici). Suite completa: 670
-  passed.
-- Script dimostrativi: `scripts/15_cut_tabs.py` (anello sintetico, 4
-  linguette) e `scripts/16_cut_tabs_on_fixture.py` (sul file reale di
-  Federico, vedi sotto).
-- Decisione esplicitamente **non definitiva**: `tab_positions` sono indici
-  nella sequenza di punti — prima bozza, nessuno la usa ancora in
-  produzione, cambiabile senza remore.
-
-## Il sospetto di fraintendimento
-
-Federico ha creato un fixture apposta:
-`tests/examples/cerchi_concentrici_detect_is_counter_tabs_join.dxf` —
-un rettangolo 60x40 con **due cerchi concentrici** (centro 80,20; r=9.0 e
-r≈4.123), per verificare due cose insieme: (a) che `detect()` oggi fonde
-sempre due cerchi concentrici in una svasatura, senza nessun vincolo di
-rapporto raggi (`is_countersink_outer` in `forge/tools/hole_detector.py` non
-ha un `max_radius_ratio` come invece ha `is_threaded_hole`) — verificato,
-confermato, è un gap reale; (b) le linguette su questo caso.
-
-Per (b), `scripts/16_cut_tabs_on_fixture.py` ha tagliato 4 linguette
-**sull'anello r=9, per tenerlo attaccato al rettangolo circostante** (lo
-stesso identico contorno, con 4 gap dentro se stesso). Questo è l'UNICO
-caso che `cut_tabs()` sa fare oggi: un gap dentro UNA sequenza chiusa.
-
-Ma molto prima in questa conversazione (prima di arrivare a `cut_tabs`),
-Federico aveva descritto un caso diverso come motivazione originale delle
-linguette: **"3 cerchi concentrici da unire con 4 linguette"** — che suona
-come *collegare due contorni DIVERSI fra loro* (un ponte radiale fra il
-cerchio 1 e il cerchio 2, con un piccolo tratto non tagliato in mezzo al
-ponte), non tagliare un gap dentro un singolo cerchio. Il nome del file
-stesso (`..._tabs_join.dxf`) usa "join" — unire due cose, non forare una
-cosa sola.
-
-**Questi sono due problemi geometrici diversi**, e `cut_tabs()` come scritto
-oggi risolve solo il primo:
-1. Gap dentro un contorno chiuso, per tenerlo attaccato al resto della
-   lamiera (fatto, `cut_tabs`).
-2. Ponte fra due contorni distinti (es. due cerchi concentrici), per
-   tenerli attaccati l'uno all'altro — richiederebbe costruire un percorso
-   combinato (arco di un cerchio + segmento radiale di collegamento + arco
-   dell'altro cerchio) PRIMA di applicare qualcosa come `cut_tabs`, oppure
-   una funzione diversa. Non esiste ancora, non è stato discusso a fondo.
-
-Non è chiaro se lo script 16 abbia risposto alla domanda giusta o a
-quella sbagliata — Federico non ha ancora confermato quale dei due scenari
-gli serviva davvero su questo fixture.
-
-## Prima cosa da fare quando riprendi
-
-Chiedi esplicitamente a Federico, riferendoti al fixture
-`cerchi_concentrici_detect_is_counter_tabs_join.dxf` e a
-`pipeline_output/cerchi_concentrici_con_linguette.dxf` (il risultato dello
-script 16, già generato): la linguetta deve tenere l'anello r=9 attaccato
-al **rettangolo** (caso 1, già fatto), o deve collegare l'anello r=9 al
-**cerchio interno r≈4.12** (caso 2, un ponte fra i due, non ancora
-costruito)? Probabilmente serve rivedere insieme il DXF prodotto dallo
-script 16 per capire se assomiglia a quello che aveva in mente.
-
-Non riprendere a scrivere codice sulle linguette finché questo non è
-chiarito — è probabile che il lavoro fatto finora (`cut_tabs`) resti comunque
-valido come mattone (per il caso 1, e come pezzo base anche per il caso 2:
-il ponte del caso 2 è comunque un gap dentro una sequenza di punti, solo che
-quella sequenza va costruita cucendo insieme due cerchi prima), ma la
-domanda su COSA collegare va risolta prima di andare oltre.
+Limite noto e non risolto (dettagli in MAP.md D40): due contorni fratelli
+con lo stesso genitore diretto verrebbero tagliati in conflitto — non è il
+caso di nessun fixture attuale, da risolvere se/quando serve davvero.
 
 ## Cosa resta parcheggiato, non toccare senza motivo
 
@@ -483,6 +413,12 @@ domanda su COSA collegare va risolta prima di andare oltre.
   nata, non ancora messa a fuoco nemmeno da Federico. Collegata al problema
   2 ma non identica — risolvere il problema 2 potrebbe aiutare come effetto
   collaterale, non è garantito.
+- **Meccanismo anti-rotazione pezzo staccato** (diverso da `tab`/`bridge_tabs`):
+  un ponticello su un contorno singolo per evitare che un pezzo che si stacca
+  giri libero e l'ugello ci sbatta contro — non collega un inner a un inner
+  più annidato, è tutta un'altra cosa. Non ancora costruito, non ancora
+  disegnato. Nome non deciso: forse "joint", di sicuro non "microjoint"
+  (Federico l'ha escluso esplicitamente).
 
 ## Regola da ricordare per tutta questa roba
 
