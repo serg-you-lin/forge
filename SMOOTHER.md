@@ -26,6 +26,15 @@ Quello che forge dà a Smoother è già pronto:
 
 ## La pipeline
 
+**Due passate, non una** (chiuso in sessione 2026-09-13, `smoother/MAP.md` D5):
+il calcolo del contenimento (`depth`/`parent`) non ha bisogno di geometria già
+fittata — `heal()` discretizza comunque ogni segmento per costruire i poligoni
+di contenimento (`core/healing/hierarchy.py`), quindi una sequenza di punti
+grezza funziona come una spline già fittata. Fittare prima e tagliare le
+linguette dopo, sulla spline, avrebbe voluto dire spezzare una curva NURBS a
+metà — possibile ma tutt'altro che banale, mentre tagliare un buco in una
+sequenza di punti è triviale.
+
 ```
 immagine (PNG/JPG)
    │
@@ -36,20 +45,18 @@ immagine (PNG/JPG)
 [2] contorni via cv2.findContours
    │
    ▼
-[3] forge.simplify_points()          → LineSeg / SplineSeg per contorno
+[A] forge.load_geometry("polyline")  → forge.heal_and_detect()
+   │     → depth/parent per contorno (nessun fit necessario per questo)
+   ▼
+[B] Smoother: linguette sui nipoti    → taglia un ponticello nei PUNTI GREZZI
+   │                                     del contorno nipote, prima del fit
+   │                                     (parametri di processo/CAM, non di
+   │                                     forge; non ancora implementato)
+   ▼
+[C] forge.simplify_points()          → LineSeg / SplineSeg per contorno
    │
    ▼
-[4] forge.load_geometry()            → ForgeDocument
-   │
-   ▼
-[5] forge.heal()                     → ForgeCluster (outer/inners con depth/parent)
-   │
-   ▼
-[6] Smoother: linguette sui nipoti    → usa depth/parent, decide dove e quanto
-   │                                     larghe (parametri di processo/CAM,
-   │                                     non di forge)
-   ▼
-[7] normalizzazione + DXF via forge.to_dxf()
+forge.load_geometry("spline") → forge.heal_and_detect() → forge.to_dxf()
 
 NON SO SE è CHIARO, IO CARICO L'IMMAGINEE HO GIà LA SPLINE OTTENUTA, RITOCCO A MATITA E LA SPLINE SI AGGIORNA VIA VIA. 
 ON DICO CHE DOBBIAMO AVERE LA POSSIBILITà DI RITOCCAE ANCHE GLI ENDPOINT DELLA LWPLINE, MA SAREBBE BELLO AVERE TUTTO NELL''INTERFACIA. SE è TROPPO, LASCIAMO STARE.
@@ -99,12 +106,13 @@ lavoro stanno in `smoother/MAP.md` e `smoother/TODO.md`, come `FRAMER.md` sta a
 
 Fatto: scaffolding del repo, `smoother_5.py` migrato in
 `scripts/00_image_to_dxf.py` (spigoli/refit ora via `forge.simplify_points()`,
-non più codice locale) e archiviato qui in `_archive/`.
+non più codice locale) e archiviato qui in `_archive/`; `load_geometry()` ha
+guadagnato il tipo `"spline"` (MAP.md D35, sotto); lo script è stato riscritto
+sulle due passate della pipeline sopra.
 
-Varco scoperto migrando: `forge.load_geometry()` accetta solo entità
-`line`/`arc`/`circle`/`polyline`, non `spline` — il passo [3]→[4] della
-pipeline sopra (`simplify_points` → `load_geometry`) non è ancora percorribile
-per i contorni che diventano spline. Per ora smoother scrive il DXF
-direttamente con ezdxf. Se aggiungere un tipo `"spline"` a `GeometryAdapter`
-è deciso qui in forge o resta un problema di smoother va deciso a parte —
-tracciato in `smoother/TODO.md`.
+Varco (chiuso, MAP.md D35): `forge.load_geometry()` accettava solo entità
+`line`/`arc`/`circle`/`polyline`, non `spline`. **Non era però il pezzo che
+bloccava le linguette** — quello (il contenimento) usa solo `"polyline"`, che
+c'era già; il tipo `"spline"` serve alla passata finale [C], per scrivere in
+uscita la geometria fittata. Vedi `smoother/MAP.md` D5 per l'errore di
+sequenza e la correzione.
