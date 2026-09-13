@@ -687,6 +687,38 @@ caso end-to-end che parte da un poligono a 16 lati, lo passa per
 verifica che `heal_and_detect` + `to_dxf` la riemettano come `SPLINE` nativa,
 non discretizzata). Branch `refactor/load-geometry-spline`.
 
+### D36 — `fit_primitives` accetta anche arco/cerchio (`arc_fit_tolerance`)  ✅
+
+Completa il terzo caso già previsto in TODO.md fin dall'analisi che ha portato
+a D33 ("ricostruzione di primitive pulite: linea/**arco**/spline") ma mai
+implementato. Nato dal lavoro su `smoother`: un tratto curvo a raggio
+~costante (un raccordo, un foro tracciato a mano) diventava sempre una
+`SplineSeg`, anche quando un `ArcSeg` sarebbe più corretto — taglia meglio al
+laser ed è banale da spezzare in due per una linguetta, a differenza di una
+curva NURBS. Confermato che è lavoro di forge, non di smoother
+(`smoother/MAP.md` D6): stessa ricostruzione geometrica generica di
+`simplify_points`, non una decisione di processo/CAM.
+
+`fit_primitives()`/`simplify_points()` guadagnano `arc_fit_tolerance:
+Optional[float] = None`. **Default `None` = disattivato**, nessun cambio di
+comportamento per chi non lo passa (i test esistenti, incluso quello di D35
+sul poligono a 16 lati, restano verdi invariati). Quando impostato, ogni
+tratto candidato-spline prova prima un fit a cerchio ai minimi quadrati
+(metodo algebrico di Kasa, via `numpy.linalg.lstsq` — `numpy` era già
+dipendenza di forge): se lo scostamento massimo dei punti dal cerchio fittato
+è entro la tolleranza, il tratto diventa `CircleSeg` (se si richiude su se
+stesso — il caso "contorno chiuso senza spigoli") o `ArcSeg` (tratto aperto
+fra due corner veri, con gli angoli calcolati "srotolando" la sequenza reale
+dei punti attorno al centro, non solo guardando primo/ultimo punto — altrimenti
+un arco sopra i 180° si confonde con uno più corto nel verso sbagliato).
+Altrimenti, fallback alla spline di sempre.
+
+Suite: 646 passed (+4 in `tests/unit/test_simplify_points.py`: un cerchio
+chiuso → `CircleSeg`, un quarto di cerchio aperto → `ArcSeg` con centro/
+raggio/angoli corretti, una sinusoide non circolare → resta `SplineSeg` anche
+con tolleranza impostata, e senza `arc_fit_tolerance` lo stesso cerchio resta
+`SplineSeg` come prima). Branch `refactor/simplify-points-arc-fit`.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)
