@@ -413,3 +413,38 @@ def _closest_to(candidates: List[Point], ref: Point) -> Optional[Point]:
     if not candidates:
         return None
     return min(candidates, key=lambda p: _distance(p, ref))
+
+
+def polyline_line_intersections(
+    points: List[Point], closed: bool, p1: Point, p2: Point
+) -> List[Tuple[Point, int]]:
+    """
+    Intersezioni fra la retta infinita (p1, p2) e la spezzata `points` (ogni
+    coppia di punti consecutivi è un lato; se `closed`, anche l'ultimo->primo).
+
+    Generalizza `_circle_line_intersections` a qualunque contorno già
+    discretizzato in punti — arco, polilinea, cerchio: una volta discretizzato
+    è comunque solo una sequenza di lati retti, a prescindere da cos'era in
+    origine (usato da `tools/tabs.py::bridge_tabs`).
+
+    Ritorna `(punto, indice)` per ogni intersezione che cade DENTRO il lato
+    (non sul suo prolungamento infinito) — `indice` è `i` tale che il lato è
+    `(points[i], points[(i+1) % n])`.
+    """
+    n = len(points)
+    if n < 2:
+        return []
+    edge_indices = range(n) if closed else range(n - 1)
+    results: List[Tuple[Point, int]] = []
+    for i in edge_indices:
+        a, b = points[i], points[(i + 1) % n]
+        if a == b:
+            continue
+        ix = _line_intersection(a, b, p1, p2)
+        if ix is None:
+            continue
+        eps = 1e-9
+        if (min(a[0], b[0]) - eps <= ix[0] <= max(a[0], b[0]) + eps
+                and min(a[1], b[1]) - eps <= ix[1] <= max(a[1], b[1]) + eps):
+            results.append((ix, i))
+    return results
