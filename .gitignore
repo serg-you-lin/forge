@@ -85,7 +85,6 @@ output/
 # Local work-in-progress scripts (kept on disk, not part of the repo)
 # ===========================================================================
 
-/smoother_5.py
 /scripts/13_production_splitter.py
 
 # ===========================================================================
