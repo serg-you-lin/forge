@@ -86,6 +86,10 @@ from .model         import (
 # da normalize_role, e is_structural_role dice se quel ruolo è contorno di
 # pezzo o arredo che heal terrà fuori dal grafo. Vedi INTERPRETER.md / D30.
 from .model.role      import normalize_role, is_structural_role
+# RoleStyle (D37): override esplicito colore/linetype/lineweight per ruolo,
+# indipendente dal formato — vedi rules/palette.py. Passato a to_dxf()/split()
+# via role_styles={ruolo: RoleStyle(...)}.
+from .rules.palette   import RoleStyle
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -146,4 +150,5 @@ __all__ = [
     # Ruoli — aggancio per un consumatore che marca la geometria pre-heal
     "normalize_role",
     "is_structural_role",
+    "RoleStyle",
 ]

@@ -719,6 +719,68 @@ raggio/angoli corretti, una sinusoide non circolare → resta `SplineSeg` anche
 con tolleranza impostata, e senza `arc_fit_tolerance` lo stesso cerchio resta
 `SplineSeg` come prima). Branch `refactor/simplify-points-arc-fit`.
 
+### D37 — `RoleStyle`: override esplicito colore/linetype/lineweight per ruolo  ✅
+
+Nato da un caso concreto in `framer`: la cornice (ruolo consumatore `frame`,
+D31) usciva sempre grigia (`COLOR_CONSUMER`, hardcoded in `rules/palette.py`)
+e l'unico modo per renderla nera era manipolare l'entità DXF direttamente
+dopo `to_dxf()` — un hack fuori dal modello, esattamente quello che forge
+vuole evitare (`output-must-be-visually-faithful-to-source` e il principio
+generale "il modello è il prodotto").
+
+Il ruolo era già estendibile da un consumatore (`normalize_role`, `edge.role`
+pre-`heal`); la palette no — `role_to_color()` ha un solo fallback fisso per
+qualunque slug sconosciuto. Discusso con Federico: il ruolo va tenuto
+estendibile allo stesso modo su TUTTI gli assi di stile (colore, linetype,
+spessore), non solo il colore, e non solo per DXF — anche se oggi solo l'
+adapter DXF li applica davvero.
+
+Soluzione: `RoleStyle` (dataclass frozen in `rules/palette.py`, esportata in
+`__all__`) — `color: Optional[RGB]`, `linetype: Optional[str]`,
+`lineweight: Optional[float]` (mm), tutti opzionali. Il chiamante ne
+assembla `Dict[str, RoleStyle]` una volta e lo passa a `to_dxf`/`split` via
+`role_styles=` — stesso idioma di `label_map`/`linetype_map`, nessuno stato
+globale mutabile. Deliberatamente **non** un oggetto "consumabile" con
+metodi propri: in tutta l'API di forge non c'è un builder/registry stateful,
+e non c'era motivo di introdurne uno qui.
+
+Estendibilità per costruzione, esplicitamente per non ripetere il problema
+che l'ha originato: aggiungere un futuro campo (fill, trasparenza, ...) non
+tocca la firma di `to_dxf`/`split` né rompe chi già passa un `RoleStyle` con
+meno campi — ogni adapter interpreta solo i campi che sa gestire.
+
+Lato DXF (`io/dxf.py::_apply_role_styles`): l'override va sul **layer**, non
+sull'entità — tutto ciò che forge scrive è BYLAYER, quindi si propaga a ogni
+entità di quel ruolo. `color` → `layer.rgb` (true color, per un nero vero:
+l'ACI a 256 colori non ne ha uno puro); `linetype` → registrato al volo da
+`ezdxf.tools.standards` se è un nome standard, poi assegnato al layer;
+`lineweight` → `layer.dxf.lineweight` in centesimi di mm. Un ruolo senza
+layer ancora creato (uno slug di consumatore non ancora comparso) viene
+creato al volo, stesso meccanismo di `_ensure_layer` già usato dal trash.
+
+Rimane volutamente **fuori scope**: applicarlo a `to_svg`/un futuro `to_pdf`
+(oggi solo `to_dxf`/`split` lo consumano; `RoleStyle` è già format-neutro,
+un adapter in più legge lo stesso dizionario quando esisterà).
+
+Suite: 656 passed (+10 in `tests/integration/test_role_style.py`). Branch
+`refactor/role-style`.
+
+### Questione aperta — dove vive la tassonomia hole/countersink/threaded/engrave/marking
+
+Sollevata insieme a D37, non ancora decisa. `ContourRole.HOLE`,
+`COUNTERSINK`, `THREADED_HOLE`, `ENGRAVE`, `MARKING` vivono in `model/role.py`
+ma sono concettualmente il vocabolario che classifica `detect` (un tool), non
+geometria neutra. Spostarli fuori da `model/` non è però un refactor
+meccanico: `core/heal.py` e `core/healing/hierarchy.py` leggono
+`STRUCTURAL_ROLES`/`is_structural_role` — che include proprio `HOLE`,
+`COUNTERSINK`, `THREADED_HOLE` — per decidere la topologia, e `core` non può
+dipendere da `tools/` (regola di dipendenza). Serve probabilmente un livello
+di indirizione (es. un flag `structural: bool` sul ruolo stesso, non un
+elenco fisso di costanti importato da `core`) prima di poter spostare quei
+membri — un vero redesign, non da fare "a caldo" mentre si aggiunge altro
+sopra. Federico: prevede che servirà comunque in futuro (un consumatore
+avrà bisogno di questa separazione), ma non è la priorità di questo giro.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

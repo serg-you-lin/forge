@@ -13,7 +13,14 @@ Chi li usa:
 
 I valori qui sono interi ACI DXF per ragioni storiche — quando arriva
 un adapter SVG/PDF andrà aggiunto un mapping ACI→hex in quel modulo.
+
+``RoleStyle`` (D37) è l'override esplicito di questa palette: un ruolo — noto
+a forge o assegnato da un consumatore (``normalize_role``) — non è più per
+forza grigio/fisso, il chiamante può dirgli come vuole che appaia in output.
 """
+
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
 from ..model.role import ContourRole  # noqa: F401 — importato per comodità dei consumer
 
@@ -88,3 +95,41 @@ def role_to_color(role) -> int:
 def role_to_hex(role, fallback: str = "#ff0000") -> str:
     """ContourRole → colore hex CSS. Passa per role_to_color + ACI_TO_HEX."""
     return ACI_TO_HEX.get(role_to_color(role), fallback)
+
+
+# ---------------------------------------------------------------------------
+# RoleStyle — override esplicito della palette per ruolo (D37)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class RoleStyle:
+    """
+    Override, indipendente dal formato, dell'aspetto visivo di un ruolo in
+    output. Ogni campo è opzionale: quello lasciato a ``None`` resta il
+    default di forge per quel ruolo (colore semantico di ``ROLE_TO_COLOR``,
+    linetype/lineweight del layer di destinazione).
+
+    Il chiamante ne assembla un dizionario ``{ruolo: RoleStyle}`` una volta
+    sola e lo passa a qualunque renderer lo supporti (oggi ``to_dxf``, domani
+    ``to_svg``) — stesso idioma di ``label_map``/``linetype_map``: dizionario
+    esplicito del chiamante, nessuno stato globale mutabile.
+
+    Pensato per crescere per aggiunta, non per modifica: un futuro campo
+    (fill, trasparenza, ...) si aggiunge qui senza toccare la firma di
+    ``to_dxf``/``to_svg`` né rompere chi già passa un ``RoleStyle`` con meno
+    campi — ogni adapter interpreta solo i campi che sa gestire e ignora gli
+    altri.
+
+    Args:
+        color:      RGB canonico (0-255 per canale). Ogni adapter lo traduce
+                     nella propria codifica (``layer.rgb`` per DXF, hex CSS
+                     per SVG).
+        linetype:    nome di un linetype standard riconosciuto dall'adapter
+                     (per DXF: uno dei nomi di ``ezdxf.tools.standards``, es.
+                     ``"DASHED"``). Un nome non standard è responsabilità del
+                     chiamante.
+        lineweight:  spessore linea in millimetri.
+    """
+    color:      Optional[Tuple[int, int, int]] = None
+    linetype:   Optional[str] = None
+    lineweight: Optional[float] = None

@@ -14,7 +14,7 @@ wrapper sottile attorno a `split()`.
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set
 
 import ezdxf
 
@@ -36,7 +36,7 @@ from ..adapters.dxf.layers import (
     role_to_dxf_layer,
     color_for_layer,
 )
-from ..rules.palette import COLOR_TRASH
+from ..rules.palette import COLOR_TRASH, RoleStyle
 
 DEFAULT_MIN_CLUSTER_AREA = 50.0  # mm²
 
@@ -54,6 +54,7 @@ def to_dxf(
     include_annotations: bool = True,
     include_trash: bool = True,
     annotation_layer: Optional[str] = LAYER_ANNOTATION,
+    role_styles: Optional[Dict[str, RoleStyle]] = None,
 ) -> "ezdxf.document.Drawing":
     """
     Crea un documento DXF nuovo (R2010) e vi materializza il ForgeResult.
@@ -76,6 +77,13 @@ def to_dxf(
     In ogni caso nessuna annotazione viene scartata: quelle non coperte da
     alcuna parte vengono comunque scritte (in `split()` assegnate alla parte
     più vicina, come il trash).
+
+    `role_styles` (D37, `rules.palette.RoleStyle`) fa override di colore/
+    linetype/lineweight per ruolo — noto a forge o slug di un consumatore
+    (`{"frame": RoleStyle(color=(0, 0, 0))}`). Agisce sul LAYER, non
+    sull'entità: tutto ciò che forge scrive è BYLAYER, quindi l'override si
+    propaga a ogni entità di quel ruolo. Campi lasciati a `None` in un
+    `RoleStyle` restano il default di forge.
 
     Restituisce il documento ezdxf: sta al chiamante fare doc.saveas(...).
 
@@ -103,6 +111,7 @@ def to_dxf(
     _setup_layers(doc_out)
     if annotation_layer and annotation_layer not in doc_out.layers:
         doc_out.layers.new(annotation_layer)
+    _apply_role_styles(doc_out, role_styles)
 
     written_clusters: List[ForgeCluster] = []
 
@@ -174,6 +183,7 @@ def split(
     exclude_types: Set[str] = None,
     on_part: Optional[Callable] = None,
     annotation_layer: Optional[str] = LAYER_ANNOTATION,
+    role_styles: Optional[Dict[str, RoleStyle]] = None,
 ) -> List["ezdxf.document.Drawing"]:
     """
     Materializza un ForgeResult in un Drawing per parte.
@@ -213,6 +223,7 @@ def split(
             filter_cluster=_only_this_cluster,
             include_annotations=include_annotations,
             annotation_layer=annotation_layer,
+            role_styles=role_styles,
         )
 
         if exclude_types:
@@ -460,3 +471,43 @@ def _ensure_layer(doc, name: str) -> None:
     """
     if name and name not in doc.layers:
         doc.layers.new(name).color = color_for_layer(name)
+
+
+def _ensure_linetype(doc, name: str) -> None:
+    """
+    Registra nel documento un linetype standard ezdxf (`ezdxf.tools.standards`,
+    es. `"DASHED"`, `"CENTER"`) se non è già presente — un doc nuovo ha solo
+    `Continuous`. Un nome non standard non viene toccato: resta responsabilità
+    del chiamante che quel linetype esista già (o ezdxf solleverà al save).
+    """
+    if not name or name in doc.linetypes:
+        return
+    from ezdxf.tools.standards import linetypes as standard_linetypes
+
+    for lt_name, desc, pattern in standard_linetypes():
+        if lt_name.upper() == name.upper():
+            doc.linetypes.new(lt_name, dxfattribs={"description": desc, "pattern": pattern})
+            return
+
+
+def _apply_role_styles(doc, role_styles: Optional[Dict[str, "RoleStyle"]]) -> None:
+    """
+    Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer
+    del ruolo se non esiste ancora (uno slug di consumatore usato solo più
+    avanti, es. dal trash) e vi imposta colore/linetype/lineweight. Un campo
+    lasciato a `None` in un `RoleStyle` non viene toccato — resta il default
+    già impostato da `_setup_layers`/`_ensure_layer`.
+    """
+    if not role_styles:
+        return
+    for role, style in role_styles.items():
+        layer_name = role_to_dxf_layer(role)
+        _ensure_layer(doc, layer_name)
+        layer = doc.layers.get(layer_name)
+        if style.color is not None:
+            layer.rgb = style.color
+        if style.linetype is not None:
+            _ensure_linetype(doc, style.linetype)
+            layer.dxf.linetype = style.linetype
+        if style.lineweight is not None:
+            layer.dxf.lineweight = round(style.lineweight * 100)
