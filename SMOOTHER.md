@@ -30,7 +30,7 @@ Quello che forge dà a Smoother è già pronto:
 immagine (PNG/JPG)
    │
    ▼
-[1] B/N + ritocco a matita (UI, non ancora scritta)
+[1] B/N + ritocco a matita +anteprima spline (abbiamo l'svg json da forge pronto) (UI, non ancora scritta)
    │
    ▼
 [2] contorni via cv2.findContours
@@ -50,6 +50,9 @@ immagine (PNG/JPG)
    │                                     non di forge)
    ▼
 [7] normalizzazione + DXF via forge.to_dxf()
+
+NON SO SE è CHIARO, IO CARICO L'IMMAGINEE HO GIà LA SPLINE OTTENUTA, RITOCCO A MATITA E LA SPLINE SI AGGIORNA VIA VIA. 
+ON DICO CHE DOBBIAMO AVERE LA POSSIBILITà DI RITOCCAE ANCHE GLI ENDPOINT DELLA LWPLINE, MA SAREBBE BELLO AVERE TUTTO NELL''INTERFACIA. SE è TROPPO, LASCIAMO STARE.
 ```
 
 Punto chiuso in sessione (2026-09-12): aggiungere un contenitore esterno dopo
@@ -89,8 +92,19 @@ direzione, per non chiudere strade con le scelte di Smoother:
 
 ## Stato
 
-Non ancora aperto come repo. Prossimi passi quando si parte:
-1. `git init` del repo `smoother`, sibling di `dxf-forge`/`framer`/`bendly`
-2. `pip install -e ../dxf-forge` come dipendenza
-3. Migrare `smoother_5.py` come primo script di prova, sostituendo
-   `classifica_punti`/`scrivi_contorno` con `forge.simplify_points()`
+Aperto come repo il 2026-09-13, sibling di `dxf-forge`/`framer`. Questo
+documento resta lo spec d'origine (perché); le decisioni vive e il piano di
+lavoro stanno in `smoother/MAP.md` e `smoother/TODO.md`, come `FRAMER.md` sta a
+`framer/DESIGN.md`.
+
+Fatto: scaffolding del repo, `smoother_5.py` migrato in
+`scripts/00_image_to_dxf.py` (spigoli/refit ora via `forge.simplify_points()`,
+non più codice locale) e archiviato qui in `_archive/`.
+
+Varco scoperto migrando: `forge.load_geometry()` accetta solo entità
+`line`/`arc`/`circle`/`polyline`, non `spline` — il passo [3]→[4] della
+pipeline sopra (`simplify_points` → `load_geometry`) non è ancora percorribile
+per i contorni che diventano spline. Per ora smoother scrive il DXF
+direttamente con ezdxf. Se aggiungere un tipo `"spline"` a `GeometryAdapter`
+è deciso qui in forge o resta un problema di smoother va deciso a parte —
+tracciato in `smoother/TODO.md`.
