@@ -788,14 +788,24 @@ avrà bisogno di questa separazione), ma non è la priorità di questo giro.
 D36) — pura matematica su una sequenza di punti (x, y), zero dipendenza da
 primitive forge o da come il chiamante la userà. Spostate in `core/geometry.py`
 (che già ospita l'equivalente per segmenti/tracce: `track_points`,
-`circular_geometry`, `are_collinear`) perché un secondo consumatore
-(`tools/tabs.py`, D39) ne ha bisogno senza duplicarla. `tools/simplify_points.py`
-resta l'orchestratore: importa queste funzioni da `core.geometry` e mantiene
-solo ciò che è specifico della sua ricostruzione (`_split_into_stretches`,
+`circular_geometry`, `are_collinear`). `tools/simplify_points.py` resta
+l'orchestratore: importa queste funzioni da `core.geometry` e mantiene solo
+ciò che è specifico della sua ricostruzione (`_split_into_stretches`,
 `_try_fit_arc`, `_fit_spline`). `detect_corners` resta importabile da
 `forge.tools.simplify_points` (re-export), zero rotture per chi già lo usa.
-Nessun cambiamento di comportamento: 656 → stessa suite, verde. Branch
-`refactor/point-sequence-math`.
+Nessun cambiamento di comportamento: 656 → stessa suite, verde.
+
+**Correzione**: la motivazione originale di questa voce diceva che il secondo
+consumatore che ha reso necessario lo spostamento fosse `tools/tabs.py`
+(D39) — verificato dopo il fatto (Federico ha chiesto conferma), è falso:
+`cut_tabs()` usa solo `_distance` (che era già in `core/geometry.py` **da
+prima** di questa sessione, non fra le funzioni spostate qui) per sommare
+distanze cumulate — non ha bisogno di `detect_corners`/`fit_circle_kasa`/
+`arc_angles`. Lo spostamento resta comunque giustificato di per sé (stessa
+famiglia di `track_points`/`circular_geometry`, non più annidato dentro un
+solo tool), ma non era "provato" da un secondo consumatore reale come
+scritto qui inizialmente — è preparatorio, non retroattivamente confermato.
+Branch `refactor/point-sequence-math`.
 
 ### D39 — `forge.tools.tabs.cut_tabs`: taglio linguette come tool di forge (bozza)
 
