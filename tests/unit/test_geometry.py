@@ -26,6 +26,8 @@ from forge.tools.hole_detector import is_threaded_hole, is_countersink_outer
 from forge.core.geometry import (
     are_collinear, group_collinear_lines,
     track_points, track_length, track_shape_type,
+    interior_angle_deg, detect_corners, drop_duplicate_points,
+    fit_circle_kasa, arc_angles,
 )
 
 
@@ -326,6 +328,62 @@ class TestTrackHelpers(unittest.TestCase):
     def test_004_empty(self):
         self.assertEqual(track_points([]), [])
         self.assertEqual(track_length([]), 0.0)
+
+
+# ---------------------------------------------------------------------------
+# interior_angle_deg / detect_corners / drop_duplicate_points / fit_circle_kasa
+# / arc_angles (D38 — spostate qui da tools/simplify_points.py)
+# ---------------------------------------------------------------------------
+
+class TestPointSequenceMath(unittest.TestCase):
+
+    def test_001_interior_angle_right_angle(self):
+        # vertice di un quadrato: 90 gradi.
+        angle = interior_angle_deg((10, 0), (0, 0), (0, 10))
+        self.assertAlmostEqual(angle, 90.0, places=3)
+
+    def test_002_interior_angle_straight_is_180(self):
+        angle = interior_angle_deg((0, 0), (5, 0), (10, 0))
+        self.assertAlmostEqual(angle, 180.0, places=3)
+
+    def test_003_detect_corners_still_reachable_and_correct(self):
+        square = [(0, 0), (10, 0), (10, 10), (0, 10)]
+        self.assertEqual(
+            detect_corners(square, angle_threshold_deg=100.0, closed=True),
+            [True, True, True, True],
+        )
+
+    def test_004_drop_duplicate_points(self):
+        pts = [(0, 0), (0, 0), (1, 0), (1, 0.0000001), (2, 0)]
+        cleaned = drop_duplicate_points(pts, tolerance=1e-3)
+        self.assertEqual(cleaned, [(0, 0), (1, 0), (2, 0)])
+
+    def test_005_fit_circle_kasa_exact_circle(self):
+        n = 12
+        pts = [
+            (10 * math.cos(2 * math.pi * i / n), 10 * math.sin(2 * math.pi * i / n))
+            for i in range(n)
+        ]
+        fit = fit_circle_kasa(pts)
+        self.assertIsNotNone(fit)
+        center, radius, max_residual = fit
+        self.assertAlmostEqual(center[0], 0.0, places=3)
+        self.assertAlmostEqual(center[1], 0.0, places=3)
+        self.assertAlmostEqual(radius, 10.0, places=3)
+        self.assertAlmostEqual(max_residual, 0.0, places=3)
+
+    def test_006_fit_circle_kasa_too_few_points(self):
+        self.assertIsNone(fit_circle_kasa([(0, 0), (1, 1)]))
+
+    def test_007_arc_angles_quarter_circle_ccw(self):
+        pts = [
+            (10 * math.cos(t), 10 * math.sin(t))
+            for t in (i * (math.pi / 2) / 11 for i in range(12))
+        ]
+        start, end, ccw = arc_angles(pts, (0, 0))
+        self.assertAlmostEqual(start, 0.0, places=3)
+        self.assertAlmostEqual(end, math.pi / 2, places=3)
+        self.assertTrue(ccw)
 
 
 if __name__ == "__main__":

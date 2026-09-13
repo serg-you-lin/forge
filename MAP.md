@@ -781,6 +781,68 @@ membri — un vero redesign, non da fare "a caldo" mentre si aggiunge altro
 sopra. Federico: prevede che servirà comunque in futuro (un consumatore
 avrà bisogno di questa separazione), ma non è la priorità di questo giro.
 
+### D38 — Matematica di sequenze di punti spostata in `core/geometry.py`
+
+`interior_angle_deg`, `detect_corners`, `drop_duplicate_points`,
+`fit_circle_kasa`, `arc_angles` erano dentro `tools/simplify_points.py` (D33,
+D36) — pura matematica su una sequenza di punti (x, y), zero dipendenza da
+primitive forge o da come il chiamante la userà. Spostate in `core/geometry.py`
+(che già ospita l'equivalente per segmenti/tracce: `track_points`,
+`circular_geometry`, `are_collinear`) perché un secondo consumatore
+(`tools/tabs.py`, D39) ne ha bisogno senza duplicarla. `tools/simplify_points.py`
+resta l'orchestratore: importa queste funzioni da `core.geometry` e mantiene
+solo ciò che è specifico della sua ricostruzione (`_split_into_stretches`,
+`_try_fit_arc`, `_fit_spline`). `detect_corners` resta importabile da
+`forge.tools.simplify_points` (re-export), zero rotture per chi già lo usa.
+Nessun cambiamento di comportamento: 656 → stessa suite, verde. Branch
+`refactor/point-sequence-math`.
+
+### D39 — `forge.tools.tabs.cut_tabs`: taglio linguette come tool di forge (bozza)
+
+Nato da un caso concreto: uno smoother-successor deve tagliare linguette
+(ponticelli) su un contorno prima di fittarlo, così un anello concentrico
+resta attaccato al resto della lamiera. Discusso a fondo con Federico se
+dovesse vivere in un consumatore (smoother) o in forge:
+
+- **Non deterministico come "ricostruire cosa c'è nel disegno"** — a
+  differenza di `heal`/`detect`, crea un gap che nel disegno sorgente non
+  c'era. Ma `heal` già modifica geometria (chiude micro-gap), e `tools/` esiste
+  apposta per operazioni opzionali, deterministiche dato i parametri, che il
+  chiamante compone — non fanno parte della ricostruzione fedele obbligatoria
+  di `core`. La meccanica (taglia un gap di larghezza nota a una posizione
+  nota) è deterministica data i parametri, esattamente come le soglie di
+  `detect()`; il *dove/quante* resta una decisione di processo del chiamante,
+  mai di forge.
+- **Argomento decisivo, di packaging**: smoother dipende da opencv (extra
+  `raster`, non nel core `pyproject.toml` di forge). Chi vuole *solo* le
+  linguette su un DXF già pulito non deve installare una libreria di
+  elaborazione immagini che non gli serve. forge ha zero dipendenza da
+  opencv — vive lì.
+- **Non nel contratto pubblico flat `forge.*`**: un utente che si aspetta
+  `forge.*` sempre puramente ricostruttivo non deve incappare per caso in
+  qualcosa che aggiunge geometria nuova. Stessa policy già in uso per
+  `detect_corners`/`fit_primitives` prima di `simplify_points` (D33): resta
+  raggiungibile solo come `forge.tools.tabs.cut_tabs`, mai flattato in cima,
+  finché non è provato da un caso reale.
+
+`cut_tabs(points, closed, tab_positions, tab_width)`: `tab_positions` sono
+**indici** in `points` (non una lunghezza d'arco o una frazione 0-1) — scelta
+di prima bozza, **non ancora una decisione definitiva**: se in futuro serve
+una rappresentazione diversa, si cambia senza remore (nessuno usa ancora
+questa funzione in produzione). `tab_width` è invece già una distanza reale
+(lunghezza cumulata lungo il perimetro), non un numero di punti, perché la
+densità dei punti non è affidabile. Ritorna gli stretch aperti risultanti,
+pronti per `detect_corners(..., closed=False)` + `fit_primitives` (o
+`simplify_points(..., closed=False, arc_fit_tolerance=...)`).
+
+Verificato con uno script (`scripts/15_cut_tabs.py`): anello di 200 punti, 4
+linguette da 2mm → 4 stretch aperti, ognuno rifittato a un `ArcSeg` pulito
+(non una spline) grazie a `arc_fit_tolerance` — il caso reale per cui serviva.
+
+Suite: 670 passed (+7 in `tests/unit/test_tabs.py`). Branch
+`refactor/point-sequence-math` (stesso branch di D38: la matematica condivisa
+e il suo primo consumatore vanno verificati insieme).
+
 ---
 
 ## QUESTIONI CHIUSE (storico)

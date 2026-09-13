@@ -17,6 +17,13 @@ punti (Smoother, da un contorno OpenCV; un adapter DXF con una spline già
 discretizzata in LWPOLYLINE; un futuro adapter PDF) decide da dove vengono —
 qui c'è solo la ricostruzione geometrica. Le soglie sono SEMPRE parametri del
 chiamante, mai hardcoded (stessa regola di core/primitives/segments.py).
+
+La matematica generica su una sequenza di punti (angolo interno, deduplica,
+fit a cerchio, `detect_corners` stesso) vive in `core/geometry.py` (D38) —
+qui restano solo l'orchestrazione (spezzare sui corner, decidere linea vs
+arco/cerchio vs spline) e il fit spline (specifico di questa ricostruzione).
+`detect_corners` resta importabile da qui per compatibilità con chi già lo
+usa da `forge.tools.simplify_points`.
 """
 
 from __future__ import annotations
@@ -24,81 +31,26 @@ from __future__ import annotations
 import math
 from typing import List, Optional, Tuple, Union
 
-import numpy as np
 from ezdxf.math import BSpline
 
 from ..core.primitives.segments import ArcSeg, CircleSeg, LineSeg, SplineSeg, Point
+from ..core.geometry import (
+    DEFAULT_ANGLE_THRESHOLD_DEG,
+    DEFAULT_DUPLICATE_TOLERANCE,
+    detect_corners,
+    drop_duplicate_points,
+    fit_circle_kasa,
+    arc_angles,
+)
 
-DEFAULT_ANGLE_THRESHOLD_DEG = 50.0
 DEFAULT_MIN_POINTS_FOR_SPLINE = 4
 DEFAULT_SPLINE_DEGREE = 3
-DEFAULT_DUPLICATE_TOLERANCE = 1e-6
 DEFAULT_ARC_FIT_TOLERANCE = None  # disattivato: nessun fit ad arco finché non richiesto
-
-
-# ---------------------------------------------------------------------------
-# detect_corners
-# ---------------------------------------------------------------------------
-
-def _interior_angle_deg(prev_pt: Point, curr_pt: Point, next_pt: Point) -> float:
-    """Angolo interno (gradi) in curr_pt fra i lati verso prev_pt e next_pt."""
-    v1 = (prev_pt[0] - curr_pt[0], prev_pt[1] - curr_pt[1])
-    v2 = (next_pt[0] - curr_pt[0], next_pt[1] - curr_pt[1])
-    n1, n2 = math.hypot(*v1), math.hypot(*v2)
-    if n1 == 0 or n2 == 0:
-        return 180.0
-    cos_a = (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)
-    cos_a = max(-1.0, min(1.0, cos_a))
-    return math.degrees(math.acos(cos_a))
-
-
-def detect_corners(
-    points: List[Point],
-    angle_threshold_deg: float = DEFAULT_ANGLE_THRESHOLD_DEG,
-    closed: bool = True,
-) -> List[bool]:
-    """
-    Per ogni punto, True se l'angolo formato dai due lati adiacenti è sotto
-    `angle_threshold_deg` (spigolo vivo da non smussare via col refit spline).
-
-    Args:
-        points:               sequenza di punti (x, y), ordinata
-        angle_threshold_deg:  soglia in gradi sotto cui un punto è uno spigolo
-        closed:               True se `points` è un contorno chiuso (il primo
-                               e l'ultimo punto sono adiacenti). False per una
-                               polilinea aperta: i due estremi non hanno due
-                               lati adiacenti veri e non sono mai spigoli.
-    """
-    n = len(points)
-    if n < 3:
-        return [False] * n
-
-    corners = [False] * n
-    rng = range(n) if closed else range(1, n - 1)
-    for i in rng:
-        prev_pt = points[(i - 1) % n]
-        curr_pt = points[i]
-        next_pt = points[(i + 1) % n]
-        if _interior_angle_deg(prev_pt, curr_pt, next_pt) < angle_threshold_deg:
-            corners[i] = True
-    return corners
 
 
 # ---------------------------------------------------------------------------
 # fit_primitives
 # ---------------------------------------------------------------------------
-
-def _drop_duplicate_points(points: List[Point], tolerance: float) -> List[Point]:
-    """Rimuove punti consecutivi coincidenti entro `tolerance` (serve al fit spline)."""
-    if not points:
-        return []
-    cleaned = [points[0]]
-    for p in points[1:]:
-        last = cleaned[-1]
-        if math.hypot(p[0] - last[0], p[1] - last[1]) > tolerance:
-            cleaned.append(p)
-    return cleaned
-
 
 def _split_into_stretches(
     points: List[Point], is_corner: List[bool], closed: bool
@@ -137,62 +89,6 @@ def _split_into_stretches(
     return stretches
 
 
-def _fit_circle_kasa(points: List[Point]) -> Optional[Tuple[Point, float, float]]:
-    """
-    Fit algebrico (Kasa) ai minimi quadrati di un cerchio su `points`: minimizza
-    `x²+y²+Dx+Ey+F=0`, che è un cerchio di centro `(-D/2,-E/2)` e raggio
-    ricavabile da `D,E,F`. Ritorna `(center, radius, max_residual)` —
-    `max_residual` è lo scostamento massimo di un punto dal cerchio fittato,
-    per decidere se accettarlo. `None` se il fit è degenere (meno di 3 punti,
-    punti quasi collineari, raggio non reale).
-    """
-    if len(points) < 3:
-        return None
-
-    pts = np.asarray(points, dtype=float)
-    x, y = pts[:, 0], pts[:, 1]
-    a_matrix = np.column_stack([x, y, np.ones_like(x)])
-    b_vector = -(x**2 + y**2)
-    try:
-        (d, e, f), *_ = np.linalg.lstsq(a_matrix, b_vector, rcond=None)
-    except np.linalg.LinAlgError:
-        return None
-
-    center = (-d / 2.0, -e / 2.0)
-    radius_sq = (d**2 + e**2) / 4.0 - f
-    if radius_sq <= 0:
-        return None
-    radius = math.sqrt(radius_sq)
-
-    residuals = np.hypot(x - center[0], y - center[1]) - radius
-    max_residual = float(np.max(np.abs(residuals)))
-    return center, radius, max_residual
-
-
-def _arc_angles(points: List[Point], center: Point) -> Tuple[float, float, bool]:
-    """
-    `(start_angle, end_angle, ccw)` in radianti di un arco che passa per
-    `points` (in ordine) intorno a `center`. Segue la rotazione reale della
-    sequenza "srotolando" gli angoli (come `numpy.unwrap`) invece di guardare
-    solo primo e ultimo punto — altrimenti un arco sopra i 180° si confonde
-    con uno più corto nel verso sbagliato.
-    """
-    raw = [math.atan2(p[1] - center[1], p[0] - center[0]) for p in points]
-    unwrapped = [raw[0]]
-    for angle in raw[1:]:
-        delta = angle - unwrapped[-1]
-        # riporta il delta fra due punti consecutivi in (-pi, pi]
-        while delta > math.pi:
-            delta -= 2 * math.pi
-        while delta <= -math.pi:
-            delta += 2 * math.pi
-        unwrapped.append(unwrapped[-1] + delta)
-
-    total = unwrapped[-1] - unwrapped[0]
-    ccw = total >= 0
-    return raw[0], raw[0] + total, ccw
-
-
 def _try_fit_arc(
     points: List[Point], arc_fit_tolerance: float, duplicate_tolerance: float
 ) -> Optional[Union[ArcSeg, CircleSeg]]:
@@ -202,7 +98,7 @@ def _try_fit_arc(
     richiude su se stesso (primo e ultimo punto coincidenti) diventa un
     `CircleSeg` completo, altrimenti un `ArcSeg` fra i due estremi.
     """
-    fit = _fit_circle_kasa(points)
+    fit = fit_circle_kasa(points)
     if fit is None:
         return None
     center, radius, max_residual = fit
@@ -215,7 +111,7 @@ def _try_fit_arc(
     if closes_on_itself:
         return CircleSeg(center=center, radius=radius)
 
-    start_angle, end_angle, ccw = _arc_angles(points, center)
+    start_angle, end_angle, ccw = arc_angles(points, center)
     return ArcSeg(center=center, radius=radius, start_angle=start_angle, end_angle=end_angle, ccw=ccw)
 
 
@@ -269,7 +165,7 @@ def fit_primitives(
     primitives: List[Union[LineSeg, ArcSeg, CircleSeg, SplineSeg]] = []
 
     for stretch in stretches:
-        pts = _drop_duplicate_points(stretch, duplicate_tolerance)
+        pts = drop_duplicate_points(stretch, duplicate_tolerance)
         if len(pts) < 2:
             continue
         if len(pts) < min_points_for_spline or len(pts) <= spline_degree:
