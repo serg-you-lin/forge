@@ -175,7 +175,7 @@ computer vision). Chi chiama non importa nessun tipo interno di forge.
 
 | parametro | significato |
 |---|---|
-| `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polyline` (`points`, `closed`). `role` è opzionale su ogni entità — stesso vocabolario di `label_map` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
+| `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polyline` (`points`, `closed`), `spline` (`control_points`, `knots`, `degree`, più `weights`/`fit_points`/`closed` opzionali — stessi campi di `SplineSeg`, comodo per passare 1:1 l'output di `simplify_points()`). `role` è opzionale su ogni entità — stesso vocabolario di `label_map` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
 | `tolerance` | tolleranza di arrotondamento dei nodi topologici — stesso significato di `load_dxf(tolerance=...)`. |
 | `source_path` | etichetta libera per `ForgeDocument.source_path`; non è un file, serve solo per diagnostica. |
 
@@ -192,8 +192,27 @@ result = forge.heal_and_detect(doc, label="sviluppo_cono")
 forge.to_dxf(result)
 ```
 
+```python
+# entità "spline" — i campi sono quelli di SplineSeg, presi 1:1
+segments = forge.simplify_points(points, closed=True)
+doc = forge.load_geometry([
+    {
+        "type": "spline",
+        "control_points": seg.control_points,
+        "knots": seg.knots,
+        "degree": seg.degree,
+        "fit_points": seg.fit_points,
+        "closed": seg.closed,
+        "role": "outer",
+    }
+    for seg in segments
+])
+```
+
 Provato da un caso reale (`bendly`, che lo usa per portare gli sviluppi che
-genera a `ForgeDocument` senza passare da un file — vedi MAP.md D32).
+genera a `ForgeDocument` senza passare da un file — vedi MAP.md D32; il tipo
+`spline` viene da `smoother`, che vi passa l'output di `simplify_points()` —
+vedi MAP.md D35).
 
 ---
 

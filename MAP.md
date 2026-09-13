@@ -661,6 +661,32 @@ Suite: 639 passed (+3 in `tests/unit/core/test_hierarchy_builder.py`,
 `TestNestingFlattened`). Nessun golden toccato. Branch
 `refactor/load-geometry-simplify-points`.
 
+### D35 — `load_geometry` accetta anche `"spline"`  ✅
+
+Migrando `smoother_5.py` nel nuovo repo `smoother`, il varco si è visto subito:
+`forge.simplify_points()` produce anche `SplineSeg`, ma `GeometryAdapter`
+sapeva tradurre in `Edge` solo `line`/`arc`/`circle`/`polyline` — una
+`SplineSeg` non aveva modo di entrare in un `ForgeDocument`. Federico, a
+domanda diretta, ha fissato il principio generale: *"tutti i loader alla fine
+si devono assomigliare nelle entità. anche un load_pdf o un load_step, tutti
+devono avere le entità necessarie per ottenere output compatibili nei formati
+richiesti."* — ogni loader/adapter deve coprire l'intero vocabolario di
+segmenti che `Edge` già supporta, non solo il sottoinsieme comodo per il suo
+caso d'uso immediato.
+
+`GeometryAdapter._spline_edge` — nuovo tipo `"spline"`:
+`{"control_points", "knots", "degree", "weights"?, "fit_points"?, "closed"?,
+"role"?}`, ricalcato 1:1 sui campi di `SplineSeg` così chi ha in mano l'output
+di `simplify_points()` lo passa quasi senza toccarlo. Gli estremi vengono da
+`segment_endpoints()` (già sapeva gestire `SplineSeg` via
+`approx_points`/`fit_points`/`control_points` — nessun cambiamento lì).
+
+Suite: 642 passed (+3 in `tests/unit/adapters/test_geometry_loader.py`, un
+caso end-to-end che parte da un poligono a 16 lati, lo passa per
+`simplify_points()` — nessuno spigolo rilevato, un'unica `SplineSeg` — e
+verifica che `heal_and_detect` + `to_dxf` la riemettano come `SPLINE` nativa,
+non discretizzata). Branch `refactor/load-geometry-spline`.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)
