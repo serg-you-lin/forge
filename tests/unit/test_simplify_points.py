@@ -27,7 +27,7 @@ import sys
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from forge.core.primitives.segments import LineSeg, SplineSeg
+from forge.core.primitives.segments import ArcSeg, CircleSeg, LineSeg, SplineSeg
 from forge.tools.simplify_points import (
     detect_corners,
     fit_primitives,
@@ -135,6 +135,63 @@ class TestFitPrimitives(unittest.TestCase):
         self.assertTrue(all(isinstance(p, LineSeg) for p in primitives))
         # nessun segmento degenere (start == end) rimasto dai duplicati
         self.assertTrue(all(p.start != p.end for p in primitives))
+
+
+# ---------------------------------------------------------------------------
+# fit ad arco/cerchio (arc_fit_tolerance) — opt-in, default None
+# ---------------------------------------------------------------------------
+
+class TestArcFit(unittest.TestCase):
+
+    def test_030_senza_arc_fit_tolerance_resta_spline_anche_se_e_un_cerchio(self):
+        # Comportamento invariato per chi non passa il parametro: stesso
+        # cerchio del test_031, ma di default (arc_fit_tolerance=None) resta
+        # una SplineSeg come prima di questo cambiamento.
+        n = 24
+        circle = [(10 * math.cos(2 * math.pi * i / n), 10 * math.sin(2 * math.pi * i / n)) for i in range(n)]
+        primitives = simplify_points(circle, closed=True)
+        self.assertEqual(len(primitives), 1)
+        self.assertIsInstance(primitives[0], SplineSeg)
+
+    def test_031_cerchio_chiuso_diventa_circleseg(self):
+        n = 24
+        circle = [(10 * math.cos(2 * math.pi * i / n), 10 * math.sin(2 * math.pi * i / n)) for i in range(n)]
+        corners = [False] * n
+        primitives = fit_primitives(circle, corners, closed=True, arc_fit_tolerance=0.01)
+        self.assertEqual(len(primitives), 1)
+        self.assertIsInstance(primitives[0], CircleSeg)
+        self.assertAlmostEqual(primitives[0].center[0], 0.0, places=3)
+        self.assertAlmostEqual(primitives[0].center[1], 0.0, places=3)
+        self.assertAlmostEqual(primitives[0].radius, 10.0, places=3)
+
+    def test_032_arco_aperto_fra_due_corner_diventa_arcseg(self):
+        # Quarto di cerchio, raggio 10, da 0 a 90 gradi (CCW) — come il
+        # raccordo arrotondato fra due lati dritti, il caso reale per le
+        # linguette (MAP.md D5/D6 in smoother: si spezza un arco, non una spline).
+        arc_points = [
+            (10 * math.cos(t), 10 * math.sin(t))
+            for t in (i * (math.pi / 2) / 11 for i in range(12))
+        ]
+        corners = [False] * len(arc_points)
+        primitives = fit_primitives(arc_points, corners, closed=False, arc_fit_tolerance=0.01)
+        self.assertEqual(len(primitives), 1)
+        seg = primitives[0]
+        self.assertIsInstance(seg, ArcSeg)
+        self.assertAlmostEqual(seg.center[0], 0.0, places=3)
+        self.assertAlmostEqual(seg.center[1], 0.0, places=3)
+        self.assertAlmostEqual(seg.radius, 10.0, places=3)
+        self.assertTrue(seg.ccw)
+        self.assertAlmostEqual(seg.start_angle, 0.0, places=3)
+        self.assertAlmostEqual(seg.end_angle, math.pi / 2, places=3)
+
+    def test_033_curva_non_circolare_resta_spline_anche_con_tolleranza(self):
+        # Una sinusoide non ha raggio costante: nessun cerchio la approssima
+        # entro una tolleranza stretta -> deve restare una SplineSeg.
+        wave = [(x, 0.5 * math.sin(x)) for x in (i * 0.3 for i in range(20))]
+        corners = [False] * len(wave)
+        primitives = fit_primitives(wave, corners, closed=False, arc_fit_tolerance=0.01)
+        self.assertEqual(len(primitives), 1)
+        self.assertIsInstance(primitives[0], SplineSeg)
 
 
 # ---------------------------------------------------------------------------

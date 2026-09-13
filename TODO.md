@@ -275,7 +275,7 @@ parametri del chiamante, non più costanti hardcoded. Sperimentale, importabile
 come `forge.simplify_points`, non ancora in `__all__` finché non è provato da
 Smoother.
 
-### 🔧 IN CORSO — `fit_primitives` deve accettare anche arco/cerchio, non solo linea/spline
+### ✅ FATTO (branch `refactor/simplify-points-arc-fit`, MAP.md D36) — `fit_primitives` accetta anche arco/cerchio
 
 Manca esattamente il terzo caso previsto qui sopra ("linea/**arco**/spline"):
 oggi un tratto fra due corner con tanti punti diventa sempre una `SplineSeg`,
