@@ -1,9 +1,12 @@
 """
 forge/tools/simplify_points.py
 --------------------------------
-Ricostruzione di primitive pulite (linea/spline) da una sequenza di punti
-ordinata e densa — l'inverso della discretizzazione di
-core/primitives/segments.py.
+Ricostruzione di primitive pulite (linea/arco/cerchio/spline) da una sequenza
+di punti ordinata e densa — l'inverso della discretizzazione di
+core/primitives/segments.py. Il fit ad arco/cerchio è opt-in
+(`arc_fit_tolerance`, default `None`): un tratto curvo diventa `ArcSeg`/
+`CircleSeg` solo se il chiamante chiede esplicitamente la tolleranza entro cui
+accettarlo, altrimenti resta sempre una `SplineSeg` come prima.
 
     detect_corners  — per ogni punto, True se è uno spigolo (angolo vivo)
     fit_primitives  — spezza la sequenza sui corner e rifitta ogni tratto
@@ -19,16 +22,18 @@ chiamante, mai hardcoded (stessa regola di core/primitives/segments.py).
 from __future__ import annotations
 
 import math
-from typing import List, Union
+from typing import List, Optional, Tuple, Union
 
+import numpy as np
 from ezdxf.math import BSpline
 
-from ..core.primitives.segments import LineSeg, SplineSeg, Point
+from ..core.primitives.segments import ArcSeg, CircleSeg, LineSeg, SplineSeg, Point
 
 DEFAULT_ANGLE_THRESHOLD_DEG = 50.0
 DEFAULT_MIN_POINTS_FOR_SPLINE = 4
 DEFAULT_SPLINE_DEGREE = 3
 DEFAULT_DUPLICATE_TOLERANCE = 1e-6
+DEFAULT_ARC_FIT_TOLERANCE = None  # disattivato: nessun fit ad arco finché non richiesto
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +137,88 @@ def _split_into_stretches(
     return stretches
 
 
+def _fit_circle_kasa(points: List[Point]) -> Optional[Tuple[Point, float, float]]:
+    """
+    Fit algebrico (Kasa) ai minimi quadrati di un cerchio su `points`: minimizza
+    `x²+y²+Dx+Ey+F=0`, che è un cerchio di centro `(-D/2,-E/2)` e raggio
+    ricavabile da `D,E,F`. Ritorna `(center, radius, max_residual)` —
+    `max_residual` è lo scostamento massimo di un punto dal cerchio fittato,
+    per decidere se accettarlo. `None` se il fit è degenere (meno di 3 punti,
+    punti quasi collineari, raggio non reale).
+    """
+    if len(points) < 3:
+        return None
+
+    pts = np.asarray(points, dtype=float)
+    x, y = pts[:, 0], pts[:, 1]
+    a_matrix = np.column_stack([x, y, np.ones_like(x)])
+    b_vector = -(x**2 + y**2)
+    try:
+        (d, e, f), *_ = np.linalg.lstsq(a_matrix, b_vector, rcond=None)
+    except np.linalg.LinAlgError:
+        return None
+
+    center = (-d / 2.0, -e / 2.0)
+    radius_sq = (d**2 + e**2) / 4.0 - f
+    if radius_sq <= 0:
+        return None
+    radius = math.sqrt(radius_sq)
+
+    residuals = np.hypot(x - center[0], y - center[1]) - radius
+    max_residual = float(np.max(np.abs(residuals)))
+    return center, radius, max_residual
+
+
+def _arc_angles(points: List[Point], center: Point) -> Tuple[float, float, bool]:
+    """
+    `(start_angle, end_angle, ccw)` in radianti di un arco che passa per
+    `points` (in ordine) intorno a `center`. Segue la rotazione reale della
+    sequenza "srotolando" gli angoli (come `numpy.unwrap`) invece di guardare
+    solo primo e ultimo punto — altrimenti un arco sopra i 180° si confonde
+    con uno più corto nel verso sbagliato.
+    """
+    raw = [math.atan2(p[1] - center[1], p[0] - center[0]) for p in points]
+    unwrapped = [raw[0]]
+    for angle in raw[1:]:
+        delta = angle - unwrapped[-1]
+        # riporta il delta fra due punti consecutivi in (-pi, pi]
+        while delta > math.pi:
+            delta -= 2 * math.pi
+        while delta <= -math.pi:
+            delta += 2 * math.pi
+        unwrapped.append(unwrapped[-1] + delta)
+
+    total = unwrapped[-1] - unwrapped[0]
+    ccw = total >= 0
+    return raw[0], raw[0] + total, ccw
+
+
+def _try_fit_arc(
+    points: List[Point], arc_fit_tolerance: float, duplicate_tolerance: float
+) -> Optional[Union[ArcSeg, CircleSeg]]:
+    """
+    Prova un fit a cerchio su `points`; lo accetta solo se lo scostamento
+    massimo dei punti dal cerchio è entro `arc_fit_tolerance`. Un tratto che si
+    richiude su se stesso (primo e ultimo punto coincidenti) diventa un
+    `CircleSeg` completo, altrimenti un `ArcSeg` fra i due estremi.
+    """
+    fit = _fit_circle_kasa(points)
+    if fit is None:
+        return None
+    center, radius, max_residual = fit
+    if max_residual > arc_fit_tolerance:
+        return None
+
+    closes_on_itself = math.hypot(
+        points[0][0] - points[-1][0], points[0][1] - points[-1][1]
+    ) <= duplicate_tolerance
+    if closes_on_itself:
+        return CircleSeg(center=center, radius=radius)
+
+    start_angle, end_angle, ccw = _arc_angles(points, center)
+    return ArcSeg(center=center, radius=radius, start_angle=start_angle, end_angle=end_angle, ccw=ccw)
+
+
 def _fit_spline(points: List[Point], degree: int) -> SplineSeg:
     """Un solo SplineSeg passante per `points` (curva di fit globale, non ai minimi quadrati)."""
     pts_3d = [(x, y, 0.0) for x, y in points]
@@ -151,13 +238,16 @@ def fit_primitives(
     min_points_for_spline: int = DEFAULT_MIN_POINTS_FOR_SPLINE,
     spline_degree: int = DEFAULT_SPLINE_DEGREE,
     duplicate_tolerance: float = DEFAULT_DUPLICATE_TOLERANCE,
-) -> List[Union[LineSeg, SplineSeg]]:
+    arc_fit_tolerance: Optional[float] = DEFAULT_ARC_FIT_TOLERANCE,
+) -> List[Union[LineSeg, ArcSeg, CircleSeg, SplineSeg]]:
     """
     Spezza `points` sui corner marcati in `is_corner` e rifitta ogni tratto: un
     tratto con meno di `min_points_for_spline` punti diventa una sequenza di
-    `LineSeg` (troppo pochi punti per una curva significativa), altrimenti un
-    unico `SplineSeg` di grado `spline_degree` passante per tutti i punti del
-    tratto.
+    `LineSeg` (troppo pochi punti per una curva significativa); altrimenti, se
+    `arc_fit_tolerance` è impostato e il tratto sta entro quella tolleranza su
+    un cerchio a raggio costante, diventa un `ArcSeg` (o un `CircleSeg` se il
+    tratto si richiude su se stesso); in tutti gli altri casi un unico
+    `SplineSeg` di grado `spline_degree` passante per tutti i punti del tratto.
 
     Args:
         points:                 stessa sequenza passata a `detect_corners`
@@ -168,9 +258,15 @@ def fit_primitives(
         duplicate_tolerance:     distanza sotto cui due punti consecutivi sono
                                   lo stesso punto (il fit spline non tollera
                                   punti coincidenti)
+        arc_fit_tolerance:       scostamento massimo (stesse unità dei punti)
+                                  entro cui un tratto curvo è considerato un
+                                  arco/cerchio a raggio costante invece che una
+                                  spline. `None` (default) disattiva il fit ad
+                                  arco — nessun cambio di comportamento per chi
+                                  non lo passa esplicitamente.
     """
     stretches = _split_into_stretches(points, is_corner, closed)
-    primitives: List[Union[LineSeg, SplineSeg]] = []
+    primitives: List[Union[LineSeg, ArcSeg, CircleSeg, SplineSeg]] = []
 
     for stretch in stretches:
         pts = _drop_duplicate_points(stretch, duplicate_tolerance)
@@ -179,8 +275,15 @@ def fit_primitives(
         if len(pts) < min_points_for_spline or len(pts) <= spline_degree:
             for a, b in zip(pts, pts[1:]):
                 primitives.append(LineSeg(start=a, end=b))
-        else:
-            primitives.append(_fit_spline(pts, spline_degree))
+            continue
+
+        if arc_fit_tolerance is not None:
+            arc_or_circle = _try_fit_arc(pts, arc_fit_tolerance, duplicate_tolerance)
+            if arc_or_circle is not None:
+                primitives.append(arc_or_circle)
+                continue
+
+        primitives.append(_fit_spline(pts, spline_degree))
 
     return primitives
 
@@ -196,7 +299,8 @@ def simplify_points(
     min_points_for_spline: int = DEFAULT_MIN_POINTS_FOR_SPLINE,
     spline_degree: int = DEFAULT_SPLINE_DEGREE,
     duplicate_tolerance: float = DEFAULT_DUPLICATE_TOLERANCE,
-) -> List[Union[LineSeg, SplineSeg]]:
+    arc_fit_tolerance: Optional[float] = DEFAULT_ARC_FIT_TOLERANCE,
+) -> List[Union[LineSeg, ArcSeg, CircleSeg, SplineSeg]]:
     """
     `detect_corners` + `fit_primitives` in un solo passo — comodo quando serve
     solo il risultato finale. Vedi le due funzioni per il significato dei
@@ -210,4 +314,5 @@ def simplify_points(
         min_points_for_spline=min_points_for_spline,
         spline_degree=spline_degree,
         duplicate_tolerance=duplicate_tolerance,
+        arc_fit_tolerance=arc_fit_tolerance,
     )
