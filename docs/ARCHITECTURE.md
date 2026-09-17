@@ -76,7 +76,7 @@ forge/
 ├── tools/        STADI opzionali su un ForgeResult    (il caller sceglie quali e in che ordine)
 │   ├── detect.py     detect()                — classifica le feature nei cluster
 │   ├── hole_detector.py  euristiche filettato / svasatura usate da detect()
-│   ├── interpret.py  interpret_annotations() — àncora le annotazioni ai cluster
+│   ├── anchor.py      anchor_annotations()   — àncora le annotazioni ai cluster
 │   └── inject.py     inject()                — testi del cluster → data_injector esterno
 │
 ├── io/           RENDERER del modello + serializzazione

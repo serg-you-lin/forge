@@ -5,8 +5,8 @@ Genera i golden file per il test di regressione sulle annotazioni
 (model/annotation.py: Note / Dimension / Leader prodotti dall'adapter DXF).
 
 Snapshot di `forge.load_dxf(...).annotations` — l'estrazione grezza, prima di
-heal() e prima della futura fase interpret_annotations(). Quando quella fase
-esisterà, questo script si estende con cluster_ref / target / references.
+heal() e prima di anchor_annotations(). Se un domani serve anche cluster_ref /
+target / references nel golden, questo script si estende.
 
 DXF sorgente: tests/examples/*.dxf (quelli che contengono annotazioni)
 Golden JSON:  tests/examples/golden/annotations/
@@ -32,7 +32,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.model.annotation import Note, Dimension, Leader
-from forge.tools.interpret import interpret_annotations
+from forge.tools.anchor import anchor_annotations
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"
@@ -110,7 +110,7 @@ def generate(force: bool = False, only: str = None) -> None:
             doc = forge.load_dxf(dxf_path, explode_inserts=True, flatten_z_flag=True,
                                  verbose=False)
             result = forge.heal_and_detect(doc, features="all")
-            interpret_annotations(result)
+            anchor_annotations(result)
             anns = result.annotations if result.annotations else doc.annotations
             entries = sorted((_annotation_dict(a) for a in anns), key=_sort_key)
             golden = {

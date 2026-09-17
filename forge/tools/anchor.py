@@ -1,11 +1,15 @@
 """
-forge/tools/interpret.py
+forge/tools/anchor.py
 ---------------------------
-Interpretazione delle annotazioni: collega ogni annotazione del modello alla
-geometria che la riguarda.
+Ancoraggio delle annotazioni: collega ogni annotazione del modello alla
+geometria che la riguarda. Prima chiamato `interpret_annotations()`,
+rinominato (MAP.md D43) perché "interpret" era già usato per tre cose diverse
+(questa funzione, il futuro progetto interprete, il concetto generico di
+interpretazione discusso in MAP.md D39-D42) — pura ricostruzione geometrica,
+zero giudizio, non ha niente a che fare col significato del disegno.
 
 Fase separata e opzionale — NON viene chiamata da heal_and_detect(). `detect()`
-fa già abbastanza (geometria + feature); l'interpretazione delle annotazioni è
+fa già abbastanza (geometria + feature); l'ancoraggio delle annotazioni è
 un concern a sé, che il chiamante attiva quando gli serve
 (es. prima di split() o di inject(), per sapere quale nota va con quale pezzo).
 
@@ -23,7 +27,7 @@ from shapely.geometry import Point
 from ..model.result import ForgeResult
 
 
-def interpret_annotations(result: ForgeResult, snap_distance: float = 0.0) -> ForgeResult:
+def anchor_annotations(result: ForgeResult, snap_distance: float = 0.0) -> ForgeResult:
     """
     Assegna ``cluster_ref`` a ogni annotazione di ``result.annotations``.
 
