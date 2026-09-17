@@ -192,6 +192,36 @@ class ArcSeg:
 # SplineSeg
 # ---------------------------------------------------------------------------
 
+def _bspline_find_span(t: float, degree: int, knots: List[float], n: int) -> int:
+    """
+    Indice `i` tale che `knots[i] <= t < knots[i+1]` (ricerca binaria, "The
+    NURBS Book" Algoritmo A2.1) — `n` è l'indice dell'ultimo control point.
+    """
+    if t >= knots[n + 1]:
+        return n
+    lo, hi = degree, n + 1
+    mid = (lo + hi) // 2
+    while t < knots[mid] or t >= knots[mid + 1]:
+        if t < knots[mid]:
+            hi = mid
+        else:
+            lo = mid
+        mid = (lo + hi) // 2
+    return mid
+
+
+def _point_to_segment_distance(p: Point, a: Point, b: Point) -> float:
+    """Distanza perpendicolare di `p` dal segmento `a`-`b` (0 se `a == b`)."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length_sq = dx * dx + dy * dy
+    if length_sq == 0:
+        return math.hypot(p[0] - a[0], p[1] - a[1])
+    t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length_sq
+    t = max(0.0, min(1.0, t))
+    cx, cy = a[0] + t * dx, a[1] + t * dy
+    return math.hypot(p[0] - cx, p[1] - cy)
+
+
 @dataclass
 class SplineSeg:
     degree: int
@@ -252,45 +282,107 @@ class SplineSeg:
             end_tangent=_neg(self.start_tangent),
         )
 
+    def _evaluate(self, t: float) -> Point:
+        """
+        Punto della curva vera al parametro `t` (algoritmo di de Boor, "The
+        NURBS Book" Algoritmo A5.1 — razionale se `weights` è impostato).
+        Sola matematica: nessuna libreria di formato coinvolta.
+        """
+        degree = self.degree
+        knots = self.knots
+        ctrl = self.control_points
+        n = len(ctrl) - 1
+
+        t_min, t_max = knots[degree], knots[-(degree + 1)]
+        if t <= t_min:
+            return ctrl[0]
+        if t >= t_max:
+            return ctrl[-1]
+
+        k = _bspline_find_span(t, degree, knots, n)
+        rational = bool(self.weights)
+        if rational:
+            d = [
+                (ctrl[j][0] * self.weights[j], ctrl[j][1] * self.weights[j], self.weights[j])
+                for j in range(k - degree, k + 1)
+            ]
+            dim = 3
+        else:
+            d = [(ctrl[j][0], ctrl[j][1]) for j in range(k - degree, k + 1)]
+            dim = 2
+
+        for r in range(1, degree + 1):
+            for j in range(degree, r - 1, -1):
+                i = k - degree + j
+                denom = knots[i + degree - r + 1] - knots[i]
+                alpha = 0.0 if denom == 0 else (t - knots[i]) / denom
+                d[j] = tuple((1 - alpha) * d[j - 1][c] + alpha * d[j][c] for c in range(dim))
+
+        point = d[degree]
+        if rational:
+            w = point[2]
+            return (point[0], point[1]) if w == 0 else (point[0] / w, point[1] / w)
+        return point
+
+    def _refine(
+        self, t0: float, t1: float, p0: Point, p1: Point,
+        tolerance: float, out: List[Point], depth: int,
+        max_depth: int = 8, max_points: int = MAX_SEGMENTS_SPLINE * 4,
+    ) -> None:
+        """
+        Suddivide `[t0, t1]` finché il punto medio resta entro `tolerance`
+        dalla corda. `max_points` è un tetto sul totale (non solo sulla
+        profondità di questo ramo): evita l'esplosione di punti su un tratto
+        rumoroso che non converge mai entro `tolerance`.
+        """
+        tm = (t0 + t1) / 2
+        pm = self._evaluate(tm)
+        if (
+            depth >= max_depth
+            or len(out) >= max_points
+            or _point_to_segment_distance(pm, p0, p1) <= tolerance
+        ):
+            out.append(p1)
+            return
+        self._refine(t0, tm, p0, pm, tolerance, out, depth + 1, max_depth, max_points)
+        self._refine(tm, t1, pm, p1, tolerance, out, depth + 1, max_depth, max_points)
+
     def discretize(self, tolerance: float = DEFAULT_TOLERANCE) -> List[Point]:
         """
-        Discretizza la spline in polilinea.
-
-        FASE 3: implementare valutazione BSpline corretta con controllo
-        della tolleranza. Per ora usiamo interpolazione lineare tra i
-        punti di controllo come approssimazione.
+        Discretizza la spline in polilinea valutando la curva vera (non il
+        poligono di controllo) via `_evaluate()`, con suddivisione adattiva
+        finché la deviazione dalla corda resta entro `tolerance`.
         """
         if self.approx_points:
             return list(self.approx_points)
 
         if not self.control_points:
             return []
-        
+
         if len(self.control_points) == 1:
             return [self.control_points[0]]
-        
-        result: List[Point] = []
-        
-        for i in range(len(self.control_points) - 1):
-            p1 = self.control_points[i]
-            p2 = self.control_points[i + 1]
-            
-            dist = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
-            
-            if dist <= tolerance:
-                n_segments = 1
-            else:
-                n_segments = max(1, int(math.ceil(dist / tolerance)))
-                n_segments = min(n_segments, MAX_SEGMENTS_SPLINE)
-            
-            for j in range(n_segments):
-                t = j / n_segments
-                x = p1[0] + t * (p2[0] - p1[0])
-                y = p1[1] + t * (p2[1] - p1[1])
-                result.append((x, y))
-        
-        result.append(self.control_points[-1])
-        
+
+        if not self.knots:
+            return list(self.control_points)
+
+        t_min, t_max = self.knots[self.degree], self.knots[-(self.degree + 1)]
+        if t_max <= t_min:
+            return list(self.control_points)
+
+        approx_length = sum(
+            math.hypot(b[0] - a[0], b[1] - a[1])
+            for a, b in zip(self.control_points, self.control_points[1:])
+        )
+        n_initial = max(1, int(math.ceil(approx_length / tolerance))) if tolerance > 0 else MAX_SEGMENTS_SPLINE
+        n_initial = min(n_initial, MAX_SEGMENTS_SPLINE)
+
+        ts = [t_min + (t_max - t_min) * i / n_initial for i in range(n_initial + 1)]
+        points = [self._evaluate(t) for t in ts]
+
+        result: List[Point] = [points[0]]
+        for i in range(n_initial):
+            self._refine(ts[i], ts[i + 1], points[i], points[i + 1], tolerance, result, depth=0)
+
         return result
 
 
