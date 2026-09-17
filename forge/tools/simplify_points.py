@@ -115,15 +115,25 @@ def _try_fit_arc(
     return ArcSeg(center=center, radius=radius, start_angle=start_angle, end_angle=end_angle, ccw=ccw)
 
 
-def _fit_spline(points: List[Point], degree: int) -> SplineSeg:
-    """Un solo SplineSeg passante per `points` (curva di fit globale, non ai minimi quadrati)."""
+def _fit_spline(points: List[Point], degree: int, closed: bool = False) -> SplineSeg:
+    """
+    Un solo SplineSeg passante per `points` (curva di fit globale, non ai
+    minimi quadrati). Niente `fit_points` in uscita (MAP.md D41): control
+    points + nodi bastano a definire la curva per intero, `fit_points` è solo
+    metadato opzionale per un editor — averlo comunque, insieme ai control
+    points, in un DXF ha reso alcuni lettori CAM incapaci di leggere la
+    spline (letto: SigmaNest), forse perché provano a ricostruire la curva
+    dai fit points con una loro logica invece di usare quella già data.
+    `closed` va passato dal chiamante: solo lui sa se questo tratto è
+    l'intero contorno chiuso o solo un arco fra due spigoli.
+    """
     pts_3d = [(x, y, 0.0) for x, y in points]
     bspline = BSpline.from_fit_points(pts_3d, degree=degree)
     return SplineSeg(
         degree=bspline.degree,
         control_points=[(p.x, p.y) for p in bspline.control_points],
         knots=list(bspline.knots()),
-        fit_points=pts_3d,
+        closed=closed,
     )
 
 
@@ -162,6 +172,11 @@ def fit_primitives(
                                   non lo passa esplicitamente.
     """
     stretches = _split_into_stretches(points, is_corner, closed)
+    # Un solo tratto con `closed=True` è l'intero contorno (MAP.md D41: mai
+    # più di uno per costruzione di `_split_into_stretches`, sia con zero
+    # spigoli sia con un solo spigolo che chiude il giro su se stesso) — è
+    # l'unico caso in cui la spline risultante deve portare `closed=True`.
+    whole_loop_as_one_stretch = closed and len(stretches) == 1
     primitives: List[Union[LineSeg, ArcSeg, CircleSeg, SplineSeg]] = []
 
     for stretch in stretches:
@@ -179,7 +194,7 @@ def fit_primitives(
                 primitives.append(arc_or_circle)
                 continue
 
-        primitives.append(_fit_spline(pts, spline_degree))
+        primitives.append(_fit_spline(pts, spline_degree, closed=whole_loop_as_one_stretch))
 
     return primitives
 

@@ -936,6 +936,47 @@ prodotto ispezionato visivamente (renderizzato a PNG): 4 archi esterni + 4
 archi interni + 8 fianchi radiali, esattamente la "girandola a 4 razze"
 attesa. Suite: 668 passed. Branch `refactor/point-sequence-math`.
 
+### D41 — `_fit_spline`: mai `fit_points`, `closed=True` quando il tratto è l'intero loop  ✅
+
+Scoperto da Smoother (`smoother/MAP.md` D15): una SPLINE scritta da
+`to_dxf()` per un contorno chiuso senza spigoli non veniva letta da alcuni
+software CAM a valle (letto: SigmaNest — non un caso isolato, era già
+capitato prima con lo stesso software su un altro progetto). Confrontati due
+DXF con `forge.inspect_dxf()` — uno prodotto da un vecchio script locale
+(letto correttamente da SigmaNest), uno dalla pipeline attuale (non letto):
+la differenza non era la geometria ma due campi del gruppo SPLINE:
+
+- `flags` — sempre `0` (aperta) nel file non letto, anche per contorni
+  interamente chiusi senza un solo spigolo; `1` (chiusa) in quello che
+  funziona.
+- `fit_points` — sempre presenti (stesso conteggio dei control points) nel
+  file non letto; assenti (`0`) in quello che funziona.
+
+Entrambe risalivano a `_fit_spline()`: non passava mai `closed=` al
+`SplineSeg` che costruiva, e scriveva sempre `fit_points=pts_3d` insieme a
+control points + nodi. Per spec DXF le due definizioni (control
+points/nodi, oppure fit points) sono alternative, non cumulative — con
+entrambe presenti alcuni lettori provano a ricostruire la curva dai fit
+points con una logica propria invece di usare quella già data, e quella
+logica evidentemente non regge sempre.
+
+**Fix**: `_fit_spline()` non scrive più `fit_points` (control points + nodi
+bastano a definire la curva per intero — non è una perdita di precisione,
+solo di un metadato opzionale per un editor che volesse mostrare "maniglie"
+sui punti originali). Guadagna un parametro `closed`, passato da
+`fit_primitives()`: vale `True` solo quando l'intero contorno chiuso è
+diventato un solo tratto (`closed and len(stretches) == 1` — l'unico caso in
+cui, per costruzione di `_split_into_stretches`, quel singolo tratto *è*
+il loop intero, non un arco fra due spigoli).
+
+Verificato end-to-end, non solo sull'unità: ricostruita a mano la stessa
+struttura (`closed=True`, niente `fit_points`) su una spline della pipeline
+prima del fix — il DXF risultante aveva `flags=1`/`fit_points=0`, identico
+al file che SigmaNest legge. Dopo il fix applicato a monte, la pipeline
+reale (Smoother, immagine con ~140 contorni) produce lo stesso pattern su
+ogni spline, senza alcun intervento manuale. Suite: 668 passed, nessuna
+regressione.
+
 ---
 
 ## QUESTIONI CHIUSE (storico)
