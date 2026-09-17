@@ -9,7 +9,7 @@ Divisione dei compiti:
     - adapter (annotation_extractor / exporter) → read/write formato ↔ modello,
       solo conoscenza di formato (dove sta il testo, come si appiattisce il
       blocco di una quota).
-    - fase di pipeline ``interpret_annotations()`` → collega l'annotazione alla
+    - fase di pipeline ``anchor_annotations()`` → collega l'annotazione alla
       geometria: popola ``cluster_ref`` (indice della parte che la contiene) e, in
       futuro, i riferimenti alle feature per quote e direttrici.
     - agente → legge e modifica questi oggetti (aggiunge una nota, cambia
@@ -68,7 +68,7 @@ class Annotation:
     position:    Point
     layer:       str           = "0"
     origin:      Optional[str]  = None   # provenienza nella sorgente — diagnostica
-    cluster_ref:    Optional[int]  = None   # indice in result.clusters della parte che la contiene (fase interpret)
+    cluster_ref:    Optional[int]  = None   # indice in result.clusters della parte che la contiene (fase anchor)
     source_kind: str            = ""
 
     @property
@@ -122,7 +122,7 @@ class Leader(Annotation):
     """Direttrice con testo che punta a una feature."""
     text:     str              = ""
     vertices: List[Point]      = field(default_factory=list)
-    target:   Optional[str]    = None   # label della feature puntata (fase interpret)
+    target:   Optional[str]    = None   # label della feature puntata (fase anchor, via vertices — non ancora calcolato)
     rendered: RenderedGeometry = field(default_factory=RenderedGeometry)
 
     @property

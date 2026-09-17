@@ -11,7 +11,7 @@ mettere il dict risultante in `cluster.custom`.
 
 I testi vengono da `result.annotations` (il modello tipato prodotto da
 load_dxf): niente più `msp` o liste sciolte. Filtro per contenimento nell'outer
-della parte — l'equivalente di quello che faceva `interpret_annotations()`, ma
+della parte — l'equivalente di quello che faceva `anchor_annotations()`, ma
 applicato al volo qui perché `inject()` deve funzionare anche se quella fase non
 è stata chiamata.
 

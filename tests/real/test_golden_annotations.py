@@ -23,7 +23,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.model.annotation import Note, Dimension, Leader
-from forge.tools.interpret import interpret_annotations
+from forge.tools.anchor import anchor_annotations
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"
@@ -92,7 +92,7 @@ def _make_test(path: Path):
             dxf_path, explode_inserts=True, flatten_z_flag=True, verbose=False
         )
         result = forge.heal_and_detect(doc, features="all")
-        interpret_annotations(result)
+        anchor_annotations(result)
         anns = result.annotations if result.annotations else doc.annotations
         actual = sorted((_actual_dict(a) for a in anns), key=_sort_key)
         expected = golden["annotations"]

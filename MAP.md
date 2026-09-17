@@ -1012,6 +1012,35 @@ Suite: 668 passed, nessuna regressione.
 
 ---
 
+### D43 — `interpret_annotations` → `anchor_annotations`  ✅
+
+Rinominata (`forge/tools/interpret.py` → `forge/tools/anchor.py`, e nell'API
+pubblica `forge.interpret_annotations` → `forge.anchor_annotations`). Nata da
+una sessione di confronto con Federico (con ChatGPT/Gemini/Deepseek come
+pareri esterni, `PARERI_VARI.md`) su determinismo e confini di forge: la
+parola "interpret" era già usata per tre cose diverse — questa funzione
+(solo geometria: `cluster_ref` per contenimento), il futuro progetto
+interprete (`INTERPRETER.md`), e il concetto generico di interpretazione
+discusso a proposito di D39-D42 — e Federico l'ha segnalato come fonte reale
+di confusione, non solo fastidio estetico.
+
+**Resta in forge**: non è un problema di "dove vive", solo di nome. La
+funzione è pura ricostruzione geometrica (un punto dentro un poligono, con
+uno snap opzionale) — zero giudizio su cosa significhi un'annotazione per il
+disegno, quindi non ha nulla del lavoro che sta spostandosi verso framer
+(cornice/cartiglio/viste/callout, vedi discussione in `INTERPRETER.md`, da
+riscrivere). Il nome nuovo riusa la parola già in uso nella documentazione
+per descriverla ("annotazioni tipate e **ancorate**",
+`forge-neutral-substrate-agent-layer-above`) invece di introdurne una terza.
+
+Nessun compat shim (`refactor-clean-break-over-compat-shims`): rinominata
+ovunque — modulo, test (`tests/unit/test_interpret_annotations.py` →
+`test_anchor_annotations.py`), golden generator, `docs/API.md`,
+`docs/ARCHITECTURE.md`. Non toccata la voce storica sopra (era
+`interpret_annotations` quando fu decisa, resta così nel log).
+
+---
+
 ## QUESTIONI CHIUSE (storico)
 
 - **Q1 — classificazione hole: topologia o detection?** → risolta da D15

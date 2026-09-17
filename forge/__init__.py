@@ -58,7 +58,7 @@ from .tools.simplify_points import simplify_points
 from .core.heal          import heal
 from .recipes            import heal_and_detect, split_to_files
 from .tools.inject       import inject
-from .tools.interpret    import interpret_annotations
+from .tools.anchor       import anchor_annotations
 from .tools.detect       import detect, ALL_FEATURES
 from .io.dxf             import to_dxf, split
 from .rules.validator     import validate, validate_result
@@ -119,7 +119,7 @@ __all__ = [
     "to_dxf",
     "split",
     "inject",
-    "interpret_annotations",
+    "anchor_annotations",
     "split_to_files",
     # Export
     "to_json",
