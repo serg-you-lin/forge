@@ -20,7 +20,7 @@ in fondo.
 
 1. [Apertura file](#1-apertura-file) — `load_dxf`, `document_from_msp`, `load_geometry`
 2. [Validazione](#2-validazione) — `validate`, `validate_result`
-3. [Elaborazione e render](#3-elaborazione-e-render) — `heal` (core), `detect` / `interpret_annotations` / `inject` (tools), `to_dxf` / `split` (io), `heal_and_detect` / `split_to_files` (recipes)
+3. [Elaborazione e render](#3-elaborazione-e-render) — `heal` (core), `detect` / `anchor_annotations` / `inject` (tools), `to_dxf` / `split` (io), `heal_and_detect` / `split_to_files` (recipes)
 4. [Export](#4-export) — `save_json`, `to_json`, `save_xml`, `to_view_model`, `to_svg`, `save_svg`
 5. [Metadati XDATA](#5-metadati-xdata) — `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema`
 6. [Ispezione / debug](#6-ispezione--debug) — `inspect_dxf`, `inspect_document`, `inspect_result`, `inspect_file`
@@ -260,7 +260,7 @@ costruisci un `ForgeResult` per altre vie.
 
 ## 3. Elaborazione e render
 
-`heal` è l'atto del motore (`forge/core/`); `detect` / `interpret_annotations` /
+`heal` è l'atto del motore (`forge/core/`); `detect` / `anchor_annotations` /
 `inject` sono stadi opzionali su un `ForgeResult` (`forge/tools/`, il caller
 sceglie quali e in che ordine); `to_dxf` / `split` sono renderer del modello
 (`forge/io/`); `heal_and_detect` / `split_to_files` sono le scorciatoie della
