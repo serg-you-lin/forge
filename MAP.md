@@ -979,6 +979,39 @@ regressione.
 
 ---
 
+### D42 — `SplineSeg.discretize()` valutava il poligono di controllo, non la curva  ✅
+
+Scoperto da Smoother: l'anteprima SVG (e l'export a polilinea, D15, che usa
+lo stesso `.discretize()`) di una spline con pochi punti di controllo per
+tratto lungo (sottocampionamento alto o soglia spigolo bassa, MAP.md D19)
+appariva visibilmente "a facce"/seghettata anche quando la spline nel DXF
+era corretta e morbida. Causa: `discretize()` era un placeholder mai
+finito (commento esplicito nel codice, "FASE 3: implementare valutazione
+BSpline corretta con controllo della tolleranza. Per ora usiamo
+interpolazione lineare tra i punti di controllo come approssimazione") —
+non valutava mai la curva vera, solo il segmento dritto fra un punto di
+controllo e il successivo. Con pochi punti di controllo su un tratto molto
+curvo, quei segmenti dritti si vedevano.
+
+**Fix**: `discretize()` ora valuta la curva vera con l'algoritmo di de Boor
+(`_evaluate()`, "The NURBS Book" Algoritmo A5.1, razionale se `weights` è
+impostato) e suddivide adattivamente ogni intervallo di parametro finché il
+punto medio resta entro `tolerance` dalla corda (`_refine()`), con un tetto
+sul totale dei punti (`MAX_SEGMENTS_SPLINE * 4`) per non esplodere su un
+tratto rumoroso che non converge. Sola matematica (solo `math`, nessuna
+libreria di formato): `core/` deve funzionare anche senza `ezdxf`
+installato, non è negoziabile — un primo tentativo che riusava
+`ezdxf.math.BSpline` per la valutazione è stato scartato per questo,
+non per motivi tecnici.
+
+Verificato numericamente, non solo a occhio: una spline con soli 8 punti di
+controllo su un semicerchio raggio 10 — la vecchia logica (poligono di
+controllo) devia dalla curva vera fino a 0.79 unità (quasi l'8% del
+raggio); la nuova, con `tolerance=0.05`, devia al massimo 0.011 unità.
+Suite: 668 passed, nessuna regressione.
+
+---
+
 ## QUESTIONI CHIUSE (storico)
 
 - **Q1 — classificazione hole: topologia o detection?** → risolta da D15
