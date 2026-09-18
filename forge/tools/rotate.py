@@ -1,23 +1,35 @@
 """
 forge/tools/rotate.py
 -----------------------
-Ruota l'intera geometria di un ForgeDocument attorno a un centro, allineando
-opzionalmente il lato OUTER più lungo del disegno all'orizzontale.
+Ruota la geometria di un ForgeResult (o di un singolo ForgeCluster) attorno a
+un centro — allineando opzionalmente il segmento strutturale più lungo
+all'orizzontale.
 
-Due passate, non una rotazione in-place del ForgeResult: la prima heal()
-serve solo a scoprire quale entità è "outer" (quella classificazione esiste
-solo dopo la topologia) e a misurarne l'angolo; la rotazione vera si applica
-alla geometria grezza (`ForgeDocument.edges`, pre-heal) — il chiamante rifà
-heal() sul documento ruotato per ottenere un ForgeResult altrettanto valido
-di quello di partenza, con la stessa identica logica di classificazione.
-Ruotare invece un ForgeResult già sano (poligoni, feature, gerarchia di
-contenimento) richiederebbe toccare a mano ogni struttura derivata — più
-lavoro, più superficie di bug, per lo stesso risultato finale.
+Un solo heal(), non due: una rotazione rigida NON cambia la topologia (chi
+contiene chi, quali loop esistono restano identici — solo le coordinate
+cambiano), quindi non c'è bisogno di ricostruire l'albero di contenimento
+dopo aver ruotato. `rotate_result`/`rotate_cluster` trasformano DIRETTAMENTE
+le strutture che `heal()` ha già prodotto (poligoni, segmenti, gli `all_arcs`
+grezzi che `detect()` userà) — non tornano alla geometria grezza pre-heal e
+non richiamano `heal()`. Per lo stesso motivo `rotate_cluster` è economico e
+ripetibile: un futuro nester può chiamarlo in un ciclo per provare molti
+angoli su una singola parte, senza pagare il costo di un `heal()` ad ogni
+tentativo.
+
+Cosa NON viene ruotato, di proposito, non per svista:
+- `cluster.detected`/`cluster.custom` — overlay a schema libero (D44), forge
+  non sa cosa contengono; se hai già fatto `detect()`, quei dati (bending
+  line, fori tipizzati, ...) restano nelle coordinate vecchie dopo una
+  rotazione. Fai `detect()` DOPO aver ruotato, non prima.
+- `result.annotations` — stesso limite di `rotate_document`: nessun caso
+  reale le ha ancora richieste. Se presenti, viene aggiunto un warning
+  invece di lasciarle silenziosamente nel posto sbagliato.
 
 Nato dalla discussione "funzioni geometriche" (TODO.md) — orientamento
-canonico per un futuro nester: la meccanica sta qui, la decisione di quanti
-gradi provare/l'ottimizzazione di impacchettamento restano fuori scope
-(nesting resta fuori da forge).
+canonico per un futuro nester: la meccanica sta qui (`rotate_cluster`,
+pensato per essere richiamato molte volte con angoli diversi), la decisione
+di quanti gradi provare / l'ottimizzazione di impacchettamento restano fuori
+scope (nesting resta fuori da forge).
 """
 
 from __future__ import annotations
@@ -26,30 +38,150 @@ import math
 from dataclasses import replace
 from typing import List, Optional, Tuple
 
-from ..core.geometry import segment_length, chord_angle_deg, round_point, node_decimals_for
+from shapely.affinity import rotate as _shapely_rotate
+
+from ..core.geometry import longest_segment, chord_angle_deg, round_point, node_decimals_for
 from ..core.primitives.segments import segment_endpoints
-from ..core.heal import heal
+from ..model.cluster import ForgeCluster
+from ..model.contour import ForgeContour
 from ..model.document import ForgeDocument
+from ..model.feature import OpenFeature
 from ..model.result import ForgeResult
 
 Point = Tuple[float, float]
 
 
-def longest_outer_segment(result: ForgeResult) -> Tuple[Optional[object], float, Optional[float]]:
+# ---------------------------------------------------------------------------
+# Selezione del segmento — "quale entità allineare"
+# ---------------------------------------------------------------------------
+# Filtro STRUTTURALE (cluster.outer vs cluster.inners), non su `contour.role`:
+# `role` non distingue in modo affidabile outer/inner. `cluster.outer` è
+# sempre inequivocabilmente l'outer (`hierarchy._build_parts` glielo assegna
+# così, indipendentemente da come l'input era etichettato) — ma un `inner`
+# senza ruolo proprio EREDITA il ruolo del padre se il padre ne aveva uno
+# esplicito (`hierarchy._make_inner`, verificato leggendo il codice): un
+# outer etichettato "outer" produce fori interni anch'essi "outer" se non
+# hanno un ruolo loro. Filtrare per stringa sarebbe quindi ambiguo proprio
+# nel caso comune (input senza label_map dedicato ai fori).
+#
+# Per un criterio più fine di "outer" / "outer+inner" (es. solo certi ruoli
+# dopo un detect(), o qualunque altra logica) componi la lista da solo:
+# `cluster.outer.segments`/`cluster.inners[i].segments` sono già pubblici, e
+# `longest_segment()`/`chord_angle_deg()` (core/geometry.py) sono già
+# generici — non serve altra API qui, forge dà i mattoncini.
+
+def structural_segments(result: ForgeResult, include_inners: bool = False) -> list:
     """
-    `(segment, length, angle_deg)` del segmento OUTER più lungo su TUTTI i
-    cluster di `result` — filtrato a `cluster.outer.segments`, non a
-    qualunque geometria del disegno (una bending line interna, per quanto
-    lunga, non conta). `(None, 0.0, None)` se non c'è nessun outer.
+    Segmenti nativi dei contorni strutturali di ogni cluster: sempre
+    `cluster.outer`; anche `cluster.inners` (fori/loop interni non ancora
+    tipizzati — la tipizzazione hole/countersink/... vive in `detect()`,
+    un overlay separato, vedi il modulo) se `include_inners=True`.
     """
-    best_seg, best_len, best_angle = None, 0.0, None
+    segments = []
     for cluster in result.clusters:
-        for seg in cluster.outer.segments:
-            length = segment_length(seg)
-            if length > best_len:
-                start, end = segment_endpoints(seg)
-                best_seg, best_len, best_angle = seg, length, chord_angle_deg(start, end)
-    return best_seg, best_len, best_angle
+        segments.extend(cluster.outer.segments)
+        if include_inners:
+            for inner in cluster.inners:
+                segments.extend(inner.segments)
+    return segments
+
+
+def longest_structural_segment(
+    result: ForgeResult, include_inners: bool = False
+) -> Tuple[Optional[object], float, Optional[float]]:
+    """
+    `(segment, length, angle_deg)` del segmento più lungo fra
+    `structural_segments(result, include_inners)`. `(None, 0.0, None)` se
+    non c'è nessun cluster.
+    """
+    seg, length = longest_segment(structural_segments(result, include_inners))
+    if seg is None:
+        return None, 0.0, None
+    start, end = segment_endpoints(seg)
+    return seg, length, chord_angle_deg(start, end)
+
+
+# ---------------------------------------------------------------------------
+# Rotazione — primitive pure, riusabili in un ciclo (nester)
+# ---------------------------------------------------------------------------
+
+def _rotate_contour(contour: ForgeContour, angle_rad: float, origin: Point) -> ForgeContour:
+    return replace(
+        contour,
+        segments=[s.rotated(angle_rad, origin) for s in contour.segments],
+        polygon=_shapely_rotate(contour.polygon, angle_rad, origin=origin, use_radians=True)
+                if contour.polygon is not None else None,
+    )
+
+
+def rotate_cluster(cluster: ForgeCluster, angle_rad: float, origin: Point = (0.0, 0.0)) -> ForgeCluster:
+    """
+    Nuovo `ForgeCluster` con `outer`/`inners` ruotati di `angle_rad` (radianti,
+    CCW) attorno a `origin` — segmenti nativi (`.rotated()`) e poligono
+    (`shapely.affinity.rotate`) in un colpo solo, nessun `heal()`.
+
+    `cluster.detected`/`cluster.custom` NON sono toccati — vedi il modulo.
+    L'albero `depth`/`parent` fra outer e inner è preservato (i nuovi
+    `ForgeContour` puntano ai NUOVI oggetti ruotati, non a quelli vecchi).
+
+    Primitiva pensata per un ciclo: economica (solo trasformazioni
+    geometriche, zero ricostruzione di topologia), quindi adatta a provare
+    molti angoli sulla stessa parte (nester).
+    """
+    new_outer = _rotate_contour(cluster.outer, angle_rad, origin)
+    id_map = {id(cluster.outer): new_outer}
+
+    new_inners: List[ForgeContour] = []
+    for inner in cluster.inners:
+        new_inner = _rotate_contour(inner, angle_rad, origin)
+        id_map[id(inner)] = new_inner
+        new_inners.append(new_inner)
+
+    new_outer.parent = None
+    for old_inner, new_inner in zip(cluster.inners, new_inners):
+        new_inner.parent = id_map.get(id(old_inner.parent)) if old_inner.parent is not None else None
+
+    return replace(cluster, outer=new_outer, inners=new_inners)
+
+
+def rotate_result(result: ForgeResult, angle_rad: float, origin: Point = (0.0, 0.0)) -> ForgeResult:
+    """
+    Nuovo `ForgeResult` con ogni cluster (`rotate_cluster`), `trash_entities`
+    e `all_arcs` (usati da `detect()` per i fori filettati — vanno ruotati
+    anche loro o un `detect()` successivo leggerebbe coordinate vecchie)
+    ruotati di `angle_rad` attorno a `origin`. Nessun `heal()` richiamato: una
+    rotazione rigida non cambia la topologia, solo le coordinate.
+
+    `result.annotations` non sono ruotate (vedi il modulo) — se presenti,
+    aggiunge un warning invece di lasciarle ferme senza avvisare.
+    `cluster.detected` non è toccato — se presente su qualche cluster, un
+    warning ricorda di rifare `detect()` dopo la rotazione.
+    """
+    new_clusters = [rotate_cluster(c, angle_rad, origin) for c in result.clusters]
+    new_trash = [
+        replace(t, segments=[s.rotated(angle_rad, origin) for s in t.segments])
+        if isinstance(t, OpenFeature) else t
+        for t in result.trash_entities
+    ]
+    new_arcs = [a.rotated(angle_rad, origin) for a in result.all_arcs]
+
+    new_warnings = list(result.warnings)
+    if result.annotations:
+        new_warnings.append(
+            f"rotate_result(): {len(result.annotations)} annotazioni non ruotate (non ancora supportato)"
+        )
+    if any(c.detected is not None for c in result.clusters):
+        new_warnings.append(
+            "rotate_result(): detected features non ruotate — richiama detect() DOPO la rotazione"
+        )
+
+    return replace(
+        result,
+        clusters=new_clusters,
+        trash_entities=new_trash,
+        all_arcs=new_arcs,
+        warnings=new_warnings,
+    )
 
 
 def rotate_document(
@@ -59,16 +191,17 @@ def rotate_document(
     tolerance: float = 0.05,
 ) -> ForgeDocument:
     """
-    Nuovo ForgeDocument con ogni `edge.segment` ruotato di `angle_rad`
-    (radianti, CCW) attorno a `origin` — stesso arrotondamento degli
-    endpoint (`round_point`/`node_decimals_for`) usato dall'adapter al
-    caricamento, perché la topologia ricostruita da un heal() successivo
-    veda gli stessi nodi coincidenti di prima della rotazione.
+    Nuovo `ForgeDocument` con ogni `edge.segment` ruotato di `angle_rad`
+    (radianti, CCW) attorno a `origin` — stesso arrotondamento degli endpoint
+    (`round_point`/`node_decimals_for`) usato dall'adapter al caricamento.
 
-    Le annotazioni non sono ruotate (nessun caso reale le ha ancora
-    richieste): se `doc.annotations` non è vuoto, restano ferme nella loro
-    posizione originale e viene aggiunto un warning — silenziarlo sarebbe
-    dare per buona una geometria annotata scorretta.
+    Primitiva pre-heal: utile quando l'angolo è già noto da altrove (non
+    serve misurarlo su questo stesso documento) e si vuole ruotare prima di
+    passare a `heal()` la prima volta. Per "misura l'angolo sull'outer più
+    lungo E ruota", vedi `rotate_to_longest` — che lavora su un
+    `ForgeResult` già sano, un solo `heal()` in tutto.
+
+    Le annotazioni non sono ruotate — stesso limite di `rotate_result`.
     """
     decimals = node_decimals_for(tolerance)
     new_edges: List = []
@@ -91,56 +224,52 @@ def rotate_document(
     return replace(doc, edges=new_edges, warnings=new_warnings)
 
 
-def _document_bbox_center(doc: ForgeDocument) -> Point:
-    """Centro del bbox approssimato di tutti gli edge — vedi `rotate_to_longest_outer`."""
-    xs: List[float] = []
-    ys: List[float] = []
-    for edge in doc.edges:
-        start, end = segment_endpoints(edge.segment)
-        xs.extend([start[0], end[0]])
-        ys.extend([start[1], end[1]])
-    if not xs:
+# ---------------------------------------------------------------------------
+# Orchestratore — "allinea il segmento più lungo", un solo heal() a monte
+# ---------------------------------------------------------------------------
+
+def _result_bbox_center(result: ForgeResult) -> Point:
+    """Centro del bbox unito degli outer di tutti i cluster — vedi `rotate_to_longest`."""
+    boxes = [
+        c.outer.polygon.bounds
+        for c in result.clusters
+        if c.outer.polygon is not None and not c.outer.polygon.is_empty
+    ]
+    if not boxes:
         return (0.0, 0.0)
-    return ((min(xs) + max(xs)) / 2.0, (min(ys) + max(ys)) / 2.0)
+    minx = min(b[0] for b in boxes)
+    miny = min(b[1] for b in boxes)
+    maxx = max(b[2] for b in boxes)
+    maxy = max(b[3] for b in boxes)
+    return ((minx + maxx) / 2.0, (miny + maxy) / 2.0)
 
 
-def rotate_to_longest_outer(
-    doc: ForgeDocument,
-    origin: Optional[Point] = None,
+def rotate_to_longest(
+    result: ForgeResult,
+    include_inners: bool = False,
     target_angle_deg: float = 0.0,
-    tolerance: Optional[float] = None,
-) -> Tuple[ForgeDocument, float]:
+    origin: Optional[Point] = None,
+) -> Tuple[ForgeResult, float]:
     """
-    Ruota `doc` in modo che il suo lato OUTER più lungo diventi orizzontale
-    (o `target_angle_deg`, se dato).
+    Ruota `result` (già sano, da un `heal()` già fatto dal chiamante) in modo
+    che il suo segmento strutturale più lungo — vedi `structural_segments`:
+    solo gli outer per default, anche gli inner se `include_inners=True` —
+    diventi orizzontale (o `target_angle_deg`, se dato). Un solo `heal()` in
+    tutto: quello che il chiamante ha già fatto per produrre `result`.
 
-    Prima passata: `heal(doc)` SOLO per scoprire l'angolo dell'outer più
-    lungo — quella classificazione esiste solo dopo la topologia. La
-    rotazione si applica poi alla geometria grezza originale (non al
-    ForgeResult della prima passata): il chiamante deve rifare `heal()` sul
-    documento ruotato per ottenere un ForgeResult valido.
+    `origin` di default è il centro del bbox unito degli outer (la forma non
+    cambia con `origin`, solo dove finisce nel piano).
 
-    `origin` di default è il centro del bounding box grezzo di `doc.edges`
-    (approssimato dagli estremi dei segmenti, non un bbox esatto su archi —
-    va bene per un centro di rotazione: la forma non cambia con `origin`,
-    solo dove finisce nel piano). `tolerance` di default riprende
-    `doc.source_meta["tolerance"]` (quella usata da `load_dxf`), come fa
-    `heal()` stesso.
-
-    Ritorna `(documento_ruotato, angle_deg_applicato)` — `angle_deg` è
-    quanto si è ruotato, non l'angolo del lato (utile per un log/CLI). Se
-    non c'è nessun outer (documento vuoto o senza cluster), ritorna `doc`
-    invariato e `0.0`.
+    Ritorna `(result_ruotato, angle_deg_applicato)`. Se non c'è nessun
+    cluster, ritorna `result` invariato e `0.0`.
     """
-    result = heal(doc, tolerance=tolerance)
-    _, _, angle_deg = longest_outer_segment(result)
+    _, _, angle_deg = longest_structural_segment(result, include_inners)
     if angle_deg is None:
-        return doc, 0.0
+        return result, 0.0
 
     if origin is None:
-        origin = _document_bbox_center(doc)
+        origin = _result_bbox_center(result)
 
-    tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
     rotation_deg = target_angle_deg - angle_deg
-    rotated = rotate_document(doc, math.radians(rotation_deg), origin, tol)
+    rotated = rotate_result(result, math.radians(rotation_deg), origin)
     return rotated, rotation_deg

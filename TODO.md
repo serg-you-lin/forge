@@ -15,17 +15,35 @@ ancora aperto.
 Chiuso: `refactor/ellipse-primitive` (docs cleanup + `EllipseSeg`, due
 commit) mergiato `--ff-only` in `main`, bump a `0.6.19`.
 
-Chiuso anche il primo pezzo di "funzioni geometriche" (MAP.md D46):
-`.rotated(angle, origin)` su ogni primitiva, `segment_length`/
-`longest_segment`/`chord_angle_deg` in `core/geometry.py`, e
-`forge/tools/rotate.py` (`longest_outer_segment`, `rotate_document`,
-`rotate_to_longest_outer`) — sperimentale, non ancora in `forge.__init__`.
-Script dimostrativo `scripts/17_rotate_to_longest_outer.py` su
-`tests/examples/try_for_rotation.dxf`, verificato manualmente (outer più
-lungo passa da 90° a 0°, la diagonale interna resta intatta e ruota con
-tutto il resto). Branch `refactor/rotate-longest-outer` mergiato `--ff-only`
-in `main`, bump a `0.6.20`. Suite verde: 716 passed. `main` è la verità
-corrente, niente da committare.
+Primo pezzo di "funzioni geometriche" (MAP.md D46) — **rivisto una volta
+dopo la prima versione**, su correzione di Federico: la prima stesura
+ruotava il `ForgeDocument` grezzo e chiedeva un secondo `heal()`, e aveva
+"outer" cablato nel nome della funzione invece che parametrico. Corretto:
+una rotazione rigida non cambia la topologia, quindi `rotate_result`/
+`rotate_cluster` ruotano DIRETTAMENTE un `ForgeResult`/`ForgeCluster` già
+sano (poligoni, segmenti, `all_arcs`) — zero `heal()` di troppo, e
+`rotate_cluster` è economico/ripetibile (pensato per un futuro nester che
+prova molti angoli sulla stessa parte). "Quale entità allineare" è
+`include_inners: bool` (outer di ogni cluster, più gli inner se True) — non
+un filtro per `role` (verificato che `role` non è affidabile: un inner senza
+ruolo proprio eredita quello del padre, `hierarchy._make_inner`). Dettaglio
+completo, incluso perché la prima versione è stata scartata, in MAP.md D46.
+
+`forge/tools/rotate.py`: `.rotated(angle, origin)` su ogni primitiva,
+`segment_length`/`longest_segment`/`chord_angle_deg` in `core/geometry.py`,
+`structural_segments`/`longest_structural_segment`/`rotate_cluster`/
+`rotate_result`/`rotate_document`/`rotate_to_longest` — sperimentale, non
+ancora in `forge.__init__`. Script dimostrativo
+`scripts/17_rotate_to_longest_outer.py` su `tests/examples/try_for_rotation.dxf`,
+un solo `heal()`, verificato manualmente (outer più lungo passa da 90° a 0°,
+la diagonale interna resta intatta e ruota con tutto il resto). Suite verde:
+722 passed.
+
+**Working tree NON ancora committato dalla seconda revisione** — branch
+`refactor/rotate-result-primitive`, checked out, contiene solo questa
+revisione (il primo giro era già stato mergiato in `main` a `0.6.20`; questo
+è un fix sopra quello). Da committare e chiedere a Federico prima di
+mergiare, come da regola standard.
 
 Resta aperto, discusso ma non affrontato:
 - **Pippo che vuole sapere l'inclinazione di una flangia piegata** resta
@@ -44,10 +62,14 @@ Resta aperto, discusso ma non affrontato:
   due insiemi di punti (tipo ICP), non una semplice rotazione — molto più
   grosso, legato al "raggruppamento viste" di `framer` (`FRAMER.md`, ancora
   da scrivere) — non deciso se/come affrontarlo.
-- Le annotazioni (`ForgeDocument.annotations`) non sono ancora ruotate da
-  `rotate_document` (nessun caso reale l'ha ancora richiesto) — se/quando
+- Le annotazioni (`ForgeDocument.annotations`/`ForgeResult.annotations`) non
+  sono ancora ruotate (nessun caso reale l'ha ancora richiesto) — se/quando
   serve, ogni sottoclasse di `Annotation` (`Note`, `Dimension`, `Leader`, ...)
   ha campi diversi da ruotare, non è un'estensione da un rigo.
+- `cluster.detected`/`cluster.custom` non sono ruotati da `rotate_result` —
+  overlay a schema libero (D44), forge non sa cosa contengono. Se hai già
+  fatto `detect()` prima di ruotare, quei dati restano nelle coordinate
+  vecchie — la guida è fare `detect()` DOPO aver ruotato, non prima.
 
 **Fitting ellisse da punti grezzi** (generalizzare `arc_fit_tolerance` in
 `tools/simplify_points.py` a un fit ellittico 5-DOF, per Smoother):
