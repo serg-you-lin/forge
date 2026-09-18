@@ -48,7 +48,7 @@ doc_out.saveas("part_healed.dxf")
 
 forge.save_json(result, "part.json")                 # metadata
 print(f"{result.cluster_count} cluster(s), "
-      f"{sum(len(c.holes) for c in result.clusters)} holes")
+      f"{sum(len(c.features('holes')) for c in result.clusters)} holes")
 ```
 
 ## Multi-part file
