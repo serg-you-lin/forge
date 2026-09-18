@@ -1060,8 +1060,43 @@ ovunque — modulo, test (`tests/unit/test_interpret_annotations.py` →
 * Appunti Federico
 ** API
 inspect_file: se non gli passo il dxf, ma un altro fiel in entrata?? ce ne freghaimo ora, dal momento che non abbiamo altri input?
+
+> **Risposta:** sì, ce ne freghiamo per ora, ed è già coerente col resto del
+> codice, non solo pigrizia. `inspect_file`/`inspect_dxf` (livello 1) sono
+> hardcoded su DXF (`ezdxf.readfile`, `load_dxf`) — oggi l'unico adapter di
+> formato che forge ha davvero. `inspect_document` (livello 2) invece prende
+> già un `ForgeDocument` generico, quindi funziona anche per geometria
+> arrivata da `load_geometry()` (il percorso che usa bendly, zero DXF) — basta
+> non passargli un path DXF ma il documento già costruito. Solo il livello 1 e
+> l'orchestratore restano da generalizzare, e solo quando esisterà un secondo
+> adapter di formato vero (SVG/PDF, vedi sotto in TODO.md) — non prima.
+
 in ispect_dxf, sarebbe meglio avere l'opzione di non printare entità, ome avevamo prima. voglio dire, se hno boisogno solo dela spline o della polilinea, mi devo beccare anche tutto il resto?
+
+> **Risposta:** hai ragione, oggi manca. `inspect_dxf(path, entities=True,
+> limit=40)` ha solo un interruttore tutto/niente (`entities=False` toglie
+> il dettaglio entità del tutto) — nessun modo di dire "solo SPLINE" o "solo
+> LWPOLYLINE". Piccola aggiunta pulita: un parametro tipo `types:
+> Optional[set[str]] = None` che filtra il loop di stampa
+> (`if types and t not in types: continue`), stesso pattern di `limit`. Non
+> l'ho fatta senza dirtelo — dimmi se la vuoi ora o la metto in coda in
+> TODO.md.
+
 load_dxf: se non faccio poi detection all, la tracciatura dei layer non serve a niente, vero?
+
+> **Risposta: no, non è vero — verificato nel codice, non è un'impressione.**
+> `label_map`/`linetype_map`/`color_map` scrivono `edge.role` **al momento del
+> load**, prima che `heal()` esista anche solo come chiamata. `heal()` stesso
+> (non `detect()`) usa quei ruoli in `_split_labeled()`
+> (`core/heal.py`): ogni edge con un ruolo noto e non strutturale
+> (`is_structural_role`) viene tirato fuori dal grafo di topologia prima di
+> cercare i loop — è così che linguette/incisioni/cornice non spezzano la
+> ricerca di outer/inner. Quindi la tracciatura dei layer conta già dentro
+> `heal()` da solo, senza mai chiamare `detect()`: cambia la topologia
+> risultante (quali edge finiscono nel grafo strutturale) e dove finisce la
+> geometria in output (`to_dxf` instrada per ruolo). `detect()` aggiunge sopra
+> solo la seconda lane — classificazione *geometrica* (senza layer) di quello
+> che il label_map non ha già deciso.
 
 
 
