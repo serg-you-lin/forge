@@ -10,18 +10,12 @@ ancora aperto.
 
 ---
 
-## RIPARTENZA — stato a fine sessione 2026-09-18, da qui la prossima chat
+## RIPARTENZA — stato a inizio sessione 2026-09-18 (seconda parte)
 
-**Repo**: branch `refactor/ellipse-primitive`, checked out, **nulla committato**.
-Contiene DUE lavori distinti impilati sullo stesso branch (nato dal working
-tree già sporco quando è iniziato il secondo): (1) il cleanup della
-documentazione di questa sessione (MAP.md tradotto in inglese e condensato,
-`PARERI_VARI.md`/`REGRESSION_PLAN.md`/`file_test_status.md` cancellati,
-doppioni tolti da `FRAMER.md`/`ARCHITECTURE.md`) e (2) `EllipseSeg` (MAP.md
-D45, appena chiuso — dettaglio completo lì). Suite verde: 693 passed. Prima
-di andare avanti nella prossima sessione, probabilmente conviene splittare
-in due commit puliti (docs / feature) e decidere se e quando mergiare in
-`main` (chiedere a Federico prima del merge, come da regola standard).
+Chiuso: i due lavori impilati sul branch `refactor/ellipse-primitive` sono
+stati splittati in due commit puliti (docs cleanup, poi `EllipseSeg`),
+mergiati `--ff-only` in `main` con bump a `0.6.19`, branch locale eliminato.
+`main` è ora la verità corrente.
 
 **Prossimo argomento, solo discusso, NON ancora iniziato — "funzioni
 geometriche":**
