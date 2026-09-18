@@ -38,11 +38,18 @@ class HealStep:
         tolerance,
         label="",
         source_file="",
+        is_structural=None,
     ):
         self.doc             = doc
         self.tolerance       = tolerance
         self.label           = label
         self.source_file     = source_file
+        # Predicato strutturale iniettato dal chiamante (tipicamente
+        # heal_and_detect(), che passa tools.manufacturing_role.is_structural)
+        # — il motore non sa cosa sia un foro o una piega, sa solo eseguire
+        # un predicato che riceve. Senza iniezione, solo outer/inner sono
+        # strutturali (vedi self._structural sotto).
+        self._is_structural_fn = is_structural
 
         self.node_decimals = node_decimals_for(tolerance)
         self.result        = ForgeResult(source_file=source_file)
@@ -131,12 +138,25 @@ class HealStep:
             self.result.is_valid = False
             return
 
+    def _structural(self, role) -> bool:
+        """
+        Un ruolo è strutturale (resta nel grafo, partecipa alla ricerca loop)
+        secondo il predicato iniettato dal chiamante, se c'è — altrimenti solo
+        outer/inner lo sono (`model.role.is_structural_role`, il minimo che il
+        motore conosce da solo). Vedi `_is_structural_fn` in `__init__`.
+        """
+        from ..model.role import is_structural_role
+        if self._is_structural_fn is not None:
+            return self._is_structural_fn(role)
+        return is_structural_role(role)
+
     def _split_labeled(self):
         """
         Estrae dal flusso topologico gli Edge il cui ruolo è già stato deciso
-        (da label_map o da un consumatore) e non è strutturale: marcatura
-        (engrave, marking) e arredo del disegno (frame, title_block, o uno slug
-        di un layer sopra forge).
+        (da label_map o da un consumatore) e non è strutturale per
+        `self._structural` — marcatura, arredo del disegno, o un ruolo
+        manifatturiero se nessuno ha iniettato il predicato che lo riconosce
+        (vedi `_structural`).
 
         Questi non entrano nel grafo né nella ricerca loop — niente gap solving,
         niente riparazione angoli, niente detection dei non-contorno. L'unico
@@ -148,14 +168,24 @@ class HealStep:
         È il punto d'aggancio per un consumatore che marca la geometria PRIMA
         di heal (Framer: cornice / cartiglio) — vedi D30.
         """
-        from ..model.role import ContourRole, is_structural_role
+        from ..model.role import ContourRole
 
         def _is_split(edge):
-            return edge.role != ContourRole.UNKNOWN and not is_structural_role(edge.role)
+            return edge.role != ContourRole.UNKNOWN and not self._structural(edge.role)
 
         self.labeled_edges = [e for e in self.edges if _is_split(e)]
         if self.labeled_edges:
             self.edges = [e for e in self.edges if not _is_split(e)]
+            if self._is_structural_fn is None:
+                self.result.warnings.append(
+                    f"{len(self.labeled_edges)} edge con un ruolo diverso da "
+                    "outer/inner/unknown, trattati come non strutturali di "
+                    "default (heal() chiamato senza is_structural=...): un "
+                    "ruolo manifatturiero come 'hole' non viene riconosciuto "
+                    "come contorno di pezzo qui e finisce in trash. Passa "
+                    "is_structural=tools.manufacturing_role.is_structural, o "
+                    "chiama heal_and_detect() che lo fa automaticamente."
+                )
 
     def _preprocess(self):
         graph_pre = self._build_graph()
@@ -262,7 +292,7 @@ class HealStep:
                     return
 
         structural_loops = [
-            loop for loop in loops if _loop_is_structural(loop)
+            loop for loop in loops if _loop_is_structural(loop, self._structural)
         ]
         self.loop_edge_ids = {
             id(edge)
@@ -314,6 +344,7 @@ class HealStep:
             source_file=self.source_file,
             label_map=self.result.label_map,
             entities_in_loops=self.entities_in_loops,
+            is_structural=self._structural,
         )
 
         clusters, trash = builder.build(all_proxies)
@@ -445,19 +476,21 @@ def _fallback_polygonize(self):
             "potrebbero essere marcature o geometria aperta."
         )
 
-def _loop_is_structural(loop) -> bool:
+def _loop_is_structural(loop, is_structural) -> bool:
     """
-    Un loop è strutturale se ogni suo edge con ruolo deciso è un ruolo di
-    contorno di pezzo (``is_structural_role``). Un solo edge con ruolo non
-    strutturale — engrave, frame, title_block, … — declassa l'intero loop: non
+    Un loop è strutturale se ogni suo edge con ruolo deciso è strutturale per
+    `is_structural` (lo stesso predicato di `HealStep._structural` — iniettato
+    dal chiamante o, di default, solo outer/inner). Un solo edge non
+    strutturale — engrave, frame, title_block, un manifatturiero non
+    riconosciuto senza predicato iniettato — declassa l'intero loop: non
     diventa un ClosedFeature, non entra nell'albero di contenimento.
     """
-    from ..model.role import ContourRole, is_structural_role
+    from ..model.role import ContourRole
 
     for edge, _ in loop:
         if edge.role == ContourRole.UNKNOWN:
             continue
-        if not is_structural_role(edge.role):
+        if not is_structural(edge.role):
             return False
     return True
 
@@ -469,7 +502,8 @@ HealStep._fallback_polygonize = _fallback_polygonize
 # API pubblica
 # ---------------------------------------------------------------------------
 
-def heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeResult:
+def heal(doc: ForgeDocument, tolerance=None, label="", source_file="",
+         is_structural=None) -> ForgeResult:
     """
     Esegue l'healing su un ForgeDocument prodotto da forge.load_dxf().
 
@@ -477,6 +511,15 @@ def heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeR
                (quella usata per arrotondare i nodi in load_dxf).
     label_map: NON è un parametro — va passato a load_dxf(), che assegna
                i ruoli agli Edge in fase di traduzione.
+    is_structural: predicato `Callable[[str], bool]` — "questo ruolo è
+               topologia di contorno di pezzo?" — usato per decidere quali
+               Edge già etichettati restano nel grafo prima della ricerca
+               loop. Il motore da solo conosce solo outer/inner; passa
+               `tools.manufacturing_role.is_structural` per riconoscere anche
+               hole/countersink/threaded_hole (quello che fa
+               `heal_and_detect()` automaticamente). Senza, un edge etichettato
+               "hole" viene trattato come non strutturale e heal() lo segnala
+               con un warning.
     """
     if not isinstance(doc, ForgeDocument):
         raise TypeError(
@@ -485,7 +528,8 @@ def heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeR
         )
 
     tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
-    result = HealStep(doc, tol, label=label, source_file=source_file).run()
+    result = HealStep(doc, tol, label=label, source_file=source_file,
+                       is_structural=is_structural).run()
 
     if result.is_valid and result.clusters:
         from ..rules.validator import validate_result

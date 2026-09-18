@@ -26,7 +26,8 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.adapters.dxf.layers import TRASH_LAYER, LAYER_ENGRAVE
+from forge.adapters.dxf.layers import TRASH_LAYER
+from forge.tools.manufacturing_role import LAYER_ENGRAVE
 from forge.tools.detect import describe_features
 
 

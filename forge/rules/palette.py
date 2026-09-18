@@ -14,48 +14,42 @@ Chi li usa:
 I valori qui sono interi ACI DXF per ragioni storiche — quando arriva
 un adapter SVG/PDF andrà aggiunto un mapping ACI→hex in quel modulo.
 
+Solo outer/inner/trash/annotation/consumer hanno un colore semantico fisso
+qui — sono gli unici ruoli che il motore conosce. Il colore di un ruolo
+manifatturiero (hole, bending, ...) o di un altro consumatore si ottiene con
+``register_role_style`` qui sotto, non aggiungendo voci a questo file (MAP.md,
+"roles out of core"): ``tools/manufacturing_role.py`` lo fa per i ruoli di
+``detect()`` allo stesso modo in cui lo farebbe un consumatore esterno.
+
 ``RoleStyle`` (D37) è l'override esplicito di questa palette: un ruolo — noto
-a forge o assegnato da un consumatore (``normalize_role``) — non è più per
-forza grigio/fisso, il chiamante può dirgli come vuole che appaia in output.
+al motore o assegnato da chiunque altro — non è più per forza grigio/fisso.
 """
 
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from ..model.role import ContourRole  # noqa: F401 — importato per comodità dei consumer
+from ..model.role import ContourRole, role_str  # noqa: F401 — ContourRole importato per comodità dei consumer
 
 # ---------------------------------------------------------------------------
-# Colori semantici per ruolo
+# Colori semantici per ruolo — solo quelli che il motore conosce
 # ---------------------------------------------------------------------------
-COLOR_OUTER         = 3    # verde
-COLOR_INNER         = 2    # giallo
-COLOR_HOLE          = 6    # magenta
-COLOR_BENDING       = 11   # bianco
-COLOR_ENGRAVE       = 9    # grigio chiaro
-COLOR_MARKING       = 8    # grigio scuro
-COLOR_COUNTERSINK   = 5    # blu
-COLOR_THREADED_HOLE = 4    # ciano
-COLOR_TRASH         = 1    # rosso
-COLOR_ANNOTATION    = 7    # bianco/nero (foreground) — testi e quote
-COLOR_CONSUMER      = 8    # grigio scuro — ruolo assegnato da un consumatore
-                           # (frame, title_block, section, ...): forge non sa
-                           # cosa sia, non è spazzatura, non è di taglio
+COLOR_OUTER      = 3    # verde
+COLOR_INNER      = 2    # giallo
+COLOR_TRASH      = 1    # rosso
+COLOR_ANNOTATION = 7    # bianco/nero (foreground) — testi e quote
+COLOR_CONSUMER   = 8    # grigio scuro — ruolo che il motore non conosce
+                        # (manifatturiero o di un consumatore esterno):
+                        # forge non sa cosa sia, non è spazzatura
 
 # ---------------------------------------------------------------------------
 # ContourRole → colore semantico
-# Unica fonte di verità — gli adapter la leggono per costruire la propria
-# rappresentazione cromatica nel formato target.
+# Unica fonte di verità per outer/inner — gli adapter la leggono per
+# costruire la propria rappresentazione cromatica nel formato target.
 # ---------------------------------------------------------------------------
 ROLE_TO_COLOR: dict = {
-    ContourRole.OUTER:         COLOR_OUTER,
-    ContourRole.INNER:         COLOR_INNER,
-    ContourRole.HOLE:          COLOR_HOLE,
-    ContourRole.COUNTERSINK:   COLOR_COUNTERSINK,
-    ContourRole.THREADED_HOLE: COLOR_THREADED_HOLE,
-    ContourRole.BEND:          COLOR_BENDING,
-    ContourRole.ENGRAVE:       COLOR_ENGRAVE,
-    ContourRole.MARKING:       COLOR_MARKING,
-    ContourRole.UNKNOWN:       COLOR_TRASH,
+    ContourRole.OUTER:   COLOR_OUTER,
+    ContourRole.INNER:   COLOR_INNER,
+    ContourRole.UNKNOWN: COLOR_TRASH,
 }
 
 # ---------------------------------------------------------------------------
@@ -93,7 +87,16 @@ def role_to_color(role) -> int:
 
 
 def role_to_hex(role, fallback: str = "#ff0000") -> str:
-    """ContourRole → colore hex CSS. Passa per role_to_color + ACI_TO_HEX."""
+    """
+    Colore hex CSS di un ruolo. Un colore registrato (`register_role_style`)
+    vince, in hex diretto — evita il giro per la palette ACI a 10 colori, che
+    non ha spazio per il colore RGB pieno che un consumatore può registrare.
+    Altrimenti passa per role_to_color (palette del motore) + ACI_TO_HEX.
+    """
+    style = _REGISTERED_ROLE_STYLES.get(role_str(role))
+    if style is not None and style.color is not None:
+        r, g, b = style.color
+        return f"#{r:02x}{g:02x}{b:02x}"
     return ACI_TO_HEX.get(role_to_color(role), fallback)
 
 
@@ -129,7 +132,40 @@ class RoleStyle:
                      ``"DASHED"``). Un nome non standard è responsabilità del
                      chiamante.
         lineweight:  spessore linea in millimetri.
+        layer_name:  nome di output (layer DXF, `data-role`/gruppo SVG, ...)
+                     per questo ruolo, al posto dello slug grezzo. Un ruolo
+                     che il motore non conosce va altrimenti su un layer col
+                     nome dello slug (D31) — questo campo gli dà un nome
+                     leggibile senza bisogno che il motore lo conosca.
     """
     color:      Optional[Tuple[int, int, int]] = None
     linetype:   Optional[str] = None
     lineweight: Optional[float] = None
+    layer_name: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Registro globale di RoleStyle — stesso idioma di set_schema() in
+# io/exporter.py per i metadati: un consumatore (framer, bendly, ...)
+# registra UNA VOLTA come vuole che appaia un suo ruolo, e ogni to_dxf/split
+# successivo lo applica senza doverlo ripassare a ogni chiamata. Il
+# `role_styles=` esplicito passato a una singola chiamata resta possibile e
+# vince comunque su quanto registrato qui (override puntuale, una tantum).
+# ---------------------------------------------------------------------------
+_REGISTERED_ROLE_STYLES: dict = {}
+
+
+def register_role_style(role, style: RoleStyle) -> None:
+    """
+    Registra uno `RoleStyle` per `role`, valido per ogni render successivo
+    (`to_dxf`, `split`, ...) finché non lo si ri-registra o il processo
+    termina. `role` può essere una costante `ContourRole` o lo slug stringa
+    di un ruolo di consumatore (`normalize_role`) — viene normalizzato a
+    stringa qui, così il lookup nei renderer non deve saperne la provenienza.
+    """
+    _REGISTERED_ROLE_STYLES[role_str(role)] = style
+
+
+def registered_role_styles() -> dict:
+    """Copia del registro attivo — letta dai renderer, mai mutata da loro."""
+    return dict(_REGISTERED_ROLE_STYLES)

@@ -15,6 +15,7 @@ from shapely.geometry import Polygon, LineString
 from forge.model.cluster import ForgeCluster
 from forge.model.contour import ForgeContour
 from forge.model.role import ContourRole
+from forge.tools.manufacturing_role import HOLE, BEND, ENGRAVE
 from forge.tools.detect import describe_features
 from forge.tools.model import (
     Hole, HOLE_TYPE_PLAIN, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED,
@@ -40,7 +41,7 @@ def _part(**detected_kw):
 
 
 def _hole(t):
-    return Hole(role=ContourRole.HOLE,
+    return Hole(role=HOLE,
                 polygon=Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
                 diameter=1.0, center=(0.5, 0.5), hole_type=t)
 
@@ -64,17 +65,17 @@ class TestDescribeFeatures(unittest.TestCase):
         self.assertEqual(s["threaded_holes_count"], 1)
 
     def test_engrave_length_summed(self):
-        eng = [Engraving(role=ContourRole.ENGRAVE, length=10.0),
-               Engraving(role=ContourRole.ENGRAVE, length=5.5)]
+        eng = [Engraving(role=ENGRAVE, length=10.0),
+               Engraving(role=ENGRAVE, length=5.5)]
         cluster = _part(engrave_lines=eng)
         self.assertEqual(describe_features(cluster)["total_engrave_length"], 15.5)
 
     def test_bending_collinear_grouped(self):
         # due segmenti collineari sulla stessa retta → una piega logica
         bl = [
-            BendingLine(role=ContourRole.BEND, geometry=LineString([(0, 50), (40, 50)]), length=40),
-            BendingLine(role=ContourRole.BEND, geometry=LineString([(60, 50), (100, 50)]), length=40),
-            BendingLine(role=ContourRole.BEND, geometry=LineString([(50, 0), (50, 100)]), length=100),
+            BendingLine(role=BEND, geometry=LineString([(0, 50), (40, 50)]), length=40),
+            BendingLine(role=BEND, geometry=LineString([(60, 50), (100, 50)]), length=40),
+            BendingLine(role=BEND, geometry=LineString([(50, 0), (50, 100)]), length=100),
         ]
         cluster = _part(bending_lines=bl)
         self.assertEqual(describe_features(cluster)["bending_lines"], 2)

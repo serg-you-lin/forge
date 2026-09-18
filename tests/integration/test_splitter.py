@@ -56,9 +56,11 @@ from forge.io.dxf import (
     split, ANNOTATION_TYPES, DEFAULT_MIN_CLUSTER_AREA, cluster_passes_min_area,
 )
 from forge.adapters.dxf.layers import (
-    LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
-    LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, TRASH_LAYER,
+    LAYER_OUTER, LAYER_INNER, TRASH_LAYER,
     ALL_FORGE_LAYERS,
+)
+from forge.tools.manufacturing_role import (
+    LAYER_HOLE, LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE,
 )
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
@@ -314,9 +316,9 @@ class TestUnitSplitLayers(unittest.TestCase):
 
     def test_001_tutti_i_layer_presenti(self):
         """Tutti i layer forge standard sono presenti nel documento figlio."""
-        from forge.adapters.dxf.layers import (
-            LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
-            LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, TRASH_LAYER,
+        from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER, TRASH_LAYER
+        from forge.tools.manufacturing_role import (
+            LAYER_HOLE, LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE,
         )
         expected = {LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
                     LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, TRASH_LAYER}
@@ -491,7 +493,8 @@ class TestIntegrationContours(unittest.TestCase):
 
     def test_002_lwpolyline_inner_chiusa(self):
         """LWPOLYLINE su InnerContour/Hole nei figli è closed=True."""
-        from forge.adapters.dxf.layers import LAYER_INNER, LAYER_HOLE
+        from forge.adapters.dxf.layers import LAYER_INNER
+        from forge.tools.manufacturing_role import LAYER_HOLE
         children = self._children("pline_with_hole.dxf", "pline_with_hole")
         for fname, msp in children.items():
             for e in msp.query("LWPOLYLINE"):
@@ -553,7 +556,8 @@ class TestIntegrationContours(unittest.TestCase):
         Regressione: per ogni file in examples/, ogni LWPOLYLINE strutturale
         nei figli è closed=True. File non splittabili ignorati silenziosamente.
         """
-        from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER, LAYER_HOLE
+        from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
+        from forge.tools.manufacturing_role import LAYER_HOLE
         structural = {LAYER_OUTER, LAYER_INNER, LAYER_HOLE}
         for src in Path(EXAMPLES_DIR).glob("*.dxf"):
             if src.stem.endswith("_healed"):
@@ -605,9 +609,9 @@ class TestIntegrationLayers(unittest.TestCase):
 
     def test_002_tutti_i_layer_forge_presenti(self):
         """Tutti i layer forge standard sono presenti in ogni file figlio."""
-        from forge.adapters.dxf.layers import (
-            LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
-            LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, TRASH_LAYER,
+        from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER, TRASH_LAYER
+        from forge.tools.manufacturing_role import (
+            LAYER_HOLE, LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE,
         )
         expected = {LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
                     LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE, TRASH_LAYER}

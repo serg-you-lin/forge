@@ -35,6 +35,7 @@ from forge.tools.model import (
 )
 
 from forge.model.role import ContourRole
+from forge.tools.manufacturing_role import HOLE, BEND
 from forge.core.primitives.segments import LineSeg
 
 # ---------------------------------------------------------------------------
@@ -131,7 +132,7 @@ class TestHole(unittest.TestCase):
         """hole_type default è UNKNOWN."""
         r = 5.0
         poly = Point((0, 0)).buffer(r, resolution=64)
-        hole = Hole(role=ContourRole.HOLE, polygon=poly, diameter=10.0, center=(0, 0))
+        hole = Hole(role=HOLE, polygon=poly, diameter=10.0, center=(0, 0))
         self.assertEqual(hole.hole_type, HOLE_TYPE_UNKNOWN)
 
     def test_005_to_dict_keys(self):
@@ -170,14 +171,14 @@ class TestHole(unittest.TestCase):
         """confidence default è 0.0."""
         r = 5.0
         poly = Point((0, 0)).buffer(r, resolution=64)
-        hole = Hole(role=ContourRole.HOLE, polygon=poly, diameter=10.0, center=(0, 0))
+        hole = Hole(role=HOLE, polygon=poly, diameter=10.0, center=(0, 0))
         self.assertEqual(hole.confidence, 0.0)
 
     def test_010_source_default(self):
         """source default è stringa vuota."""
         r = 5.0
         poly = Point((0, 0)).buffer(r, resolution=64)
-        hole = Hole(role=ContourRole.HOLE, polygon=poly, diameter=10.0, center=(0, 0))
+        hole = Hole(role=HOLE, polygon=poly, diameter=10.0, center=(0, 0))
         self.assertEqual(hole.source, "")
 
 
@@ -228,9 +229,9 @@ class TestEdge(unittest.TestCase):
 
     def test_005_role_preserved(self):
         """role cached sull'Edge — assegnato dall'adapter, mai dal layer DXF."""
-        edge = Edge(role=ContourRole.BEND, start=(0, 0), end=(1, 0),
+        edge = Edge(role=BEND, start=(0, 0), end=(1, 0),
                     segment=self._seg((0, 0), (1, 0)))
-        self.assertEqual(edge.role, ContourRole.BEND)
+        self.assertEqual(edge.role, BEND)
 
     def test_006_start_end_are_tuples(self):
         """start e end sono tuple (x, y)."""
@@ -253,7 +254,7 @@ class TestBendingLine(unittest.TestCase):
         dy = end[1] - start[1]
         angle = math.degrees(math.atan2(dy, dx)) % 180.0
         return BendingLine(
-            role=ContourRole.BEND,
+            role=BEND,
             geometry=geom,
             length=geom.length,
             angle_deg=angle,
@@ -325,7 +326,7 @@ class TestForgeCluster(unittest.TestCase):
         import math
         outer = self._make_outer()
         hole_poly = Point((50, 50)).buffer(5.0, resolution=64)
-        hole = Hole(role=ContourRole.HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
+        hole = Hole(role=HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
         cluster = ForgeCluster(outer=outer, detected=DetectedFeatures())
         cluster.detected.attach("holes", [hole])
         expected = 10000.0 - math.pi * 25.0
@@ -336,7 +337,7 @@ class TestForgeCluster(unittest.TestCase):
         """polygon_with_holes restituisce Polygon Shapely con foro."""
         outer = self._make_outer()
         hole_poly = Point((50, 50)).buffer(5.0, resolution=64)
-        hole = Hole(role=ContourRole.HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
+        hole = Hole(role=HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
         cluster = ForgeCluster(outer=outer, detected=DetectedFeatures())
         cluster.detected.attach("holes", [hole])
         result_poly = cluster.polygon_with_holes

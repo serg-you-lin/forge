@@ -27,16 +27,15 @@ from ..adapters.dxf.exporter import (
     write_segments, write_open_segments, write_engrave_segments,
 )
 from ..adapters.dxf.layers import (
-    LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
+    LAYER_OUTER, LAYER_INNER,
     LAYER_ANNOTATION,
     TRASH_LAYER,
-    WORK_TYPE_TO_LAYER,
     ALL_FORGE_LAYERS,
     ROLE_TO_LAYER,
     role_to_dxf_layer,
     color_for_layer,
 )
-from ..rules.palette import COLOR_TRASH, RoleStyle
+from ..rules.palette import RoleStyle, registered_role_styles
 
 DEFAULT_MIN_CLUSTER_AREA = 50.0  # mm²
 
@@ -137,8 +136,7 @@ def to_dxf(
 
         # Fori
         for hole in cluster.features("holes"):
-            layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
-            layer = _work_layer_for_hole(hole) or layer
+            layer = _work_layer_for_hole(hole) or role_to_dxf_layer(hole.role)
             write_segments(hole.segments, msp, layer, styles=hole.styles)
 
         # Bending lines (geometria pura)
@@ -150,7 +148,7 @@ def to_dxf(
         # start di ogni segmento → in output si vedeva un punto al posto della
         # linea.
         for eng in cluster.features("engrave_lines"):
-            layer_name, _ = WORK_TYPE_TO_LAYER.get("engrave", (TRASH_LAYER, COLOR_TRASH))
+            layer_name = role_to_dxf_layer("engrave")
             write_engrave_segments(eng.segments, msp, layer_name, styles=eng.styles)
 
     if include_trash and result.trash_entities:
@@ -414,14 +412,12 @@ def _write_trash(
 def _work_layer_for_hole(hole) -> Optional[str]:
     """
     Restituisce il layer lavorazione corretto per fori speciali.
-    None = layer strutturale standard (LAYER_HOLE).
+    None = layer strutturale standard (quello di `hole.role`, di norma "hole").
     """
     if hole.hole_type == HOLE_TYPE_COUNTERSINK:
-        layer_name, _ = WORK_TYPE_TO_LAYER.get("countersink", (None, None))
-        return layer_name
+        return role_to_dxf_layer("countersink")
     if hole.hole_type == HOLE_TYPE_THREADED:
-        layer_name, _ = WORK_TYPE_TO_LAYER.get("threaded_hole", (None, None))
-        return layer_name
+        return role_to_dxf_layer("threaded_hole")
     return None
 
 
@@ -430,7 +426,7 @@ def _write_bending_lines(msp, cluster: ForgeCluster) -> None:
     Materializza le bending lines da geometria pura (bl.geometry).
     Deduplica per coordinate arrotondate.
     """
-    layer_name, _ = WORK_TYPE_TO_LAYER.get("bending", (TRASH_LAYER, COLOR_TRASH))
+    layer_name = role_to_dxf_layer("bending")
     seen: Set[tuple] = set()
 
     for bl in cluster.features("bending_lines"):
@@ -497,10 +493,16 @@ def _apply_role_styles(doc, role_styles: Optional[Dict[str, "RoleStyle"]]) -> No
     avanti, es. dal trash) e vi imposta colore/linetype/lineweight. Un campo
     lasciato a `None` in un `RoleStyle` non viene toccato — resta il default
     già impostato da `_setup_layers`/`_ensure_layer`.
+
+    Parte dal registro globale (`register_role_style`, valido per ogni
+    render finché non lo si ri-registra) e ci sovrappone `role_styles`: un
+    override passato qui, per questa sola chiamata, vince su quanto
+    registrato per lo stesso ruolo.
     """
-    if not role_styles:
+    merged = {**registered_role_styles(), **(role_styles or {})}
+    if not merged:
         return
-    for role, style in role_styles.items():
+    for role, style in merged.items():
         layer_name = role_to_dxf_layer(role)
         _ensure_layer(doc, layer_name)
         layer = doc.layers.get(layer_name)

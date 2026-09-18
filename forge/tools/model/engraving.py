@@ -27,6 +27,7 @@ from shapely.geometry import LineString, Polygon
 
 from forge.model.feature import OpenFeature
 from forge.model.role import ContourRole
+from forge.tools.manufacturing_role import ENGRAVE
 
 
 @dataclass
@@ -41,7 +42,7 @@ class Engraving(OpenFeature):
 
     def __post_init__(self):
         if self.role == ContourRole.UNKNOWN:
-            self.role = ContourRole.ENGRAVE
+            self.role = ENGRAVE
 
     @property
     def closed(self) -> bool:

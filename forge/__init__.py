@@ -97,8 +97,10 @@ from .model         import (
 from .model.role      import normalize_role, is_structural_role
 # RoleStyle (D37): override esplicito colore/linetype/lineweight per ruolo,
 # indipendente dal formato — vedi rules/palette.py. Passato a to_dxf()/split()
-# via role_styles={ruolo: RoleStyle(...)}.
-from .rules.palette   import RoleStyle
+# via role_styles={ruolo: RoleStyle(...)}, oppure registrato una volta sola
+# con register_role_style() (stesso idioma di set_schema per i metadati) e
+# applicato automaticamente a ogni render successivo senza ripassarlo.
+from .rules.palette   import RoleStyle, register_role_style
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -161,4 +163,5 @@ __all__ = [
     "normalize_role",
     "is_structural_role",
     "RoleStyle",
+    "register_role_style",
 ]

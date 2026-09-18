@@ -29,9 +29,9 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.adapters.dxf.adapter import entity_to_polygon
-from forge.adapters.dxf.layers import (
-    LAYER_OUTER, LAYER_INNER, LAYER_HOLE,
-    LAYER_COUNTERSINK, LAYER_BENDING, LAYER_ENGRAVE,
+from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
+from forge.tools.manufacturing_role import (
+    LAYER_HOLE, LAYER_COUNTERSINK, LAYER_BENDING, LAYER_ENGRAVE,
 )
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"

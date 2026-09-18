@@ -72,9 +72,17 @@ forge/
 │   │                 di detect() (vocabolario aperto per nome — D44)
 │   ├── feature.py    Feature → ClosedFeature / OpenFeature
 │   ├── contour.py
-│   └── annotation.py Annotation → Note / Dimension / Leader
+│   ├── annotation.py Annotation → Note / Dimension / Leader
+│   └── role.py       ContourRole = solo UNKNOWN/OUTER/INNER — il minimo
+│                      che il motore usa. Nessun ruolo manifatturiero qui
+│                      (D47, "roles out of core")
 │
 ├── tools/        STADI opzionali su un ForgeResult    (il caller sceglie quali e in che ordine)
+│   ├── manufacturing_role.py  hole/countersink/threaded_hole/bending/
+│   │                     engrave/marking — vocabolario di detect, MAI
+│   │                     importato da core/model (D47). `is_structural()`
+│   │                     è quello che heal_and_detect() inietta in
+│   │                     `heal(is_structural=...)`
 │   ├── detect.py         detect() / describe_features() — classifica le
 │   │                     feature nei cluster (`cluster.detected`)
 │   ├── hole_detector.py  euristiche filettato / svasatura usate da detect()
@@ -240,12 +248,18 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
 
 - **`label_map`**: l'utente dice "il layer `Piega` sono pieghe". Il ruolo è
   assegnato al load, è **autoritativo**, a valle non si rimette in discussione
-  (`source="labeled"`, `confidence=1.0`). Il vocabolario dei ruoli è aperto: un
-  work_type che forge non conosce (`frame`, `title_block`, …) non è un errore —
-  passa per `normalize_role`, viene conservato e trattato come non strutturale:
-  `heal` lo tiene fuori dal grafo, `detect` non lo tocca, l'output lo scrive su
-  un layer DXF col nome dello slug (non `Trash` — non è spazzatura), geometria
-  intatta (D27, D30, D31). Stessa autorità, stesso load, per
+  (`source="labeled"`, `confidence=1.0`). Il vocabolario dei ruoli è aperto —
+  passa per `normalize_role` e non è un errore che forge (cioè il motore)
+  non lo conosca. Cosa succede in `heal` dipende da `is_structural=...`
+  (D47): senza, qualunque work_type — manifatturiero incluso — resta fuori
+  dal grafo, come `frame`/`title_block`; con il predicato che
+  `heal_and_detect()` inietta (`tools.manufacturing_role.is_structural`),
+  `hole`/`countersink`/`threaded_hole` restano DENTRO il grafo (sono vera
+  topologia di pezzo), solo `bending`/`engrave`/`marking` e i ruoli di un
+  consumatore restano fuori. In entrambi i casi `detect` non tocca ciò che
+  non conosce, l'output lo scrive su un layer DXF col nome dello slug (non
+  `Trash` — non è spazzatura), geometria intatta (D27, D30, D31, D47).
+  Stessa autorità, stesso load, per
   `linetype_map`/`color_map` (`{"DASHED": "bending"}`, `{"cyan": "engrave"}`,
   Cluster E): quando il disegno porta l'intenzione nello stile della linea
   invece che nel layer, sono la stessa lane con un altro segnale in ingresso —
@@ -273,9 +287,6 @@ Onestà sullo stato — dettagli e motivazioni sono in `MAP.md` (sezione
 - **`load_pdf`** ritorna `list[Edge]` invece di un `ForgeDocument` → non si
   aggancia a `heal()`. Congelato (MAP.md D10).
 - **`detect._detect_engrave`** è ancora un placeholder no-op (MAP.md D13).
-- la tassonomia hole/countersink/threaded/engrave/marking vive in
-  `model/role.py` ma è concettualmente di `detect`, non di `model` —
-  questione aperta accanto a MAP.md D37, non ancora risolta.
 
 Tutta la storia dei refactor già chiusi (bridge/shape eliminato, dispatcher
 entità→primitiva unificato, `Edge` spostato da `adapters/` a

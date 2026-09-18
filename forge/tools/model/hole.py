@@ -11,6 +11,7 @@ from shapely.geometry import Polygon
 from forge.core.primitives import LineSeg, ArcSeg, CircleSeg, SplineSeg
 from forge.model.feature import ClosedFeature
 from forge.model.role import ContourRole
+from forge.tools.manufacturing_role import HOLE
 
 HOLE_TYPE_UNKNOWN      = "unknown"
 HOLE_TYPE_PLAIN        = "plain"
@@ -39,7 +40,7 @@ class Hole(ClosedFeature):
 
     def __post_init__(self):
         if self.role == ContourRole.UNKNOWN:
-            self.role = ContourRole.HOLE
+            self.role = HOLE
 
     def to_dict(self) -> dict:
         d = {

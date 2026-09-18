@@ -147,11 +147,16 @@ def _collect_inners(
 # ---------------------------------------------------------------------------
 
 class HierarchyBuilder:
-    def __init__(self, label: str, source_file: str, label_map: dict, entities_in_loops: set = None):
+    def __init__(self, label: str, source_file: str, label_map: dict,
+                 entities_in_loops: set = None, is_structural=None):
         self.label       = label
         self.source_file = source_file
         self.label_map   = label_map
         # entities_in_loops tenuto temporaneamente per compatibilità — non usato
+        # Stesso predicato di HealStep._structural — iniettato dal chiamante
+        # (heal_and_detect → tools.manufacturing_role.is_structural) o, di
+        # default, solo outer/inner (model.role.is_structural_role).
+        self._is_structural = is_structural or is_structural_role
 
     def build(self, proxies: list) -> tuple[list[ForgeCluster], list]:
         self._classified_proxies: set[int] = set()
@@ -204,5 +209,5 @@ class HierarchyBuilder:
         return [
             p for p in proxies
             if id(getattr(p, "polygon", None)) not in self._classified_proxies
-            and not is_structural_role(getattr(p, "role", ContourRole.UNKNOWN))
+            and not self._is_structural(getattr(p, "role", ContourRole.UNKNOWN))
         ]

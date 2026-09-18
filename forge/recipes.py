@@ -16,6 +16,7 @@ import os
 
 from .core.heal import heal
 from .tools.detect import detect
+from .tools.manufacturing_role import is_structural as _manufacturing_is_structural
 from .io.dxf import split, cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
 from .tools.thresholds import HOLE_DIAMETER_THRESHOLD
 from .adapters.dxf.layers import LAYER_ANNOTATION
@@ -50,7 +51,8 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
     Restano disponibili `heal()` e `detect()` separati: un renderer o un
     nesting tool possono volere la sola topologia.
     """
-    result = heal(doc, tolerance=tolerance, label=label, source_file=source_file)
+    result = heal(doc, tolerance=tolerance, label=label, source_file=source_file,
+                  is_structural=_manufacturing_is_structural)
 
     if result.is_valid and result.clusters:
         detect(result,
@@ -77,7 +79,8 @@ def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
     tocca il filesystem: `split()` resta puro.
     Il nome file è `f"{cluster.label}.dxf"` (cluster.label lo assegna `namer`).
     """
-    result = heal(doc, tolerance=tolerance, label=label, source_file=source_file)
+    result = heal(doc, tolerance=tolerance, label=label, source_file=source_file,
+                  is_structural=_manufacturing_is_structural)
 
     if not result.is_valid or not result.clusters:
         return result

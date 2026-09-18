@@ -24,9 +24,17 @@ from forge.model.role import (
 class TestNormalizeRole(unittest.TestCase):
 
     def test_ruolo_noto_diventa_costante(self):
-        self.assertIs(normalize_role("hole"), ContourRole.HOLE)
-        # case-insensitive e alias
-        self.assertIs(normalize_role("  BEND "), ContourRole.BEND)
+        # Solo outer/inner sono vocabolario del motore ora (roles out of
+        # core) — normalize_role() li promuove a ContourRole.
+        self.assertIs(normalize_role("outer"), ContourRole.OUTER)
+        self.assertIs(normalize_role("  INNER "), ContourRole.INNER)
+
+    def test_ruolo_manifatturiero_e_uno_slug_qualunque_qui(self):
+        # "hole"/"bending" non sono più costanti di model.role: sono
+        # vocabolario di tools.manufacturing_role, a fianco di detect().
+        # Qui passano come uno slug qualunque, non come un ContourRole.
+        self.assertEqual(normalize_role("hole"), "hole")
+        self.assertNotIsInstance(normalize_role("hole"), ContourRole)
 
     def test_ruolo_ignoto_conservato_come_slug(self):
         self.assertEqual(normalize_role("title_block"), "title_block")
@@ -65,16 +73,20 @@ class TestLayerToRole(unittest.TestCase):
 
 
 class TestIsStructuralRole(unittest.TestCase):
-    """Predicato unico 'questo ruolo è contorno di pezzo?' (MAP.md D30)."""
+    """
+    Predicato minimo del motore (MAP.md D30, ristretto da "roles out of
+    core"): solo outer/inner. Il predicato ESTESO (+ hole/countersink/
+    threaded_hole) è `tools.manufacturing_role.is_structural`, testato in
+    TestManufacturingIsStructural sotto — non qui, non è vocabolario di
+    model.role.
+    """
 
     def test_ruoli_di_contorno(self):
-        for r in (ContourRole.OUTER, ContourRole.INNER, ContourRole.HOLE,
-                  ContourRole.COUNTERSINK, ContourRole.THREADED_HOLE):
+        for r in (ContourRole.OUTER, ContourRole.INNER):
             self.assertTrue(is_structural_role(r))
 
     def test_marcatura_e_arredo_non_sono_strutturali(self):
-        for r in (ContourRole.ENGRAVE, ContourRole.MARKING, ContourRole.BEND,
-                  ContourRole.UNKNOWN):
+        for r in ("engrave", "marking", "bending", "hole", ContourRole.UNKNOWN):
             self.assertFalse(is_structural_role(r))
 
     def test_slug_di_un_consumatore_non_e_strutturale(self):
@@ -86,7 +98,25 @@ class TestIsStructuralRole(unittest.TestCase):
     def test_accetta_lo_slug_stringa_equivalente(self):
         # ContourRole eredita da str: "outer" == ContourRole.OUTER
         self.assertTrue(is_structural_role("outer"))
-        self.assertIn("hole", STRUCTURAL_ROLES)
+        self.assertIn(ContourRole.INNER, STRUCTURAL_ROLES)
+
+
+class TestManufacturingIsStructural(unittest.TestCase):
+    """
+    Predicato ESTESO — outer/inner (motore) + hole/countersink/threaded_hole
+    (manifatturiero) — quello che `heal_and_detect()` inietta in
+    `heal(is_structural=...)`. Vive a fianco di detect(), non nel motore.
+    """
+
+    def test_ruoli_manifatturieri_strutturali(self):
+        from forge.tools.manufacturing_role import is_structural
+        for r in ("outer", "inner", "hole", "countersink", "threaded_hole"):
+            self.assertTrue(is_structural(r))
+
+    def test_marcatura_e_arredo_restano_non_strutturali(self):
+        from forge.tools.manufacturing_role import is_structural
+        for r in ("bending", "engrave", "marking", "frame", "unknown"):
+            self.assertFalse(is_structural(r))
 
 
 class TestCustomRoleSurvivesHeal(unittest.TestCase):
