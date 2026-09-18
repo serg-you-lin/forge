@@ -1084,11 +1084,18 @@ da "è girato e non c'è nessuna feature".
 5. **`Hole`/`BendingLine`/`Engraving`/`ClassifiedEntity` si spostano in
    `forge/tools/model/`** (singolare, rispecchia `forge/model/`): sono output
    di `detect()`, non geometria di `heal()` (`hole-classification-belongs-
-   in-detect`). `ForgeCluster`/`ForgeResult` li referenziano solo sotto
-   `TYPE_CHECKING` (`from __future__ import annotations` rende l'annotazione
-   una stringa pigra) — zero import a runtime, stessa regola di dipendenza
-   di `model`/`adapters` (`ARCHITECTURE.md`) estesa a `tools`. Verificato,
-   non assunto: l'intera suite gira senza un solo import circolare.
+   in-detect`). Primo tentativo: `ForgeCluster.detected`/
+   `ForgeResult.classified_entities` li referenziavano sotto `TYPE_CHECKING`
+   (zero import a runtime, solo hint statico). **Corretto da Federico**: anche
+   quello è troppo — se apre `model/cluster.py` e la prima riga nomina
+   `tools/`, la domanda "perché model sa che `tools` esiste?" si pone lo
+   stesso, anche se l'import è inerte. `detect()` non è altro che **il primo
+   di possibili consumatori** — vive dentro forge perché sviluppato insieme,
+   non perché il model debba sapere che esiste. Tipizzati `Optional[Any]`:
+   zero menzione testuale di `tools/` in tutto `model/`, il contratto
+   (`.get(name, default)`, `.items()`) resta duck-typed, mai imposto.
+   Verificato, non assunto: l'intera suite gira senza un solo import
+   circolare in entrambe le versioni.
 6. **`rules/thresholds.py` → `tools/thresholds.py`**: i suoi due soli
    consumatori (`detect.py`, `hole_detector.py`) erano già entrambi in
    `tools/`. `rules/palette.py` **non si sposta** — mappa colore per l'intero
@@ -1122,6 +1129,20 @@ da "è girato e non c'è nessuna feature".
    indipendenti dello stesso pattern (nome noto → logica ricca, nome
    sconosciuto → fallback generico), non un framework condiviso — coerente
    con D5, prematuro da un campione di poche istanze.
+10. **`describe_features` promosso a `forge.describe_features`** (top-level,
+    in `forge.__all__`), non solo raggiungibile via `forge.tools.`. Corretto
+    da Federico: `forge.X` piatto è il fronte pubblico sanzionato
+    (`forge/__init__.py`, "non devi importare i moduli interni
+    direttamente"); `forge.tools.X`/`forge.model.X` esistono comunque per
+    come funziona l'import di Python, ma non sono un secondo ingresso di
+    pari livello — stesso trattamento già riservato a `simplify_points`/
+    `load_pdf` quando non promossi. `describe_features` è maturo quanto
+    `detect`/`inject`/`anchor_annotations`, i suoi fratelli diretti (stessa
+    famiglia "stadi opzionali su un `ForgeResult`") — lasciarlo l'unico non
+    promosso sarebbe stata un'eccezione senza motivo, non la regola. Non
+    tocca `bridge_tabs`/`bridge_nested_tabs` (`tabs.py`): restano non
+    promosse, per lavoro ancora da fare lì, non per principio diverso — la
+    stessa domanda si riproporrà quando quel lavoro sarà chiuso.
 
 **Bug trovato facendo il lavoro**: `core/healing/hierarchy.py::_build_parts`
 costruiva ogni `ForgeCluster` passando `holes=[]` esplicito al costruttore —
