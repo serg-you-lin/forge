@@ -858,8 +858,10 @@ Branch `refactor/ellipse-primitive`.
 
 First piece of "funzioni geometriche" (TODO.md) actually built, triggered by
 a concrete ask: a script that rotates a whole file so its longest OUTER side
-becomes horizontal — filtered to `role="outer"`, not just any geometry (a
-diagonal internal line, even a long one, must not count).
+becomes horizontal — filtered to the outer, not just any geometry (a
+diagonal internal line, even a long one, must not count) — with an eye on a
+future nester, where "rotate by angle" needs to be a cheap, repeatable API
+(try many candidate angles), not a one-shot script action.
 
 `.rotated(angle_rad, origin=(0,0))` added to `LineSeg`/`ArcSeg`/`SplineSeg`/
 `CircleSeg`/`EllipseSeg` — same tier and pattern as `.reversed()`, pure
@@ -875,38 +877,69 @@ and `chord_angle_deg(a, b)` — the exact `atan2(...) % 180` formula
 `detect._detect_bending` and `_bending_line_from_data` already had inline
 twice, now shared instead of duplicated a third time.
 
-`forge/tools/rotate.py` (new, experimental — importable as
-`forge.tools.rotate`, not yet in `forge.__init__`'s top-level surface, same
-precautionary stance as `simplify_points` pre-proof, D33):
+**First cut (superseded within the same session, before anything else built
+on it) rotated the raw pre-heal `ForgeDocument` and asked the caller to
+`heal()` a second time** — rejected by Federico on two counts: (1) the
+"which entity to align to" choice was baked into a function name
+(`rotate_to_longest_outer`) instead of being a parameter, with the nester's
+future need for other criteria in mind; (2) the double `heal()` had no clear
+justification. Both were right. The fix rests on one fact, verified by
+tracing `heal()`, not assumed: **a rigid rotation never changes topology** —
+which loop contains which, what's outer vs inner, all of that is unaffected
+by rotating coordinates. So there is no need to ever heal a second time:
+`rotate_result`/`rotate_cluster` transform the ALREADY-healed structures
+directly (segments, polygons via `shapely.affinity.rotate`, the raw
+`all_arcs` `detect()` reads for threaded holes) and return a new, still-valid
+`ForgeResult` — no re-run of loop-finding/hierarchy at all. This also gives
+the nester primitive it needs almost for free: `rotate_cluster(cluster,
+angle_rad, origin)` is cheap (pure coordinate transforms) and safe to call
+in a loop over many candidate angles for one part, something a second
+`heal()` per attempt would have made impractical.
 
-- `longest_outer_segment(result)` — `(segment, length, angle_deg)` of the
-  longest segment across every `cluster.outer.segments` in a `ForgeResult`.
-  `None` if there is no outer.
-- `rotate_document(doc, angle_rad, origin, tolerance)` — new `ForgeDocument`
-  with every `edge.segment.rotated(...)`, endpoints re-rounded exactly like
-  the adapter does at load time (`round_point`/`node_decimals_for`) so a
-  later `heal()` sees the same coincident nodes. Annotations are **not**
-  rotated yet (no real case has needed it) — `doc.annotations` non-empty
-  adds a warning instead of silently leaving them in the wrong place.
-- `rotate_to_longest_outer(doc, origin=None, target_angle_deg=0.0,
-  tolerance=None)` — the orchestrator. Two passes, not one: "outer" only
-  exists after topology, so pass 1 is `heal(doc)` purely to measure the
-  angle; the actual rotation is applied to the *raw* pre-heal
-  `doc.edges` (via `rotate_document`), and the caller re-heals the rotated
-  document to get a fresh, valid `ForgeResult` — rotating polygons/
-  hierarchy/features of an already-healed `ForgeResult` in place would mean
-  touching every derived structure by hand for the same end result.
-  `origin` defaults to the bbox center of the document's own edges
-  (approximate on arcs — fine for a pivot, the shape doesn't change with
-  `origin`, only where it lands).
+`forge/tools/rotate.py` (experimental — importable as `forge.tools.rotate`,
+not yet in `forge.__init__`'s top-level surface, same precautionary stance
+as `simplify_points` pre-proof, D33):
+
+- `structural_segments(result, include_inners=False)` /
+  `longest_structural_segment(result, include_inners=False)` — segments (or
+  the longest + its angle) from every `cluster.outer`, plus `cluster.inners`
+  too if `include_inners=True`. Deliberately **not** filtered by
+  `contour.role` — traced `hierarchy._make_inner` and found role isn't a
+  reliable outer/inner discriminator: an inner with no role of its own
+  *inherits its parent's role* if the parent had an explicit one (an outer
+  tagged `"outer"` gives its untagged holes `"outer"` too), so a role-string
+  filter would be ambiguous in exactly the common case (no `label_map` on
+  the holes). `cluster.outer` vs `cluster.inners` is structural and never
+  ambiguous. For any narrower criterion (a specific role after `detect()`,
+  or anything else) forge gives the pieces, not a query language: read
+  `cluster.outer.segments`/`cluster.inners[i].segments` directly and call
+  the already-generic `longest_segment()`/`chord_angle_deg()`.
+- `rotate_cluster(cluster, angle_rad, origin)` / `rotate_result(result,
+  angle_rad, origin)` — the actual rotation, on an already-healed
+  `ForgeCluster`/`ForgeResult`, no `heal()` involved (see above).
+  `cluster.detected`/`cluster.custom` are **not** touched — open,
+  duck-typed overlays (D44), forge doesn't know their shape; run `detect()`
+  *after* rotating, not before. `result.annotations` are also not rotated
+  yet (no real case needed it) — a warning is added instead of silently
+  leaving them in the wrong place, same treatment `rotate_document` already
+  had.
+- `rotate_document(doc, angle_rad, origin, tolerance)` — the pre-heal
+  sibling, unchanged from the first cut: rotates raw `ForgeDocument.edges`
+  when the angle is already known from elsewhere and there's no result yet
+  to rotate.
+- `rotate_to_longest(result, include_inners=False, target_angle_deg=0.0,
+  origin=None)` — thin convenience wrapper: measure with
+  `longest_structural_segment`, rotate with `rotate_result`. Takes an
+  already-healed `result`, does no healing itself.
 
 New fixture `tests/examples/try_for_rotation.dxf` (generator:
 `tests/generate_rotation_fixture.py`) — 100x400 rectangle (outer verticale,
 lato più lungo = 400) with an internal line diagonal across it, like a
 bending line but not parallel to any side, to prove the outer-only filter.
-Demo script `scripts/17_rotate_to_longest_outer.py`.
+Demo script `scripts/17_rotate_to_longest_outer.py` — a single `heal()` call
+now, not two.
 
-Suite: 716 passed (was 693 + rotation tests), no golden touched.
+Suite: 722 passed (was 693 + rotation tests), no golden touched.
 
 ---
 
