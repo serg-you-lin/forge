@@ -56,6 +56,25 @@ class LineSeg:
         """Stessa linea, percorsa al contrario."""
         return LineSeg(start=self.end, end=self.start)
 
+    def rotated(self, angle: float, origin: Point = (0.0, 0.0)) -> "LineSeg":
+        """Stessa linea, ruotata di `angle` radianti attorno a `origin`."""
+        return LineSeg(
+            start=_rotate_point(self.start, angle, origin),
+            end=_rotate_point(self.end, angle, origin),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Matematica di rotazione condivisa (ogni primitiva)
+# ---------------------------------------------------------------------------
+
+def _rotate_point(pt: Point, angle: float, origin: Point) -> Point:
+    """Ruota `pt` di `angle` radianti (CCW) attorno a `origin`."""
+    ox, oy = origin
+    x, y = pt[0] - ox, pt[1] - oy
+    cos_a, sin_a = math.cos(angle), math.sin(angle)
+    return (ox + x * cos_a - y * sin_a, oy + x * sin_a + y * cos_a)
+
 
 # ---------------------------------------------------------------------------
 # Matematica angolare condivisa (ArcSeg / EllipseSeg)
@@ -145,6 +164,20 @@ class ArcSeg:
             start_angle=self.end_angle,
             end_angle=self.start_angle,
             ccw=not self.ccw,
+        )
+
+    def rotated(self, angle: float, origin: Point = (0.0, 0.0)) -> "ArcSeg":
+        """
+        Stesso arco fisico, ruotato di `angle` radianti attorno a `origin`:
+        il centro trasla con la rotazione, `start_angle`/`end_angle` si
+        spostano dello stesso `angle` (il raggio e il verso non cambiano).
+        """
+        return ArcSeg(
+            center=_rotate_point(self.center, angle, origin),
+            radius=self.radius,
+            start_angle=self.start_angle + angle,
+            end_angle=self.end_angle + angle,
+            ccw=self.ccw,
         )
 
     @classmethod
@@ -342,6 +375,41 @@ class SplineSeg:
             end_tangent=_neg(self.start_tangent),
         )
 
+    def rotated(self, angle: float, origin: Point = (0.0, 0.0)) -> "SplineSeg":
+        """
+        Stessa spline, ruotata di `angle` radianti attorno a `origin`: ruota
+        i punti di controllo e i campioni (`approx_points`/`fit_points`, che
+        sono XY(Z) assoluti). Le tangenti sono vettori direzione, non punti:
+        ruotano sulla sola componente XY, sempre attorno a (0, 0) — mai
+        traslate da `origin`.
+        """
+        def _rotate_xyz(p: Tuple[float, float, float]) -> Tuple[float, float, float]:
+            x, y = _rotate_point((p[0], p[1]), angle, origin)
+            return (x, y, p[2])
+
+        def _rotate_vec3(v):
+            if v is None:
+                return None
+            x, y = _rotate_point((v[0], v[1]), angle, (0.0, 0.0))
+            return (x, y, v[2])
+
+        return SplineSeg(
+            degree=self.degree,
+            control_points=[_rotate_point(p, angle, origin) for p in self.control_points],
+            knots=list(self.knots),
+            weights=list(self.weights) if self.weights else None,
+            approx_points=[_rotate_point(p, angle, origin) for p in self.approx_points] if self.approx_points else None,
+            fit_points=[_rotate_xyz(p) for p in self.fit_points] if self.fit_points else None,
+            closed=self.closed,
+            periodic=self.periodic,
+            flags=self.flags,
+            knot_tolerance=self.knot_tolerance,
+            fit_tolerance=self.fit_tolerance,
+            control_point_tolerance=self.control_point_tolerance,
+            start_tangent=_rotate_vec3(self.start_tangent),
+            end_tangent=_rotate_vec3(self.end_tangent),
+        )
+
     def _evaluate(self, t: float) -> Point:
         """
         Punto della curva vera al parametro `t` (algoritmo di de Boor, "The
@@ -494,6 +562,10 @@ class CircleSeg:
         """Un cerchio è simmetrico: invertirlo lo lascia identico."""
         return CircleSeg(center=self.center, radius=self.radius)
 
+    def rotated(self, angle: float, origin: Point = (0.0, 0.0)) -> "CircleSeg":
+        """Stesso cerchio, ruotato di `angle` radianti attorno a `origin` (solo il centro si sposta)."""
+        return CircleSeg(center=_rotate_point(self.center, angle, origin), radius=self.radius)
+
     def discretize(self, tolerance: float = DEFAULT_TOLERANCE) -> List[Point]:
         """
         Discretizza il cerchio in polilinea chiusa.
@@ -619,4 +691,21 @@ class EllipseSeg:
             start_param=self.end_param,
             end_param=self.start_param,
             ccw=not self.ccw,
+        )
+
+    def rotated(self, angle: float, origin: Point = (0.0, 0.0)) -> "EllipseSeg":
+        """
+        Stessa ellisse fisica, ruotata di `angle` radianti attorno a `origin`:
+        il centro trasla con la rotazione, `major_axis` (vettore) ruota
+        attorno a (0, 0) — mai traslato — che è già come un'ellisse ruota
+        nella sua stessa parametrizzazione, senza toccare `start_param`/
+        `end_param` (relativi a `major_axis`, non a coordinate assolute).
+        """
+        return EllipseSeg(
+            center=_rotate_point(self.center, angle, origin),
+            major_axis=_rotate_point(self.major_axis, angle, (0.0, 0.0)),
+            ratio=self.ratio,
+            start_param=self.start_param,
+            end_param=self.end_param,
+            ccw=self.ccw,
         )
