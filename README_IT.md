@@ -85,6 +85,9 @@ vedere dove si rompe la catena.
 - **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — com'è fatto dentro e
   perché: gli strati, il flusso, il principio "il prodotto è il modello".
 - **`MAP.md`** — le decisioni di design prese, in ordine cronologico.
+- **[`docs/LLM.md`](docs/LLM.md)** — riferimento compatto per un'AI che scrive
+  codice contro `forge`: stesso contenuto di `API.md`, densità massima, meno
+  token possibile.
 
 ---
 
