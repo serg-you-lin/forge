@@ -131,37 +131,47 @@ consolidata:
    - `area` resta sul cluster, duck-typed su `self.detected.holes[i].polygon`
      (non serve importare `Hole` per leggere un attributo su un'istanza già
      passata).
-   - `summary()` **esce dal cluster**, diventa una funzione in `tools/`
-     (`cluster_summary(cluster)`) — non può restare sul model perché model
-     non può chiamare tools. Diventa anche **estendibile come
-     `role_to_color`**: nomi noti (`holes`, `bending_lines`, `engrave_lines`)
-     → logica ricca di oggi (conteggio per tipo, raggruppamento pieghe); un
-     nome che `detect()` non conosce → fallback generico
-     (`f"{name}_count": len(items)`), mai silenzio. Aggiornare il chiamante
-     in `io/exporter.py` (`cluster.summary` → `cluster_summary(cluster)`).
+   - `summary` **resta una property sul cluster**, ma diventa generica:
+     `{nome}_count: len(items)` per ogni nome attaccato a `self.detected`
+     (`{}` se `detected is None`) — zero import a runtime, chiama solo un
+     metodo sull'oggetto che già ha in mano. Funziona identico per chi ha
+     fatto solo `heal()` (oggi: sempre tutti zeri, invariato) e per qualunque
+     nome custom, il tuo `flange_view_hint` incluso — senza che forge sappia
+     cosa sia.
    - `to_dict()`: via `holes_count`/`holes` (non più garantiti senza
-     `detect()`) — quei numeri arrivano già da `cluster_summary()`.
-5. **`detect.py`**: ogni sito che oggi scrive diretto sul cluster
+     `detect()`) — il conteggio grezzo arriva già da `summary`.
+5. **Nuova funzione in `tools/`** (es. `tools/detect.py::describe_features(cluster)`)
+   — il conteggio **ricco** che forge sa fare solo per i **suoi** nomi noti
+   (`holes` per tipo, `bending_lines` raggruppate, `total_engrave_length`,
+   `total_marking_length` — lo `summary()` di oggi). Serve le costanti
+   `HOLE_TYPE_*`, quindi vive per forza in `tools/`, non sul model. Non è un
+   sostituto del punto 4 — è un livello in più sopra, non alternativo.
+6. **`detect.py`**: ogni sito che oggi scrive diretto sul cluster
    (`cluster.holes.append` ecc.) crea/aggiorna `cluster.detected` con
    `attach()` invece.
-6. **Consumatori a valle** da aggiornare a passare per `.detected`:
+7. **Consumatori a valle** da aggiornare a passare per `.detected`:
    `io/dxf.py` (routing output fori/pieghe/incisioni), view_model/SVG,
    `inspect.py` (`_sub_part`).
-7. **`rules/metadata_schema.py` / `io/exporter.py`: NESSUNA modifica.**
-   Verificato: framer/smoother/bendly/Pippo sono tutti consumatori Python
-   in-process (leggono `ForgeResult`/`cluster.summary()`/`cluster.detected`
-   direttamente, mai `build_metadata()`) — l'unico pubblico di
-   `METADATA_FIELDS` è un confine esterno non-Python (CAM/ERP/XDATA), dove
-   restare curato-per-default è la scelta giusta (`forge-reports-drawing-
-   never-guesses-no-shop-nomenclature`). Se un giorno si scopre falso,
-   riaprire la domanda.
-8. **Niente sovrastruttura/API nuova per l'estendibilità**: `role_to_color`,
-   `DetectedFeatures`, `cluster_summary()` restano tre implementazioni
-   piccole e indipendenti dello stesso pattern, non un framework condiviso —
-   coerente con D5, e prematuro da un campione di 2-3 istanze.
-9. Test + golden aggiornati — verificare prima di rigenerare, mai alla cieca
-   (`golden-files-verify-before-regenerating`).
-10. Verifica finale: suite verde + un fixture reale con fori/pieghe/incisioni
+8. **`io/exporter.py::build_metadata()` — tre livelli, non uno**. Scoperto
+   ragionando su "quante flange in su ha questo cluster" (una detection
+   *custom*, non di forge): né il `summary` generico (punto 4, dà solo un
+   conteggio grezzo) né il conteggio ricco di forge (punto 5, conosce solo i
+   *suoi* tipi) possono mai rispondere a quella domanda — solo chi ha scritto
+   `FlangeViewHint` sa cosa contarci dentro. Quindi `build_metadata()` fonde:
+   `summary` generico + `describe_features()` di forge + un **nuovo
+   parametro esplicito del chiamante** (stesso idioma di
+   `data_injector`/`label_map`/`RoleStyle`: dizionario o callback passato da
+   fuori, mai auto-discovery). Le chiavi passate così bypassano
+   `METADATA_FIELDS` (passarle è già la scelta esplicita del chiamante, non
+   serve un secondo cancello). `metadata_schema.py` stesso non cambia forma.
+9. **Niente sovrastruttura/API nuova per l'estendibilità**: `role_to_color`,
+   `DetectedFeatures`, `summary`/`describe_features()`, il parametro extra di
+   `build_metadata()` restano implementazioni piccole e indipendenti dello
+   stesso pattern, non un framework condiviso — coerente con D5, e prematuro
+   da un campione di poche istanze.
+10. Test + golden aggiornati — verificare prima di rigenerare, mai alla cieca
+    (`golden-files-verify-before-regenerating`).
+11. Verifica finale: suite verde + un fixture reale con fori/pieghe/incisioni
     renderizzato e guardato, non solo contato
     (`render-the-drawing-before-judging-output`).
 
