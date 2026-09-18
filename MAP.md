@@ -896,9 +896,15 @@ angle_rad, origin)` is cheap (pure coordinate transforms) and safe to call
 in a loop over many candidate angles for one part, something a second
 `heal()` per attempt would have made impractical.
 
-`forge/tools/rotate.py` (experimental — importable as `forge.tools.rotate`,
-not yet in `forge.__init__`'s top-level surface, same precautionary stance
-as `simplify_points` pre-proof, D33):
+`forge/tools/rotate.py` (experimental, same precautionary stance as
+`simplify_points` pre-proof, D33 — `rotate_result`/`rotate_cluster`/
+`rotate_document`/`rotate_to_longest` are importable as `forge.rotate_*`
+**not just `forge.tools.rotate.*`** — matching the `simplify_points`
+precedent exactly, which Claude got wrong on the first pass of this same
+decision: not in `__all__`, not in `docs/API.md`, but reachable from a bare
+`import forge`. `structural_segments`/`longest_structural_segment` stay
+`forge.tools.rotate`-only, same treatment as `simplify_points`'s
+`detect_corners`/`fit_primitives`):
 
 - `structural_segments(result, include_inners=False)` /
   `longest_structural_segment(result, include_inners=False)` — segments (or
