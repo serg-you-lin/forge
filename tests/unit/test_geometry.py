@@ -28,7 +28,9 @@ from forge.core.geometry import (
     track_points, track_length, track_shape_type,
     interior_angle_deg, detect_corners, drop_duplicate_points,
     fit_circle_kasa, arc_angles,
+    segment_length, longest_segment, chord_angle_deg,
 )
+from forge.core.primitives.segments import CircleSeg
 
 
 # ---------------------------------------------------------------------------
@@ -384,6 +386,60 @@ class TestPointSequenceMath(unittest.TestCase):
         self.assertAlmostEqual(start, 0.0, places=3)
         self.assertAlmostEqual(end, math.pi / 2, places=3)
         self.assertTrue(ccw)
+
+
+# ---------------------------------------------------------------------------
+# segment_length / longest_segment / chord_angle_deg
+# ---------------------------------------------------------------------------
+# Nate dalla discussione "funzioni geometriche" (TODO.md): dato un elenco di
+# segmenti nativi, qual è il più lungo e che angolo ha — usate da
+# forge.tools.rotate per allineare il lato OUTER più lungo di un disegno.
+
+class TestSegmentLength(unittest.TestCase):
+
+    def test_001_line_length_is_euclidean(self):
+        seg = LineSeg(start=(0, 0), end=(3, 4))
+        self.assertAlmostEqual(segment_length(seg), 5.0, places=9)
+
+    def test_002_arc_length_is_radius_times_sweep(self):
+        seg = make_arc(0, 0, 10, 0, 90)  # quarto di cerchio
+        self.assertAlmostEqual(segment_length(seg), 10 * math.pi / 2, places=6)
+
+    def test_003_circle_length_is_circumference(self):
+        seg = CircleSeg(center=(0, 0), radius=2)
+        self.assertAlmostEqual(segment_length(seg), 2 * math.pi * 2, places=6)
+
+
+class TestLongestSegment(unittest.TestCase):
+
+    def test_001_picks_longest_among_mixed_types(self):
+        short_line = LineSeg(start=(0, 0), end=(1, 0))
+        long_line  = LineSeg(start=(0, 0), end=(100, 0))
+        arc        = make_arc(0, 0, 5, 0, 90)
+        seg, length = longest_segment([short_line, arc, long_line])
+        self.assertIs(seg, long_line)
+        self.assertAlmostEqual(length, 100.0, places=9)
+
+    def test_002_empty_list_returns_none(self):
+        seg, length = longest_segment([])
+        self.assertIsNone(seg)
+        self.assertEqual(length, 0.0)
+
+
+class TestChordAngleDeg(unittest.TestCase):
+
+    def test_001_horizontal_is_zero(self):
+        self.assertAlmostEqual(chord_angle_deg((0, 0), (10, 0)), 0.0, places=9)
+
+    def test_002_vertical_is_90(self):
+        self.assertAlmostEqual(chord_angle_deg((0, 0), (0, 10)), 90.0, places=9)
+
+    def test_003_direction_does_not_matter_mod_180(self):
+        # una linea non ha un verso proprio: a->b e b->a sono lo stesso angolo
+        forward  = chord_angle_deg((0, 0), (10, 10))
+        backward = chord_angle_deg((10, 10), (0, 0))
+        self.assertAlmostEqual(forward, backward, places=9)
+        self.assertAlmostEqual(forward, 45.0, places=9)
 
 
 if __name__ == "__main__":
