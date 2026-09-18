@@ -84,20 +84,46 @@ eventualmente ML/vision.
 
 ---
 
-## `ForgeCluster` — tensione residua (campi feature cablati nella struttura)
+## IN CORSO — `detect` come consumatore, non cablato in `ForgeCluster` (branch `refactor/detect-overlay`)
 
 Il cluster di `heal` è già neutro: `outer` + `inners`, geometria
 provenance-free. Ma la dataclass `ForgeCluster` ha comunque i campi
-`bending_lines` / `holes` / `engrave_lines` **cablati nella struttura** — i
+`holes` / `bending_lines` / `engrave_lines` / `custom` **cablati nella
+struttura**, sempre presenti e sempre liste vuote appena `heal()` finisce — i
 cassetti da "pezzo di lamiera" nel modello neutro (tensione di
-`forge-clusters-not-parts` non chiusa fino in fondo).
+`forge-clusters-not-parts` non chiusa fino in fondo). `detect()`
+(`tools/detect.py`) li riempie mutando direttamente quei campi (una decina di
+siti: `cluster.holes.append`, `cluster.inners = new_inners`,
+`cluster.bending_lines.append`, `cluster.custom[...]`). Problema concreto, non
+solo estetico: **una lista vuota non distingue "detect non è mai girato" da
+"è girato e non c'è nessun foro"**.
 
-Opzione da valutare: le feature tipizzate in un overlay che `detect`
-ritorna/attacca (`cluster.detected` o un `DetectedFeatures` a parte), non come
-campi fissi. Così `heal → ForgeCluster` = puro contenimento geometrico,
-`detect → feature` = strato semantico opt-in. Refactor non piccolo: prima
-provare che il campo fisso dà davvero fastidio
-(`prove-regression-before-architectural-work`).
+Deciso con Federico (2026-09-18): farlo, branch dedicato. Scaletta:
+
+1. Nuovo `model/detected_features.py`: `DetectedFeatures(holes, bending_lines,
+   engrave_lines, custom)` — stessa forma di oggi, spostata fuori dal cluster.
+2. `ForgeCluster`: via i 4 campi feature, dentro `detected: Optional[DetectedFeatures]
+   = None`. `summary()`/`area`/`to_dict()` leggono da `self.detected`,
+   gestendo esplicitamente il caso `None`.
+3. `detect.py`: ogni sito che oggi scrive diretto sul cluster crea/aggiorna
+   `cluster.detected` invece.
+4. Consumatori a valle da aggiornare a passare per `.detected`: `io/dxf.py`
+   (routing output fori/pieghe/incisioni), view_model/SVG, `inspect.py`
+   (`_sub_part`).
+5. Test + golden aggiornati — verificare prima di rigenerare, mai alla cieca
+   (`golden-files-verify-before-regenerating`).
+6. Verifica finale: suite verde + un fixture reale con fori/pieghe/incisioni
+   renderizzato e guardato, non solo contato
+   (`render-the-drawing-before-judging-output`).
+
+**Domanda di design ancora aperta, da decidere prima di scrivere il punto 2**:
+un consumatore che oggi fa `cluster.holes` — lo lasciamo rompersi (deve
+passare per `cluster.detected.holes`, esplode se `detected is None`, coerente
+col motivo di questo refactor), oppure teniamo una `@property holes` di
+comodo che ritorna `[]` se `detected` è `None`? La property è comoda ma
+**reintroduce l'ambiguità che il refactor vuole togliere** (lista vuota
+torna a significare due cose diverse). Non decisa — Federico deve ancora
+scegliere quanto severo vuole questo breaking change interno.
 
 ---
 
