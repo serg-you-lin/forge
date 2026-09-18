@@ -280,20 +280,23 @@ def _sub_part(i: int, cluster, coords: bool) -> None:
         for inn in cluster.inners:
             print(f"    - role={_role(inn.role):<10} area={inn.area:.1f} segmenti={len(inn.segments)}")
 
-    if cluster.holes:
-        print(f"  holes  : {len(cluster.holes)}")
-        for hh in cluster.holes:
+    holes = cluster.features("holes")
+    if holes:
+        print(f"  holes  : {len(holes)}")
+        for hh in holes:
             print(f"    - {hh.hole_type:<11} Ø{hh.diameter:.2f} @ {_p(hh.center)}  "
                   f"source={hh.source or 'n/d'} conf={hh.confidence:.2f}")
 
-    if cluster.bending_lines:
-        print(f"  bending: {len(cluster.bending_lines)}")
-        for bl in cluster.bending_lines:
+    bending_lines = cluster.features("bending_lines")
+    if bending_lines:
+        print(f"  bending: {len(bending_lines)}")
+        for bl in bending_lines:
             print(f"    - len={bl.length:.1f} angle={bl.angle_deg:.1f}°")
 
-    if cluster.engrave_lines:
-        print(f"  engrave: {len(cluster.engrave_lines)}")
-        for en in cluster.engrave_lines:
+    engrave_lines = cluster.features("engrave_lines")
+    if engrave_lines:
+        print(f"  engrave: {len(engrave_lines)}")
+        for en in engrave_lines:
             print(f"    - {'chiusa' if en.closed else 'aperta'} len={en.length:.2f} "
                   f"source={en.source} conf={en.confidence:.2f}")
 

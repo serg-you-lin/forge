@@ -49,6 +49,7 @@ from forge.adapters.dxf.layers import (
     LAYER_HOLE,
 )
 from forge.io.dxf import cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
+from forge.tools.detect import describe_features
 
 
 MULTIPLI_DIR = project_root / "tests" / "examples" / "golden_multipli"
@@ -164,14 +165,14 @@ def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
     for cluster in result.clusters if result.is_valid and result.clusters else []:
         part_payloads.append({
             "area": cluster.area,
-            "holes_count": len(cluster.holes + cluster.inners),
+            "holes_count": len(cluster.features("holes") + cluster.inners),
             "outer_perimeter": cluster.outer.polygon.exterior.length,
-            "inner_perimeter": sum(h.polygon.exterior.length for h in cluster.holes + cluster.inners),
+            "inner_perimeter": sum(h.polygon.exterior.length for h in cluster.features("holes") + cluster.inners),
             "outer_wkt": cluster.outer.polygon.wkt,
-            "inners_wkt": [h.polygon.wkt for h in sorted(cluster.holes + cluster.inners, key=lambda x: x.area, reverse=True)],
+            "inners_wkt": [h.polygon.wkt for h in sorted(cluster.features("holes") + cluster.inners, key=lambda x: x.area, reverse=True)],
             "outer_role": cluster.outer.role,
-            "inner_roles": [h.role for h in sorted(cluster.holes + cluster.inners, key=lambda x: x.area, reverse=True)],
-            "summary": cluster.summary,
+            "inner_roles": [h.role for h in sorted(cluster.features("holes") + cluster.inners, key=lambda x: x.area, reverse=True)],
+            "summary": {**cluster.summary, **describe_features(cluster)},
         })
 
     cached_entry = {

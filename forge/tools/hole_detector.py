@@ -16,7 +16,7 @@ import math
 from typing import Tuple
 
 from forge.core.primitives.segments import ArcSeg
-from forge.rules.thresholds import THREADED_ARC_MAX_RADIUS_RATIO
+from forge.tools.thresholds import THREADED_ARC_MAX_RADIUS_RATIO
 
 
 def is_threaded_hole(

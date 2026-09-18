@@ -35,6 +35,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
+from forge.tools.detect import describe_features
 
 EXAMPLES_DIR      = project_root / "tests" / "examples"
 GOLDEN_DXF_DIR    = EXAMPLES_DIR / "golden"
@@ -114,7 +115,7 @@ def generate(force: bool = False, only: str = None):
             }
 
             for cluster in result.clusters:
-                holes  = sorted(cluster.holes,  key=lambda x: x.area, reverse=True)
+                holes  = sorted(cluster.features("holes"),  key=lambda x: x.area, reverse=True)
                 inners = sorted(cluster.inners, key=lambda x: x.area, reverse=True)
 
                 part_golden = {
@@ -143,17 +144,21 @@ def generate(force: bool = False, only: str = None):
                     "inners_wkt":   [i.polygon.wkt for i in inners],
                     "inners":       [i.to_dict() for i in inners],
                     # — pieghe —
-                    "bending_lines_count": len(cluster.bending_lines),
-                    "bending_lines":       [bl.to_dict() for bl in cluster.bending_lines],
+                    "bending_lines_count": len(cluster.features("bending_lines")),
+                    "bending_lines":       [bl.to_dict() for bl in cluster.features("bending_lines")],
                     # — incisioni —
                     "total_engrave_length": round(
-                        sum(e.length for e in cluster.engrave_lines), 4
+                        sum(e.length for e in cluster.features("engrave_lines")), 4
                     ),
-                    "engrave_lines_count": len(cluster.engrave_lines),
-                    "engrave_lines":       [e.to_dict() for e in cluster.engrave_lines],
-                    # — summary — conteggi feature derivati dal modello (D8).
+                    "engrave_lines_count": len(cluster.features("engrave_lines")),
+                    "engrave_lines":       [e.to_dict() for e in cluster.features("engrave_lines")],
+                    # — summary — conteggi feature derivati dal modello (D8, D44).
                     #   Solo le chiavi non-zero, come faceva inject() in custom.
-                    "summary": {k: v for k, v in cluster.summary.items() if v},
+                    "summary": {
+                        k: v for k, v in
+                        {**cluster.summary, **describe_features(cluster)}.items()
+                        if v
+                    },
                 }
                 golden["clusters"].append(part_golden)
 

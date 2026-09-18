@@ -251,7 +251,7 @@ def write_engrave_segments(segments: List, msp, layer: str, styles: Optional[Lis
     nemmeno se in ingresso era una polilinea.
 
     Un'incisione è concettualmente N segmenti separati (scelta di modello,
-    vedi `model/engraving.py`): il rendering fedele è una entità per segmento.
+    vedi `tools/model/engraving.py`): il rendering fedele è una entità per segmento.
     È anche coerente con le bending line (emesse come `LINE`) e con quello che
     un CAM si aspetta di trovare sul layer di marcatura.
 

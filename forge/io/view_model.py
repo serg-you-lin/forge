@@ -26,6 +26,7 @@ from ..model import ForgeResult
 from ..model.role import ContourRole, role_str as _role_str
 from ..rules.palette import role_to_hex
 from ..core.geometry import track_points
+from ..tools.detect import describe_features
 
 
 def _xy(seq) -> list:
@@ -161,10 +162,14 @@ def to_view_model(
             "area":   round(cluster.area, 4),
             "outer":  _contour_entry(cluster.outer, tolerance),
             "inners": [_contour_entry(i, tolerance) for i in cluster.inners],
-            "holes":  [_hole_entry(h, tolerance) for h in cluster.holes],
-            "bending_lines": [_bending_entry(b) for b in cluster.bending_lines],
-            "engrave_lines": [_engrave_entry(e, tolerance) for e in cluster.engrave_lines],
-            "summary": cluster.summary,
+            "holes":  [_hole_entry(h, tolerance) for h in cluster.features("holes")],
+            "bending_lines": [_bending_entry(b) for b in cluster.features("bending_lines")],
+            "engrave_lines": [_engrave_entry(e, tolerance) for e in cluster.features("engrave_lines")],
+            # summary generico (sempre disponibile) + il dettaglio ricco che
+            # solo forge sa dare sui suoi tipi noti (fori per tipo, pieghe
+            # raggruppate...) — un renderer vuole entrambi (branch
+            # refactor/detect-overlay, MAP.md D44).
+            "summary": {**cluster.summary, **describe_features(cluster)},
             "custom":  cluster.custom,
         })
 

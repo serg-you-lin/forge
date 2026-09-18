@@ -59,7 +59,7 @@ from .core.heal          import heal
 from .recipes            import heal_and_detect, split_to_files
 from .tools.inject       import inject
 from .tools.anchor       import anchor_annotations
-from .tools.detect       import detect, ALL_FEATURES
+from .tools.detect       import detect, ALL_FEATURES, describe_features
 from .io.dxf             import to_dxf, split
 from .rules.validator     import validate, validate_result
 from .io.exporter         import (
@@ -115,6 +115,7 @@ __all__ = [
     "heal",
     "detect",
     "ALL_FEATURES",
+    "describe_features",
     "heal_and_detect",
     "to_dxf",
     "split",

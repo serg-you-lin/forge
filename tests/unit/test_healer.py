@@ -125,7 +125,7 @@ class TestHealerCircleOuter(unittest.TestCase):
         self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_inner_classified(self):
-        self.assertGreaterEqual(len(self.result.clusters[0].holes) + len(self.result.clusters[0].inners), 1)
+        self.assertGreaterEqual(len(self.result.clusters[0].features("holes")) + len(self.result.clusters[0].inners), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +139,7 @@ class TestHealerCircleHole(unittest.TestCase):
         self.result = forge.heal(doc)
         # heal() consegna solo il contorno interno; la promozione a foro è di
         # detect(features="holes").
-        self.assertEqual(len(self.result.clusters[0].holes), 0)
+        self.assertEqual(len(self.result.clusters[0].features("holes")), 0)
         self.assertEqual(len(self.result.clusters[0].inners), 1)
         forge.detect(self.result, features="all")
 
@@ -147,15 +147,15 @@ class TestHealerCircleHole(unittest.TestCase):
         self.assertEqual(self.result.cluster_count, 1)
 
     def test_002_has_hole(self):
-        self.assertGreaterEqual(len(self.result.clusters[0].holes), 1)
+        self.assertGreaterEqual(len(self.result.clusters[0].features("holes")), 1)
 
     def test_003_hole_role(self):
         from forge.model.role import ContourRole
-        for hole in self.result.clusters[0].holes:
+        for hole in self.result.clusters[0].features("holes"):
             self.assertEqual(hole.role, ContourRole.HOLE)
 
     def test_004_exact_hole_count(self):
-        self.assertEqual(len(self.result.clusters[0].holes), 1)
+        self.assertEqual(len(self.result.clusters[0].features("holes")), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +173,7 @@ class TestHealerCircleInner(unittest.TestCase):
         inners = self.result.clusters[0].inners
         self.assertEqual(len(inners), 1)
         self.assertEqual(inners[0].role, ContourRole.INNER)
-        self.assertEqual(len(self.result.clusters[0].holes), 0)
+        self.assertEqual(len(self.result.clusters[0].features("holes")), 0)
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +193,7 @@ class TestHealerCountersink(unittest.TestCase):
 
     def test_002_sees_both_circles_as_inners(self):
         # heal() non distingue countersink — li vede entrambi come inners
-        self.assertEqual(len(self.result.clusters[0].holes), 0)
+        self.assertEqual(len(self.result.clusters[0].features("holes")), 0)
         self.assertGreaterEqual(len(self.result.clusters[0].inners), 2)
 
 

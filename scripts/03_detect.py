@@ -42,8 +42,8 @@ print(f"ALL_FEATURES = {forge.ALL_FEATURES}\n")
 
 def show(tag, result):
     p = result.clusters[0]
-    print(f"{tag:<28} holes={len(p.holes):<3} inners={len(p.inners):<3} "
-          f"bending={len(p.bending_lines):<3} engrave={len(p.engrave_lines):<3}")
+    print(f"{tag:<28} holes={len(p.features("holes")):<3} inners={len(p.inners):<3} "
+          f"bending={len(p.features("bending_lines")):<3} engrave={len(p.features("engrave_lines")):<3}")
 
 
 # 1. detect nudo — solo label_map + topologia
@@ -66,7 +66,7 @@ show("detect(result, 'all')", r)
 
 # dettaglio fori tipati
 print()
-for i, h in enumerate(r.clusters[0].holes):
+for i, h in enumerate(r.clusters[0].features("holes")):
     print(f"   hole {i:<2} type={h.hole_type:<12} Ø={h.diameter:.2f}  "
           f"center={tuple(round(c, 1) for c in h.center)}  "
           f"source={h.source} conf={h.confidence}")
