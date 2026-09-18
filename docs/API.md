@@ -175,7 +175,7 @@ computer vision). Chi chiama non importa nessun tipo interno di forge.
 
 | parametro | significato |
 |---|---|
-| `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polyline` (`points`, `closed`), `spline` (`control_points`, `knots`, `degree`, più `weights`/`fit_points`/`closed` opzionali — stessi campi di `SplineSeg`, comodo per passare 1:1 l'output di `simplify_points()`). `role` è opzionale su ogni entità — stesso vocabolario di `label_map` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
+| `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polyline` (`points`, `closed`), `spline` (`control_points`, `knots`, `degree`, più `weights`/`fit_points`/`closed` opzionali — stessi campi di `SplineSeg`), `ellipse` (`center`, `major_axis` come **vettore** dal centro, più `ratio`/`start_param`/`end_param`/`ccw` opzionali — stessi campi di `EllipseSeg`, stessa parametrizzazione del gruppo DXF ELLIPSE; default = ellisse piena). `role` è opzionale su ogni entità — stesso vocabolario di `label_map` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
 | `tolerance` | tolleranza di arrotondamento dei nodi topologici — stesso significato di `load_dxf(tolerance=...)`. |
 | `source_path` | etichetta libera per `ForgeDocument.source_path`; non è un file, serve solo per diagnostica. |
 
@@ -212,7 +212,9 @@ doc = forge.load_geometry([
 Provato da un caso reale (`bendly`, che lo usa per portare gli sviluppi che
 genera a `ForgeDocument` senza passare da un file — vedi MAP.md D32; il tipo
 `spline` viene da `smoother`, che vi passa l'output di `simplify_points()` —
-vedi MAP.md D35).
+vedi MAP.md D35). Il tipo `ellipse` (MAP.md D45) esiste perché `EllipseSeg`
+è una primitiva di forge come le altre — non serve un caso reale a parte,
+segue lo stesso schema di `spline`/`circle`.
 
 ---
 
