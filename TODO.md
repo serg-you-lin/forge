@@ -21,12 +21,6 @@ I files splittati non vengono aperti in Autocad, vengono aperti in sigmanest sen
 
 creare una fingerprint geometrica per validare na forge part.
 
-### Cornice
-Capire dove deve lavorare perhcè potrebbe essere parte del plugin per i draft
-
-
-
-
 ### Analisi
 
 - [ ] **`DxfAnalyzer` — output CSV**
