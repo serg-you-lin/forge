@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from typing import List
 
-from ...core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg
+from ...core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg
 from ...core.primitives.segments import DEFAULT_TOLERANCE
 
 
@@ -36,6 +36,8 @@ class DxfEntityDispatcher:
             return _parse_polyline(self.entity, rev)
         if self.kind == "CIRCLE":
             return _parse_circle(self.entity)
+        if self.kind == "ELLIPSE":
+            return _parse_ellipse(self.entity, rev)
         return None
 
 
@@ -127,6 +129,24 @@ def _parse_circle(entity) -> CircleSeg:
         center=(entity.dxf.center.x, entity.dxf.center.y),
         radius=entity.dxf.radius
     )
+
+
+def _parse_ellipse(entity, rev) -> EllipseSeg:
+    """
+    Un'ELLIPSE DXF è sempre percorsa CCW da `start_param` a `end_param`
+    (nessun flag di verso nel gruppo, come per ARC) — `rev` inverte gli
+    stessi due parametri e nega `ccw`, stesso trattamento di `_parse_arc`.
+    Un'ellisse piena ha `start_param=0`/`end_param=2π` (default di ezdxf).
+    """
+    seg = EllipseSeg(
+        center=(entity.dxf.center.x, entity.dxf.center.y),
+        major_axis=(entity.dxf.major_axis.x, entity.dxf.major_axis.y),
+        ratio=entity.dxf.ratio,
+        start_param=entity.dxf.start_param,
+        end_param=entity.dxf.end_param,
+        ccw=True,
+    )
+    return seg.reversed() if rev else seg
 
 
 def _parse_polyline(entity, rev) -> list:

@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import math
 from types import SimpleNamespace
 
-from forge.core.primitives import LineSeg, ArcSeg, SplineSeg
+from forge.core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg
 from forge.core.topology.edge import Edge
 from forge.adapters.dxf.parser import DxfEntityDispatcher
 from forge.core.topology.loop_finder import segments_from_loop
@@ -106,6 +106,20 @@ def make_circle(cx, cy, radius, layer="0"):
     return e
 
 
+def make_ellipse(cx, cy, major_x, major_y, ratio, start_param, end_param, layer="0"):
+    e = MagicMock()
+    e.dxftype.return_value = 'ELLIPSE'
+    e.dxf.center.x = cx
+    e.dxf.center.y = cy
+    e.dxf.major_axis.x = major_x
+    e.dxf.major_axis.y = major_y
+    e.dxf.ratio = ratio
+    e.dxf.start_param = start_param
+    e.dxf.end_param = end_param
+    e.dxf.layer = layer
+    return e
+
+
 def make_edge(entity, layer="0", rev=False):
     """
     Crea un Edge portando la primitiva reale parsata dall'entità mock.
@@ -164,6 +178,18 @@ class MockMSP:
         })
         return MagicMock()
 
+    def add_ellipse(self, center, major_axis, ratio, start_param, end_param, dxfattribs=None):
+        self.entities.append({
+            'type': 'ELLIPSE',
+            'center': center,
+            'major_axis': major_axis,
+            'ratio': ratio,
+            'start_param': start_param,
+            'end_param': end_param,
+            'dxfattribs': dxfattribs,
+        })
+        return MagicMock()
+
     def add_spline(self, dxfattribs=None):
         spline = MagicMock()
         spline.dxf = SimpleNamespace(
@@ -210,6 +236,10 @@ class TestDxfEntityDispatcher(unittest.TestCase):
             DxfEntityDispatcher(make_circle(0, 0, 10)).kind,
             'CIRCLE'
         )
+        self.assertEqual(
+            DxfEntityDispatcher(make_ellipse(0, 0, 10, 0, 0.5, 0, math.tau)).kind,
+            'ELLIPSE'
+        )
 
     def test_002_parse_line(self):
         """Parsing di una LINE → LineSeg."""
@@ -254,6 +284,29 @@ class TestDxfEntityDispatcher(unittest.TestCase):
         self.assertIsInstance(parsed, CircleSeg)
         self.assertEqual(parsed.center, (0.0, 0.0))
         self.assertEqual(parsed.radius, 10.0)
+
+    def test_006b_parse_ellipse(self):
+        """Parsing di un'ELLIPSE → EllipseSeg (primitiva geometrica pura)."""
+        parsed = DxfEntityDispatcher(
+            make_ellipse(1, 2, 10, 0, 0.5, 0.0, math.tau)
+        ).parse(rev=False)
+        self.assertIsInstance(parsed, EllipseSeg)
+        self.assertEqual(parsed.center, (1.0, 2.0))
+        self.assertEqual(parsed.major_axis, (10.0, 0.0))
+        self.assertEqual(parsed.ratio, 0.5)
+        self.assertAlmostEqual(parsed.start_param, 0.0)
+        self.assertAlmostEqual(parsed.end_param, math.tau)
+        self.assertTrue(parsed.ccw)
+
+    def test_006c_parse_ellipse_reversed(self):
+        """Parsing di un'ELLIPSE con rev=True scambia i parametri e nega ccw."""
+        parsed = DxfEntityDispatcher(
+            make_ellipse(0, 0, 10, 0, 0.5, 0.0, math.pi / 2)
+        ).parse(rev=True)
+        self.assertIsInstance(parsed, EllipseSeg)
+        self.assertAlmostEqual(parsed.start_param, math.pi / 2)
+        self.assertAlmostEqual(parsed.end_param, 0.0)
+        self.assertFalse(parsed.ccw)
 
     def test_007_parse_lwpolyline_senza_bulge(self):
         """LWPOLYLINE senza bulge → LineSeg."""
@@ -596,6 +649,22 @@ class TestWriteContourToMsp(unittest.TestCase):
         self.assertEqual(entity['type'], 'SPLINE')
         self.assertEqual(entity['entity'].dxf.degree, 0)
         self.assertEqual(entity['entity'].control_points, [(0.0, 0.0, 0.0), (10.0, 0.0, 0.0)])
+
+    def test_002b_segments_con_ellisse_chiusa(self):
+        """Ellisse chiusa singola → esportata come ELLIPSE nativa, mai spline."""
+        contour = MagicMock()
+        contour.segments = [
+            EllipseSeg(center=(1, 2), major_axis=(10, 0), ratio=0.5,
+                       start_param=0.0, end_param=math.tau)
+        ]
+        result = write_segments(contour.segments, self.msp, "TEST")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(self.msp.entities), 1)
+        entity = self.msp.entities[0]
+        self.assertEqual(entity['type'], 'ELLIPSE')
+        self.assertEqual(entity['center'], (1, 2))
+        self.assertEqual(entity['major_axis'], (10, 0, 0.0))
+        self.assertEqual(entity['ratio'], 0.5)
 
     def test_003_line_segments_soli(self):
         """Solo LineSeg → LWPOLYLINE."""
