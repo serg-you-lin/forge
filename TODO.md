@@ -10,6 +10,104 @@ ancora aperto.
 
 ---
 
+## RIPARTENZA — stato a fine sessione 2026-09-18, da qui la prossima chat
+
+**Repo**: branch `refactor/ellipse-primitive`, checked out, **nulla committato**.
+Contiene DUE lavori distinti impilati sullo stesso branch (nato dal working
+tree già sporco quando è iniziato il secondo): (1) il cleanup della
+documentazione di questa sessione (MAP.md tradotto in inglese e condensato,
+`PARERI_VARI.md`/`REGRESSION_PLAN.md`/`file_test_status.md` cancellati,
+doppioni tolti da `FRAMER.md`/`ARCHITECTURE.md`) e (2) `EllipseSeg` (MAP.md
+D45, appena chiuso — dettaglio completo lì). Suite verde: 693 passed. Prima
+di andare avanti nella prossima sessione, probabilmente conviene splittare
+in due commit puliti (docs / feature) e decidere se e quando mergiare in
+`main` (chiedere a Federico prima del merge, come da regola standard).
+
+**Prossimo argomento, solo discusso, NON ancora iniziato — "funzioni
+geometriche":**
+
+Inventario fatto (verificato nel codice, non assunto): oggi **nessuna
+primitiva ha un `.length`** (`LineSeg`/`ArcSeg`/`SplineSeg`/`CircleSeg`/
+`EllipseSeg`) e non esiste nessuna funzione "dato un elenco di segmenti, qual
+è il più lungo e che angolo ha". Tutto il resto (area/bbox su
+`ClosedFeature`, `track_length` su una traccia intera, `interior_angle_deg`
+per tre punti) esiste già in `core/geometry.py`.
+
+Proposta emersa (non decisa): aggiungere `segment_length(segment)` (dispatch
+per tipo) e `longest_segment(segments)` a `core/geometry.py` — piccola
+aggiunta, nessun modulo nuovo. Casi che la motivano, discussi ma non
+implementati:
+- **rotazione/orientamento canonico** per un futuro nester: la meccanica
+  ("ruota di X gradi", "trova il lato più lungo e il suo angolo") è roba di
+  forge — un metodo `.rotated(angle, origin)` per primitiva, come
+  `.reversed()`, più un wrapper in `tools/` per un intero cluster. La
+  *decisione* di quanti gradi provare / l'ottimizzazione di impacchettamento
+  restano fuori scope (nesting resta fuori da forge, vedi memoria
+  `nesting-out-of-scope`).
+- **bendly** ha bisogno di lunghezze/angoli per piazzare le proprie quote
+  (per il lettore umano) e oggi duplicherebbe la logica — caso reale, non
+  ipotetico, è l'argomento più forte per esporre queste funzioni.
+- **Pippo che vuole sapere l'inclinazione di una flangia piegata** si è
+  rivelato ambiguo fra due misure diverse: (a) l'orientamento 2D della
+  bending line sullo sviluppo piatto (già misurabile) vs (b) il vero angolo
+  di piega fisico, che in genere non si legge dalla sola direzione della
+  linea — o è scritto altrove sul disegno, o si ricava per trigonometria
+  confrontando la lunghezza vera (sviluppo) con quella proiettata in una
+  vista che mostra la flangia piegata (`arccos(proiettata/vera)`) — ma questo
+  richiede sapere quale edge dello sviluppo corrisponde a quale edge della
+  vista, che è lavoro di framer/interprete, non di forge.
+- **Idea collegata ma volutamente NON la stessa cosa**: "ruotare" una vista
+  per farla combaciare con un'altra vista proiettata (per trasferire feature
+  da una faccia allo sviluppo) è un problema di matching/registrazione fra
+  due insiemi di punti (tipo ICP), non una semplice rotazione — molto più
+  grosso, legato al "raggruppamento viste" di `framer` (`FRAMER.md`, ancora
+  da scrivere) — non deciso se/come affrontarlo.
+
+**Fitting ellisse da punti grezzi** (generalizzare `arc_fit_tolerance` in
+`tools/simplify_points.py` a un fit ellittico 5-DOF, per Smoother):
+deliberatamente rimandato dopo D45 — la primitiva `EllipseSeg` ora esiste,
+il fitting da una sequenza di punti grezzi è il "secondo passo" di cui
+parlavamo, non ancora iniziato.
+
+Per ripartire in una chat nuova: leggere questa sezione + `MAP.md` D45, poi
+proseguire dall'inventario sopra.
+
+---
+
+## Limiti geometrici noti (da fixture reali, non bloccanti)
+
+Quello che resta aperto dal vecchio triage regressioni (`REGRESSION_PLAN.md` /
+`file_test_status.md`, cancellati: tutto il resto lì era già ✅ risolto e
+committato — la storia sta nel git log e in `MAP.md`).
+
+- **archi_si_no.dxf** — riconoscere gli archi come outer romperebbe le bending
+  line (il grafo gira prima di quella decisione). Accettato così com'è; in
+  futuro potrebbe diventare un comportamento opzionale.
+- **F6.dxf** — edge case da gestire con le tolleranze; ci si aspetterebbe un
+  warning sui nodi ambigui dal validator, non ancora emesso.
+- **rect_special_countersink.dxf** — l'anello esterno del countersink
+  potrebbe opzionalmente uscire su un layer a parte per un trattamento CAM
+  diverso. Non bloccante.
+- **rect_with_threaded_holes_geometric.dxf** — ipotesi: unificare a livello
+  di disegno l'arco esterno di una filettatura rilevata geometricamente con
+  il foro (reverse-geometric feature). Non bloccante, forse non necessario.
+- **two_rects_with_bend.dxf** — una bending line con endpoint a ~10mm
+  dall'outer non viene mai detectata: il filtro sulla distanza dal bordo è
+  hard-coded a <1.0mm, alzare `bending_tolerance` non basta (quel parametro
+  filtra solo la lunghezza minima).
+- **6200013103_P1NoLineaPiega.dxf** (fixture cliente reale) — due bug noti:
+  (a) il pezzo `_1` genera 1 sola bending line dove ce ne sono di più, causa
+  non ancora indagata; (b) il cartiglio (`Cartiglio_sviluppo` esploso) viene
+  rilevato come un cluster a sé. Il punto (b) non è più "da risolvere in
+  forge": è esattamente il caso d'uso che motiva `Framer` (`FRAMER.md`), che
+  lo elimina marcando `role="title_block"` prima di `heal`.
+- **arc/arc oltre tolleranza** — `compute_gap_fixes` scarta ogni coppia con
+  `distance > tolerance` anche per gli archi; esentarli quando i loro cerchi
+  si intersecano davvero è una scelta di design da rivedere con un file
+  reale (workaround oggi: alzare `tolerance`).
+
+---
+
 ## PRIORITÀ MEDIA — migliora la qualità
 
 

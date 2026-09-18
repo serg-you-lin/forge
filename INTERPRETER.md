@@ -10,7 +10,7 @@ tecnico come lo leggerebbe una persona di reparto — materiale, spessore,
 quantità, cosa va tagliato, cosa piegato, cosa marcato — senza che tu debba
 "pensarci sopra" ogni volta. Resta il nome che tiene la direzione. Quello che
 è cambiato in questa revisione (sessione del 2026-09-16, confronto con
-ChatGPT/Gemini/Deepseek in `PARERI_VARI.md` + discussione diretta) è **come**
+ChatGPT/Gemini/Deepseek, raccolti a titolo di confronto, + discussione diretta) è **come**
 ci si arriva: non un unico prodotto monolitico costruito dall'alto, ma una
 cassetta di strumenti indipendenti e già utili da soli, che un agente compone
 guardando lo specifico disegno che ha davanti. Il rischio del "tutto o

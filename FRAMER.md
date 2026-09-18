@@ -32,8 +32,8 @@ tutta la geometria del foglio come inner: la cornice è il loop più esterno e s
 mangia tutto. Il cartiglio, se è un rettangolo chiuso, viene contato come cluster
 a sé.
 
-Caso reale, fixture `6200013103_P1NoLineaPiega.dxf` (`file_test_status.md`,
-BUG NOTO 2): il riquadro del cartiglio (blocco `Cartiglio_sviluppo` esploso,
+Caso reale, fixture `6200013103_P1NoLineaPiega.dxf` (bug noto, vedi `TODO.md`):
+il riquadro del cartiglio (blocco `Cartiglio_sviluppo` esploso,
 rettangolo 80×55 mm a ~[41,36]) viene rilevato come parte →
 `cluster_count = 6` invece di 5, e i 3 MTEXT del cartiglio prendono
 `cluster_ref = 5` invece di `None`. In quel file la cornice manca apposta (i
@@ -146,37 +146,13 @@ nei flag.
 
 ## L'interfaccia forge ↔ consumatore (il punto sperimentale)
 
-Framer deve dire a `heal` "questi edge non sono contorno di pezzo". Prima di
-D30 `heal._split_labeled` toglieva dal grafo **solo** `ContourRole.ENGRAVE` e
-`ContourRole.MARKING`, e un edge `role="frame"` ci passava comunque; `detect()`
-poi lo perdeva. Da D30 `_split_labeled` estrae ogni ruolo deciso e non
-strutturale e `detect()` lascia stare i ruoli che non conosce.
-
-Le tre opzioni valutate, dal meno al più invasivo su forge (scelta: **B**):
-
-| # | come | tocca forge? | note |
-|---|---|---|---|
-| A | Framer **rimuove** gli edge di frame/cartiglio da `doc.edges` prima di `heal`, li tiene da parte e li fa riemettere a valle | **no** | rispetta `dont-bolt-adapters-onto-forge-for-external-projects` e "forge resta neutro, l'interprete si adatta" (`INTERPRETER.md`). Costo: chi riemette la geometria di cornice nell'output? |
-| B | Framer setta `edge.role = "frame"` / `"title_block"` su `doc.edges`; forge estende il filtro non-strutturale di `_split_labeled` a ogni ruolo di consumatore | sì, minimo | la geometria resta nel modello (`trash_entities`) e l'output la scrive su un layer col nome del ruolo (D31). Coerente con D27. |
-| C | forge espone un hook `role_resolver(edge) -> str \| None` a `load_dxf` / `heal` che il consumatore passa | sì, API nuova | generalizza oltre Framer (l'unfolder ne vuole uno simile per `role="section"`). Più lavoro, decisione più pesante. |
-
-**Scelta: B** (forge D30). Framer setta `edge.role` sugli `Edge` di `doc.edges`
-prima di `heal` — lo slug ripulito da `forge.normalize_role`. forge non ha
-preso nessuna API nuova: ha solo consolidato il concetto "ruolo strutturale" in
-un punto (`forge.is_structural_role`) e reso l'aggancio un contratto invece che
-una coincidenza —
-- `heal._split_labeled` tira fuori dal grafo **ogni** edge con ruolo deciso e
-  non strutturale (quindi `frame`, `title_block`, slug custom), non più solo
-  `engrave`/`marking`;
-- `detect()` non tocca i ruoli che non conosce: cornice e cartiglio restano in
-  `trash_entities` col ruolo intatto (prima `detect` li perdeva);
-- l'output DXF li scrive su un layer col nome dello slug — `frame`,
-  `title_block` — non su `Trash` (D31: `ContourRole.FRAME` rimosso, i ruoli di
-  consumatore vanno su un layer loro).
-
-**C** (hook `role_resolver`) si valuta quando anche l'unfolder chiede la stessa
-cosa; il consolidamento D30 lo rende banale da aggiungere. **A** era la via a
-zero modifiche ma scaricava su Framer il problema "chi riemette la cornice".
+Framer deve dire a `heal` "questi edge non sono contorno di pezzo". La
+decisione su come — tre opzioni valutate, scelta l'opzione B (Framer setta
+`edge.role` su `doc.edges` prima di `heal`; forge estende il suo filtro
+non-strutturale a ogni ruolo di consumatore, senza API nuova) — è chiusa in
+`MAP.md` D30/D31: dettaglio delle tre opzioni, motivazione e comportamento
+risultante (geometria in `trash_entities`, output su un layer col nome dello
+slug) sono lì, non ripetuti qui.
 
 Invariante da rispettare comunque (`INTERPRETER.md`, "Cosa NON ci va"):
 Framer non ragiona *dentro* forge. Framer chiama `forge.load_dxf`, fa il suo

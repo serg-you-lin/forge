@@ -142,8 +142,8 @@ right and you need to see where in the chain it breaks.
 
 ## Supported input geometry
 
-- **As structural contours:** `LWPOLYLINE`, `POLYLINE`, `CIRCLE`, closed `SPLINE`
-- **To reconstruct into contours:** `LINE`, `ARC`, open `SPLINE` connected to other entities
+- **As structural contours:** `LWPOLYLINE`, `POLYLINE`, `CIRCLE`, closed `SPLINE`, closed `ELLIPSE`
+- **To reconstruct into contours:** `LINE`, `ARC`, open `SPLINE`/`ELLIPSE` connected to other entities
 - **As annotations:** `TEXT`, `MTEXT`, `DIMENSION`, `LEADER`, `MULTILEADER`
 - **Blocks:** `INSERT` is exploded on load by default
 - **Legacy:** R12/R13/R14 files are upgraded to R2010
@@ -157,8 +157,8 @@ right and you need to see where in the chain it breaks.
 
 ## Known limits
 
-- **Splines** are re-emitted natively on cut layers (`to_dxf`) but **discretized**
-  in `to_svg` / `to_view_model` (which are for viewing, not cutting).
+- **Splines and ellipses** are re-emitted natively on cut layers (`to_dxf`) but
+  **discretized** in `to_svg` / `to_view_model` (which are for viewing, not cutting).
 - **`load_pdf`** exists but is experimental — it returns raw edges, not a
   `ForgeDocument`, so it does not plug into `heal()` yet. Not in the public API.
 - **Geometric engraving inference** (`detect` finding engraving without a

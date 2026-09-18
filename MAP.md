@@ -1,1225 +1,891 @@
-# MAP.md — decision log di dxf-forge
+# MAP.md — forge decision log
 
-Questo file è la **memoria delle decisioni**: cosa è stato deciso, e soprattutto
-*perché*. Non è documentazione (quella è in `docs/`) e non è un log di sessione
-(quello è il git log).
+This file is the **memory of decisions**: what was decided, and above all
+*why*. It is not documentation (that's `docs/`) and not a session log (that's
+the git log).
 
-Regola: una decisione chiusa **non si re-decide da capo**. Se va rimessa in
-discussione si dice esplicitamente "stiamo riaprendo la decisione N".
+Rule: a closed decision is **not re-decided from scratch**. If it needs
+reopening, say so explicitly — "reopening decision N".
 
-- **Cos'è forge, come si usa** → `README.md`, `docs/API.md`
-- **Com'è fatto dentro** → `docs/ARCHITECTURE.md`
-- **Storia del refactor** → git log (branch `refactor/structure`)
+- **What forge is, how to use it** → `README.md`, `docs/API.md`
+- **How it's built inside** → `docs/ARCHITECTURE.md`
+- **Refactor history** → git log
 
 ---
 
-## Il contratto dell'API pubblica
+## The public API contract
 
 ```python
-doc    = forge.load_dxf("file.dxf")        # unico punto che tocca ezdxf in lettura
-result = forge.heal(doc)                   # topologia — zero DXF
-result = forge.detect(result, "all")       # semantica/feature — zero DXF
-doc_out = forge.to_dxf(result, doc)        # documento nuovo — nessun source_ref
+doc    = forge.load_dxf("file.dxf")        # the only point that touches ezdxf for reading
+result = forge.heal(doc)                   # topology — zero DXF
+result = forge.detect(result, "all")       # semantics/features — zero DXF
+doc_out = forge.to_dxf(result, doc)        # a new document — no source_ref
 doc_out.saveas("output.dxf")
 
-# multi-pezzo
-forge.split_to_files(doc, "output/")       # unica funzione che scrive su disco
+# multi-part
+forge.split_to_files(doc, "output/")       # the only function that writes to disk
 
-# futuro: stesso contratto, adapter diverso
+# future: same contract, a different adapter
 doc = forge.load_svg("file.svg")
 ```
 
-**Principio portante:** `load_*` produce un `ForgeDocument` di dati puri (edge +
-annotation). Dopo il load, il documento `ezdxf` sorgente sparisce. `heal` /
-`detect` non vedono mai un formato. `to_dxf` costruisce un documento **nuovo** dai
-segmenti del modello — non copia entità dalla sorgente, non porta `source_ref`.
-Il modello è il prodotto; il DXF è solo una delle sue rappresentazioni.
+**Guiding principle:** `load_*` produces a `ForgeDocument` of pure data (edges
++ annotations). After loading, the source `ezdxf` document disappears.
+`heal`/`detect` never see a format. `to_dxf` builds a **new** document from the
+model's own segments — it never copies entities from the source, never carries
+`source_ref`. The model is the product; DXF is only one of its
+representations.
 
-Dettaglio completo di ogni funzione in `docs/API.md`.
-
----
-
-## Stato
-
-Branch: `refactor/structure`. Fasi 1–4 concluse e committate. Suite: **555 passed
-/ 0 failed** (+ 62 subtests), golden verdi.
-
-Da fare, in ordine:
-1. ✅ Riscrittura degli script numerati alla radice (`00_*.py … 12_*.py`), uno
-   per area di `forge.__all__`, default su `tests/examples/` (D14).
-2. ✅ `to_view_model` + `to_svg` / `save_svg` (D12).
-3. `detect_engrave` (D13) — quando Federico decide.
-4. `forge/io/text_utils.py`: da riordinare (2026-08-31). Oggi mischia
-   *estrazione* da ezdxf (`extract_forge_texts`, quella vera che alimenta
-   `inject()`; `extract_texts_from_msp` resta solo per debug/stampa) e
-   *pulizia del contenuto testuale* (`clean_mtext`). Idea di Federico: un
-   modulo di gestione testi accessibile anche a un agente esterno, che lavori
-   su stringhe pure — zero import di ezdxf dentro. Da decidere: separare in
-   (a) estrazione lato adapter DXF (resta vicino a ezdxf) e (b) un modulo
-   pure-text a valle (matching/pulizia/riconoscimento materiale-spessore-
-   codice) senza dipendenze dal formato. Non ancora iniziato.
-5. Merge di `refactor/structure` in `main`.
-6. Dashboard — **repo separata** (D16). Rendering nel browser (SVG/Canvas JS)
-   da `to_view_model`; backend = server Python sottile attorno a
-   `heal_and_detect`. `to_svg` resta comodità di libreria (export, thumbnail).
+Full detail of every function in `docs/API.md`.
 
 ---
 
-## DECISIONI CHIUSE
+## Summary of concluded phases
 
-### D1 — Nome libreria: resta `forge` (per ora)
-`heal` come nome package è stato valutato e scartato (`from heal import heal`
-suona male). `dxf-forge` è fuorviante — troppo legato al formato, mentre il punto
-è che il modello è format-agnostic — ma il rename si rimanda. Package importabile:
-`forge`.
+- **Phases 1–4 (`refactor/structure`, closed)** — the healing engine
+  hardened: one unified DXF entity→primitive dispatcher (which surfaced and
+  fixed a real major-arc bug), the `OpenShape`/`ClosedShape` bridge replaced
+  by native `OpenFeature`/`ClosedFeature`, `inject()` slimmed to just the
+  external-enrichment hook, a 3-level inspector, `load_pdf` frozen, a single
+  version source, and SVG output (`to_view_model`/`to_svg`).
+- **Module reorganization (Sep 2026)** — `ForgePart`→`ForgeCluster` (D21),
+  `pipeline/` dissolved into `core`/`tools`/`io` (D22), numbered scripts
+  moved to `scripts/` with CWD-independent paths (D23), dead frame-detector
+  code removed (D24), `core/classification/` folded into `tools/` (D25),
+  `model/` tidied (D26), `ContourRole` opened to consumer-defined roles that
+  get their own DXF layer (D27, D30, D31), `RoleStyle` for per-role
+  color/linetype/weight overrides (D37).
+- **Annotations & interpretation boundary (Sep 2026)** — one typed
+  `Annotation` model replacing two parallel untyped ones (D20); the
+  geometric anchoring step renamed `anchor_annotations` to stop overloading
+  the word "interpret" (D43); frame/title-block/callout/view-grouping work
+  spun out to a future sibling module, `Framer` (D29) — forge stays neutral,
+  `Framer` and the interpreter sit above it.
+- **Geometry reconstruction toolkit (Sep 2026)** — `load_geometry` made
+  public (D32) and extended to splines (D35); `simplify_points`/
+  `fit_primitives` built for point-sequence → line/spline (D33) and
+  line/arc/spline (D36) reconstruction, plus two real spline-fidelity bugs
+  found and fixed along the way (`_fit_spline` closed-loop flags, D41;
+  `SplineSeg.discretize()` evaluating the control polygon instead of the
+  curve, D42); `bridge_tabs`/`bridge_nested_tabs` for tabs joining nested
+  contours across arbitrary depth (D40, superseding the single-contour
+  `cut_tabs`, D39).
+- **`detect()` overlay (Sep 2026, D44)** — `ForgeCluster.detected` replaces
+  fixed `holes`/`bending_lines`/`engrave_lines` fields with an open-by-name,
+  `None`-until-written overlay, so any tool — not just forge's own
+  `detect()` — can attach a named feature collection without a schema
+  change.
 
-### D2 — `heal_and_detect(doc)` come funzione della via del 90%  ✅
-Funzione top-level che fa `heal → detect` e ritorna il `ForgeResult`. Va nel
-README. `heal()` e `detect()` restano separate e pubbliche: un renderer o un
-nesting tool possono volere la sola topologia. Nome esplicito e un po' goffo di
-proposito — scelta umana, non "process". `detect()` viene saltato se `heal()` non
-produce parti valide.
+---
 
-### D3 — `detect()` / `inject()` ritornano il result  ✅
-Non ritornano più `None`: ritornano il `ForgeResult` (lo stesso oggetto, mutato)
-così la catena è esplicita: `result = forge.detect(result)`. Nessun test
-dipendeva dal `None`.
+## Current status
 
-### D4 — `OpenShape` / `ClosedShape` (bridge) eliminati  ✅
-`heal` produce direttamente `OpenFeature` / `ClosedFeature`; `bridge/shape.py`
-cancellato. `pts` / `length` / `shape_type` ora derivati dai segmenti nativi via
-`core/geometry.py` (`track_points` / `track_length` / `track_shape_type`).
-`OpenFeature` / `ClosedFeature` (`model/feature.py`) **tenuti**: la distinzione
-"ha polygon / non ce l'ha" è onesta e dà `area` / `bbox` gratis. È stato il
-cambiamento più invasivo della Fase 4 — fatto sub-step per sub-step con la suite
-golden come rete.
+Branch: `main`, version `0.6.18`. Suite: 671 passed + 62 subtests as of the
+latest decision below (D44), golden all green.
 
-### D5 — `source` / `confidence` sulle feature rilevate  ✅
-`Hole`, `Engraving`, `BendingLine`, `ClassifiedEntity` restano tutte e quattro:
-sono quattro intenti di fabbricazione con consumatori diversi. Ognuna porta
-`source: str` e `confidence: float`, popolati in `detect.py`: lane geometrica →
-`source="geometric"`, lane `label_map` → `source="labeled"` / `confidence=1.0`.
-**Niente gerarchia con ereditarietà multipla** — è una convenzione, non una torre
-di classi. `ClassifiedEntity` resta fuori dalla gerarchia `Feature` per scelta
-(via di fuga dict-based). Invariante: dopo `detect()`, ogni feature ha `source` +
-`confidence` sensati.
+Still genuinely open:
+- `detect_engrave` remains a no-op placeholder (D13) — deferred until
+  Federico gets to it.
+- Where the hole/countersink/threaded/engrave/marking role taxonomy should
+  live (raised alongside D37) — unresolved, needs a redesign (a `structural`
+  flag on the role itself instead of a fixed imported list), not a priority
+  yet.
+- A dashboard is designed as its own repo (D16) but not started.
 
-Struttura finale del modello:
+Everything else that used to sit in an old to-do list here has been resolved
+or turned moot: the script rewrite and `to_view_model`/`to_svg` shipped, the
+`refactor/structure` branch merged into `main` long ago, and the planned
+reorganization of `io/text_utils.py` became moot once D20 deleted that file
+outright.
+
+---
+
+## CLOSED DECISIONS
+
+### D1 — Library name: stays `forge` (for now)
+`heal` as a package name was considered and rejected (`from heal import heal`
+reads badly). `dxf-forge` is misleading — too tied to the file format, when
+the point is that the model is format-agnostic — but the rename is deferred.
+Importable package: `forge`.
+
+### D2 — `heal_and_detect(doc)` as the 90%-path function ✅
+Top-level function doing `heal → detect`, returning the `ForgeResult`. Goes in
+the README. `heal()`/`detect()` stay separate and public — a renderer or
+nesting tool may want topology alone. Deliberately explicit, slightly awkward
+name — a human choice, not "process". `detect()` is skipped if `heal()`
+produces no valid parts.
+
+### D3 — `detect()`/`inject()` return the result ✅
+They no longer return `None` — they return the (same, mutated) `ForgeResult`,
+making the chain explicit: `result = forge.detect(result)`. No test depended
+on the `None`.
+
+### D4 — `OpenShape`/`ClosedShape` (bridge) eliminated ✅
+`heal` now produces `OpenFeature`/`ClosedFeature` directly; `bridge/shape.py`
+deleted. `pts`/`length`/`shape_type` are derived from native segments via
+`core/geometry.py`. `OpenFeature`/`ClosedFeature` (`model/feature.py`) are
+kept — the "has a polygon / doesn't" distinction is honest and gives
+`area`/`bbox` for free. The most invasive change of Phase 4, done sub-step by
+sub-step against the golden suite.
+
+### D5 — `source`/`confidence` on detected features ✅
+`Hole`, `Engraving`, `BendingLine`, `ClassifiedEntity` stay four separate
+types — four manufacturing intents with different consumers. Each carries
+`source: str` + `confidence: float`, populated in `detect.py`: the geometric
+lane sets `source="geometric"`, the `label_map` lane sets
+`source="labeled"`/`confidence=1.0`. **No inheritance hierarchy** — a
+convention, not a class tower. `ClassifiedEntity` stays outside the `Feature`
+hierarchy by choice (a dict-based escape hatch). Invariant: after `detect()`,
+every feature has sensible `source` + `confidence`.
+
+Final model shape:
 ```
 Feature (role)
 ├── ClosedFeature (polygon, segments) → ForgeContour, Hole
 └── OpenFeature   (segments)          → Engraving, BendingLine
-ClassifiedEntity  → catch-all dict-based, fuori gerarchia per scelta
+ClassifiedEntity  → catch-all, dict-based, outside the hierarchy by choice
 ```
 
-### D6 — `parse_loop` → `segments_from_loop`  ✅
-Rinominata e spostata da `adapters/dxf/parser.py` a
-`core/topology/loop_finder.py` (logica di dominio pura, non parsing DXF).
-`_reverse_segment` rimosso: `LineSeg` / `ArcSeg` / `CircleSeg` hanno `.reversed()`
-come `SplineSeg`.
+### D6 — `parse_loop` → `segments_from_loop` ✅
+Renamed and moved from `adapters/dxf/parser.py` to
+`core/topology/loop_finder.py` (pure domain logic, not DXF parsing).
+`_reverse_segment` removed: `LineSeg`/`ArcSeg`/`CircleSeg` gained
+`.reversed()` like `SplineSeg` already had.
 
-### D7 — Un solo dispatcher entità→primitiva  ✅
-`parser.py::DxfEntityDispatcher` e `adapter.py::entity_to_primitive` erano due
-copie quasi identiche. Ora una sola (`DxfEntityDispatcher`), usata da produzione
-**e** test. **Bug latente scoperto e corretto:** `ArcSeg.from_chord` sbagliava
-gli archi maggiori (`|bulge| > 1`, sweep > 180°) — usava `sqrt(r² - half_chord²)`
-(sempre positivo → sempre arco minore) invece di `r·cos(sweep/2)` (con segno).
-Era mascherato perché la produzione usava il `_bulge_to_arc` corretto di
-`adapter.py`. 5 golden roundtrip lo hanno preso appena unificato il dispatcher.
+### D7 — One entity→primitive dispatcher ✅
+`parser.py::DxfEntityDispatcher` and `adapter.py::entity_to_primitive` were
+near-duplicate copies. Now a single `DxfEntityDispatcher`, used by both
+production and tests. **Latent bug found and fixed:** `ArcSeg.from_chord` got
+major arcs wrong (`|bulge| > 1`, sweep > 180°) — it used
+`sqrt(r² - half_chord²)` (always positive → always a minor arc) instead of the
+signed `r·cos(sweep/2)`. It had been masked because production used
+`adapter.py`'s correct `_bulge_to_arc`. 5 golden roundtrips caught it the
+moment the dispatcher was unified.
 
-### D8 — `inject()` sgonfiato  ✅
-I conteggi feature (fori per tipo, pieghe, incisioni, marking) sono ora
-`ForgePart.summary`, property derivata dal modello — non più copiati in
-`part.custom` da `inject()`. `inject()` resta solo per il `data_injector` esterno
-(materiale / spessore / codice dai testi); senza `data_injector` non fa nulla.
-Equivalenza provata prima di toccare i fixture (`part.summary ==
-inject().part.custom` su tutte le 63 parti golden, 0 mismatch), poi rename
-chirurgico `"custom"` → `"summary"` nei fixture.
+### D8 — `inject()` slimmed down ✅
+Feature counts (holes by type, bends, engravings, marking) are now
+`ForgePart.summary`, a property derived from the model — no longer copied into
+`part.custom` by `inject()`. `inject()` now exists only for the external
+`data_injector` hook (material/thickness/code from texts); without one it does
+nothing. Equivalence proven before touching fixtures (`part.summary ==
+inject().part.custom` on all 63 golden parts, 0 mismatches), then a surgical
+`"custom"` → `"summary"` rename in fixtures.
 
-### D9 — L'inspector diventa strumento a 3 livelli  ✅
-`dxf_inspect.py` (morto, import rotti) → `forge/inspect.py`, esportato. Stampa
-tre livelli: (1) entità DXF grezze — "cosa c'è nel file"; (2) primitive / edge /
-grafo dopo `load_dxf` — "cosa ha capito l'adapter"; (3) il modello dopo
-`heal` / `detect` — "cosa ha prodotto forge". Serve per lavorare su file reali
-(es. quando si implementerà `detect_engrave`).
+### D9 — the inspector becomes a 3-level tool ✅
+`dxf_inspect.py` (dead, broken imports) → `forge/inspect.py`, exported. Prints
+three levels: (1) raw DXF entities — "what's in the file"; (2)
+primitives/edges/graph after `load_dxf` — "what the adapter understood"; (3)
+the model after `heal`/`detect` — "what forge produced". For working on real
+files.
 
-### D10 — `load_pdf` congelato  ✅
-Ritorna `list[Edge]`, non un `ForgeDocument` → `forge.heal()` lo rifiuta. Tolto
-da `__all__`, marcato sperimentale. Il codice **non si tocca**. Resta importabile
-come `forge.load_pdf`. PDF si riprende più avanti (o mai).
+### D10 — `load_pdf` frozen ✅
+Returns `list[Edge]`, not a `ForgeDocument` → `forge.heal()` rejects it.
+Removed from `__all__`, marked experimental. Code untouched, still importable
+as `forge.load_pdf`. PDF support to be picked up later (or never).
 
-### D11 — Versione: unico punto = `pyproject.toml`  ✅
-`forge.__version__` la legge con `importlib.metadata.version("forge")`, fallback
-`0.0.0+dev`. Non si aggiorna più niente a mano tranne il `pyproject`.
+### D11 — Version: single source = `pyproject.toml` ✅
+`forge.__version__` reads it via `importlib.metadata.version("forge")`,
+fallback `0.0.0+dev`. Nothing else is updated by hand except `pyproject`.
 
-### D12 — SVG: solo in uscita, spline discretizzate  ✅
-`to_svg(result)` è un renderer del modello; archi/cerchi/spline appiattiti a
-polilinea (accettabile per visualizzare, non per il taglio). **Niente
-`SvgAdapter` in ingresso** finché non arriva un file SVG reale.
+### D12 — SVG: output only, splines discretized ✅
+`to_svg(result)` is a model renderer; arcs/circles/splines are flattened to
+polylines (fine for viewing, not for cutting). No `SvgAdapter` on input until a
+real SVG file shows up.
 
-Implementato in due pezzi (`forge/io/`):
-- **`to_view_model(result)`** — `ForgeResult` → dict JSON con la geometria di
-  *ogni* feature + ruolo + colore hex. È il vero contratto per un renderer
-  esterno (dashboard JS).
-- **`to_svg` / `save_svg`** — SVG "batterie incluse" costruito sopra il view
-  model. Un colore per ruolo (palette semantica condivisa col DXF), Y ribaltata,
-  una parte = un `<g data-part>`, fori come `<circle>` veri.
-- `forge/rules/palette.py` esteso: `ROLE_TO_COLOR` completo + `ACI_TO_HEX` +
-  `role_to_hex()` (nessuna dipendenza da ezdxf o dal formato).
+Implemented in two pieces (`forge/io/`):
+- **`to_view_model(result)`** — `ForgeResult` → a JSON dict with every
+  feature's geometry + role + hex color. The real contract for an external
+  renderer (a JS dashboard).
+- **`to_svg`/`save_svg`** — batteries-included SVG built on top of the view
+  model. One color per role (a palette shared with DXF), Y flipped, one part =
+  one `<g data-part>`, holes as real `<circle>`s.
+- `forge/rules/palette.py` extended: `ROLE_TO_COLOR` + `ACI_TO_HEX` +
+  `role_to_hex()` (no dependency on ezdxf or the format).
 
-### D13 — `detect_engrave`: rimandato
-`_detect_engrave` resta placeholder no-op. Il seam nella pipeline `detect()` c'è
-già (parametro `engrave_tolerance`, chiamata in `detect()`). Quando implementato:
-guarda `part.inners` con role UNKNOWN e `result.trash_entities`, promuove a
-`Engraving(source="geometric")` i pattern riconoscibili (es. due polilinee
-~parallele a distanza < tolerance → incisione, non foro). Federico lo
-implementerà dopo aver fatto ordine.
+### D13 — `detect_engrave`: deferred
+`_detect_engrave` stays a no-op placeholder. The seam is already in
+`detect()`'s pipeline (`engrave_tolerance` parameter). When implemented: look
+at inner contours with UNKNOWN role and `result.trash_entities`, promote
+recognizable patterns (e.g. two near-parallel polylines closer than
+`tolerance`) to `Engraving(source="geometric")`. Federico will implement it
+once other things are in order.
 
-### D14 — Script numerati alla radice: restano, ma si riscrivono
-Federico li usa come palestra per capire l'API. Decisione aggiornata (2026-08-29):
-non solo si tengono, si **riscrivono e rinumerano** — idealmente uno script per
-ogni funzione di `forge.__all__`, con un `INPUT` di default che punti a
-`tests/examples/` così girano senza configurazione. `.gitignore` copre già i loro
-output (`*_healed.dxf`, `*.png`, `pipeline_output/`, `_split_debug/`).
-`13_ARC_splitter` è **fuori da questo lavoro**: è codice di produzione su file
-cliente, va portato alla nuova API in una sessione dedicata e collaudato da
-Federico con il suo overlay-check in SigmaNest.
+### D14 — Numbered root scripts: kept, but rewritten
+Federico uses them as an API-learning gym. Updated decision: not only kept,
+but rewritten and renumbered — ideally one script per `forge.__all__`
+function, defaulting to `tests/examples/` so they run with zero setup.
+`.gitignore` already covers their output. `13_ARC_splitter` is out of scope
+for this work — production code on client files, to be ported to the new API
+separately and validated by Federico with his SigmaNest overlay check.
 
-### D15 — `detect()` parametrico + classificazione hole spostata lì  ✅
-Principio: `HOLE_DIAMETER_THRESHOLD` (32.1 mm) è un **parametro di processo** —
-la capacità di foratura della macchina/utensile — non una costante di dominio. I
-parametri di processo appartengono alla chiamata di classificazione, non alla
-topologia.
+### D15 — `detect()` made parametric; hole classification moved there ✅
+Principle: `HOLE_DIAMETER_THRESHOLD` (32.1 mm) is a **process parameter** —
+the machine/tool's drilling capacity — not a domain constant. Process
+parameters belong to the classification call, not to topology.
 
-Forma finale:
-- `heal` produce **solo** l'albero di contenimento:
-  `ForgePart(outer, inners=[ForgeContour...])`, zero `Hole`.
-- `detect()` è parametrico:
-  - `detect(result)` nudo → default taglio laser: solo lane `label_map`
-    (autoritativa) + pulizia topologia, zero `Hole`;
-  - `detect(result, "holes" | "bending" | "engrave" | "all")` → lane geometriche
-    opt-in;
-  - `max_drill_diameter` (default 32.1) è argomento di `detect()`: Ø < soglia →
-    `Hole`, Ø ≥ soglia → resta `ForgeContour` inner.
-- `heal_and_detect(..., features="all")` è la via del 90%.
-- `ClosedFeature.diameter` / `center` rimossi: la geometria circolare la ricava
+Final shape:
+- `heal` produces **only** the containment tree: `ForgePart(outer,
+  inners=[ForgeContour...])`, zero `Hole`.
+- `detect()` is parametric: bare `detect(result)` → laser-cut default,
+  `label_map` lane only (authoritative) + topology cleanup, zero `Hole`;
+  `detect(result, "holes"|"bending"|"engrave"|"all")` → opt-in geometric
+  lanes; `max_drill_diameter` (default 32.1) is a `detect()` argument: Ø
+  below → `Hole`, Ø at/above → stays a `ForgeContour` inner.
+- `heal_and_detect(..., features="all")` is the 90% path.
+- `ClosedFeature.diameter`/`.center` removed: circular geometry comes from
   `core/geometry.circular_geometry`.
 
-Prova di equivalenza su tutti i golden (`features="all"`): diff **solo** su 7
-file, dove cerchi Ø ≥ 32.1 migrano da `Hole(role="inner")` a
-`ForgeContour(role=INNER)` — che è il comportamento voluto. Golden rigenerati uno
-per uno, diff verificato a mano.
+Verified across all golden fixtures (`features="all"`): diff on only 7 files,
+where circles Ø ≥ 32.1 migrate from `Hole(role="inner")` to
+`ForgeContour(role=INNER)` — the intended behavior. Side effect: the old
+`Hole(role="inner")` bug from `hierarchy` disappears on its own.
 
-Effetto collaterale: il vecchio bug `Hole(role="inner")` prodotto da `hierarchy`
-sparisce da solo (nessun `Hole` da `hierarchy`).
+### D16 — Dashboard: a separate repo, not a branch
+A future dashboard/UI is an app with its own dependencies (web server or GUI
+toolkit) and its own release cycle — it shouldn't pollute the library repo. It
+goes in its own repo that does `pip install forge`, like `snapmark` already
+does. The `dev_tools/` prototypes (`dashboard.py`, `dashboard_2.py`,
+`split_verify*.py`, `dxf_kernel*.py`) are the starting point.
 
-Riferimento: memoria `hole-classification-belongs-in-detect`.
+### D17 — World XY position is preserved (invariant, not a decision)
+Logged here because it's a guarantee the production flow relies on (split →
+import into SigmaNest → overlay the original for a registration check). The
+pipeline never translates geometry: `load_dxf` sanitizes the OCS and flattens
+Z; `heal` only touches endpoints to close gaps; `to_dxf`/`split` write segment
+`center`/`pts` verbatim. Every split part lands at the same absolute XY as the
+source. Only intended loss: Z flattened to 0 (correct for sheet/laser).
+`test_golden_split` guards this invariant with absolute-coordinate comparison.
 
-### D16 — Dashboard: repo separata, non branch
-Una eventuale dashboard / interfaccia è un'**app** con dipendenze proprie (web
-server o toolkit GUI), ciclo di release diverso, e non deve inquinare la repo
-della libreria. Va in una repo a sé che fa `pip install forge` (o `-e` in
-sviluppo), come già `snapmark`. I prototipi in `dev_tools/` (`dashboard.py`,
-`dashboard_2.py`, `split_verify*.py`, `dxf_kernel*.py`) sono il punto di
-partenza, si portano lì. Un branch andrebbe bene solo per un prototipo
-usa-e-getta dentro questa stessa storia.
+### D18 — `to_nester_input`: out of `__all__`, experimental
+forge does not do nesting (arranging parts on a sheet to minimize scrap) and
+won't, unless a client commissions and pays for it. `to_nester_input` was
+written early for a nester that never happened. Same treatment as `load_pdf`
+(D10): code stays, importable, but out of `__all__` and undocumented. Geometry
+serialization for renderers/tools is `to_view_model` (D12).
 
-### D17 — La posizione XY del mondo è preservata (invariante, non decisione)
-Registrato qui perché è una garanzia su cui si appoggia il flusso di produzione
-(split → import in SigmaNest → overlay dell'originale per il registration check).
-La pipeline **non trasla mai** la geometria: `load_dxf` sanifica l'OCS
-(`normalize_ocs`: gira il vettore di estrusione senza alterare la geometria in
-WCS) e appiattisce la Z; `heal` tocca solo gli endpoint per chiudere i gap;
-`to_dxf` / `split` scrivono `center` / `pts` dei segmenti verbatim. Ogni parte
-splittata atterra alla stessa coordinata XY assoluta della sorgente. **Unica
-perdita voluta:** la Z viene appiattita a 0 (corretto per lamiera/laser).
-`test_golden_split` blocca questo invariante — confronta l'`outer_wkt` con
-coordinate assolute, un ricentraggio lo farebbe fallire.
+### D19 — `adapters/bridge/` eliminated, `Edge` moved to `core/topology/edge.py` ✅
+Flagged by Federico: `bridge/` had been left with a single file (`edge.py`)
+after `shape.py` was removed (D4) — a folder smell. Deeper issue: `Edge` lived
+under `adapters/` but `core/topology/graph.py`, `loop_finder.py`,
+`bending_detector.py`, `core/healing/gap_solver.py` and `core/adapter_base.py`
+all imported it from there — **`core` depended on `adapters`**, the exact
+opposite of the dependency rule (`docs/ARCHITECTURE.md`). `Edge` is not a
+primitive (those are pure math in `core/primitives/segments.py`): it's a
+topological wrapper (role/style/provenance) around a primitive — it belongs in
+`core/topology/`, where its real consumers live. Moved there; DXF/PDF adapters
+now import it from `core`. No behavior change. Suite: 579 passed.
 
-### D18 — `to_nester_input`: fuori da `__all__`, sperimentale
-dxf-forge **non fa nesting** (disporre i pezzi in tavola per minimizzare lo
-sfrido) e non lo farà, salvo commessa pagata da un cliente. `to_nester_input`
-era stato scritto all'inizio per un nester mai realizzato. Trattamento identico a
-`load_pdf` (D10): il codice resta, importabile come `forge.to_nester_input`, ma
-fuori da `__all__` e non documentato nel contratto. La serializzazione della
-geometria per renderer/tool è `to_view_model` (D12).
-Riferimento: memoria `nesting-out-of-scope`.
+### D20 — Annotations: typed model + separate `interpret` phase ✅
+Flagged by Federico: annotations were a mess — two parallel, untyped models
+for the same thing: `Annotation(kind, position, data=dict)` in
+`model/document.py` (from `annotation_extractor.py`, consumed by `write()`),
+and `ForgeText(content, position: shapely.Point)` in `model/text.py` (from
+`io/text_utils.extract_forge_texts`, consumed by `inject()`) — reading the
+same DXF entity twice. `io/text_utils.py` and `annotation_extractor.py` also
+imported each other.
 
-### D19 — `adapters/bridge/` eliminato, `Edge` spostato in `core/topology/edge.py`  ✅
-Segnalato da Federico: `bridge/` era rimasta con un solo file (`edge.py`) dopo
-l'eliminazione di `shape.py` (D4) — smell di cartella. Più a fondo: `Edge`
-viveva sotto `adapters/` ma `core/topology/graph.py`, `loop_finder.py`,
-`bending_detector.py`, `core/healing/gap_solver.py` e `core/adapter_base.py`
-lo importavano tutti da lì — **`core` dipendeva da `adapters`**, il contrario
-esatto della regola di dipendenza (`docs/ARCHITECTURE.md`). `Edge` non è una
-primitiva (quelle sono math puro in `core/primitives/segments.py`): è un
-wrapper topologico con ruolo/stile/provenienza attorno a una primitiva —
-appartiene a `core/topology/`, dove vivono i suoi consumatori veri. Spostato
-lì; adapter DXF/PDF ora lo importano da `core`, come da regola. Nessuna
-modifica di comportamento — solo import aggiornati. Suite: 579 passed.
+Decision:
+- **One typed model** in `model/annotation.py`: `Annotation` base +
+  `Note`/`Dimension`/`Leader`, plus `RenderedGeometry`/`RenderedText` for the
+  flattened image of dimensions/leaders. No `data` dict, no `shapely` in
+  fields. `Annotation(data=dict)` and `ForgeText` removed.
+- **Adapter = format only.** `annotation_extractor` reads DXF → typed objects;
+  `write` does the reverse, faithfully. MTEXT string helpers live in
+  `adapters/dxf/mtext.py`.
+- **Interpretation gets its own phase**, `forge.interpret_annotations(result)`
+  (later renamed `anchor_annotations`, D43) — not inside `detect()`, which
+  already does too much. Populates only `Annotation.part_ref` (containing-part
+  index); `references`/`target` toward features are stubbed but not computed.
+- `inject()` no longer takes `texts=`/`msp`: it filters `result.annotations`
+  by containment. `io/text_utils.py` and its two extraction functions removed
+  — no real caller, clean break.
 
-### D20 — Annotazioni: modello tipato + fase `interpret` separata  ✅
-Segnalato da Federico: le annotazioni erano un casino. Due modelli paralleli non
-tipati per la stessa cosa — `Annotation(kind, position, data=dict)` in
-`model/document.py`, prodotto da `annotation_extractor.py` e consumato da
-`write()`, e `ForgeText(content, position: shapely.Point)` in `model/text.py`,
-prodotto da `io/text_utils.extract_forge_texts` e consumato da `inject()` — che
-leggevano la stessa entità DXF due volte. In più `io/text_utils.py` (codice DXF
-puro, ma sotto `io/`) e `annotation_extractor.py` si importavano a vicenda.
-
-Decisione, in linea con `annotations-are-first-class-interpreted-content`:
-
-- **Un solo modello tipato** in `model/annotation.py`: `Annotation` base +
-  `Note` / `Dimension` / `Leader`, più `RenderedGeometry` / `RenderedText` per
-  l'immagine appiattita di quote e direttrici. Niente `data` dict, niente
-  `shapely` nei campi (posizione = tupla). `Annotation(data=dict)` e `ForgeText`
-  eliminati.
-- **Adapter = solo formato.** `annotation_extractor` legge DXF → oggetti tipati;
-  `write` fa l'inverso, fedele. Gli helper stringa MTEXT stanno in
-  `adapters/dxf/mtext.py` (`clean_mtext` riesportata da `forge`).
-- **Interpretazione in una fase a sé**, `forge.interpret_annotations(result)`,
-  **non** dentro `detect()` (che fa già troppo — vedi
-  `keep-detect-focused-prefer-separate-stages`). Oggi popola solo
-  `Annotation.part_ref` (indice della parte contenitrice); `references` /
-  `target` verso le feature sono predisposti ma non ancora calcolati.
-- `inject()` non prende più `texts=` né un `msp`: filtra `result.annotations`
-  per contenimento. `io/text_utils.py`, `extract_texts_from_msp` e
-  `extract_forge_texts` rimossi (nessun chiamante reale, clean break).
-
-Regressione trovata e risolta lungo la strada (`b5b2503`): i MULTILEADER
-solo-testo senza anchor/vertici/geometria (Solid Edge) venivano scartati.
-Fixture `6200013103_P1NoLineaPiega` aggiunta a `golden/` e `golden_multipli/`;
-nuovo golden `golden/annotations/` con `generate_golden_annotations.py`. Due bug
-noti pre-esistenti su quella fixture documentati in `file_test_status.md` (BL
-sotto-rilevate sul pezzo _1; cartiglio rilevato come parte). Suite: 610 passed.
-
-### D21 — `ForgePart` → `ForgeCluster`  ✅
-
-`heal()` produce **cluster**: gruppi di geometria separati spazialmente. Un
-cluster *può* essere un pezzo lavorabile, ma anche una vista, una sezione, un
-particolare o il cartiglio — la "part-ness" è interpretazione del consumatore,
-non una cosa che forge decide (vedi `INTERPRETER.md` e la memoria
-`forge-clusters-not-parts`). Il nome `ForgePart` prometteva una semantica che
-forge non fornisce.
-
-Rename meccanico, zero logica cambiata: `ForgePart` → `ForgeCluster`,
-`result.parts` → `result.clusters`, `part_count` → `cluster_count`,
-`Annotation.part_ref` → `cluster_ref`, `*.part_label` → `cluster_label`,
-`filter_part`/`on_part`/`namer(i, part)` → `cluster`, `DEFAULT_MIN_PART_AREA`
-→ `DEFAULT_MIN_CLUSTER_AREA`, file `model/part.py` → `model/cluster.py`. Chiavi
-di output rinominate (`to_dict`, `save_json`, `save_xml` `<clusters><cluster>`,
-`to_view_model`, `data-cluster` in SVG, schema `source="cluster"`). Golden
-rigenerati sulle **sole chiavi** — diff verificato: nessun valore geometrico
-toccato. Suite: 610 passed.
-
-Breaking: le chiavi JSON/XML cambiano nome. Nessun consumatore reale le legge
-ancora. Branch `refactor/clusters`, merge ff, `main` a 0.6.3.
-
-### D22 — `pipeline/` sciolto: `heal`→core, `tools/`, renderer in `io/`  ✅
-
-Segnalato da Federico: `pipeline/` non era "una cosa", mescolava tre tipi
-diversi di modulo, e il nome implicava una sequenza fissa che la libreria non
-impone ("non una pipeline fissa ma oggetti puliti su cui costruire").
-
-- **`heal.py` (`HealStep` + `heal()`) → `forge/core/heal.py`.** È l'atto del
-  motore: `ForgeDocument` → `ForgeResult`, orchestra tutto `core/topology` +
-  `core/healing`. Non è opzionale — ogni altro passo lavora sul suo output.
-  `core/` già dipendeva da `rules/` (`hole_detector` → `rules.thresholds`;
-  `rules/validator` → `core.topology`), quindi `heal` che usa
-  `rules.validator` non è una violazione nuova. Tolte 3 righe di import morti
-  (`LAYER_OUTER`/`LAYER_INNER`/`COLOR_OUTER`/`COLOR_INNER` + `LoopFinder`
-  module-level, già re-importato in `_find_loops`).
-- **`detect.py` / `interpret.py` / `inject.py` → `forge/tools/`.** Stadi
-  opzionali e componibili su un `ForgeResult`: ognuno lo arricchisce in-place e
-  lo ritorna, il caller sceglie quali e in che ordine. È il pattern che un
-  interprete di disegno (progetto separato) generalizza — vedi `INTERPRETER.md`.
-- **`write.py` (`to_dxf` / `split`) → `forge/io/dxf.py`.** Sono renderer del
-  modello, esattamente come `to_svg` / `to_json` / `to_view_model` — che erano
-  già in `io/`. `ARCHITECTURE.md` li descriveva come renderer mentre il codice
-  li teneva altrove.
-- **`heal_and_detect` / `split_to_files` → `forge/recipes.py`.** Le scorciatoie
-  della "via del 90%": nessuna logica nuova, solo l'ordine comodo.
-- Cancellate `forge/pipeline/` e `forge/workflow/` (quest'ultima vuota da
-  sempre).
-
-Nessun cambiamento di comportamento — solo file spostati e import aggiornati.
-`forge.__all__` invariato. Suite: 610 passed. Branch `refactor/module-layout`,
-`main` a 0.6.4.
-
-Il frame (`core/classification/frame_detector.py`,
-`adapters/dxf/frame_adapter_dxf.py`) è concettualmente roba dell'interprete ma
-resta in forge finché quel repo non esiste. → superato da D24: rimosso, era
-codice morto.
-
-### D23 — Script numerati in `scripts/` + `_paths.py` che fa `chdir`  ✅
-
-Aggiorna la parte "alla radice" di D14 (il resto di D14 resta: si tengono, uno
-per funzione, default su `tests/examples/`).
-
-Federico lavora copiando un file dove capita e scrivendo `INPUT = r"..."` a
-mano. Il punto dolente non era *dove* stanno gli script ma che il percorso
-relativo dipende dalla cartella di lavoro: `python scripts/03_detect.py`, il
-pulsante Run di VS Code e un terminale aperto dentro `scripts/` davano CWD
-diversi, quindi `r"tests/examples/x.dxf"` funzionava in un caso e falliva
-nell'altro (stesso problema che ha in snapmark con i DXF di prova).
-
-Forma finale, **un solo modo**:
-
-- gli script stanno in `scripts/` (radice del repo più pulita su GitHub);
-- prima riga di ogni script: `import _paths` — `scripts/_paths.py` fa
-  `os.chdir()` alla radice del repo (`Path(__file__).parent.parent`);
-- nel `CONFIG` si scrive il path grezzo: relativo (parte dal repo) o assoluto
-  (usato com'è). Niente `EXAMPLES / "..."`, nessun pattern da ricordare.
-
-L'output relativo (`pipeline_output/`) finisce comunque sotto la radice del
-repo grazie al `chdir`. `13_ARC_splitter` si sposta in `scripts/` per coerenza
-ma resta fuori serie (path assoluti propri, API pre-refactor, non versionato).
-
-### D24 — Frame detector rimosso da forge (era codice morto)  ✅
-
-Supera la nota in coda a D22 ("resta in forge finché quel repo non esiste").
-
-`core/classification/frame_detector.py` e `adapters/dxf/frame_adapter_dxf.py`
-erano già morti: nessun test o script li chiamava, l'adapter importava da
-`...core.classify.frame_detector` (path inesistente — la cartella è
-`classification`), e `detect_frame()` aveva un `print("DEBUG …")` piantato
-dentro. Il rilevamento cornice/cartiglio è per decisione roba dell'interprete
-(memoria `forge-neutral-substrate-agent-layer-above`): gira *prima* di `heal`
-su geometria grezza, cosa che forge non fa. Tenerlo "solo annotato" significava
-tenere in `core/` un modulo rotto che prometteva una capacità che forge non
-espone.
-
-Entrambi i file cancellati — sono in git history. L'algoritmo (rettangoli con
-ratio ISO √2 ±5% + containment ≥ 80%, conservativo) resta documentato in
-`INTERPRETER.md` come specifica di `frame.py`, da implementare lì quando il repo
-esiste. Il ruolo `ContourRole.FRAME` resta in forge: è solo un'etichetta (un
-importer del layer sopra può assegnarla, `rules/palette` e `adapters/dxf/layers`
-le danno un layer di destinazione), non logica di rilevamento.
-
-Branch `refactor/kill-frame-deadcode`.
-
-### D25 — `core/classification/` sciolta: `hole_detector` → `tools/`  ✅
-
-Rimasto un solo file dopo D24 (`hole_detector.py`), più un appunto
-(`possibili_altri.md`). Segnalato da Federico: la cartella sembrava un progetto
-a sé dentro `core/`, fuori posto.
-
-`is_threaded_hole` / `is_countersink_outer` sono euristiche di *riconoscimento*
-usate solo da `tools/detect.py`, non geometria di base riusabile (quella è
-`core/geometry.py` / `core/primitives/`). Per la linea di
-`keep-detect-focused-prefer-separate-stages` le preoccupazioni di riconoscimento
-stanno sotto `tools/` accanto al loro consumatore. Spostato a
-`forge/tools/hole_detector.py`; `detect.py` importa `from .hole_detector`.
-`core/` ora è solo il motore geometrico deterministico: `primitives`,
-`topology`, `healing`, `geometry.py`, `heal.py`, `adapter_base.py`.
-
-`possibili_altri.md` cancellato — l'idea (nuovi classificatori = un modulo
-opt-in per volta sotto `tools/`, `detect` diventa package se cresce) è già in
-`keep-detect-focused-prefer-separate-stages` e in TODO.md.
-
-Tolta anche `forge/adapters/bridge/`, cartella vuota rimasta dopo D19 (non
-tracciata da git, solo sul filesystem).
-
-Nessun cambiamento di comportamento. Suite: 610 passed. Branch
-`refactor/hole-detector-to-tools`.
-
-### D26 — `model/` riordinato: `ForgeContour` in un file proprio  ✅
-
-Segnalato da Federico: `cluster.py` definiva sia il contenitore (`ForgeCluster`)
-sia uno dei suoi elementi (`ForgeContour`), incoerente con `hole.py` /
-`engraving.py` / `bending_line.py` che stanno ognuno per conto suo.
-
-- `ForgeContour` → `model/contour.py`, sorella di `Hole` / `Engraving`.
-  `cluster.py` la importa per i type hint di `outer` / `inners`.
-- `BaseInterpreter` (ABC in `classified.py`) cancellato: nessun implementatore,
-  e la firma citava `msp` (modelspace ezdxf, concetto pre-refactor).
-- `ClassifiedEntity` **resta in `model/`**: `ForgeResult.classified_entities`
-  la contiene, spostarla in `tools/` farebbe dipendere `model/` da `tools/`.
-  Aggiunto un docstring che lo spiega.
-
-Import diretti aggiornati (`core/healing/hierarchy.py`, 2 test). `forge.__all__`
-e `forge.model.__all__` invariati salvo `BaseInterpreter` rimosso. Suite: 610
+Regression found and fixed along the way (`b5b2503`): text-only MULTILEADERs
+with no anchor/vertices/geometry (Solid Edge) were being dropped. New golden
+fixture added, plus two known pre-existing bugs on it (bending lines
+under-detected; title block detected as a cluster — see `TODO.md`). Suite: 610
 passed.
 
-### D27 — `ContourRole` vocabolario aperto  ✅
+### D21 — `ForgePart` → `ForgeCluster` ✅
+`heal()` produces **clusters**: spatially separate geometry groups. A cluster
+*may* be a workable part, but could also be a view, a section, a detail, or
+the title block — "part-ness" is the consumer's interpretation, not something
+forge decides. The name `ForgePart` promised a semantics forge doesn't
+provide.
 
-Sintesi della discussione "ContourRole question" (parere di ChatGPT, condiviso
-da Federico): forge non definisce il mondo, fornisce un linguaggio geometrico +
-ruoli noti su cui altri costruiscono la loro semantica. Un `ContourRole` chiuso
-che rifiuta l'ignoto è contro la direzione "substrato neutro"
-(`forge-neutral-substrate-agent-layer-above`).
+Mechanical rename, zero logic changed: `ForgePart`→`ForgeCluster`,
+`result.parts`→`result.clusters`, `part_count`→`cluster_count`,
+`Annotation.part_ref`→`cluster_ref`, and so on. Output keys renamed
+accordingly (JSON/XML/view-model/SVG). Golden regenerated on keys only — no
+geometric value touched. Breaking: JSON/XML key names change; no real consumer
+read them yet. Suite: 610 passed. Branch `refactor/clusters`, `main` → 0.6.3.
 
-Regola:
+### D22 — `pipeline/` dissolved: `heal`→core, `tools/`, renderers into `io/` ✅
+Flagged by Federico: `pipeline/` wasn't "a thing" — it mixed three different
+kinds of module, and the name implied a fixed sequence the library doesn't
+impose.
 
-- **A — enum non autoritativo, mai reverse-lookup da input esterno.**
-  `ContourRole` resta la raccolta dei ruoli noti (costanti comode). Forge fa
-  solo test di appartenenza (`role == ContourRole.OUTER`, `role in
-  STRUCTURAL_ROLES`). Vietati `ContourRole[x]`, `getattr(ContourRole, x)`,
-  `ContourRole(x)` su dati del chiamante, e l'API funzionale `Enum(...)`:
-  sollevano o raggiungono attributi di classe. La mappa stringa→ruolo passa
-  sempre per un `dict.get`.
-- **B — un solo punto di normalizzazione, al load.** `model/role.normalize_role`:
-  `str` o `"unknown"`; minuscole; charset `[a-z0-9_-]` (il resto collassato in
-  `_` — neutralizza i payload di injection); ≤ 64 char; noto → costante,
-  ignoto-valido → slug conservato. `layer_to_role` / `_style_role` (dxf) /
-  `_role_from` (geometry) ci passano invece di schiacciare a `UNKNOWN`.
-- **C — difesa anche ai sink.** `role_to_dxf_layer` / `ROLE_TO_LAYER.get` →
-  ignoto su `TRASH_LAYER` (già così); `role_to_hex` → `COLOR_TRASH`; SVG
-  `html.escape` su qualsiasi ruolo in un attributo. Ridondante rispetto a B,
-  voluto.
-- **D — `role_str(role)`** al posto di `.role.value`, che esplode su una `str`.
+- **`heal.py` (`HealStep`+`heal()`) → `forge/core/heal.py`.** The engine's core
+  act: `ForgeDocument`→`ForgeResult`. Not optional — every other step works on
+  its output.
+- **`detect.py`/`interpret.py`/`inject.py` → `forge/tools/`.** Optional,
+  composable stages on a `ForgeResult`: each enriches it in place and returns
+  it, the caller picks which and in what order — the pattern a future drawing
+  interpreter (separate project) generalizes.
+- **`write.py` (`to_dxf`/`split`) → `forge/io/dxf.py`.** Renderers of the
+  model, exactly like `to_svg`/`to_json`/`to_view_model`.
+- **`heal_and_detect`/`split_to_files` → `forge/recipes.py`.** The "90% path"
+  shortcuts.
+- `forge/pipeline/` and the always-empty `forge/workflow/` deleted.
 
-Type hint `role: ContourRole` → `role: str` in `model/feature.py`,
-`core/topology/edge.py`, `adapters/geometry/loader.py`. `VALID_WORK_TYPES`
-(era in `rules/thresholds.py`, morto) rimosso. Un ruolo custom (`title_block`)
-sopravvive `load → heal`: geometria in `trash_entities`, ruolo intatto, nessun
-warning. Suite: 619 passed (9 nuovi in `test_role.py`).
+No behavior change — only files moved and imports updated. `forge.__all__`
+unchanged. Suite: 610 passed. Branch `refactor/module-layout`, `main` →
+0.6.4. (Frame detection was noted here as belonging to the future interpreter
+but staying in forge until that repo existed — superseded by D24.)
 
-Branch `refactor/open-roles` (parte da `refactor/model-tidy`), merge unico →
-`main` 0.6.7.
+### D23 — Numbered scripts moved to `scripts/` + `_paths.py` doing `chdir` ✅
+Updates the "at the root" part of D14. Federico worked by copying a script
+wherever and hand-writing `INPUT = r"..."`. The real pain wasn't *where* the
+scripts live but that a relative path depends on the working directory:
+`python scripts/03_detect.py`, VS Code's Run button, and a terminal opened
+inside `scripts/` all gave different CWDs. One way, finally: scripts live in
+`scripts/`; the first line of each is `import _paths` (`scripts/_paths.py`
+does `os.chdir()` to the repo root); `CONFIG` just writes the raw path
+(relative from the repo root, or absolute). `13_ARC_splitter` moves to
+`scripts/` for consistency but stays out-of-series.
 
-### D28 — `BendingDetector` → `NonContourEdgeDetector` (nome neutro)  ✅
+### D24 — Frame detector removed from forge (it was dead code) ✅
+Supersedes D22's note. `core/classification/frame_detector.py` and
+`adapters/dxf/frame_adapter_dxf.py` were already dead: no test or script
+called them, the adapter imported from a path that didn't exist, and
+`detect_frame()` had a stray debug `print`. Frame/title-block recognition is,
+by decision, the future interpreter's job (memory
+`forge-neutral-substrate-agent-layer-above`): it runs *before* `heal` on raw
+geometry, which forge doesn't do. Both files deleted (in git history). The
+algorithm (ISO √2±5% ratio rectangles + ≥80% containment, conservative) stays
+documented in `INTERPRETER.md`/`FRAMER.md` as the spec for the future `Framer`
+module. `ContourRole.FRAME` stays in forge as just a label a consumer can
+assign — not detection logic. Branch `refactor/kill-frame-deadcode`.
 
-Segnalato da Federico: dentro `HealStep` c'era `_find_bending_candidates()` /
-`BendingDetector`, che sembrava logica di `detect` finita in `heal`.
+### D25 — `core/classification/` dissolved: `hole_detector` → `tools/` ✅
+Only one file left after D24. Flagged by Federico: the folder looked like a
+project of its own inside `core/`, out of place. `is_threaded_hole`/
+`is_countersink_outer` are recognition heuristics used only by
+`tools/detect.py`, not reusable base geometry — they belong under `tools/`
+next to their consumer. Moved to `forge/tools/hole_detector.py`. `core/` is
+now only the deterministic geometric engine. Suite: 610 passed.
 
-Verificato: il modulo **non classifica niente come piega**. Per topologia trova
-gli edge con entrambi gli endpoint su nodi di branching e centroide interno al
-convex hull, e li **esclude dal grafo prima della ricerca dei loop** — altrimenti
-una linea che attraversa il pezzo da parte a parte rompe la chiusura dei
-contorni. `non_contour_edge_ids` è stato interno di `HealStep`: non finisce mai
-sul `ForgeResult`. La semantica vera ("questa linea è una piega") resta in
-`tools/detect._detect_bending`, che ripesca queste linee dalla trash — opt-in.
+### D26 — `model/` tidied: `ForgeContour` gets its own file ✅
+Flagged by Federico: `cluster.py` defined both the container (`ForgeCluster`)
+and one of its elements (`ForgeContour`), inconsistent with
+`hole.py`/`engraving.py`/`bending_line.py`. `ForgeContour` → `model/contour.py`.
+`BaseInterpreter` (an ABC with no implementer, referencing a pre-refactor
+`msp` concept) deleted. `ClassifiedEntity` stays in `model/` —
+`ForgeResult.classified_entities` holds it, and moving it to `tools/` would
+make `model/` depend on `tools/`. Suite: 610 passed.
 
-Quindi il lavoro è legittimamente di `heal`; solo il nome prendeva in prestito
-il vocabolario di `detect`. Rinominato, non spostato:
+### D27 — `ContourRole` becomes an open vocabulary ✅
+Synthesis of a discussion (ChatGPT's opinion, shared by Federico): forge
+doesn't define the world, it provides a geometric language + known roles that
+others build on. A closed `ContourRole` that rejects the unknown works against
+the "neutral substrate" direction.
 
-- `core/topology/bending_detector.py` → `non_contour_edges.py`
-- `class BendingDetector` → `NonContourEdgeDetector`
-- `HealStep.candidate_bending_ids` → `non_contour_edge_ids`
-- `_find_bending_candidates()` → `_find_non_contour_edges()`
-- `_reintegrate_bending()` (era un `pass`) → cancellato
+Rule:
+- **A — the enum is not authoritative, never a reverse-lookup from external
+  input.** `ContourRole` stays a collection of known-role constants. forge
+  only does membership tests. `ContourRole[x]`/`getattr`/`ContourRole(x)` on
+  caller data are forbidden — they raise or reach class attributes. A
+  string→role map always goes through `dict.get`.
+- **B — a single normalization point, at load.** `model/role.normalize_role`:
+  lowercase, `[a-z0-9_-]` charset (rest collapsed to `_`, neutralizing
+  injection payloads), ≤ 64 chars; known → constant, unknown-but-valid → kept
+  as a slug.
+- **C — defense at the sinks too.** Unknown role → `TRASH_LAYER`/
+  `COLOR_TRASH`; SVG escapes any role in an attribute. Redundant with B,
+  intentionally.
+- **D — `role_str(role)`** replaces `.role.value`, which crashes on a plain
+  `str`.
 
-Nessun cambiamento di comportamento. Branch `refactor/rename-non-contour-edges`,
-merge → `main` 0.6.8.
+Type hint `role: ContourRole` → `role: str` throughout. A custom role
+(`title_block`) survives `load → heal` intact, no warning. Suite: 619 passed.
+Branch `refactor/open-roles`, `main` → 0.6.7.
 
-### D29 — Rilevamento cornice / cartiglio: modulo `Framer`, fuori da forge  → `FRAMER.md`
+### D28 — `BendingDetector` → `NonContourEdgeDetector` (neutral name) ✅
+Flagged by Federico: `HealStep` had a `_find_bending_candidates()`/
+`BendingDetector` that looked like `detect`'s logic leaking into `heal`.
+Verified: the module classifies nothing as a bend — topologically it finds
+edges with both endpoints on branching nodes and a centroid inside the convex
+hull, and excludes them from the graph before loop search (otherwise a line
+crossing the whole part breaks contour closure). This is legitimately `heal`'s
+job; only the name borrowed `detect`'s vocabulary. Renamed, not moved. No
+behavior change. `main` → 0.6.8.
 
-Il riconoscimento di cornice e cartiglio diventa un **modulo a sé**, `Framer`,
-consumatore di forge e componente dell'interprete (sorella dell'unfolder). Non
-entra in forge: gira *prima* di `heal` sulla geometria grezza, marca gli edge
-con `role="frame"` / `role="title_block"` e li riporta giù a forge — coerente con
-`forge-neutral-substrate-agent-layer-above` e con la rimozione del
-`frame_detector` in D24. Serve anche da primo banco di prova reale
-dell'interfaccia forge ↔ consumatore (come un modulo esterno inietta decisioni
-geometriche prima di `heal`).
+### D29 — Frame/title-block detection: a `Framer` module, outside forge → `FRAMER.md`
+Frame and title-block recognition becomes its own module, `Framer`, a forge
+consumer and part of the future interpreter (sibling of the unfolder). Doesn't
+enter forge — it runs *before* `heal` on raw geometry, tags edges with
+`role="frame"`/`role="title_block"` and hands them back to forge, consistent
+with the neutral-substrate principle and D24's removal of the frame detector.
+Also the first real test bed for the forge↔consumer interface. Full design,
+algorithm, and the three heal-hookup options in `FRAMER.md`.
 
-Design completo, algoritmo, e le tre opzioni per l'aggancio a `heal` (A: Framer
-rimuove gli edge; B: forge estende il filtro non-strutturale a `frame`; C: hook
-`role_resolver`) in `FRAMER.md`. Prima cosa da chiudere: quale delle tre.
+### D30 — Single structural predicate + `detect()` leaves unknown roles alone ✅
+Preparation for Framer's hookup (D29): chose **option B** (see `FRAMER.md`) —
+no new forge API, just consolidation so that "a consumer marks `edge.role` on
+`doc.edges` before `heal`" is a contract, not a coincidence.
 
-Nessun codice ancora — solo il documento di progetto.
+The concept "this role is part-contour topology" had been redefined by hand in
+four places that **disagreed** with each other. A custom role had only
+survived because all four, for different reasons, happened to exclude it.
 
-### D30 — Predicato strutturale unico + `detect()` non tocca i ruoli che non conosce  ✅
+- **`model/role.STRUCTURAL_ROLES` + `is_structural_role(role)`** — the single
+  source of truth (`{OUTER, INNER, HOLE, COUNTERSINK, THREADED_HOLE}`), moved
+  from `rules/thresholds.py`. The four call sites now use it.
+- **`heal._split_labeled` generalized**: pulls out of the topology **every**
+  edge with a decided, non-structural role (before: only `ENGRAVE`/
+  `MARKING`; now also `frame`, label-mapped `bending`, any consumer slug).
+  Those edges skip gap solving, corner repair and non-contour detection —
+  they land in `trash_entities` with their role intact.
+- **`detect()` no longer invents features from a role it doesn't know** (bug:
+  D27 had only been applied to `heal`). Fixed a real data-loss bug found on a
+  real file: `detect()` was turning any non-UNKNOWN-role trash proxy into a
+  disconnected `ClassifiedEntity` that `to_dxf` doesn't rewrite → lost
+  geometry. Now `detect()` only touches its known roles; everything else
+  stays in trash.
+- `forge.normalize_role`/`forge.is_structural_role` promoted to `__all__`.
 
-Preparazione dell'aggancio di `Framer` (D29): scelta l'**opzione B**. Nessuna
-API nuova su forge, solo consolidamento perché l'aggancio "un consumatore marca
-`edge.role` su `doc.edges` prima di `heal`" fosse un contratto e non una
-coincidenza.
+Suite: 625 passed. Branch `refactor/consolidate-structural-role`, `main` →
+0.6.9.
 
-Il concetto "questo ruolo è topologia di contorno di pezzo" era ridefinito a
-mano in quattro punti che **non concordavano** (`thresholds.STRUCTURAL_ROLES` =
-`{OUTER, INNER, HOLE}`; `heal._loop_is_structural` = quei tre più
-`COUNTERSINK, THREADED_HOLE`; `heal._split_labeled` = esclude solo
-`{ENGRAVE, MARKING}`; `hierarchy._collect_trash` = ridefinisce `{OUTER, INNER,
-HOLE}` in locale). Un ruolo custom passava indenne solo perché tutte e quattro,
-per motivi diversi, lo lasciavano fuori.
+### D31 — `frame` stays out of forge; consumer roles get their own layer ✅
+Verified on a real drawing with a frame (tagged by `framer`): frame geometry
+came out entirely on the `Trash` layer, mixed with real garbage — D30 kept the
+role alive down to `trash_entities`, but the writer discarded it. Federico:
+*everything framer-specific — including the role, including in the adapter —
+must live outside forge.*
 
-- **`model/role.STRUCTURAL_ROLES` + `is_structural_role(role)`** — punto unico.
-  `STRUCTURAL_ROLES = {OUTER, INNER, HOLE, COUNTERSINK, THREADED_HOLE}` (l'unione
-  semanticamente corretta). Spostato da `rules/thresholds.py` (era tassonomia di
-  ruoli, non una soglia). I quattro punti sopra ora chiamano `is_structural_role`.
-- **`heal._split_labeled` generalizzato**: estrae dalla topologia **ogni** edge
-  con ruolo deciso e non strutturale (prima solo `ENGRAVE`/`MARKING`; ora anche
-  `frame`, `bending` label-mappato, slug di un consumatore). Quegli edge saltano
-  gap solving, riparazione angoli e detection dei non-contorno — non ci passano
-  più "per fortuna". Finiscono in `trash_entities` col ruolo intatto.
-- **`detect()` non inventa feature da un ruolo che non conosce** (bug: la D27
-  era applicata solo a `heal`). `_detect_labeled` classificava *qualsiasi* proxy
-  in trash con ruolo ≠ UNKNOWN, ne faceva un `ClassifiedEntity` scollegato che
-  `to_dxf` non riscrive → **geometria persa** (verificato su `6200013103` con il
-  cartiglio taggato: 86 entità in output dopo `heal`, 79 dopo `heal + detect`).
-  Ora `detect()` tocca solo `_DETECT_KNOWN_ROLES` = `{HOLE, COUNTERSINK,
-  THREADED_HOLE, ENGRAVE, BEND, MARKING}`; ogni altro ruolo resta in trash.
-- **`forge.normalize_role` / `forge.is_structural_role` in `__all__`** — un
-  consumatore normalizza lo slug e sa se il ruolo è contorno o arredo senza
-  entrare in `forge.model`.
+- `ContourRole.FRAME` removed. `frame` is just a consumer slug now, like
+  `title_block`/`section`.
+- `ROLE_TO_LAYER[FRAME]`/`ROLE_TO_COLOR[FRAME]` removed (they were wrong
+  placeholders — a frame isn't a cut contour).
+- `_write_trash` now routes by role: known role → its layer; sanitized
+  consumer slug → a layer named after the slug (created on the fly, dark
+  gray); unknown → `Trash`. Same logic for SVG.
 
-`_loop_is_structural(loop, label_map)` → `_loop_is_structural(loop)` (il
-`label_map` non era usato).
+Verified on the real drawing: `frame` lands on an 11-entity `frame` layer,
+real trash stays on `Trash` (388 entities). Suite: 626 passed. `main` →
+0.6.10.
 
-Suite: 625 passed (era 619; +6 in `test_role.py`). Branch
-`refactor/consolidate-structural-role`, merge → `main` 0.6.9.
+### D32 — `load_geometry` made public ✅
+Was experimental pending a real use case. Verified: `bendly` already uses it
+in production to bring generated sheet-metal developments into a
+`ForgeDocument` without a file — the real case existed, the note was just
+stale. Looking ahead to Smoother (image-reconstructed contours), Federico:
+"publish it, someone will definitely use it." No behavior change beyond
+entering `forge.__all__`.
 
-### D31 — `frame` fuori da forge; i ruoli di consumatore vanno su un layer loro  ✅
+### D33 — `simplify_points`: point→primitive reconstruction moved into forge ✅
+Analysis of a prior session's `smoother_5.py` script found nothing
+image-specific in its corner-detection/refit logic — it takes an ordered,
+closed point sequence, detects corners by angle, and refits each stretch as a
+line or spline. Federico confirmed and set one condition: the two thresholds
+(corner angle, minimum point count for a spline) must be caller-controlled
+parameters, not hardcoded constants.
 
-Verificato su un disegno reale con la cornice (`framer` che tagga `role="frame"`):
-la geometria di cornice usciva in output **tutta sul layer `Trash`**, insieme
-alla spazzatura vera. `io/dxf._write_trash` scriveva ogni entità su `TRASH_LAYER`
-hardcoded, ignorando il `role`. D30 aveva fatto sopravvivere il ruolo fino a
-`trash_entities`, ma il writer lo buttava via.
+`forge/tools/simplify_points.py`: `detect_corners()` + `fit_primitives()`
+(splits on corners, refits each stretch as `LineSeg` or `SplineSeg` via
+`ezdxf.math.BSpline.from_fit_points`) + `simplify_points()` chaining them.
+Same experimental treatment as `load_geometry`/`load_pdf` before D32:
+importable, out of `__all__`, undocumented until proven by a real case
+(Smoother).
 
-Federico: *"tutto ciò che è framer, ruolo compreso, anche nell'adapter, deve
-uscire da forge ed essere assegnato in framer."* Quindi:
+### D34 — `ForgeContour.depth`/`.parent`: the containment tree is no longer flattened ✅
+For placing tabs on deeply nested contours, a downstream tool (Smoother) needs
+to know not just "you're nested" but "inside exactly which contour" — depth
+alone can't tell apart two sibling holes each with one island of their own.
+`hierarchy.py` already built the real tree but deliberately flattened it in
+`_collect_inners()`, losing who-contains-whom. Now every `ForgeContour`
+carries `depth: int` (0 = outer, 1 = child, 2 = grandchild, ...) and `parent:
+Optional[ForgeContour]`, passed down during the same recursion — no recompute.
+Federico also reasoned through the "add an outer container later" case: no
+reparenting needed, since `_build_tree` recomputes containment from scratch on
+every `heal()` call over a fresh geometry batch — the caller's discipline
+(don't tag `role="outer"` until you know it'll stay the root) is what matters,
+not forge's.
 
-- **`ContourRole.FRAME` rimosso.** `frame` non è più una costante di forge né
-  una chiave di `WORK_TYPE_TO_ROLE`: è uno slug di consumatore come
-  `title_block` / `section`. `normalize_role("frame")` ora ritorna la stringa
-  `"frame"`, non una costante.
-- **`ROLE_TO_LAYER[FRAME]` e `ROLE_TO_COLOR[FRAME]` rimossi** (erano
-  `LAYER_OUTER` / `COLOR_OUTER`, entrambi placeholder sbagliati — la cornice non
-  è un contorno di taglio).
-- **`_write_trash` instrada per ruolo.** `role_to_dxf_layer(role)`: ruolo noto →
-  il suo layer; slug di consumatore (già sanificato) → **un layer col nome
-  dello slug**; `unknown` → `Trash`. Il layer si crea al volo con
-  `COLOR_CONSUMER` (grigio scuro, ACI 8) — non è spazzatura, non è di taglio.
-  `role_to_color` / `role_to_hex` fanno lo stesso per SVG.
+### D35 — `load_geometry` accepts `"spline"` too ✅
+Migrating `smoother_5.py` into its own repo exposed the gap immediately:
+`forge.simplify_points()` produces `SplineSeg`, but `GeometryAdapter` only
+translated `line`/`arc`/`circle`/`polyline`. Federico stated the general
+principle: **"all loaders must end up looking alike in their entities — even a
+future `load_pdf`/`load_step` must expose the entity vocabulary needed to get
+output in the required formats."** Every loader/adapter must cover the full
+segment vocabulary `Edge` already supports, not just the subset convenient for
+its immediate use case. `GeometryAdapter._spline_edge` added: a `"spline"`
+type mirroring `SplineSeg`'s fields 1:1.
 
-Risultato sul disegno reale: `frame` esce su un layer `frame` (11 entità), la
-spazzatura vera resta su `Trash` (388). Nota separata: su quel disegno i pezzi
-veri non si chiudono in `heal` (archi + linee di costruzione) — è un altro
-problema, non D31.
+### D36 — `fit_primitives` accepts arc/circle fitting too (`arc_fit_tolerance`) ✅
+Completes the third case (line/**arc**/spline) planned since D33 but never
+implemented. From `smoother` work: a constant-radius curved stretch (a fillet,
+a hand-traced hole) always became a `SplineSeg`, even when an `ArcSeg` would
+cut better on the laser and is trivial to split for a tab. Confirmed this is
+forge's job, not smoother's — the same generic geometric reconstruction as
+`simplify_points`. New optional `arc_fit_tolerance: Optional[float] = None`
+(default off, zero behavior change for existing callers). When set, each
+spline-candidate stretch first tries a least-squares circle fit (Kasa's
+algebraic method via `numpy.linalg.lstsq`): within tolerance → `CircleSeg` (if
+it closes on itself) or `ArcSeg` (open stretch, angles computed by unwrapping
+the real point sequence around the center — not just first/last point, to
+avoid confusing an arc over 180° with a shorter one the wrong way). Otherwise
+falls back to spline as before.
 
-Suite: 626 passed (+1 in `test_role.py`, `test_role.py:77` aggiornato per la
-rimozione di `FRAME`). Nessun golden toccato. Branch
-`refactor/consumer-roles-out-of-forge`, merge → `main` 0.6.10.
+### D37 — `RoleStyle`: explicit color/linetype/lineweight override per role ✅
+Born from a real `framer` case: the frame (consumer role `frame`, D31) always
+came out gray (hardcoded `COLOR_CONSUMER`), and the only way to make it black
+was to hack the DXF entity after `to_dxf()` — exactly the kind of hack forge
+exists to avoid. The role was already consumer-extensible (`normalize_role`);
+the palette wasn't — `role_to_color()` has one fixed fallback for any unknown
+slug. Discussed with Federico: extensibility should apply the same way to
+every style axis (color, linetype, weight), not just color, even though today
+only the DXF adapter applies them.
 
-### D32 — `load_geometry` pubblico  ✅
+`RoleStyle` (frozen dataclass, exported): `color`/`linetype`/`lineweight`, all
+optional. The caller assembles a `Dict[str, RoleStyle]` once and passes it to
+`to_dxf`/`split` via `role_styles=` — same idiom as `label_map`/
+`linetype_map`, no stateful global. Deliberately not a stateful "builder"
+object — forge's API has no builder/registry anywhere, no reason to start
+here.
 
-Era sperimentale (fuori da `forge.__all__`) in attesa di un caso reale.
-Verificato: `bendly` (l'ex `unfold_generator`) lo usa già in produzione in
-`io/dxf.py` per portare gli sviluppi che genera a `ForgeDocument` senza passare
-da un file — il caso reale c'era da tempo, la nota non era mai stata aggiornata.
-Federico, guardando avanti a Smoother (che lo userà per i contorni ricostruiti
-da immagine): *"lo pubblichiamo, perché lo useranno di sicuro."*
+DXF side: the override lands on the **layer**, not the entity (everything
+forge writes is BYLAYER, so it propagates automatically). `color`→
+`layer.rgb` (true color, since ACI 256-color has no pure black);
+`linetype`→registered on the fly if standard, then assigned;
+`lineweight`→`layer.dxf.lineweight` in hundredths of mm. Deliberately out of
+scope: `to_svg`/a future `to_pdf` (only `to_dxf`/`split` consume it today).
 
-Nessun cambio di comportamento: `load_geometry` entra in `forge.__all__`,
-`docs/API.md` guadagna una sezione (schema `line`/`arc`/`circle`/`polyline`,
-`role` opzionale), tolti i commenti "SPERIMENTALE" da `__init__.py` e dal
-docstring del modulo.
+**Open question, raised alongside D37, not yet decided** — where should the
+hole/countersink/threaded/engrave/marking role taxonomy live? `ContourRole.
+HOLE`/`COUNTERSINK`/`THREADED_HOLE`/`ENGRAVE`/`MARKING` live in `model/role.py`
+but are conceptually `detect`'s vocabulary (a tool), not neutral geometry. Not
+a mechanical move: `core/heal.py`/`hierarchy.py` read `STRUCTURAL_ROLES`
+(which includes exactly those roles) to decide topology, and `core` can't
+depend on `tools/`. Probably needs an indirection (e.g. a `structural: bool`
+flag on the role itself, not a fixed imported list) before those members can
+move — a real redesign, not to be done in passing. Federico expects it'll be
+needed eventually, not a priority now.
 
-### D33 — `simplify_points`: ricostruzione punti→primitive spostata in forge  ✅
-
-Analisi di una sessione precedente (vedi sezione più sopra in questo file):
-`classifica_punti()`/`scrivi_contorno()` di `smoother_5.py` non hanno nulla di
-specifico alle immagini — prendono una sequenza di punti ordinata e chiusa,
-rilevano gli spigoli per angolo e rifittano ogni tratto in linea o spline.
-Federico ha confermato di chiudere l'analisi e ha posto una condizione precisa:
-*"devono essere parametri gestibili dal chiamante"* — le due soglie
-dell'originale (angolo di spigolo, cardinalità minima per una spline) erano
-costanti hardcoded nello script.
-
-`forge/tools/simplify_points.py`: `detect_corners()` (spigoli da soglia
-angolare, parametro del chiamante) + `fit_primitives()` (spezza sui corner,
-rifitta ogni tratto in `LineSeg` o `SplineSeg` di `core/primitives/segments.py`
-via `ezdxf.math.BSpline.from_fit_points`, grado e soglia-punti-minimi
-parametri) + `simplify_points()` che le incatena. Stesso trattamento
-sperimentale di `load_geometry`/`load_pdf` prima di D32: importabile come
-`forge.simplify_points`, fuori da `__all__` e non documentato finché non è
-provato da un caso reale (Smoother).
-
-Suite: 636 passed (+10 in `tests/unit/test_simplify_points.py`). Branch
-`refactor/load-geometry-simplify-points`.
-
-### D34 — `ForgeContour.depth` / `.parent`: l'albero di contenimento non si perde più  ✅
-
-Sezione "NIPOTI STACCATI" più sopra in questo file: per piazzare le linguette
-sui contorni annidati in profondità, uno strumento a valle (Smoother) deve
-sapere non solo "sei annidato" ma "dentro quale contorno esattamente" — col
-solo conteggio di profondità non si distinguono due fori fratelli con
-un'isola ciascuno. Federico ha ragionato anche sul caso in cui si aggiunge
-un contenitore esterno dopo (es. la lamiera attorno a un ingranaggio già
-tracciato): non serve un'operazione di "reparent" — `_build_tree` ricalcola
-il contenimento da zero per geometria a ogni `heal()`, quindi basta includere
-il nuovo contorno esterno nello stesso batch di `load_geometry()` e outer/
-figlio/nipote si aggiustano da soli. La disciplina che ne segue (non taggare
-`role="outer"` su un contorno finché non sai se resterà la radice) è
-responsabilità di chi chiama, non di forge.
-
-`hierarchy.py` costruiva già l'albero vero (`_build_tree`/`_place`, padre →
-figli → nipoti) e lo appiattiva deliberatamente in `_collect_inners()`,
-perdendo chi-contiene-chi. Ora ogni `ForgeContour` porta `depth: int` (0
-outer, 1 figlio, 2 nipote, ...) e `parent: Optional[ForgeContour]` (il
-contorno che lo contiene direttamente), passati giù durante la stessa
-ricorsione che già visitava l'albero — nessun ricalcolo. Additivo: `role`
-resta con la stessa logica di ereditarietà di prima (D15), `cluster.inners`
-resta piatto, nessun consumer esistente (`detect`, `io/dxf`, l'exporter
-JSON/XML) tocca i due campi nuovi.
-
-Suite: 639 passed (+3 in `tests/unit/core/test_hierarchy_builder.py`,
-`TestNestingDepthAndParent` sulla stessa gerarchia a tre livelli di
-`TestNestingFlattened`). Nessun golden toccato. Branch
-`refactor/load-geometry-simplify-points`.
-
-### D35 — `load_geometry` accetta anche `"spline"`  ✅
-
-Migrando `smoother_5.py` nel nuovo repo `smoother`, il varco si è visto subito:
-`forge.simplify_points()` produce anche `SplineSeg`, ma `GeometryAdapter`
-sapeva tradurre in `Edge` solo `line`/`arc`/`circle`/`polyline` — una
-`SplineSeg` non aveva modo di entrare in un `ForgeDocument`. Federico, a
-domanda diretta, ha fissato il principio generale: *"tutti i loader alla fine
-si devono assomigliare nelle entità. anche un load_pdf o un load_step, tutti
-devono avere le entità necessarie per ottenere output compatibili nei formati
-richiesti."* — ogni loader/adapter deve coprire l'intero vocabolario di
-segmenti che `Edge` già supporta, non solo il sottoinsieme comodo per il suo
-caso d'uso immediato.
-
-`GeometryAdapter._spline_edge` — nuovo tipo `"spline"`:
-`{"control_points", "knots", "degree", "weights"?, "fit_points"?, "closed"?,
-"role"?}`, ricalcato 1:1 sui campi di `SplineSeg` così chi ha in mano l'output
-di `simplify_points()` lo passa quasi senza toccarlo. Gli estremi vengono da
-`segment_endpoints()` (già sapeva gestire `SplineSeg` via
-`approx_points`/`fit_points`/`control_points` — nessun cambiamento lì).
-
-Suite: 642 passed (+3 in `tests/unit/adapters/test_geometry_loader.py`, un
-caso end-to-end che parte da un poligono a 16 lati, lo passa per
-`simplify_points()` — nessuno spigolo rilevato, un'unica `SplineSeg` — e
-verifica che `heal_and_detect` + `to_dxf` la riemettano come `SPLINE` nativa,
-non discretizzata). Branch `refactor/load-geometry-spline`.
-
-### D36 — `fit_primitives` accetta anche arco/cerchio (`arc_fit_tolerance`)  ✅
-
-Completa il terzo caso già previsto in TODO.md fin dall'analisi che ha portato
-a D33 ("ricostruzione di primitive pulite: linea/**arco**/spline") ma mai
-implementato. Nato dal lavoro su `smoother`: un tratto curvo a raggio
-~costante (un raccordo, un foro tracciato a mano) diventava sempre una
-`SplineSeg`, anche quando un `ArcSeg` sarebbe più corretto — taglia meglio al
-laser ed è banale da spezzare in due per una linguetta, a differenza di una
-curva NURBS. Confermato che è lavoro di forge, non di smoother
-(`smoother/MAP.md` D6): stessa ricostruzione geometrica generica di
-`simplify_points`, non una decisione di processo/CAM.
-
-`fit_primitives()`/`simplify_points()` guadagnano `arc_fit_tolerance:
-Optional[float] = None`. **Default `None` = disattivato**, nessun cambio di
-comportamento per chi non lo passa (i test esistenti, incluso quello di D35
-sul poligono a 16 lati, restano verdi invariati). Quando impostato, ogni
-tratto candidato-spline prova prima un fit a cerchio ai minimi quadrati
-(metodo algebrico di Kasa, via `numpy.linalg.lstsq` — `numpy` era già
-dipendenza di forge): se lo scostamento massimo dei punti dal cerchio fittato
-è entro la tolleranza, il tratto diventa `CircleSeg` (se si richiude su se
-stesso — il caso "contorno chiuso senza spigoli") o `ArcSeg` (tratto aperto
-fra due corner veri, con gli angoli calcolati "srotolando" la sequenza reale
-dei punti attorno al centro, non solo guardando primo/ultimo punto — altrimenti
-un arco sopra i 180° si confonde con uno più corto nel verso sbagliato).
-Altrimenti, fallback alla spline di sempre.
-
-Suite: 646 passed (+4 in `tests/unit/test_simplify_points.py`: un cerchio
-chiuso → `CircleSeg`, un quarto di cerchio aperto → `ArcSeg` con centro/
-raggio/angoli corretti, una sinusoide non circolare → resta `SplineSeg` anche
-con tolleranza impostata, e senza `arc_fit_tolerance` lo stesso cerchio resta
-`SplineSeg` come prima). Branch `refactor/simplify-points-arc-fit`.
-
-### D37 — `RoleStyle`: override esplicito colore/linetype/lineweight per ruolo  ✅
-
-Nato da un caso concreto in `framer`: la cornice (ruolo consumatore `frame`,
-D31) usciva sempre grigia (`COLOR_CONSUMER`, hardcoded in `rules/palette.py`)
-e l'unico modo per renderla nera era manipolare l'entità DXF direttamente
-dopo `to_dxf()` — un hack fuori dal modello, esattamente quello che forge
-vuole evitare (`output-must-be-visually-faithful-to-source` e il principio
-generale "il modello è il prodotto").
-
-Il ruolo era già estendibile da un consumatore (`normalize_role`, `edge.role`
-pre-`heal`); la palette no — `role_to_color()` ha un solo fallback fisso per
-qualunque slug sconosciuto. Discusso con Federico: il ruolo va tenuto
-estendibile allo stesso modo su TUTTI gli assi di stile (colore, linetype,
-spessore), non solo il colore, e non solo per DXF — anche se oggi solo l'
-adapter DXF li applica davvero.
-
-Soluzione: `RoleStyle` (dataclass frozen in `rules/palette.py`, esportata in
-`__all__`) — `color: Optional[RGB]`, `linetype: Optional[str]`,
-`lineweight: Optional[float]` (mm), tutti opzionali. Il chiamante ne
-assembla `Dict[str, RoleStyle]` una volta e lo passa a `to_dxf`/`split` via
-`role_styles=` — stesso idioma di `label_map`/`linetype_map`, nessuno stato
-globale mutabile. Deliberatamente **non** un oggetto "consumabile" con
-metodi propri: in tutta l'API di forge non c'è un builder/registry stateful,
-e non c'era motivo di introdurne uno qui.
-
-Estendibilità per costruzione, esplicitamente per non ripetere il problema
-che l'ha originato: aggiungere un futuro campo (fill, trasparenza, ...) non
-tocca la firma di `to_dxf`/`split` né rompe chi già passa un `RoleStyle` con
-meno campi — ogni adapter interpreta solo i campi che sa gestire.
-
-Lato DXF (`io/dxf.py::_apply_role_styles`): l'override va sul **layer**, non
-sull'entità — tutto ciò che forge scrive è BYLAYER, quindi si propaga a ogni
-entità di quel ruolo. `color` → `layer.rgb` (true color, per un nero vero:
-l'ACI a 256 colori non ne ha uno puro); `linetype` → registrato al volo da
-`ezdxf.tools.standards` se è un nome standard, poi assegnato al layer;
-`lineweight` → `layer.dxf.lineweight` in centesimi di mm. Un ruolo senza
-layer ancora creato (uno slug di consumatore non ancora comparso) viene
-creato al volo, stesso meccanismo di `_ensure_layer` già usato dal trash.
-
-Rimane volutamente **fuori scope**: applicarlo a `to_svg`/un futuro `to_pdf`
-(oggi solo `to_dxf`/`split` lo consumano; `RoleStyle` è già format-neutro,
-un adapter in più legge lo stesso dizionario quando esisterà).
-
-Suite: 656 passed (+10 in `tests/integration/test_role_style.py`). Branch
-`refactor/role-style`.
-
-### Questione aperta — dove vive la tassonomia hole/countersink/threaded/engrave/marking
-
-Sollevata insieme a D37, non ancora decisa. `ContourRole.HOLE`,
-`COUNTERSINK`, `THREADED_HOLE`, `ENGRAVE`, `MARKING` vivono in `model/role.py`
-ma sono concettualmente il vocabolario che classifica `detect` (un tool), non
-geometria neutra. Spostarli fuori da `model/` non è però un refactor
-meccanico: `core/heal.py` e `core/healing/hierarchy.py` leggono
-`STRUCTURAL_ROLES`/`is_structural_role` — che include proprio `HOLE`,
-`COUNTERSINK`, `THREADED_HOLE` — per decidere la topologia, e `core` non può
-dipendere da `tools/` (regola di dipendenza). Serve probabilmente un livello
-di indirizione (es. un flag `structural: bool` sul ruolo stesso, non un
-elenco fisso di costanti importato da `core`) prima di poter spostare quei
-membri — un vero redesign, non da fare "a caldo" mentre si aggiunge altro
-sopra. Federico: prevede che servirà comunque in futuro (un consumatore
-avrà bisogno di questa separazione), ma non è la priorità di questo giro.
-
-### D38 — Matematica di sequenze di punti spostata in `core/geometry.py`
-
+### D38 — Point-sequence math moved into `core/geometry.py`
 `interior_angle_deg`, `detect_corners`, `drop_duplicate_points`,
-`fit_circle_kasa`, `arc_angles` erano dentro `tools/simplify_points.py` (D33,
-D36) — pura matematica su una sequenza di punti (x, y), zero dipendenza da
-primitive forge o da come il chiamante la userà. Spostate in `core/geometry.py`
-(che già ospita l'equivalente per segmenti/tracce: `track_points`,
-`circular_geometry`, `are_collinear`). `tools/simplify_points.py` resta
-l'orchestratore: importa queste funzioni da `core.geometry` e mantiene solo
-ciò che è specifico della sua ricostruzione (`_split_into_stretches`,
-`_try_fit_arc`, `_fit_spline`). `detect_corners` resta importabile da
-`forge.tools.simplify_points` (re-export), zero rotture per chi già lo usa.
-Nessun cambiamento di comportamento: 656 → stessa suite, verde.
+`fit_circle_kasa`, `arc_angles` were inside `tools/simplify_points.py` (D33,
+D36) — pure point-sequence math with zero dependency on forge primitives.
+Moved next to the segment/track equivalents already there (`track_points`,
+`circular_geometry`, `are_collinear`). `simplify_points.py` stays the
+orchestrator, importing them back. `detect_corners` stays re-exported for
+existing callers. No behavior change.
 
-**Correzione**: la motivazione originale di questa voce diceva che il secondo
-consumatore che ha reso necessario lo spostamento fosse `tools/tabs.py`
-(D39) — verificato dopo il fatto (Federico ha chiesto conferma), è falso:
-`cut_tabs()` usa solo `_distance` (che era già in `core/geometry.py` **da
-prima** di questa sessione, non fra le funzioni spostate qui) per sommare
-distanze cumulate — non ha bisogno di `detect_corners`/`fit_circle_kasa`/
-`arc_angles`. Lo spostamento resta comunque giustificato di per sé (stessa
-famiglia di `track_points`/`circular_geometry`, non più annidato dentro un
-solo tool), ma non era "provato" da un secondo consumatore reale come
-scritto qui inizialmente — è preparatorio, non retroattivamente confermato.
-Branch `refactor/point-sequence-math`.
+*Correction*: the original rationale here claimed a second consumer
+(`tools/tabs.py`, D39) justified the move — verified false after the fact
+(Federico asked for confirmation): `cut_tabs()` only uses `_distance`, which
+was already in `core/geometry.py` beforehand and isn't among the functions
+moved here. The move is still justified on its own merits (same family as
+`track_points`/`circular_geometry`), just not "proven" by a second real
+consumer as originally written.
 
-### D39 — `forge.tools.tabs.cut_tabs`: taglio linguette come tool di forge (bozza)
+### D39 — `forge.tools.tabs.cut_tabs`: cutting tabs as a forge tool (draft)
+Born from a real need: a smoother-successor must cut tabs on a contour before
+fitting it, so a concentric ring stays attached to the rest of the sheet.
+Discussed at length whether this belongs in a consumer (smoother) or in
+forge:
+- Not deterministic in the "reconstruct what's in the drawing" sense — unlike
+  `heal`/`detect`, it creates a gap the source drawing didn't have. But `heal`
+  already modifies geometry (closes micro-gaps), and `tools/` exists
+  precisely for optional, parameter-deterministic operations the caller
+  composes — the mechanics (cut a gap of known width at a known position) are
+  deterministic given parameters, same as `detect()`'s thresholds; *where/how
+  many* stays a process decision of the caller's, never forge's.
+- Decisive packaging argument: smoother depends on opencv (a `raster` extra,
+  not core forge). Someone who only wants tabs on an already-clean DXF
+  shouldn't need an image-processing library.
+- Not in the flat public `forge.*` contract, for the same reason
+  `detect_corners`/`fit_primitives` weren't before `simplify_points` —
+  reachable only as `forge.tools.tabs.cut_tabs` until proven by a real case.
 
-Nato da un caso concreto: uno smoother-successor deve tagliare linguette
-(ponticelli) su un contorno prima di fittarlo, così un anello concentrico
-resta attaccato al resto della lamiera. Discusso a fondo con Federico se
-dovesse vivere in un consumatore (smoother) o in forge:
+`cut_tabs(points, closed, tab_positions, tab_width)` — `tab_positions` are
+point indices (a first-draft choice, not final; nobody uses this in
+production yet); `tab_width` is a real cumulative-perimeter distance. Verified
+with a synthetic script: a 200-point ring, 4×2mm tabs → 4 open stretches, each
+refit to a clean `ArcSeg`.
 
-- **Non deterministico come "ricostruire cosa c'è nel disegno"** — a
-  differenza di `heal`/`detect`, crea un gap che nel disegno sorgente non
-  c'era. Ma `heal` già modifica geometria (chiude micro-gap), e `tools/` esiste
-  apposta per operazioni opzionali, deterministiche dato i parametri, che il
-  chiamante compone — non fanno parte della ricostruzione fedele obbligatoria
-  di `core`. La meccanica (taglia un gap di larghezza nota a una posizione
-  nota) è deterministica data i parametri, esattamente come le soglie di
-  `detect()`; il *dove/quante* resta una decisione di processo del chiamante,
-  mai di forge.
-- **Argomento decisivo, di packaging**: smoother dipende da opencv (extra
-  `raster`, non nel core `pyproject.toml` di forge). Chi vuole *solo* le
-  linguette su un DXF già pulito non deve installare una libreria di
-  elaborazione immagini che non gli serve. forge ha zero dipendenza da
-  opencv — vive lì.
-- **Non nel contratto pubblico flat `forge.*`**: un utente che si aspetta
-  `forge.*` sempre puramente ricostruttivo non deve incappare per caso in
-  qualcosa che aggiunge geometria nuova. Stessa policy già in uso per
-  `detect_corners`/`fit_primitives` prima di `simplify_points` (D33): resta
-  raggiungibile solo come `forge.tools.tabs.cut_tabs`, mai flattato in cima,
-  finché non è provato da un caso reale.
+### D40 — `cut_tabs` deleted, replaced by `bridge_tabs` ✅
+`cut_tabs` (D39) only cut a gap within ONE contour — but the real need on the
+actual fixture was keeping a grandchild island attached to its direct parent
+(a bridge across TWO distinct contours), which `cut_tabs` can't do. `cut_tabs`,
+its test, and its scripts were deleted outright — no compat shim, no
+independent second use.
 
-`cut_tabs(points, closed, tab_positions, tab_width)`: `tab_positions` sono
-**indici** in `points` (non una lunghezza d'arco o una frazione 0-1) — scelta
-di prima bozza, **non ancora una decisione definitiva**: se in futuro serve
-una rappresentazione diversa, si cambia senza remore (nessuno usa ancora
-questa funzione in produzione). `tab_width` è invece già una distanza reale
-(lunghezza cumulata lungo il perimetro), non un numero di punti, perché la
-densità dei punti non è affidabile. Ritorna gli stretch aperti risultanti,
-pronti per `detect_corners(..., closed=False)` + `fit_primitives` (o
-`simplify_points(..., closed=False, arc_fit_tolerance=...)`).
+`bridge_tabs` design: generalizes to arbitrary depth, in pairs — every island
+(even depth ≥ 2) bridges to the void immediately above it in the hierarchy
+(its direct parent), never a skipped level (needs `ForgeContour.depth`/
+`.parent`, D34). Geometric construction: an ideal line between a point on the
+child and the corresponding point on the parent → perpendicular offset by
+`±tab_width/2` → two real lines (the tab's flanks) → intersect each with both
+contours → new `LineSeg`s + remove the in-between stretch on both contours.
+`tab_width` is a real perpendicular-offset distance, not an arc length
+(parent and child have different radii). Reuses `core/geometry.py`'s existing
+line-circle intersection, no new math for the circle-circle case. Scope:
+line/arc/polyline/circle parent-or-child, not spline yet (no line-spline
+intersection in core).
 
-Verificato con uno script (`scripts/15_cut_tabs.py`): anello di 200 punti, 4
-linguette da 2mm → 4 stretch aperti, ognuno rifittato a un `ArcSeg` pulito
-(non una spline) grazie a `arc_fit_tolerance` — il caso reale per cui serviva.
+Implemented: `bridge_tabs(...)` (one pair, one position, returns the 2 flank
+segments + 4 cut points) and `bridge_nested_tabs(cluster, tab_width,
+tab_count, ...)` (walks `cluster.inners`, finds every even depth ≥ 2, places
+`tab_count` equally-spaced tabs per island, using a new
+`core.geometry.polyline_line_intersections` that generalizes the circle-line
+intersection to any already-discretized contour). Multi-tab cuts on the same
+contour are resolved in one pass (compute all cuts against the intact contour
+first, then keep only the arcs between different tabs) to avoid re-cutting an
+already-open stretch.
 
-Suite: 670 passed (+7 in `tests/unit/test_tabs.py`). Branch
-`refactor/point-sequence-math` (stesso branch di D38: la matematica condivisa
-e il suo primo consumatore vanno verificati insieme).
+Known unresolved limit: two sibling islands sharing the same direct parent
+would be cut independently against the same parent contour, unaware of each
+other — not today's fixture's case, to be solved when it comes up. Suite: 668
+passed.
 
-### D40 — `cut_tabs` cancellato, sostituito da `bridge_tabs`  ✅
+### D41 — `_fit_spline`: never `fit_points`, `closed=True` only for a whole-loop stretch ✅
+Found by Smoother: a SPLINE written by `to_dxf()` for a closed, corner-free
+contour wasn't read by some downstream CAM software (SigmaNest — not an
+isolated case, it had happened before on another project). Comparing two
+DXFs, the difference wasn't the geometry but two SPLINE group fields: `flags`
+always `0` (open) even for fully-closed loops in the broken file, `1` in the
+working one; and `fit_points` always present in the broken file, absent in
+the working one. Both traced to `_fit_spline()`: it never passed `closed=` and
+always wrote `fit_points` alongside control points + knots — per DXF spec the
+two curve definitions are alternatives, not cumulative, and some readers
+evidently mishandle having both.
 
-`cut_tabs` (D39) tagliava un gap dentro UN contorno solo — nato dal caso
-reale sbagliato: lo script 15/16 lo applicava all'anello r=9 legato al
-rettangolo esterno, ma il bisogno vero su quel fixture
-(`cerchi_concentrici_detect_is_counter_tabs_join.dxf`) è tenere il nipote
-(cerchio interno r≈4.12) attaccato al suo genitore diretto (anello r=9) — un
-ponte fra DUE contorni distinti, non un gap in uno solo. Verificato che
-`cut_tabs` non risolve questo: cancellati `cut_tabs`, `tests/unit/test_tabs.py`,
-`scripts/15_cut_tabs.py`, `scripts/16_cut_tabs_on_fixture.py` — nessun
-compat shim, la funzione non aveva un secondo uso reale indipendente.
+**Fix**: `_fit_spline()` no longer writes `fit_points` (control points +
+knots fully define the curve; the only loss is an optional "handle" metadata
+for an editor). Gains a `closed` parameter, `True` only when the whole closed
+contour became a single stretch. Verified end-to-end against the exact broken
+pattern, then against the real pipeline (a ~140-contour image) producing the
+correct pattern on every spline automatically. Suite: 668 passed, no
+regressions.
 
-Disegno di `bridge_tabs` (da implementare):
+### D42 — `SplineSeg.discretize()` was evaluating the control polygon, not the curve ✅
+Found by Smoother: SVG previews (and the polyline export, sharing
+`.discretize()`) of a spline with few control points over a long stretch
+looked visibly faceted even though the DXF spline itself was smooth and
+correct. Cause: `discretize()` was an explicitly unfinished placeholder —
+linear interpolation between control points as a stand-in for real curve
+evaluation.
 
-- **Generalizza a profondità arbitraria, a coppie**: ogni isola (profondità
-  pari — nipote, pro-pronipote, ...) si lega al vuoto immediatamente sopra di
-  lei nella gerarchia (il suo genitore diretto — figlio, pronipote, ...), mai
-  a un livello saltato. Serve `ForgeContour.depth`/`.parent` (D34) — un
-  wrapper cammina la gerarchia e chiama `bridge_tabs` per ogni coppia
-  isola↔genitore-diretto trovata, a qualunque profondità.
-- **Costruzione geometrica**: linea ideale fra un punto sul figlio e il punto
-  corrispondente sul genitore → offset di `±tab_width/2` (perpendicolare) →
-  due linee reali, i fianchi della linguetta → intersezione di ciascuna con
-  ENTRAMBI i contorni (genitore e figlio) → due nuovi `LineSeg` (dall'incrocio
-  sul figlio a quello sul genitore) + rimozione del tratto/arco che cade in
-  mezzo su entrambi i contorni. `tab_width` è quindi una distanza reale
-  (offset perpendicolare), non una lunghezza d'arco come in `cut_tabs` —
-  necessario perché genitore e figlio hanno raggi/geometrie diverse, la
-  stessa larghezza fisica dà lunghezze d'arco diverse sui due.
-- **Math di core riusata, non duplicata**: l'intersezione retta-cerchio è già
-  `_circle_line_intersections` in `core/geometry.py`, la stessa usata da
-  `core/healing/gap_solver.py`. Nessuna nuova math per il caso cerchio-cerchio.
-- **Scope**: genitore/figlio possono essere linea, arco, polilinea o cerchio —
-  **non spline**, per ora (nessuna intersezione retta-spline in core).
-  Generalizzare oltre richiede una nuova funzione di core, rimandata finché
-  non serve davvero.
-- **Nome**: modulo `forge/tools/tabs.py` invariato (tiene il dominio
-  "linguette"); funzione `bridge_tabs` (verbo+dominio, stesso pattern di
-  `cut_tabs`) — non `bridge()` da solo, troppo generico per una funzione
-  pubblica di tool.
+**Fix**: `discretize()` now evaluates the real curve via de Boor's algorithm
+(rational if weights are set) and adaptively subdivides each parameter
+interval until the midpoint stays within `tolerance` of the chord, capped to
+avoid exploding on a non-converging stretch. Pure math only (`math` module —
+`core/` must work without `ezdxf` installed; an early attempt reusing
+`ezdxf.math.BSpline` was discarded for that reason, not a technical one).
+Verified numerically: an 8-control-point spline over a radius-10 semicircle
+deviated up to 0.79 units under the old logic, 0.011 with the new one at
+`tolerance=0.05`. Suite: 668 passed, no regressions.
 
-**Implementato.** `bridge_tabs(parent_points, child_points, anchor_parent,
-anchor_child, tab_width)` — una coppia, una posizione, ritorna i 2 fianchi
-(`LineSeg`) e i 4 punti di taglio (con indice di lato, per chi deve spezzare
-il contorno). `bridge_nested_tabs(cluster, tab_width, tab_count, ...)` cammina
-`cluster.inners` (che porta `depth`/`parent`, D34), trova ogni profondità pari
->= 2, e per ciascuna piazza `tab_count` linguette equispaziate (raggio dal
-centroide dell'isola, intersecato coi due contorni via la nuova
-`core.geometry.polyline_line_intersections` — generalizza
-`_circle_line_intersections` a qualunque punto già discretizzato, non solo
-cerchi analitici). Split multi-linguetta sullo stesso contorno: tutti i tagli
-di tutte le linguette della coppia si calcolano prima sul contorno originale
-intatto, poi UN solo passo li ordina per posizione cumulata e tiene solo gli
-archi fra linguette diverse (quello sotto la stessa linguetta si scarta) —
-evita il problema di ritagliare uno stretch già aperto linguetta per linguetta.
+### D43 — `interpret_annotations` → `anchor_annotations` ✅
+Renamed (`forge/tools/interpret.py`→`forge/tools/anchor.py`). Grew out of a
+design discussion with Federico (external LLM opinions gathered for
+perspective) about determinism and forge's boundaries: the word "interpret"
+was already doing triple duty — this function (pure geometry: `cluster_ref` by
+containment), the future interpreter project (`INTERPRETER.md`), and the
+generic interpretation concept discussed around D39-D42 — a real source of
+confusion, not just an aesthetic complaint.
 
-**Trovato facendo il lavoro, corregge il disegno sopra**: l'override
-`forced_corners` in `detect_corners` non serve — `fit_primitives(points,
-is_corner, ...)` prende `is_corner` già come parametro esterno, quindi un
-domani un chiamante che vuole forzare uno spigolo può calcolare
-`detect_corners()` e mettere `True` a mano sugli indici che vuole, senza
-nessuna modifica a `core/geometry.py`. E nell'architettura scelta qui il
-problema non si presenta nemmeno: ogni stretch rifittato (`child_stretches`/
-`parent_stretches`) contiene SOLO punti del contorno originale, mai i punti
-dei fianchi — i fianchi sono `LineSeg` già tipizzati, mai passati per
-`simplify_points`. Verificato sul fixture reale: le 8 arcate (4+4) rifittano
-tutte pulite a `ArcSeg`, zero `SplineSeg` spuri, senza bisogno di forzare nulla.
+Stays in forge: this is a naming problem, not a "where does it live" problem.
+The function is pure geometric reconstruction (point-in-polygon, optional
+snap) — zero judgment about what an annotation means, so none of the work
+migrating toward `framer` (frame/title-block/views/callouts) applies to it.
+The new name reuses wording the docs already used to describe it ("typed,
+**anchored** annotations") instead of introducing a third term. No compat
+shim — renamed everywhere.
 
-**Limite noto, non risolto**: due contorni fratelli con lo stesso genitore
-diretto (es. due isole distinte dentro lo stesso vuoto) verrebbero tagliati
-indipendentemente sullo stesso `parent_points`, senza sapere l'uno dell'altro
-— i tagli si sovrapporrebbero. Non è il caso del fixture attuale (una sola
-catena lineare); da risolvere se/quando serve davvero.
+### D44 — `detect()` as a consumer: `ForgeCluster.detected` becomes an open-by-name overlay ✅
+Long design session (2026-09-18, branch `refactor/detect-overlay`), starting
+from the tension already flagged in `forge-clusters-not-parts`: `ForgeCluster`
+(the neutral product of `heal`) still had `holes`/`bending_lines`/
+`engrave_lines`/`custom` wired in as fixed fields, always present as empty
+lists the moment `heal()` finished — `detect()` filled them by mutating
+directly in about a dozen places. Concrete problem: an empty list couldn't
+distinguish "`detect()` never ran" from "it ran and found nothing."
 
-Test: `tests/unit/test_tabs.py` (5 test — `bridge_tabs` sintetico a due
-cerchi, `bridge_nested_tabs` sul fixture reale e su una catena sintetica a 4
-livelli che verifica l'accoppiamento nipote↔figlio / pro-pronipote↔pronipote,
-mai un livello saltato). Script `scripts/16_bridge_tabs_on_fixture.py`
-(stesso numero del vecchio `cut_tabs`, libero dopo la cancellazione) — DXF
-prodotto ispezionato visivamente (renderizzato a PNG): 4 archi esterni + 4
-archi interni + 8 fianchi radiali, esattamente la "girandola a 4 razze"
-attesa. Suite: 668 passed. Branch `refactor/point-sequence-math`.
+Decisions, in order of discovery:
+1. `holes`/`bending_lines`/`engrave_lines` move out of `ForgeCluster`, into an
+   `Optional[DetectedFeatures] = None` — `None` until something writes to it.
+   `custom` stays a direct cluster field (it's `inject()`'s free-form dict, a
+   different kind of thing, no ambiguity to resolve there).
+2. No convenience property (e.g. `cluster.holes` returning `[]` when
+   `detected` is `None`) — that would reintroduce the exact ambiguity being
+   removed. A consumer goes through `cluster.detected.holes` (raises if
+   `None`) or the safe accessor `cluster.features(name)` (always `[]`, never
+   raises — convenient for a renderer/exporter that just needs to iterate).
+3. `DetectedFeatures` is an **open-by-name vocabulary**, not a fixed schema —
+   the same move already made for `role` in D27. `detect()` writes
+   `cluster.detected.attach("holes", [...])`; an external tool writes
+   `attach("flange_view_hint", [...])` with the same method — neither is
+   privileged. Motivated by Federico's example: the same geometry `detect()`
+   reads as a "bending line" another tool might read as "the rising edge of a
+   flange," reconstructing a view across multiple clusters — two equally
+   valid readings, not a primary one and a discard.
+4. `DetectedFeature` is a `typing.Protocol`, not an ABC — consistent with D5
+   ("a convention, not a hierarchy"): the contract is just `source: str` +
+   `confidence: float`. Existing types satisfy it with zero changes; a custom
+   type doesn't need to inherit anything from forge to "count".
+5. `Hole`/`BendingLine`/`Engraving`/`ClassifiedEntity` move to
+   `forge/tools/model/`: they're `detect()`'s output, not `heal()`'s geometry.
+   First attempt referenced them under `TYPE_CHECKING` only (zero runtime
+   import) — **corrected by Federico**: even that is too much — if
+   `model/cluster.py`'s first line names `tools`, the "why does model know
+   tools exists?" question stands regardless of whether the import is inert.
+   `detect()` is just the first of possibly several consumers; it lives
+   inside forge because it was developed together with it, not because
+   `model` needs to know it exists. Typed `Optional[Any]` instead — zero
+   textual mention of `tools/` anywhere in `model/`.
+6. `rules/thresholds.py` → `tools/thresholds.py` (both its consumers were
+   already in `tools/`). `rules/palette.py` stays put — it maps color for the
+   whole role vocabulary, not just detect's.
+7. `cluster.summary` becomes generic and stays on the model: `{name}_count:
+   len(items)` per collection in `detected`, `{}` if `detected is None` —
+   works identically with just `heal()` and for any custom name, without
+   forge knowing what it is. The **rich** per-type breakdown that `summary`
+   used to give (D8) moved to `tools.detect.describe_features(cluster)`,
+   since it needs constants `model/` can't import from `tools/`. The two
+   levels coexist.
+8. `io/exporter.py::build_metadata()` merges three levels: the generic
+   `summary`, forge's `describe_features()`, and a new `extra`/
+   `extra_metadata` parameter — an explicit dict or `cluster -> dict`
+   callback, same idiom as `data_injector`/`label_map`/`RoleStyle`. Motivated
+   by Federico's example: neither the generic summary (just a count) nor
+   `describe_features()` (only forge's known types) can ever answer "how many
+   upward-facing flanges does this cluster have" — only whoever wrote that
+   custom type knows. `metadata_schema.py` itself doesn't change shape — it
+   stays a curated allow-list for the external, non-Python boundary
+   (CAM/ERP/XDATA).
+9. No new overarching API for extensibility: `role_to_color`,
+   `DetectedFeatures`, `summary`/`describe_features()`, and
+   `build_metadata()`'s `extra` stay small, independent instances of the same
+   pattern (known name → rich logic, unknown name → generic fallback), not a
+   shared framework — premature from this sample size.
+10. `describe_features` promoted to `forge.describe_features` (top-level, in
+    `__all__`) — corrected by Federico: `forge.X` flat is the sanctioned
+    public front; leaving it the one unpromoted sibling among `detect`/
+    `inject`/`anchor_annotations` would have been an exception without a
+    reason. `bridge_tabs`/`bridge_nested_tabs` stay unpromoted — unfinished
+    work there, not a different principle.
 
-### D41 — `_fit_spline`: mai `fit_points`, `closed=True` quando il tratto è l'intero loop  ✅
+Bug found doing the work: `hierarchy.py::_build_parts` was passing a now-dead
+`holes=[]` kwarg to the constructor — caught by the suite (410 tests broke at
+once), not by the initial text audit, a reminder that a text audit alone
+doesn't substitute for running the suite on a refactor this wide. Suite: 671
+passed, 62 subtests, verified end-to-end (not just by counting).
 
-Scoperto da Smoother (`smoother/MAP.md` D15): una SPLINE scritta da
-`to_dxf()` per un contorno chiuso senza spigoli non veniva letta da alcuni
-software CAM a valle (letto: SigmaNest — non un caso isolato, era già
-capitato prima con lo stesso software su un altro progetto). Confrontati due
-DXF con `forge.inspect_dxf()` — uno prodotto da un vecchio script locale
-(letto correttamente da SigmaNest), uno dalla pipeline attuale (non letto):
-la differenza non era la geometria ma due campi del gruppo SPLINE:
+### D45 — `EllipseSeg`: forge's fifth primitive, DXF ELLIPSE support ✅
 
-- `flags` — sempre `0` (aperta) nel file non letto, anche per contorni
-  interamente chiusi senza un solo spigolo; `1` (chiusa) in quello che
-  funziona.
-- `fit_points` — sempre presenti (stesso conteggio dei control points) nel
-  file non letto; assenti (`0`) in quello che funziona.
+Gap found while discussing a future point-sequence "rotator" tool: forge had
+no `EllipseSeg` at all — `ELLIPSE` was in `loader.py`'s "known roundtrip
+types" set (no warning on load) but `DxfEntityDispatcher.parse()` had no case
+for it, so any real ELLIPSE entity silently produced no geometry, with no
+warning that anything was lost.
 
-Entrambe risalivano a `_fit_spline()`: non passava mai `closed=` al
-`SplineSeg` che costruiva, e scriveva sempre `fit_points=pts_3d` insieme a
-control points + nodi. Per spec DXF le due definizioni (control
-points/nodi, oppure fit points) sono alternative, non cumulative — con
-entrambe presenti alcuni lettori provano a ricostruire la curva dai fit
-points con una logica propria invece di usare quella già data, e quella
-logica evidentemente non regge sempre.
+Checked before writing any code, not assumed: an ellipse is a native conic
+curve type in every real CAD kernel (ACIS/Parasolid/OpenCascade, STEP) and in
+SVG (`<ellipse>` and the elliptical-arc `path` command) — not a DXF quirk to
+normalize away into a spline. Converting it to a spline would also repeat a
+mistake already paid for once: D41's SigmaNest failure came from writing
+geometry through a representation richer than what the shape actually was.
+Per `loaders-converge-on-same-entity-vocabulary` (D35), it gets its own
+primitive, same tier as `LineSeg`/`ArcSeg`/`CircleSeg`/`SplineSeg`.
 
-**Fix**: `_fit_spline()` non scrive più `fit_points` (control points + nodi
-bastano a definire la curva per intero — non è una perdita di precisione,
-solo di un metadato opzionale per un editor che volesse mostrare "maniglie"
-sui punti originali). Guadagna un parametro `closed`, passato da
-`fit_primitives()`: vale `True` solo quando l'intero contorno chiuso è
-diventato un solo tratto (`closed and len(stretches) == 1` — l'unico caso in
-cui, per costruzione di `_split_into_stretches`, quel singolo tratto *è*
-il loop intero, non un arco fra due spigoli).
+`EllipseSeg(center, major_axis, ratio, start_param, end_param, ccw=True)` —
+`major_axis` is the **vector** from the center (not a point), same
+parametrization as the DXF ELLIPSE group (verified against `ezdxf`'s own
+`ellipse.py`/`math/ellipse.py` source, not assumed from memory). One class
+covers both a full ellipse and an elliptical arc — like `ArcSeg`, unlike
+`CircleSeg` (DXF's CIRCLE is always closed, ELLIPSE isn't). `ccw` exists for
+the same reason as `ArcSeg.ccw`: a real DXF ELLIPSE is always written
+CCW from `start_param` to `end_param`; `ccw=False` is forge-internal state
+for walking a segment backwards when a loop gets oriented.
 
-Verificato end-to-end, non solo sull'unità: ricostruita a mano la stessa
-struttura (`closed=True`, niente `fit_points`) su una spline della pipeline
-prima del fix — il DXF risultante aveva `flags=1`/`fit_points=0`, identico
-al file che SigmaNest legge. Dopo il fix applicato a monte, la pipeline
-reale (Smoother, immagine con ~140 contorni) produce lo stesso pattern su
-ogni spline, senza alcun intervento manuale. Suite: 668 passed, nessuna
-regressione.
+`discretize()` needed adaptive sampling, not `ArcSeg`'s fixed
+sagitta-per-angle formula: an ellipse's curvature isn't constant (tightest at
+the ends of the major axis, radius `b²/a`). Extracted the adaptive
+chord-tolerance subdivision already built for `SplineSeg` (D42) into two
+shared functions (`_adaptive_polyline`/`_refine_segment`, parametrized over an
+`evaluate(t)` callable) instead of duplicating that recursive logic — `SplineSeg.discretize`
+now calls the same shared helper. Also extracted `_angular_sweep` (was
+`ArcSeg._sweep`'s body) since `EllipseSeg._sweep` needs the identical
+"sweep from start to end in a direction" computation on `start_param`/
+`end_param` instead of `start_angle`/`end_angle`.
 
----
+Touched every place `CircleSeg`/`SplineSeg` already had a case, mirroring the
+existing pattern instead of inventing a new one: the DXF parser/dispatcher,
+`segment_endpoints`, `to_edges()`'s closed-vs-open branch (generalized the
+existing SPLINE-only "parse once, check `segment_is_closed`" branch to also
+cover ELLIPSE — same ambiguity, same fix), the DXF exporter (`_add_ellipse`,
+mirroring `_add_spline`; wired into `write_segments`/`write_engrave_segments`/
+`write_open_segments` — **never** as a discretized fallback), `_segment_key`
+dedup, the validator's zero-length exemption, `inspect.py`, and
+`GeometryAdapter`/`load_geometry` (`"ellipse"` entity type, same treatment as
+`"spline"` in D35 — no real external consumer yet, added anyway because it's
+a primitive forge now has, not a speculative feature).
 
-### D42 — `SplineSeg.discretize()` valutava il poligono di controllo, non la curva  ✅
+**Regression found and fixed, not introduced**: the `Polylines.dxf` golden
+fixture (`tests/examples/golden{,_multipli}/`) contains a real ELLIPSE used
+as an inner cutout in one part. Before this decision it was silently dropped
+— the golden's expected area for that part was generated under that bug (no
+inner subtracted). Verified independently (computed the ellipse's true area
+from its own parameters, `π·a·b ≈ 1054.80`, against the old-vs-new area diff,
+`1054.25`) before regenerating — not regenerated on faith. Golden
+regenerated for that fixture only (`generate_golden.py --only Polylines`,
+`generate_golden_split.py --only Polylines`); the sibling parts of the same
+split fixture picked up an unrelated, pre-existing staleness for free (a
+`"custom"`→`"summary"` key never applied to those specific files since D8,
+and a cosmetic WKT ring-rotation from an unrelated shapely/GEOS version
+drift) — checked both, neither is a real geometry change.
 
-Scoperto da Smoother: l'anteprima SVG (e l'export a polilinea, D15, che usa
-lo stesso `.discretize()`) di una spline con pochi punti di controllo per
-tratto lungo (sottocampionamento alto o soglia spigolo bassa, MAP.md D19)
-appariva visibilmente "a facce"/seghettata anche quando la spline nel DXF
-era corretta e morbida. Causa: `discretize()` era un placeholder mai
-finito (commento esplicito nel codice, "FASE 3: implementare valutazione
-BSpline corretta con controllo della tolleranza. Per ora usiamo
-interpolazione lineare tra i punti di controllo come approssimazione") —
-non valutava mai la curva vera, solo il segmento dritto fra un punto di
-controllo e il successivo. Con pochi punti di controllo su un tratto molto
-curvo, quei segmenti dritti si vedevano.
-
-**Fix**: `discretize()` ora valuta la curva vera con l'algoritmo di de Boor
-(`_evaluate()`, "The NURBS Book" Algoritmo A5.1, razionale se `weights` è
-impostato) e suddivide adattivamente ogni intervallo di parametro finché il
-punto medio resta entro `tolerance` dalla corda (`_refine()`), con un tetto
-sul totale dei punti (`MAX_SEGMENTS_SPLINE * 4`) per non esplodere su un
-tratto rumoroso che non converge. Sola matematica (solo `math`, nessuna
-libreria di formato): `core/` deve funzionare anche senza `ezdxf`
-installato, non è negoziabile — un primo tentativo che riusava
-`ezdxf.math.BSpline` per la valutazione è stato scartato per questo,
-non per motivi tecnici.
-
-Verificato numericamente, non solo a occhio: una spline con soli 8 punti di
-controllo su un semicerchio raggio 10 — la vecchia logica (poligono di
-controllo) devia dalla curva vera fino a 0.79 unità (quasi l'8% del
-raggio); la nuova, con `tolerance=0.05`, devia al massimo 0.011 unità.
-Suite: 668 passed, nessuna regressione.
-
----
-
-### D43 — `interpret_annotations` → `anchor_annotations`  ✅
-
-Rinominata (`forge/tools/interpret.py` → `forge/tools/anchor.py`, e nell'API
-pubblica `forge.interpret_annotations` → `forge.anchor_annotations`). Nata da
-una sessione di confronto con Federico (con ChatGPT/Gemini/Deepseek come
-pareri esterni, `PARERI_VARI.md`) su determinismo e confini di forge: la
-parola "interpret" era già usata per tre cose diverse — questa funzione
-(solo geometria: `cluster_ref` per contenimento), il futuro progetto
-interprete (`INTERPRETER.md`), e il concetto generico di interpretazione
-discusso a proposito di D39-D42 — e Federico l'ha segnalato come fonte reale
-di confusione, non solo fastidio estetico.
-
-**Resta in forge**: non è un problema di "dove vive", solo di nome. La
-funzione è pura ricostruzione geometrica (un punto dentro un poligono, con
-uno snap opzionale) — zero giudizio su cosa significhi un'annotazione per il
-disegno, quindi non ha nulla del lavoro che sta spostandosi verso framer
-(cornice/cartiglio/viste/callout, vedi discussione in `INTERPRETER.md`, da
-riscrivere). Il nome nuovo riusa la parola già in uso nella documentazione
-per descriverla ("annotazioni tipate e **ancorate**",
-`forge-neutral-substrate-agent-layer-above`) invece di introdurne una terza.
-
-Nessun compat shim (`refactor-clean-break-over-compat-shims`): rinominata
-ovunque — modulo, test (`tests/unit/test_interpret_annotations.py` →
-`test_anchor_annotations.py`), golden generator, `docs/API.md`,
-`docs/ARCHITECTURE.md`. Non toccata la voce storica sopra (era
-`interpret_annotations` quando fu decisa, resta così nel log).
-
----
-
-### D44 — `detect()` come consumatore: `ForgeCluster.detected` overlay aperto per nome  ✅
-
-Sessione di disegno lunga con Federico (2026-09-18, branch
-`refactor/detect-overlay`), partita dalla tensione già segnata in
-`forge-clusters-not-parts`: `ForgeCluster` (prodotto neutro di `heal`) aveva
-comunque `holes`/`bending_lines`/`engrave_lines`/`custom` cablati come campi
-fissi, sempre presenti come liste vuote appena `heal()` finiva — `detect()`
-li riempiva mutandoli direttamente (una decina di siti). Problema concreto,
-non estetico: una lista vuota non distingueva "`detect()` non è mai girato"
-da "è girato e non c'è nessuna feature".
-
-**Decisioni, in ordine di scoperta:**
-
-1. **`holes`/`bending_lines`/`engrave_lines` escono da `ForgeCluster`**, dentro
-   un `detected: Optional[DetectedFeatures] = None` — `None` finché nessuno
-   ci scrive. `custom` **resta** un campo diretto del cluster (non è una
-   detection con `source`/`confidence`, è il dict libero che `inject()`
-   riempie da un `data_injector` esterno — natura diversa, nessuna ambiguità
-   da risolvere lì).
-2. **Niente property di comodo** (`cluster.holes` che torna `[]` se
-   `detected` è `None`): reintrodurrebbe l'ambiguità che il refactor vuole
-   togliere. Un consumatore passa esplicitamente per `cluster.detected.holes`
-   (che esplode se `detected is None`) o per l'accessor sicuro
-   `cluster.features(name)` (sempre `[]`, mai un'eccezione — comodo per un
-   renderer/exporter che deve solo iterare).
-3. **`DetectedFeatures` è un vocabolario aperto per nome**, non uno schema
-   fisso — stessa mossa già fatta per `role` in D27. `detect()` di forge
-   scrive `cluster.detected.attach("holes", [...])`; un tool esterno (un
-   futuro riconoscitore di framer/bendly, o un caso custom tipo "quante
-   flange in su") scrive `attach("flange_view_hint", [...])` con lo stesso
-   metodo — nessuno dei due è privilegiato nello schema. Nato dall'esempio di
-   Federico: la stessa geometria che `detect()` legge come "bending line" un
-   altro tool potrebbe leggerla come "bordo di una flangia che sale", per
-   ricostruire una vista fra più cluster — due letture alla pari, non una
-   principale e una di scarto.
-4. **`DetectedFeature` è un `typing.Protocol`, non un `ABC`** — coerente con
-   D5 ("convenzione, non gerarchia"): il contratto minimo è avere `source:
-   str` + `confidence: float`. `Hole`/`BendingLine`/`Engraving`/
-   `ClassifiedEntity` lo soddisfano già così come sono, zero modifiche — un
-   tipo custom non deve ereditare nulla di forge per "contare".
-5. **`Hole`/`BendingLine`/`Engraving`/`ClassifiedEntity` si spostano in
-   `forge/tools/model/`** (singolare, rispecchia `forge/model/`): sono output
-   di `detect()`, non geometria di `heal()` (`hole-classification-belongs-
-   in-detect`). Primo tentativo: `ForgeCluster.detected`/
-   `ForgeResult.classified_entities` li referenziavano sotto `TYPE_CHECKING`
-   (zero import a runtime, solo hint statico). **Corretto da Federico**: anche
-   quello è troppo — se apre `model/cluster.py` e la prima riga nomina
-   `tools/`, la domanda "perché model sa che `tools` esiste?" si pone lo
-   stesso, anche se l'import è inerte. `detect()` non è altro che **il primo
-   di possibili consumatori** — vive dentro forge perché sviluppato insieme,
-   non perché il model debba sapere che esiste. Tipizzati `Optional[Any]`:
-   zero menzione testuale di `tools/` in tutto `model/`, il contratto
-   (`.get(name, default)`, `.items()`) resta duck-typed, mai imposto.
-   Verificato, non assunto: l'intera suite gira senza un solo import
-   circolare in entrambe le versioni.
-6. **`rules/thresholds.py` → `tools/thresholds.py`**: i suoi due soli
-   consumatori (`detect.py`, `hole_detector.py`) erano già entrambi in
-   `tools/`. `rules/palette.py` **non si sposta** — mappa colore per l'intero
-   vocabolario dei ruoli (`outer`/`inner` inclusi), non solo quelli di detect.
-7. **`cluster.summary` diventa generico e resta sul model**: `{nome}_count:
-   len(items)}` per ogni collezione in `detected`, `{}` se `detected is
-   None` — funziona identico con solo `heal()` (sempre `{}`, come prima) e
-   per qualunque nome custom, senza che forge sappia cosa sia. Il conteggio
-   **ricco** per i tipi noti di forge (fori per tipo, pieghe raggruppate,
-   lunghezza incisioni — quello che `cluster.summary` dava per intero prima
-   di oggi, D8) si è spostato in **`tools.detect.describe_features(cluster)`**,
-   perché serve le costanti `HOLE_TYPE_*` che il model non può importare da
-   `tools`. I due livelli convivono, non si sostituiscono.
-8. **`io/exporter.py::build_metadata()` fonde tre livelli**, non uno: il
-   `summary` generico, `describe_features()` di forge, e un nuovo parametro
-   `extra` (per `save_json`/`save_xml`/`write_metadata_to_dxf` è
-   `extra_metadata`, una **callback** `cluster -> dict` — stesso idioma di
-   `data_injector`/`label_map`/`RoleStyle`, dizionario esplicito del
-   chiamante, mai auto-discovery). Nato da un esempio concreto di Federico:
-   né il summary generico (solo un conteggio) né `describe_features()` (solo
-   i tipi noti di forge) possono mai rispondere a "quante flange in su ha
-   questo cluster" — solo chi ha scritto quel tipo custom lo sa. `extra`
-   bypassa `METADATA_FIELDS`: passarlo è già la scelta esplicita del
-   chiamante, non serve un secondo cancello. `metadata_schema.py` stesso non
-   cambia forma — resta un allow-list curato per il confine esterno non-
-   Python (CAM/ERP/XDATA), verificato che framer/smoother/bendly/Pippo sono
-   tutti consumatori Python in-process che non passano da lì.
-9. **Niente sovrastruttura/API nuova per l'estendibilità**: `role_to_color`,
-   `DetectedFeatures`, `cluster.summary`/`describe_features()`, il parametro
-   `extra` di `build_metadata()` restano implementazioni piccole e
-   indipendenti dello stesso pattern (nome noto → logica ricca, nome
-   sconosciuto → fallback generico), non un framework condiviso — coerente
-   con D5, prematuro da un campione di poche istanze.
-10. **`describe_features` promosso a `forge.describe_features`** (top-level,
-    in `forge.__all__`), non solo raggiungibile via `forge.tools.`. Corretto
-    da Federico: `forge.X` piatto è il fronte pubblico sanzionato
-    (`forge/__init__.py`, "non devi importare i moduli interni
-    direttamente"); `forge.tools.X`/`forge.model.X` esistono comunque per
-    come funziona l'import di Python, ma non sono un secondo ingresso di
-    pari livello — stesso trattamento già riservato a `simplify_points`/
-    `load_pdf` quando non promossi. `describe_features` è maturo quanto
-    `detect`/`inject`/`anchor_annotations`, i suoi fratelli diretti (stessa
-    famiglia "stadi opzionali su un `ForgeResult`") — lasciarlo l'unico non
-    promosso sarebbe stata un'eccezione senza motivo, non la regola. Non
-    tocca `bridge_tabs`/`bridge_nested_tabs` (`tabs.py`): restano non
-    promosse, per lavoro ancora da fare lì, non per principio diverso — la
-    stessa domanda si riproporrà quando quel lavoro sarà chiuso.
-
-**Bug trovato facendo il lavoro**: `core/healing/hierarchy.py::_build_parts`
-costruiva ogni `ForgeCluster` passando `holes=[]` esplicito al costruttore —
-un kwarg morto una volta tolto il campo, non scoperto dall'audit iniziale
-delle letture (`cluster.holes` in lettura) perché è una scrittura al
-costruttore. Trovato dalla suite (410 test rotti in un colpo,
-`TypeError: unexpected keyword argument 'holes'`), non da un audit manuale —
-promemoria che un audit testuale prima di un refactor così esteso non basta,
-serve comunque far girare la suite.
-
-Nessun compat shim. Scaletta completa e il ragionamento passo-passo restavano
-in `TODO.md` durante il lavoro — sezione rimossa da lì a lavoro finito (il
-record vive qui). Suite: **671 passed, 62 subtests**, nessuna regressione —
-verificato anche end-to-end (non solo contando): un fixture con countersink
-scritto a `to_dxf()` produce l'entità sul layer `Countersink` come prima del
-refactor.
+Suite: 693 passed (was 691 + the new ellipse tests), no other golden touched.
+Branch `refactor/ellipse-primitive`.
 
 ---
 
-## QUESTIONI CHIUSE (storico)
+## Closed questions (history)
 
-- **Q1 — classificazione hole: topologia o detection?** → risolta da D15
-  (detection, `detect()` parametrico). L'ipotesi scartata era tenerla in
-  `heal` / `hierarchy`: avrebbe impegnato `heal` sulla semantica hole/inner,
-  rendendolo non più saltabile, contro
-  `laser-cutting-default-cam-enrichment-optional`.
-- **Q2 — valore di `HOLE_DIAMETER_THRESHOLD`** → risolta da D15. `32.1` mm è ora
-  il **default** di `detect(max_drill_diameter=...)`, non una costante di
-  dominio. Federico: lascia `32.1` per ora ("ragiono sui fori che magari hanno
-  tolleranza e devono essere ripassati"). La costante resta in
-  `rules/thresholds.py` come sorgente del default; il chiamante la può override
-  per macchina/utensile.
+- **Q1 — hole classification: topology or detection?** → resolved by D15
+  (detection, `detect()` parametric). Keeping it in `heal`/`hierarchy` was
+  rejected: it would have made `heal` non-skippable on hole/inner semantics,
+  against `laser-cutting-default-cam-enrichment-optional`.
+- **Q2 — value of `HOLE_DIAMETER_THRESHOLD`** → resolved by D15. `32.1` mm is
+  now the *default* of `detect(max_drill_diameter=...)`, not a domain
+  constant. Federico keeps it at 32.1 for now ("thinking about toleranced
+  holes that might need re-passing"). The constant stays in
+  `rules/thresholds.py` as the default's source, overridable per
+  machine/tool.
 
+---
 
+## Federico's notes (open questions, kept until they become decisions)
 
-* Appunti Federico
-** API
-inspect_file: se non gli passo il dxf, ma un altro fiel in entrata?? ce ne freghaimo ora, dal momento che non abbiamo altri input?
-
-> **Risposta:** sì, ce ne freghiamo per ora, ed è già coerente col resto del
-> codice, non solo pigrizia. `inspect_file`/`inspect_dxf` (livello 1) sono
-> hardcoded su DXF (`ezdxf.readfile`, `load_dxf`) — oggi l'unico adapter di
-> formato che forge ha davvero. `inspect_document` (livello 2) invece prende
-> già un `ForgeDocument` generico, quindi funziona anche per geometria
-> arrivata da `load_geometry()` (il percorso che usa bendly, zero DXF) — basta
-> non passargli un path DXF ma il documento già costruito. Solo il livello 1 e
-> l'orchestratore restano da generalizzare, e solo quando esisterà un secondo
-> adapter di formato vero (SVG/PDF, vedi sotto in TODO.md) — non prima.
-
-in ispect_dxf, sarebbe meglio avere l'opzione di non printare entità, ome avevamo prima. voglio dire, se hno boisogno solo dela spline o della polilinea, mi devo beccare anche tutto il resto?
-
-> **Risposta:** hai ragione, oggi manca. `inspect_dxf(path, entities=True,
-> limit=40)` ha solo un interruttore tutto/niente (`entities=False` toglie
-> il dettaglio entità del tutto) — nessun modo di dire "solo SPLINE" o "solo
-> LWPOLYLINE". Piccola aggiunta pulita: un parametro tipo `types:
-> Optional[set[str]] = None` che filtra il loop di stampa
-> (`if types and t not in types: continue`), stesso pattern di `limit`. Non
-> l'ho fatta senza dirtelo — dimmi se la vuoi ora o la metto in coda in
-> TODO.md.
-
-load_dxf: se non faccio poi detection all, la tracciatura dei layer non serve a niente, vero?
-
-> **Risposta: no, non è vero — verificato nel codice, non è un'impressione.**
-> `label_map`/`linetype_map`/`color_map` scrivono `edge.role` **al momento del
-> load**, prima che `heal()` esista anche solo come chiamata. `heal()` stesso
-> (non `detect()`) usa quei ruoli in `_split_labeled()`
-> (`core/heal.py`): ogni edge con un ruolo noto e non strutturale
-> (`is_structural_role`) viene tirato fuori dal grafo di topologia prima di
-> cercare i loop — è così che linguette/incisioni/cornice non spezzano la
-> ricerca di outer/inner. Quindi la tracciatura dei layer conta già dentro
-> `heal()` da solo, senza mai chiamare `detect()`: cambia la topologia
-> risultante (quali edge finiscono nel grafo strutturale) e dove finisce la
-> geometria in output (`to_dxf` instrada per ruolo). `detect()` aggiunge sopra
-> solo la seconda lane — classificazione *geometrica* (senza layer) di quello
-> che il label_map non ha già deciso.
-
-
-
-
-** MODULI
+- `inspect_file`/`inspect_dxf` (level 1) are hardcoded to DXF. Fine for now —
+  it's already the only real format adapter forge has. `inspect_document`
+  (level 2) already works on any `ForgeDocument`, including geometry from
+  `load_geometry()` (the path `bendly` uses, zero DXF). Only level 1 and the
+  orchestrator need generalizing, and only once a second real format adapter
+  exists.
+- `inspect_dxf` needs an entity-type filter (only SPLINE, only LWPOLYLINE,
+  ...) instead of today's all-or-nothing `entities=` switch. Small, clean
+  addition (a `types: Optional[set[str]] = None` parameter), not done yet —
+  queued.
+- Does layer tagging (`label_map` etc.) matter if `detect(features="all")` is
+  never called? **Yes — verified in code, not an impression.**
+  `label_map`/`linetype_map`/`color_map` set `edge.role` at load time, before
+  `heal()` is even called. `heal()` itself (not `detect()`) already uses
+  those roles in `_split_labeled()` to keep non-structural edges
+  (tabs/engraving/frame) out of the topology graph — this is how they don't
+  break outer/inner detection. `detect()` only adds a second, geometric-
+  inference lane on top of what `label_map` hasn't already decided.
