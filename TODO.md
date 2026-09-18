@@ -98,32 +98,77 @@ siti: `cluster.holes.append`, `cluster.inners = new_inners`,
 solo estetico: **una lista vuota non distingue "detect non è mai girato" da
 "è girato e non c'è nessun foro"**.
 
-Deciso con Federico (2026-09-18): farlo, branch dedicato. Scaletta:
+Deciso con Federico (2026-09-18, sessione lunga di disegno — non solo
+"togliere i campi fissi": l'intero cassetto delle detection diventa
+vocabolario aperto, stessa mossa già fatta per `role` in D27). Scaletta
+consolidata:
 
-1. Nuovo `model/detected_features.py`: `DetectedFeatures(holes, bending_lines,
-   engrave_lines, custom)` — stessa forma di oggi, spostata fuori dal cluster.
-2. `ForgeCluster`: via i 4 campi feature, dentro `detected: Optional[DetectedFeatures]
-   = None`. `summary()`/`area`/`to_dict()` leggono da `self.detected`,
-   gestendo esplicitamente il caso `None`.
-3. `detect.py`: ogni sito che oggi scrive diretto sul cluster crea/aggiorna
-   `cluster.detected` invece.
-4. Consumatori a valle da aggiornare a passare per `.detected`: `io/dxf.py`
-   (routing output fori/pieghe/incisioni), view_model/SVG, `inspect.py`
-   (`_sub_part`).
-5. Test + golden aggiornati — verificare prima di rigenerare, mai alla cieca
+1. **Nuova cartella `forge/tools/model/`** (singolare, rispecchia
+   `forge/model/`): ci si spostano `hole.py`, `bending_line.py`,
+   `engraving.py`, `classified.py` — sono output di `detect()`, non geometria
+   di `heal()` (`hole-classification-belongs-in-detect`). `hole_detector.py`
+   resta in `tools/` diretto (logica, non un tipo).
+2. **Nuovo `tools/model/detected_features.py`**:
+   - `DetectedFeature` — `typing.Protocol` `@runtime_checkable` con
+     `source: str` + `confidence: float`. Non un ABC: coerente con D5
+     ("convenzione, non gerarchia"), e `Hole`/`BendingLine`/`Engraving`/
+     `ClassifiedEntity` lo soddisfano già così come sono, zero modifiche.
+   - `DetectedFeatures` — contenitore **aperto per nome**: `__getattr__` per
+     leggere (`cluster.detected.holes`, `cluster.detected.flange_view_hint`,
+     qualunque nome), `attach(name, items)` per scrivere, più un modo di
+     elencare i nomi presenti (serve al punto 4). `detect()` di forge e un
+     tool esterno scrivono con lo stesso metodo — nessuno dei due è
+     privilegiato nello schema.
+3. **`forge/rules/thresholds.py` → `forge/tools/thresholds.py`**: verificato,
+   `HOLE_DIAMETER_THRESHOLD`/`THREADED_ARC_MAX_RADIUS_RATIO` sono usati solo
+   da `detect.py`/`hole_detector.py`. `rules/palette.py` **non si sposta** —
+   mappa colore per l'intero vocabolario dei ruoli (`OUTER`/`INNER` inclusi),
+   non solo quelli di detect.
+4. **`ForgeCluster` (`model/cluster.py`)**:
+   - via i 4 campi feature, dentro `detected: Optional[DetectedFeatures] =
+     None` (import solo `TYPE_CHECKING`, mai a runtime — `model` non importa
+     mai `tools`, stessa regola di `model`/`adapters` in `ARCHITECTURE.md`).
+   - `area` resta sul cluster, duck-typed su `self.detected.holes[i].polygon`
+     (non serve importare `Hole` per leggere un attributo su un'istanza già
+     passata).
+   - `summary()` **esce dal cluster**, diventa una funzione in `tools/`
+     (`cluster_summary(cluster)`) — non può restare sul model perché model
+     non può chiamare tools. Diventa anche **estendibile come
+     `role_to_color`**: nomi noti (`holes`, `bending_lines`, `engrave_lines`)
+     → logica ricca di oggi (conteggio per tipo, raggruppamento pieghe); un
+     nome che `detect()` non conosce → fallback generico
+     (`f"{name}_count": len(items)`), mai silenzio. Aggiornare il chiamante
+     in `io/exporter.py` (`cluster.summary` → `cluster_summary(cluster)`).
+   - `to_dict()`: via `holes_count`/`holes` (non più garantiti senza
+     `detect()`) — quei numeri arrivano già da `cluster_summary()`.
+5. **`detect.py`**: ogni sito che oggi scrive diretto sul cluster
+   (`cluster.holes.append` ecc.) crea/aggiorna `cluster.detected` con
+   `attach()` invece.
+6. **Consumatori a valle** da aggiornare a passare per `.detected`:
+   `io/dxf.py` (routing output fori/pieghe/incisioni), view_model/SVG,
+   `inspect.py` (`_sub_part`).
+7. **`rules/metadata_schema.py` / `io/exporter.py`: NESSUNA modifica.**
+   Verificato: framer/smoother/bendly/Pippo sono tutti consumatori Python
+   in-process (leggono `ForgeResult`/`cluster.summary()`/`cluster.detected`
+   direttamente, mai `build_metadata()`) — l'unico pubblico di
+   `METADATA_FIELDS` è un confine esterno non-Python (CAM/ERP/XDATA), dove
+   restare curato-per-default è la scelta giusta (`forge-reports-drawing-
+   never-guesses-no-shop-nomenclature`). Se un giorno si scopre falso,
+   riaprire la domanda.
+8. **Niente sovrastruttura/API nuova per l'estendibilità**: `role_to_color`,
+   `DetectedFeatures`, `cluster_summary()` restano tre implementazioni
+   piccole e indipendenti dello stesso pattern, non un framework condiviso —
+   coerente con D5, e prematuro da un campione di 2-3 istanze.
+9. Test + golden aggiornati — verificare prima di rigenerare, mai alla cieca
    (`golden-files-verify-before-regenerating`).
-6. Verifica finale: suite verde + un fixture reale con fori/pieghe/incisioni
-   renderizzato e guardato, non solo contato
-   (`render-the-drawing-before-judging-output`).
+10. Verifica finale: suite verde + un fixture reale con fori/pieghe/incisioni
+    renderizzato e guardato, non solo contato
+    (`render-the-drawing-before-judging-output`).
 
-**Domanda di design ancora aperta, da decidere prima di scrivere il punto 2**:
-un consumatore che oggi fa `cluster.holes` — lo lasciamo rompersi (deve
-passare per `cluster.detected.holes`, esplode se `detected is None`, coerente
-col motivo di questo refactor), oppure teniamo una `@property holes` di
-comodo che ritorna `[]` se `detected` è `None`? La property è comoda ma
-**reintroduce l'ambiguità che il refactor vuole togliere** (lista vuota
-torna a significare due cose diverse). Non decisa — Federico deve ancora
-scegliere quanto severo vuole questo breaking change interno.
+**Deciso, niente property di comodo**: un consumatore che fa `cluster.holes`
+si rompe (deve passare per `cluster.detected.holes`, esplode se `detected is
+None`) — una property che torna `[]` reintrodurrebbe l'ambiguità che questo
+refactor vuole togliere.
 
 ---
 
