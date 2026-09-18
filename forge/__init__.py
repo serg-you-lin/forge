@@ -55,6 +55,15 @@ from .adapters.geometry.loader import load_geometry
 # stato provato da un caso reale (Smoother). detect_corners/fit_primitives
 # restano accessibili da forge.tools.simplify_points per chi vuole comporli.
 from .tools.simplify_points import simplify_points
+# rotate_*: SPERIMENTALE, fuori dal contratto pubblico (vedi MAP.md D46).
+# Ruotano un ForgeCluster/ForgeResult già sano (nessun heal() in più — una
+# rotazione rigida non cambia la topologia) o un ForgeDocument grezzo
+# pre-heal. Restano importabili come forge.rotate_result/forge.rotate_cluster/
+# forge.rotate_document/forge.rotate_to_longest, non sono in __all__ e non
+# sono documentati finché non sono stati provati da un caso reale (un
+# nester). structural_segments/longest_structural_segment restano
+# accessibili da forge.tools.rotate per chi vuole comporli.
+from .tools.rotate import rotate_result, rotate_cluster, rotate_document, rotate_to_longest
 from .core.heal          import heal
 from .recipes            import heal_and_detect, split_to_files
 from .tools.inject       import inject
