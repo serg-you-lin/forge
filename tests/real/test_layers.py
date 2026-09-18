@@ -21,8 +21,10 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.adapters.dxf.layers import ALL_FORGE_LAYERS, TRASH_LAYER
-from forge.adapters.dxf.layers import LAYER_OUTER, ROLE_TO_LAYER, LAYER_BENDING
+from forge.adapters.dxf.layers import LAYER_OUTER, ROLE_TO_LAYER
+from forge.tools.manufacturing_role import LAYER_BENDING
 from forge.model.role import ContourRole
+from forge.tools.manufacturing_role import HOLE, THREADED_HOLE, COUNTERSINK
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
 MULTIFEATURE = EXAMPLES_DIR / "Multifeature.dxf"
@@ -41,6 +43,7 @@ def _run_pipeline(dxf_path: Path) -> tuple:
     `doc_out` è il documento materializzato da to_dxf(): è lì che vivono i
     layer forge e le entità routate. `source_doc` serve solo a split().
     """
+    from forge.tools.manufacturing_role import is_structural
     source_doc = forge.load_dxf(
         dxf_path, explode_inserts=True, label_map=SPECIAL_LAYERS,
     )
@@ -49,6 +52,7 @@ def _run_pipeline(dxf_path: Path) -> tuple:
         tolerance=1,
         label=dxf_path.stem,
         source_file=dxf_path.name,
+        is_structural=is_structural,
     )
     forge.detect(result, features="all", bending_tolerance=0.2)
     doc_out = forge.to_dxf(result, source_doc)
@@ -137,7 +141,7 @@ class TestEntitaBylayer(unittest.TestCase):
 
     def test_holes_su_layer_corretto(self):
         """I fori devono avere un role foro-compatibile (hole, inner, threaded_hole, countersink)."""
-        role_fori_validi = {ContourRole.HOLE, ContourRole.INNER, ContourRole.THREADED_HOLE, ContourRole.COUNTERSINK}
+        role_fori_validi = {HOLE, ContourRole.INNER, THREADED_HOLE, COUNTERSINK}
         for i, cluster in enumerate(self.result.clusters):
             for j, hole in enumerate(cluster.features("holes")):
                 with self.subTest(cluster=i, hole=j):

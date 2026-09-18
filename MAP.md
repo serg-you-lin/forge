@@ -7,7 +7,7 @@ the git log).
 Rule: a closed decision is **not re-decided from scratch**. If it needs
 reopening, say so explicitly — "reopening decision N".
 
-- **What forge is, how to use it** → `README.md`, `docs/API.md`
+- **What forge is, how to use it** → `README.md`, `docs/API.md`, `docs/LLM.md` (dense AI reference)
 - **How it's built inside** → `docs/ARCHITECTURE.md`
 - **Refactor history** → git log
 
@@ -946,6 +946,105 @@ Demo script `scripts/17_rotate_to_longest_outer.py` — a single `heal()` call
 now, not two.
 
 Suite: 722 passed (was 693 + rotation tests), no golden touched.
+
+---
+
+### D47 — Manufacturing role taxonomy out of core; palette becomes a runtime registry ✅
+
+Federico traced `THREADED_HOLE`/`COUNTERSINK`/`BEND`/`ENGRAVE`/`MARKING`
+sitting as named `ContourRole` members in `model/role.py` and, tracing the
+actual call sites, confirmed `core/` (`heal.py`, `healing/hierarchy.py`)
+never once branches on any of them by name — only `tools/detect.py`,
+`tools/hole_detector.py`, the renderers, and `label_map`'s authoritative
+lane touch them. His verdict: those six names are detect's vocabulary
+parked in the wrong file, and if the coupling couldn't be removed cleanly
+he'd pull `detect` out of forge into its own project entirely (this reopens
+nothing from `forge-neutral-substrate-agent-layer-above` — that decision
+said `detect` is the precedent pattern *inside* forge; this is about where
+its vocabulary physically lives, not whether it stays).
+
+**The one real constraint traced, not assumed:** `heal()`'s `_split_labeled`
+step must decide, before loop-finding runs, whether a `label_map`-tagged
+edge (e.g. `"hole"`) stays in the graph (structural) or is pulled out
+(decoration) — and the SAME structural/non-structural question is asked a
+second time, deeper in the pipeline, by `_loop_is_structural` (every loop
+found by any strategy) and by `hierarchy.HierarchyBuilder._collect_trash`
+(unclassified proxies). All three needed to agree, and none of them may
+hardcode manufacturing names.
+
+**Fix — inject the predicate, don't import the vocabulary:**
+`heal(doc, is_structural=None)` takes an optional `Callable[[role], bool]`.
+`HealStep._structural(role)` calls it if given; otherwise falls back to
+`model.role.is_structural_role`, now reduced to `{OUTER, INNER}` only — the
+literal minimum the engine needs. The same callable is threaded to
+`_loop_is_structural` (now takes `is_structural` as a parameter, not a
+free-standing import) and to `HierarchyBuilder(is_structural=...)`. Without
+an injected predicate, a labeled non-outer/inner edge is treated as
+non-structural by default (safe direction — same behavior manufacturing
+roles already had before D15) and `heal()` appends one generic,
+role-name-agnostic warning telling the caller to pass `is_structural=` or
+call `heal_and_detect()`.
+
+**`model/role.py` shrinks to what core actually uses:** `ContourRole` is
+now only `UNKNOWN`/`OUTER`/`INNER`. `STRUCTURAL_ROLES`/`is_structural_role`/
+`WORK_TYPE_TO_ROLE` shrink to match. The six manufacturing names move to a
+new `forge/tools/manufacturing_role.py`, imported by `tools/detect.py` and
+`tools/model/{hole,bending_line,engraving}.py` — never by `core`/`model`.
+`tools.manufacturing_role.is_structural(role)` is `model.is_structural_role
+OR role in {hole, countersink, threaded_hole}` — the full predicate,
+composed outside core, not defined inside it. `recipes.heal_and_detect()`
+and `recipes.split_to_files()` pass it to `heal()` automatically — the 90%
+path needs zero changes at call sites. A `label_map` value like `"hole"`
+that used to be canonicalized to a `ContourRole` constant by
+`model.role.normalize_role` is now just an ordinary slug, same treatment as
+`"frame"` — the label-lane authority (D27) is unchanged, only which layer
+owns the name of that authority.
+
+**The palette had the identical problem, worse — Federico caught it live:**
+`rules/palette.py` hardcoded `COLOR_HOLE`/`COLOR_BENDING`/etc, and
+`RoleStyle`/`role_styles=` (D37) was per-call-only: a consumer (framer) had
+to reconstruct and re-pass its override on *every* `to_dxf`/`split` call,
+with no way to register it once — an asymmetry against `set_schema()`
+(`io/exporter.py`), which already does exactly that for metadata. Fixed by
+mirroring `set_schema`'s pattern: `register_role_style(role, style)` writes
+into a module-level registry in `rules/palette.py`
+(`registered_role_styles()` reads it back); `to_dxf`/`split` merge the
+registry with any explicit `role_styles=` (explicit wins, same as before);
+`role_to_hex` (used by `to_svg`/`to_view_model`) checks the registry first,
+converting `RoleStyle.color` (RGB) straight to hex rather than going
+through the 10-color ACI palette. `RoleStyle` gained a `layer_name` field
+(the dataclass's own docstring already said it was "built to grow by
+addition") so a registered role also gets a readable output layer name
+instead of falling back to its raw slug; `adapters/dxf/layers.py`'s
+`role_to_dxf_layer` checks the registry for it.
+
+`tools/manufacturing_role.py` calls `register_role_style` for its six roles
+at **import time** — using the exact same public mechanism a consumer like
+framer would use, no privilege — reproducing the old hardcoded
+colors/layer names exactly (`Hole`/`Countersink`/`ThreadHole`/`Bending`/
+`Engrave`/`Marking`, same hex values) so default output is visually
+unchanged. One real bug caught mid-refactor: the old `COLOR_BENDING = 11 #
+bianco` comment was wrong — `ACI_TO_HEX[11]` is `"#ff7f7f"` (pink, labeled
+`# rosa` right next to it) — copied the comment instead of the table on the
+first pass, Federico caught it, fixed to the true RGB before it shipped.
+
+**Net effect:** `core`/`model` now contain zero manufacturing vocabulary —
+literally the engine and nothing else, which was Federico's bar
+("in core NON deve vivere nulla che non sia motore"). `adapters` doesn't
+either (label_map resolution no longer canonicalizes manufacturing names).
+Everything detect-specific — the six role strings, the structural set, the
+default colors/layer names — lives in one file beside `detect.py`.
+
+Known behavior change, deliberate: bare `forge.heal(doc)` (not via
+`heal_and_detect`) with a `label_map` assigning a manufacturing role no
+longer keeps that role structural by default — it needs
+`is_structural=forge.tools.manufacturing_role.is_structural` passed
+explicitly, or it degrades safely (excluded, warned) rather than silently
+keeping the old behavior. Every such call site in the test suite was found
+by running it and fixed, not searched for by eye.
+
+Suite: 725 passed (was 722 — 3 new tests for `tools.manufacturing_role.
+is_structural` and the normalize_role/slug distinction), no golden touched.
 
 ---
 

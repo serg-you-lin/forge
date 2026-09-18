@@ -1,15 +1,26 @@
 """
 model/role.py
 
-Ruolo semantico di una forma nel contesto manifatturiero.
+Ruolo topologico di una forma — il minimo che il motore (core/) deve sapere
+per costruire l'albero di contenimento: è un contorno esterno, un contorno
+interno, o non ha ancora un ruolo deciso. Punto. **Non vive qui nessuna
+tassonomia manifatturiera** (foro, foro filettato, svasatura, piega,
+incisione, marcatura, ...) — quella è vocabolario di ``tools/detect.py``
+(``forge/tools/manufacturing_role.py``), non del motore: core non sa cosa sia
+un foro, sa solo distinguere un contorno da un altro (MAP.md, "roles out of
+core").
 
-``ContourRole`` NON è un universo chiuso: è la raccolta dei ruoli che forge
-conosce e sa classificare. Un consumatore (un layer sopra forge, l'interprete,
-un agente) può assegnare un ruolo che forge non conosce — ``"frame"``,
-``"title_block"``, ``"section"``, ``"nesting_region"`` — e forge lo conserva, lo
-tratta come non strutturale e in output lo scrive su un layer col nome dello
-slug (non su ``Trash``: la geometria di un consumatore non è spazzatura). Vedi
-MAP.md D27 e D31.
+``ContourRole`` NON è un universo chiuso: un consumatore (un layer sopra
+forge, l'interprete, un agente, o lo stesso ``detect()`` di forge — nessuno
+dei due è privilegiato) può assegnare un ruolo che core non conosce —
+``"hole"``, ``"frame"``, ``"title_block"``, qualunque slug — e forge lo
+conserva, lo tratta come non strutturale di default e in output lo scrive su
+un layer col nome dello slug (non su ``Trash``: quella geometria non è
+spazzatura). Chi vuole che un ruolo che core non conosce sia trattato come
+strutturale (un foro è un vero contorno di pezzo, non decorazione) passa il
+proprio predicato a ``heal(doc, is_structural=...)`` — vedi
+``tools.manufacturing_role.is_structural``, usato di default da
+``heal_and_detect()``. Vedi MAP.md D27 e D31.
 
 ``normalize_role()`` è l'unico punto in cui una stringa-ruolo che arriva dal
 chiamante entra nel modello: la ripulisce una volta sola in uno slug sicuro,
@@ -36,51 +47,48 @@ _ROLE_SLUG_RE = re.compile(r"[^a-z0-9_-]+")
 
 class ContourRole(str, Enum):
     """
-    I ruoli che forge conosce e sa classificare. **Non esaustivo** — un
-    consumatore può assegnare altre stringhe (vedi ``normalize_role``).
+    I tre ruoli che il motore topologico conosce. **Non esaustivo** — un
+    consumatore (``tools/detect.py`` incluso: non è privilegiato) assegna
+    qualunque altra stringa a un edge/contorno, vedi ``normalize_role``.
 
     Eredita da str: il valore è già una stringa normale, quindi JSON/repr
     scrivono ``"outer"`` invece di ``<ContourRole.OUTER: 'outer'>`` e le
     comparazioni con stringhe funzionano senza ``.value``.
     """
-    UNKNOWN = "unknown"   # default — l'adapter non sa / non mappato
-    OUTER   = "outer"     # profilo esterno della parte
-    HOLE    = "hole"      # foro (confermato da detect o da label_map)
-    COUNTERSINK   = "countersink"     # foro svasato
-    THREADED_HOLE = "threaded_hole"   # foro filettato
-    BEND    = "bending"      # linea / contorno di piega
-    INNER   = "inner"     # loop interno non ancora classificato
-    ENGRAVE = "engrave"
-    MARKING = "marking"
-    # `frame` NON è qui: la cornice non è un concetto di forge. È un ruolo che
-    # un consumatore (framer) assegna, e che forge conserva come slug e porta
-    # fedele fino a un layer col suo nome, senza saperne il significato
-    # (vocabolario aperto D27, ruoli di consumatore fuori da forge D31).
+    UNKNOWN = "unknown"   # default — nessun ruolo deciso
+    OUTER   = "outer"     # profilo esterno della parte, trovato da heal()
+    INNER   = "inner"     # loop interno, trovato da heal()
+    # Non c'è altro qui. `hole`/`countersink`/`threaded_hole`/`bending`/
+    # `engrave`/`marking` sono vocabolario manifatturiero — vive in
+    # `tools/manufacturing_role.py`, a fianco di `detect()`, che è l'unico a
+    # saperne il significato. `frame`/`title_block`/... sono slug di un
+    # consumatore esterno (framer, ...) — stesso trattamento, nessuna
+    # eccezione: core non distingue "il ruolo di detect" da "il ruolo di un
+    # consumatore qualunque", sono entrambi fuori da questo enum.
 
 
 # ---------------------------------------------------------------------------
-# Tassonomia: quali ruoli sono topologia di contorno di pezzo
+# Tassonomia: quali ruoli sono topologia di contorno (motore puro)
 # ---------------------------------------------------------------------------
-# Unico punto di verità per la domanda "questo edge / loop / proxy è struttura
-# della parte, non marcatura né arredo del disegno?". Ci passano heal (ricerca
-# loop e split degli edge già etichettati), hierarchy (cosa tiene un proxy
-# fuori dalla Trash) e detect. Un ruolo fuori da qui — engrave, marking, frame,
-# o uno slug assegnato da un consumatore (``title_block``, ``section``, …) —
-# non è contorno: heal lo tiene fuori dal grafo e l'output lo riscrive come
-# Trash, con la geometria intatta (D27, D30).
+# Unico punto di verità per la domanda "questo edge/loop/proxy è OUTER o INNER
+# per come l'ha costruito heal(), a prescindere da qualunque significato
+# manifatturiero?". Chi vuole che heal() tratti come strutturale anche un
+# ruolo che core non conosce (un foro etichettato da label_map, per esempio)
+# passa il proprio predicato a `heal(doc, is_structural=...)` — vedi
+# `tools.manufacturing_role.is_structural`. Senza quel predicato, heal()
+# tratta qualunque ruolo fuori da qui come non strutturale di default (esce
+# dal grafo, resta in trash col ruolo intatto — MAP.md, "roles out of core").
 STRUCTURAL_ROLES = frozenset({
     ContourRole.OUTER,
     ContourRole.INNER,
-    ContourRole.HOLE,
-    ContourRole.COUNTERSINK,
-    ContourRole.THREADED_HOLE,
 })
 
 
 def is_structural_role(role) -> bool:
     """
-    True se ``role`` è topologia di contorno di pezzo (vedi ``STRUCTURAL_ROLES``).
+    True se ``role`` è OUTER o INNER per il motore (vedi ``STRUCTURAL_ROLES``).
 
+    Predicato minimo del motore — non sa nulla di fori/pieghe/incisioni.
     Test di appartenenza puro — accetta sia una costante ``ContourRole`` sia lo
     slug stringa equivalente (``ContourRole`` eredita da ``str``). Nessun
     reverse-lookup sull'enum (D27 regola A).
@@ -92,15 +100,8 @@ def is_structural_role(role) -> bool:
 # work_type stringa → ContourRole — mappatura pura, zero dipendenze di formato
 # ---------------------------------------------------------------------------
 WORK_TYPE_TO_ROLE: Dict[str, ContourRole] = {
-    "outer":         ContourRole.OUTER,
-    "hole":          ContourRole.HOLE,
-    "bending":       ContourRole.BEND,
-    "bend":          ContourRole.BEND,
-    "inner":         ContourRole.INNER,
-    "countersink":   ContourRole.COUNTERSINK,
-    "threaded_hole": ContourRole.THREADED_HOLE,
-    "engrave":       ContourRole.ENGRAVE,
-    "marking":       ContourRole.MARKING,
+    "outer": ContourRole.OUTER,
+    "inner": ContourRole.INNER,
 }
 
 

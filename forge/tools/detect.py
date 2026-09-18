@@ -12,6 +12,7 @@ from shapely.geometry import LineString, Point
 from ..model import ForgeResult, ForgeCluster
 from ..model.feature import OpenFeature
 from ..model.role import ContourRole, role_str, is_structural_role
+from .manufacturing_role import HOLE, COUNTERSINK, THREADED_HOLE, BEND, ENGRAVE, MARKING
 from .model import (
     BendingLine,
     ClassifiedEntity,
@@ -48,12 +49,12 @@ def _ensure_detected(cluster: ForgeCluster) -> DetectedFeatures:
 # lo lascia, geometria e ruolo intatti (D27, D30). Prima detect() ne faceva un
 # ClassifiedEntity scollegato che l'exporter non riscriveva → geometria persa.
 _DETECT_KNOWN_ROLES = frozenset({
-    ContourRole.HOLE,
-    ContourRole.COUNTERSINK,
-    ContourRole.THREADED_HOLE,
-    ContourRole.ENGRAVE,
-    ContourRole.BEND,
-    ContourRole.MARKING,
+    HOLE,
+    COUNTERSINK,
+    THREADED_HOLE,
+    ENGRAVE,
+    BEND,
+    MARKING,
 })
 
 
@@ -84,8 +85,8 @@ def _proxy_pts(proxy) -> list:
     return track_points(getattr(proxy, "segments", []) or [])
 
 _ROLE_TO_HOLE_TYPE = {
-    ContourRole.COUNTERSINK:   HOLE_TYPE_COUNTERSINK,
-    ContourRole.THREADED_HOLE: HOLE_TYPE_THREADED,
+    COUNTERSINK:   HOLE_TYPE_COUNTERSINK,
+    THREADED_HOLE: HOLE_TYPE_THREADED,
 }
 
 
@@ -198,7 +199,7 @@ def _detect_labeled(result: ForgeResult) -> None:
 
         is_closed = getattr(proxy, "polygon", None) is not None
 
-        if proxy.role == ContourRole.ENGRAVE:
+        if proxy.role == ENGRAVE:
             placed = (
                 _handle_engrave_closed_trash(proxy, result) if is_closed
                 else _handle_engrave_open(proxy, result)
@@ -243,7 +244,7 @@ def _detect_labeled(result: ForgeResult) -> None:
     ]
 
     _LABELED_HOLE_ROLES = (
-        ContourRole.HOLE, ContourRole.COUNTERSINK, ContourRole.THREADED_HOLE,
+        HOLE, COUNTERSINK, THREADED_HOLE,
     )
 
     for cluster in result.clusters:
@@ -266,7 +267,7 @@ def _detect_labeled(result: ForgeResult) -> None:
                 remaining.append(inner)
                 continue
 
-            if inner.role == ContourRole.ENGRAVE:
+            if inner.role == ENGRAVE:
                 _handle_engrave_closed(inner, cluster)
                 continue
 
@@ -348,7 +349,7 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                 )
                 if outer.contains(midpoint):
                     _ensure_detected(cluster).add("bending_lines", BendingLine(
-                        role=ContourRole.BEND,
+                        role=BEND,
                         geometry=LineString([pts[0], pts[-1]]),
                         length=length,
                         angle_deg=chord_angle_deg(pts[0], pts[-1]),
@@ -464,7 +465,7 @@ def _hole_from_contour(contour, diameter, center, *, hole_type, confidence,
                        geometric_hint="", outer_diameter=None):
     from .model import Hole
     return Hole(
-        role=ContourRole.HOLE,
+        role=HOLE,
         polygon=contour.polygon,
         segments=list(getattr(contour, "segments", []) or []),
         styles=list(getattr(contour, "styles", []) or []),
@@ -528,7 +529,7 @@ def _engraving_from_open(proxy, cluster_label: str = "",
                          source: str = "labeled", confidence: float = 1.0) -> Engraving:
     pts = _proxy_pts(proxy)
     return Engraving(
-        role=ContourRole.ENGRAVE,
+        role=ENGRAVE,
         segments=list(getattr(proxy, "segments", []) or []),
         styles=list(getattr(proxy, "styles", []) or []),
         length=round(track_length(pts), 4),
@@ -544,7 +545,7 @@ def _engraving_from_closed(polygon, segments, cluster_label: str = "",
                            source: str = "labeled", confidence: float = 1.0,
                            styles=None) -> Engraving:
     return Engraving(
-        role=ContourRole.ENGRAVE,
+        role=ENGRAVE,
         segments=list(segments or []),
         styles=list(styles or []),
         length=round(polygon.exterior.length, 4),
@@ -725,7 +726,7 @@ def _bending_line_from_data(data: dict, cluster_label: str) -> BendingLine:
     start = data["start"]
     end   = data["end"]
     return BendingLine(
-        role=ContourRole.BEND,
+        role=BEND,
         geometry=LineString([start, end]),
         length=data["length"],
         angle_deg=data["angle_deg"],

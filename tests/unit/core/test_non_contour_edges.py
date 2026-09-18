@@ -5,12 +5,14 @@ from forge.core.topology.graph import build_node_graph
 from forge.core.topology.non_contour_edges import NonContourEdgeDetector
 from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg
-from forge.model.role import ContourRole
-
 
 def _make_edge(p1, p2):
+    # Il ruolo qui è irrilevante per NonContourEdgeDetector, che lavora per
+    # sola geometria (branching + centroide nel convex hull), mai per ruolo
+    # — una stringa qualunque non-strutturale basta (era ContourRole.BEND,
+    # ora vocabolario di tools/manufacturing_role.py, non del motore).
     return Edge(
-        role=ContourRole.BEND,
+        role="bending",
         start=p1,
         end=p2,
         segment=LineSeg(start=p1, end=p2),

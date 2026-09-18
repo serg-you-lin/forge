@@ -15,6 +15,7 @@ from shapely.geometry import LineString
 
 from forge.model.feature import OpenFeature
 from forge.model.role import ContourRole
+from forge.tools.manufacturing_role import BEND
 
 
 @dataclass
@@ -31,7 +32,7 @@ class BendingLine(OpenFeature):
 
     def __post_init__(self):
         if self.role == ContourRole.UNKNOWN:
-            self.role = ContourRole.BEND
+            self.role = BEND
 
     def to_dict(self) -> dict:
         coords = list(self.geometry.coords)

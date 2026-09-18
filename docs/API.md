@@ -271,7 +271,8 @@ via del 90% (`forge/recipes.py`). Tutto resta accessibile come `forge.<nome>`.
 ### `heal`
 
 ```python
-forge.heal(doc: ForgeDocument, tolerance=None, label="", source_file="") -> ForgeResult
+forge.heal(doc: ForgeDocument, tolerance=None, label="", source_file="",
+           is_structural=None) -> ForgeResult
 ```
 
 Il passo difficile: ricostruzione della topologia. Lavora su `doc.edges`, zero
@@ -286,6 +287,7 @@ inners=[ForgeContour...])`. La promozione a `Hole` è di `detect(features="holes
 | `tolerance` | se `None`, ripresa da `doc.source_meta["tolerance"]` (quella passata a `load_dxf`). |
 | `label` | etichetta del pezzo, finisce in `cluster.label` e nei metadati. |
 | `source_file` | nome file sorgente, finisce nei metadati. |
+| `is_structural` | `Callable[[str], bool] \| None` — "questo ruolo è topologia di contorno di pezzo?", usato per decidere quali `Edge` già etichettati (da `label_map`) restano nel grafo prima della ricerca loop. `heal()` da solo conosce solo `outer`/`inner`; senza questo parametro un ruolo manifatturiero (`"hole"`, ...) è trattato come non strutturale ed **esce** dal grafo (heal lo segnala con un warning). Passa `forge.tools.manufacturing_role.is_structural` per farlo riconoscere — `heal_and_detect()`/`split_to_files()` lo fanno già in automatico. |
 
 `label_map`/`linetype_map`/`color_map` **non sono parametri di `heal`** — vanno
 passati a `load_dxf()`, che assegna i ruoli agli `Edge`.
@@ -475,14 +477,17 @@ class RoleStyle:
     color:      tuple[int, int, int] | None = None   # RGB 0-255, canonico
     linetype:   str | None = None                     # nome standard ezdxf, es. "DASHED"
     lineweight: float | None = None                   # mm
+    layer_name: str | None = None                     # nome layer/gruppo di output
 ```
 
 Override, indipendente dal formato, dell'aspetto visivo di un ruolo in
-output — noto a forge (`"hole"`, `"outer"`, ...) o assegnato da un
-consumatore (`"frame"`, `"title_block"`, ...). Ogni campo lasciato `None`
-resta il default di forge per quel ruolo. Passato a `to_dxf`/`split` come
-`role_styles={ruolo: RoleStyle(...)}` — dizionario esplicito del chiamante,
-stesso idioma di `label_map`, riusabile su più chiamate/formati.
+output — noto al motore (`"outer"`, `"inner"`) o assegnato da chiunque
+altro, `detect()` incluso (`"hole"`, ...) o un consumatore esterno
+(`"frame"`, `"title_block"`, ...) — nessuno dei due è privilegiato. Ogni
+campo lasciato `None` resta il default di forge per quel ruolo. Passato a
+`to_dxf`/`split` come `role_styles={ruolo: RoleStyle(...)}` — dizionario
+esplicito del chiamante, stesso idioma di `label_map`, riusabile su più
+chiamate/formati; vince sempre su un eventuale stile registrato (sotto).
 
 Pensato per crescere per aggiunta: un futuro campo si aggiunge alla
 dataclass senza toccare la firma di `to_dxf`/`split` né rompere chi già
@@ -493,6 +498,27 @@ forge.to_dxf(result, doc, role_styles={
     "frame":   forge.RoleStyle(color=(0, 0, 0)),          # cornice: nero
     "unknown": forge.RoleStyle(lineweight=0.05),          # trash: linea sottilissima
 })
+```
+
+### `register_role_style`
+
+```python
+forge.register_role_style(role, style: RoleStyle) -> None
+```
+
+Registra uno `RoleStyle` per `role` **una volta sola**, valido per ogni
+`to_dxf`/`split` successivo senza doverlo ripassare — stesso idioma di
+`forge.set_schema()` per i metadati. Un consumatore (framer, bendly, ...)
+lo chiama una volta al proprio setup invece di ricostruire `role_styles=`
+a ogni chiamata; `forge.tools.manufacturing_role` lo usa per registrare i
+propri colori di default (`hole` magenta, `bending` rosa, ...) — stesso
+meccanismo pubblico, nessun trattamento privilegiato per i ruoli di
+`detect()`. `role_styles=` passato a una singola chiamata resta possibile e
+vince comunque su quanto registrato qui.
+
+```python
+forge.register_role_style("frame", forge.RoleStyle(color=(0, 0, 0)))
+# ogni to_dxf/split successivo applica il nero al layer "frame" da solo
 ```
 
 ---
@@ -874,27 +900,44 @@ schema (D44) — `DetectedFeature` (`typing.Protocol`, `source`/`confidence`)
 `role` (`ContourRole`), `polygon` (shapely), `segments` (primitive native),
 proprietà `area` e `bbox`.
 
-### `ContourRole` (ruoli noti — vocabolario aperto)
+### `ContourRole` (ruoli del motore — vocabolario aperto)
 
-I ruoli che forge conosce e sa classificare: `unknown`, `outer`, `hole`,
-`countersink`, `threaded_hole`, `bending`, `inner`, `engrave`, `marking`.
-**Non è un universo chiuso**: un consumatore può assegnare un ruolo che forge
-non conosce (`frame`, `title_block`, `section`, …). Passa per `normalize_role()`
-— ripulito in uno slug `[a-z0-9_-]` ≤ 64 char — e forge lo conserva senza
-sollevare, trattandolo come non strutturale; in output lo scrive su un layer
-DXF **col nome dello slug**, colore grigio (`unknown` → `Trash`, rosso).
-`role_str(role)` dà il valore stringa che il ruolo sia una costante o uno slug
-(MAP.md D27 / D31).
+Il motore conosce solo tre ruoli: `unknown`, `outer`, `inner` (MAP.md D47,
+"roles out of core" — prima l'enum includeva anche i sei ruoli
+manifatturieri, spostati in `tools/manufacturing_role.py`: vedi sotto).
+**Non è un universo chiuso**: chiunque — `detect()` incluso, non è
+privilegiato — può assegnare un ruolo che il motore non conosce (`hole`,
+`frame`, `title_block`, `section`, …). Passa per `normalize_role()` — ripulito
+in uno slug `[a-z0-9_-]` ≤ 64 char — e forge lo conserva senza sollevare; in
+output lo scrive su un layer DXF **col nome dello slug** (o quello registrato
+con `register_role_style`), colore grigio salvo override (`unknown` →
+`Trash`, rosso). `role_str(role)` dà il valore stringa che il ruolo sia una
+costante o uno slug (MAP.md D27 / D31).
 
 **`forge.normalize_role(value) -> str`** e **`forge.is_structural_role(role) ->
-bool`** sono pubbliche (MAP.md D30). Servono a un consumatore che marca la
-geometria **prima di `heal`**: tiene i riferimenti agli `Edge` di `doc.edges`,
-imposta `edge.role = forge.normalize_role("frame")`, e `heal` li tiene fuori dal
-grafo (l'outer vero dei pezzi emerge; la geometria marcata finisce in
-`trash_entities` col ruolo intatto e l'output la scrive sul layer `frame`).
-`is_structural_role` dice se un ruolo è contorno di pezzo (`outer`, `inner`,
-`hole`, `countersink`, `threaded_hole`) o marcatura/arredo. È l'aggancio usato
-da `framer` per cornice e cartiglio (`FRAMER.md`).
+bool`** sono pubbliche (MAP.md D30). `is_structural_role` (il predicato del
+motore, solo `outer`/`inner`) è quello che `heal()` usa di default se non gli
+passi `is_structural=...` — vedi `heal()` sopra e MAP.md D47 per il predicato
+esteso (`tools.manufacturing_role.is_structural`, quello che
+`heal_and_detect()` inietta). Un consumatore che marca la geometria **prima
+di `heal`**: tiene i riferimenti agli `Edge` di `doc.edges`, imposta
+`edge.role = forge.normalize_role("frame")` — resta fuori dal grafo per
+default (nessun predicato lo riconosce strutturale), la geometria marcata
+finisce in `trash_entities` col ruolo intatto e l'output la scrive sul layer
+`frame`. È l'aggancio usato da `framer` per cornice e cartiglio
+(`FRAMER.md`).
+
+### `tools.manufacturing_role` (vocabolario di `detect()`, non del motore)
+
+`forge.tools.manufacturing_role` (non in `__all__`, importa esplicitamente)
+tiene `HOLE`/`COUNTERSINK`/`THREADED_HOLE`/`BEND`/`ENGRAVE`/`MARKING`
+(stringhe semplici, stessi valori di prima: `"hole"`, `"countersink"`, ...),
+`is_structural(role) -> bool` (il predicato ESTESO — outer/inner + i tre
+ruoli foro — quello che `heal_and_detect()`/`split_to_files()` passano a
+`heal(is_structural=...)` automaticamente), e registra i propri colori/nomi
+layer di default con `register_role_style` al proprio import — nessun
+trattamento privilegiato, stesso meccanismo pubblico di un consumatore
+esterno (MAP.md D47).
 
 ---
 
