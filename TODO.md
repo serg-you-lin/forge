@@ -12,9 +12,8 @@ ancora aperto.
 
 ## RIPARTENZA — stato a fine sessione 2026-09-18 (seconda parte), da qui la prossima chat
 
-Chiuso: i due lavori impilati sul branch `refactor/ellipse-primitive` sono
-stati splittati in due commit puliti (docs cleanup, poi `EllipseSeg`),
-mergiati `--ff-only` in `main` con bump a `0.6.19`, branch locale eliminato.
+Chiuso: `refactor/ellipse-primitive` (docs cleanup + `EllipseSeg`, due
+commit) mergiato `--ff-only` in `main`, bump a `0.6.19`.
 
 Chiuso anche il primo pezzo di "funzioni geometriche" (MAP.md D46):
 `.rotated(angle, origin)` su ogni primitiva, `segment_length`/
@@ -22,11 +21,11 @@ Chiuso anche il primo pezzo di "funzioni geometriche" (MAP.md D46):
 `forge/tools/rotate.py` (`longest_outer_segment`, `rotate_document`,
 `rotate_to_longest_outer`) — sperimentale, non ancora in `forge.__init__`.
 Script dimostrativo `scripts/17_rotate_to_longest_outer.py` su
-`tests/examples/try_for_rotation.dxf`. Suite verde: 716 passed. **Working
-tree NON ancora committato** — da splittare/committare all'inizio della
-prossima sessione (stesso lavoro fatto per `EllipseSeg`: verificare che sia
-tutto un unico argomento coerente prima di decidere se un commit solo basta,
-poi chiedere a Federico prima di mergiare in `main`).
+`tests/examples/try_for_rotation.dxf`, verificato manualmente (outer più
+lungo passa da 90° a 0°, la diagonale interna resta intatta e ruota con
+tutto il resto). Branch `refactor/rotate-longest-outer` mergiato `--ff-only`
+in `main`, bump a `0.6.20`. Suite verde: 716 passed. `main` è la verità
+corrente, niente da committare.
 
 Resta aperto, discusso ma non affrontato:
 - **Pippo che vuole sapere l'inclinazione di una flangia piegata** resta
