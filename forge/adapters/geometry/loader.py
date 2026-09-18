@@ -26,12 +26,14 @@ from typing import Any, Dict, List, Tuple
 
 from ...core.adapter_base import ForgeAdapter
 from ...core.geometry import round_point
-from ...core.primitives.segments import LineSeg, ArcSeg, CircleSeg, SplineSeg, segment_endpoints
+from ...core.primitives.segments import (
+    LineSeg, ArcSeg, CircleSeg, SplineSeg, EllipseSeg, segment_endpoints,
+)
 from ...core.topology.edge import Edge
 from ...model.document import ForgeDocument
 from ...model.role import normalize_role
 
-_SUPPORTED_TYPES = frozenset({"line", "arc", "circle", "polyline", "spline"})
+_SUPPORTED_TYPES = frozenset({"line", "arc", "circle", "polyline", "spline", "ellipse"})
 
 
 def _role_from(entity: Dict[str, Any]) -> str:
@@ -57,6 +59,9 @@ class GeometryAdapter(ForgeAdapter):
         spline:   {"type": "spline", "control_points": [(x,y), ...], "knots": [...],
                    "degree": 3, "weights": [...], "fit_points": [(x,y), ...],
                    "closed": False, "role": "outer"}
+        ellipse:  {"type": "ellipse", "center": (x,y), "major_axis": (x,y),
+                   "ratio": 0.5, "start_param": 0.0, "end_param": 2*pi,
+                   "ccw": True, "role": "outer"}
 
     "role" è opzionale — stesso vocabolario di label_map (work_type stringa:
     "outer", "hole", "inner", "bending", "engrave", ...). Se omesso resta
@@ -73,6 +78,13 @@ class GeometryAdapter(ForgeAdapter):
     restituito da simplify_points() lo passa quasi senza toccarlo — vedi
     forge.tools.simplify_points. Solo "control_points"/"knots"/"degree" sono
     obbligatori, il resto è opzionale.
+
+    Lo schema di "ellipse" ricalca 1:1 i campi di EllipseSeg — stessa
+    parametrizzazione del gruppo DXF ELLIPSE (center, major_axis come
+    VETTORE dal centro, ratio, start_param/end_param in radianti). Solo
+    "center"/"major_axis" sono obbligatori: "ratio"/"start_param"/
+    "end_param" hanno gli stessi default DXF di un'ellisse piena
+    (1.0 / 0.0 / 2π).
     """
 
     def __init__(self, entities: List[Dict[str, Any]], tolerance: float = 0.05):
@@ -99,6 +111,8 @@ class GeometryAdapter(ForgeAdapter):
                 edges.extend(self._polyline_edges(entity, role))
             elif kind == "spline":
                 edges.append(self._spline_edge(entity, role))
+            elif kind == "ellipse":
+                edges.append(self._ellipse_edge(entity, role))
             else:
                 raise ValueError(
                     f"load_geometry(): tipo non supportato all'indice {i}: "
@@ -153,6 +167,18 @@ class GeometryAdapter(ForgeAdapter):
             weights=[float(w) for w in weights] if weights else None,
             fit_points=[tuple(p) for p in fit_points_raw] if fit_points_raw else None,
             closed=bool(entity.get("closed", False)),
+        )
+        start, end = segment_endpoints(seg)
+        return Edge(role=role, start=self._round(start), end=self._round(end), segment=seg)
+
+    def _ellipse_edge(self, entity: Dict[str, Any], role: str) -> Edge:
+        seg = EllipseSeg(
+            center=tuple(entity["center"]),
+            major_axis=tuple(entity["major_axis"]),
+            ratio=float(entity.get("ratio", 1.0)),
+            start_param=float(entity.get("start_param", 0.0)),
+            end_param=float(entity.get("end_param", math.tau)),
+            ccw=bool(entity.get("ccw", True)),
         )
         start, end = segment_endpoints(seg)
         return Edge(role=role, start=self._round(start), end=self._round(end), segment=seg)

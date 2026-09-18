@@ -58,6 +58,24 @@ class LineSeg:
 
 
 # ---------------------------------------------------------------------------
+# Matematica angolare condivisa (ArcSeg / EllipseSeg)
+# ---------------------------------------------------------------------------
+
+def _angular_sweep(start: float, end: float, ccw: bool) -> float:
+    """
+    Angolo spazzato in radianti, sempre positivo, percorrendo da `start` a
+    `end` nel verso indicato — stesso calcolo per un ArcSeg (`start_angle`/
+    `end_angle`) e un EllipseSeg (`start_param`/`end_param`): entrambi sono
+    "percorri da un angolo/parametro a un altro, in un verso".
+    """
+    raw = (end - start) if ccw else (start - end)
+    sweep = raw % (2 * math.pi)
+    if sweep < 1e-12 and abs(raw) > 1e-12:
+        sweep = 2 * math.pi
+    return sweep
+
+
+# ---------------------------------------------------------------------------
 # ArcSeg
 # ---------------------------------------------------------------------------
 
@@ -71,14 +89,7 @@ class ArcSeg:
 
     def _sweep(self) -> float:
         """Angolo spazzato in radianti, sempre positivo."""
-        if self.ccw:
-            raw = self.end_angle - self.start_angle
-        else:
-            raw = self.start_angle - self.end_angle
-        sweep = raw % (2 * math.pi)
-        if sweep < 1e-12 and abs(raw) > 1e-12:
-            sweep = 2 * math.pi
-        return sweep
+        return _angular_sweep(self.start_angle, self.end_angle, self.ccw)
 
     def discretize(self, tolerance: float = DEFAULT_TOLERANCE) -> List[Point]:
         """
@@ -222,6 +233,55 @@ def _point_to_segment_distance(p: Point, a: Point, b: Point) -> float:
     return math.hypot(p[0] - cx, p[1] - cy)
 
 
+def _refine_segment(
+    evaluate, t0: float, t1: float, p0: Point, p1: Point,
+    tolerance: float, out: List[Point], depth: int,
+    max_depth: int = 8, max_points: int = MAX_SEGMENTS_SPLINE * 4,
+) -> None:
+    """
+    Suddivide `[t0, t1]` finché il punto medio (valutato con `evaluate(t)`)
+    resta entro `tolerance` dalla corda. `max_points` è un tetto sul totale
+    (non solo sulla profondità di questo ramo): evita l'esplosione di punti
+    su un tratto rumoroso che non converge mai entro `tolerance`.
+
+    `evaluate` è un callable `t -> Point` — condiviso da `SplineSeg`
+    (De Boor, curvatura variabile) ed `EllipseSeg` (parametrizzazione
+    ellittica esatta, curvatura variabile): stessa esigenza di
+    campionamento adattivo, math diversa a monte.
+    """
+    tm = (t0 + t1) / 2
+    pm = evaluate(tm)
+    if (
+        depth >= max_depth
+        or len(out) >= max_points
+        or _point_to_segment_distance(pm, p0, p1) <= tolerance
+    ):
+        out.append(p1)
+        return
+    _refine_segment(evaluate, t0, tm, p0, pm, tolerance, out, depth + 1, max_depth, max_points)
+    _refine_segment(evaluate, tm, t1, pm, p1, tolerance, out, depth + 1, max_depth, max_points)
+
+
+def _adaptive_polyline(
+    evaluate, t_min: float, t_max: float, n_initial: int, tolerance: float,
+) -> List[Point]:
+    """
+    Discretizza una curva parametrica valutata da `evaluate(t) -> Point` fra
+    `t_min` e `t_max`: campionamento iniziale uniforme in `n_initial` passi
+    (scelto dal chiamante in base alla propria stima di curvatura/lunghezza),
+    poi suddivisione adattiva (`_refine_segment`) finché ogni tratto resta
+    entro `tolerance` dalla corda.
+    """
+    n_initial = max(1, n_initial)
+    ts = [t_min + (t_max - t_min) * i / n_initial for i in range(n_initial + 1)]
+    points = [evaluate(t) for t in ts]
+
+    result: List[Point] = [points[0]]
+    for i in range(n_initial):
+        _refine_segment(evaluate, ts[i], ts[i + 1], points[i], points[i + 1], tolerance, result, depth=0)
+    return result
+
+
 @dataclass
 class SplineSeg:
     degree: int
@@ -324,29 +384,6 @@ class SplineSeg:
             return (point[0], point[1]) if w == 0 else (point[0] / w, point[1] / w)
         return point
 
-    def _refine(
-        self, t0: float, t1: float, p0: Point, p1: Point,
-        tolerance: float, out: List[Point], depth: int,
-        max_depth: int = 8, max_points: int = MAX_SEGMENTS_SPLINE * 4,
-    ) -> None:
-        """
-        Suddivide `[t0, t1]` finché il punto medio resta entro `tolerance`
-        dalla corda. `max_points` è un tetto sul totale (non solo sulla
-        profondità di questo ramo): evita l'esplosione di punti su un tratto
-        rumoroso che non converge mai entro `tolerance`.
-        """
-        tm = (t0 + t1) / 2
-        pm = self._evaluate(tm)
-        if (
-            depth >= max_depth
-            or len(out) >= max_points
-            or _point_to_segment_distance(pm, p0, p1) <= tolerance
-        ):
-            out.append(p1)
-            return
-        self._refine(t0, tm, p0, pm, tolerance, out, depth + 1, max_depth, max_points)
-        self._refine(tm, t1, pm, p1, tolerance, out, depth + 1, max_depth, max_points)
-
     def discretize(self, tolerance: float = DEFAULT_TOLERANCE) -> List[Point]:
         """
         Discretizza la spline in polilinea valutando la curva vera (non il
@@ -376,14 +413,7 @@ class SplineSeg:
         n_initial = max(1, int(math.ceil(approx_length / tolerance))) if tolerance > 0 else MAX_SEGMENTS_SPLINE
         n_initial = min(n_initial, MAX_SEGMENTS_SPLINE)
 
-        ts = [t_min + (t_max - t_min) * i / n_initial for i in range(n_initial + 1)]
-        points = [self._evaluate(t) for t in ts]
-
-        result: List[Point] = [points[0]]
-        for i in range(n_initial):
-            self._refine(ts[i], ts[i + 1], points[i], points[i + 1], tolerance, result, depth=0)
-
-        return result
+        return _adaptive_polyline(self._evaluate, t_min, t_max, n_initial, tolerance)
 
 
 def segment_endpoints(segment) -> Tuple[Point, Point]:
@@ -423,6 +453,18 @@ def segment_endpoints(segment) -> Tuple[Point, Point]:
     if isinstance(segment, CircleSeg):
         pt = (segment.center[0] + segment.radius, segment.center[1])
         return pt, pt
+
+    if isinstance(segment, EllipseSeg):
+        mx, my = segment.major_axis
+        nx, ny = -my * segment.ratio, mx * segment.ratio
+
+        def _pt(t: float) -> Point:
+            return (
+                segment.center[0] + math.cos(t) * mx + math.sin(t) * nx,
+                segment.center[1] + math.cos(t) * my + math.sin(t) * ny,
+            )
+
+        return _pt(segment.start_param), _pt(segment.end_param)
 
     return (0.0, 0.0), (0.0, 0.0)
 
@@ -477,5 +519,104 @@ class CircleSeg:
             x = self.center[0] + self.radius * math.cos(angle)
             y = self.center[1] + self.radius * math.sin(angle)
             pts.append((x, y))
-        
+
         return pts
+
+
+# ---------------------------------------------------------------------------
+# EllipseSeg
+# ---------------------------------------------------------------------------
+
+@dataclass
+class EllipseSeg:
+    """
+    Ellisse (o arco ellittico) geometrico puro — stessa parametrizzazione del
+    gruppo DXF ELLIPSE (ripresa 1:1, non un'invenzione di forge: è così che
+    STEP/IGES/ogni kernel CAD reale modella una conica, non una particolarità
+    del formato DXF — vedi MAP.md, la voce sull'ellisse).
+
+    `major_axis` è il VETTORE dal centro all'estremo dell'asse maggiore (non
+    un punto): la sua lunghezza è il semiasse maggiore, la sua direzione
+    l'orientamento dell'ellisse. `ratio` è semiasse minore / semiasse
+    maggiore (0 < ratio <= 1). Un'ellisse piena ha `start_param=0`,
+    `end_param=2π` (i default DXF); un arco ellittico usa un sotto-intervallo.
+    Stesso trattamento di ArcSeg: un'unica classe copre sia il caso chiuso sia
+    quello aperto, perché è così che l'entità DXF stessa li tratta — non
+    serve una "EllipseSeg chiusa" separata come invece serve per CIRCLE (che
+    in DXF è sempre e solo chiuso).
+
+    `ccw` esiste per lo stesso motivo di `ArcSeg.ccw`: un'ELLIPSE DXF reale è
+    sempre percorsa CCW da `start_param` a `end_param` (nessun flag di verso
+    nel formato) — `ccw=False` è uno stato solo interno a forge, usato per
+    percorrere il segmento al contrario quando un loop viene orientato
+    (`.reversed()`), mai qualcosa che il parser produce da un file.
+    """
+    center: Point
+    major_axis: Point   # vettore dal centro, non un punto assoluto
+    ratio: float         # semiasse minore / semiasse maggiore, 0 < ratio <= 1
+    start_param: float   # radianti
+    end_param: float     # radianti
+    ccw: bool = True
+
+    def _sweep(self) -> float:
+        """Angolo (parametro) spazzato in radianti, sempre positivo."""
+        return _angular_sweep(self.start_param, self.end_param, self.ccw)
+
+    def _point_at(self, t: float) -> Point:
+        """
+        Punto sull'ellisse al parametro `t` (radianti): stessa formula di
+        `ezdxf.math.ellipse.vertex` — `center + cos(t)*major_axis +
+        sin(t)*ratio*rotate90(major_axis)` — verificata contro la sorgente di
+        ezdxf invece che assunta, per non ricalcare a caso il formato.
+        """
+        mx, my = self.major_axis
+        nx, ny = -my * self.ratio, mx * self.ratio
+        return (
+            self.center[0] + math.cos(t) * mx + math.sin(t) * nx,
+            self.center[1] + math.cos(t) * my + math.sin(t) * ny,
+        )
+
+    def discretize(self, tolerance: float = DEFAULT_TOLERANCE) -> List[Point]:
+        """
+        Discretizza in polilinea con suddivisione adattiva (`_adaptive_polyline`,
+        condivisa con `SplineSeg`): la curvatura di un'ellisse non è costante
+        come quella di un cerchio (è massima agli estremi dell'asse minore,
+        raggio di curvatura b²/a), quindi un angolo-per-segmento fisso alla
+        `ArcSeg.discretize` sotto o sovra-campionerebbe a seconda del punto.
+
+        Il campionamento iniziale usa il raggio di curvatura minimo (il punto
+        più "stretto" della curva, agli estremi dell'asse maggiore) nella
+        stessa formula a sagitta di `ArcSeg` — solo per dimensionare il primo
+        giro di punti: la correttezza finale viene comunque dalla
+        suddivisione adattiva, non da questa stima.
+        """
+        total_angle = self._sweep()
+        if total_angle < 1e-12:
+            pt = self._point_at(self.start_param)
+            return [pt, pt]
+
+        semi_major = math.hypot(*self.major_axis)
+        min_curvature_radius = semi_major * self.ratio * self.ratio  # b²/a
+
+        if min_curvature_radius <= tolerance:
+            angle_per_segment = math.radians(FALLBACK_ANGLE_DEG)
+        else:
+            c = 1.0 - tolerance / min_curvature_radius
+            c = max(-1.0, min(1.0, c))
+            angle_per_segment = 2.0 * math.acos(c)
+
+        n_initial = max(MIN_SEGMENTS_ARC, int(math.ceil(total_angle / angle_per_segment)))
+        t_end = self.start_param + total_angle if self.ccw else self.start_param - total_angle
+
+        return _adaptive_polyline(self._point_at, self.start_param, t_end, n_initial, tolerance)
+
+    def reversed(self) -> "EllipseSeg":
+        """Stessa ellisse fisica, percorsa al contrario: scambia i parametri e nega ccw."""
+        return EllipseSeg(
+            center=self.center,
+            major_axis=self.major_axis,
+            ratio=self.ratio,
+            start_param=self.end_param,
+            end_param=self.start_param,
+            ccw=not self.ccw,
+        )

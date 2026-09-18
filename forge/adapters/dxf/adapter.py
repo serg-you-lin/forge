@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from shapely.geometry import Polygon
 
 from ...core.primitives.segments import (
-    LineSeg, ArcSeg, SplineSeg, CircleSeg, DEFAULT_TOLERANCE,
+    LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg, DEFAULT_TOLERANCE,
     segment_endpoints, segment_is_closed,
 )
 from ...core.primitives.polygon_builder import build_polygon
@@ -31,7 +31,7 @@ from .parser import DxfEntityDispatcher
 # Costanti
 # ---------------------------------------------------------------------------
 
-_SUPPORTED_TYPES = frozenset({'LINE', 'ARC', 'SPLINE'})
+_SUPPORTED_TYPES = frozenset({'LINE', 'ARC', 'SPLINE', 'ELLIPSE'})
 
 # Layer che forge produce in output per contenuti NON di taglio: se un file già
 # passato da forge viene riletto (round-trip, ri-heal), la loro geometria non è
@@ -256,6 +256,18 @@ def _segment_key(segment: Segment) -> tuple:
             round(segment.center[1], 6),
             round(segment.radius, 6)
         )
+    if isinstance(segment, EllipseSeg):
+        return (
+            "ELLIPSE",
+            round(segment.center[0], 6),
+            round(segment.center[1], 6),
+            round(segment.major_axis[0], 6),
+            round(segment.major_axis[1], 6),
+            round(segment.ratio, 6),
+            round(segment.start_param, 6),
+            round(segment.end_param, 6),
+            segment.ccw,
+        )
     return (type(segment).__name__, repr(segment))
 
 
@@ -385,20 +397,23 @@ class DxfAdapter(ForgeAdapter):
                         ))
                 continue
 
-            # SPLINE: parse una volta sola, poi distingui chiusa (loop degenere)
-            # da aperta (gestita più sotto come LINE/ARC).
-            spline_prim: Optional[Segment] = None
-            if dtype == "SPLINE":
-                spline_prim = DxfEntityDispatcher(entity).parse()
-                if isinstance(spline_prim, SplineSeg) and segment_is_closed(spline_prim):
-                    start, _ = segment_endpoints(spline_prim)
+            # SPLINE / ELLIPSE: parse una volta sola, poi distingui chiusa
+            # (loop degenere, come CIRCLE) da aperta (gestita più sotto come
+            # LINE/ARC) — a differenza di CIRCLE, che in DXF è sempre chiuso,
+            # sia SPLINE che ELLIPSE possono essere l'una o l'altra a seconda
+            # dell'entità, quindi la si scopre solo dopo averla parsata.
+            curved_prim: Optional[Segment] = None
+            if dtype in ("SPLINE", "ELLIPSE"):
+                curved_prim = DxfEntityDispatcher(entity).parse()
+                if curved_prim is not None and segment_is_closed(curved_prim):
+                    start, _ = segment_endpoints(curved_prim)
                     pt = round_point(start, self.node_decimals)
                     if pt is not None:
                         edges.append(Edge(
                             role=role,
                             start=pt,
                             end=pt,
-                            segment=spline_prim,
+                            segment=curved_prim,
                             style=style,
                         ))
                     continue
@@ -416,11 +431,11 @@ class DxfAdapter(ForgeAdapter):
                     _append_edge(role, segment, closed_path=poly_closed, style=style)
                 continue
 
-            # LINE / ARC / SPLINE aperta
+            # LINE / ARC / SPLINE / ELLIPSE aperta
             if dtype not in _SUPPORTED_TYPES:
                 continue
 
-            prim = spline_prim if spline_prim is not None else DxfEntityDispatcher(entity).parse()
+            prim = curved_prim if curved_prim is not None else DxfEntityDispatcher(entity).parse()
             if prim is None:
                 continue
 
