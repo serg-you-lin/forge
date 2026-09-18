@@ -13,8 +13,8 @@ sceglie quali eseguire e in che ordine.
 orchestra dall'alto (vedi ``INTERPRETER.md``).
 """
 
-from .detect import detect, ALL_FEATURES
+from .detect import detect, ALL_FEATURES, describe_features
 from .anchor import anchor_annotations
 from .inject import inject
 
-__all__ = ["detect", "ALL_FEATURES", "anchor_annotations", "inject"]
+__all__ = ["detect", "ALL_FEATURES", "describe_features", "anchor_annotations", "inject"]

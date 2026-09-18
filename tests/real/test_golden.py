@@ -22,6 +22,7 @@ from forge.adapters.dxf.layers import (
     LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING,
     LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
 )
+from forge.tools.detect import describe_features
 
 
 EXAMPLES_DIR = project_root / "tests" / "examples"
@@ -136,7 +137,7 @@ def _make_test(path):
         ):
             label = f"{golden['source_file']} parte {idx+1}"
 
-            holes = sorted(cluster.holes, key=lambda x: x.area, reverse=True)
+            holes = sorted(cluster.features("holes"), key=lambda x: x.area, reverse=True)
             inners = sorted(cluster.inners, key=lambda x: x.area, reverse=True)
 
             # --- area ---
@@ -312,12 +313,12 @@ def _make_test(path):
             # --- bending lines ---
             if "bending_lines" in expected:
                 self.assertEqual(
-                    len(cluster.bending_lines),
+                    len(cluster.features("bending_lines")),
                     expected.get("bending_lines_count", 0),
                     msg=f"{label} bending_lines count",
                 )
                 for j, (bl, exp_bl) in enumerate(
-                    zip(cluster.bending_lines, expected["bending_lines"])
+                    zip(cluster.features("bending_lines"), expected["bending_lines"])
                 ):
                     actual_dict = bl.to_dict()
                     for key in ["length", "angle_deg"]:
@@ -337,18 +338,18 @@ def _make_test(path):
             # --- engrave lines ---
             if "engrave_lines" in expected:
                 self.assertAlmostEqual(
-                    round(sum(e.length for e in cluster.engrave_lines), 4),
+                    round(sum(e.length for e in cluster.features("engrave_lines")), 4),
                     expected.get("total_engrave_length", 0),
                     delta=TOL_PERIMETER,
                     msg=f"{label} total_engrave_length",
                 )
                 self.assertEqual(
-                    len(cluster.engrave_lines),
+                    len(cluster.features("engrave_lines")),
                     expected.get("engrave_lines_count", 0),
                     msg=f"{label} engrave_lines count",
                 )
                 for j, (eng, exp_eng) in enumerate(
-                    zip(cluster.engrave_lines, expected["engrave_lines"])
+                    zip(cluster.features("engrave_lines"), expected["engrave_lines"])
                 ):
                     actual_dict = eng.to_dict()
                     for key in ["closed", "length"]:
@@ -376,8 +377,9 @@ def _make_test(path):
             # Fixture vecchi usano la chiave "custom", i nuovi "summary": stesso
             # contenuto, ora prodotto da cluster.summary invece che da inject().
             expected_summary = expected.get("summary", expected.get("custom", {}))
+            rich_summary = describe_features(cluster)
             for key, value in expected_summary.items():
-                actual = cluster.summary.get(key)
+                actual = rich_summary.get(key)
                 if isinstance(value, float):
                     self.assertAlmostEqual(
                         actual, value, delta=0.01,
@@ -486,7 +488,7 @@ def _make_roundtrip_test(path):
                 TOL_SHAPE, msg=f"{label} outer shape",
             )
             self.assertEqual(
-                len(match.holes), len(cluster.holes), msg=f"{label} holes count",
+                len(match.features("holes")), len(cluster.features("holes")), msg=f"{label} holes count",
             )
             self.assertEqual(
                 len(match.inners), len(cluster.inners), msg=f"{label} inners count",

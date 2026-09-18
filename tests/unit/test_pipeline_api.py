@@ -35,8 +35,8 @@ class TestPipelineApi(unittest.TestCase):
         step = forge.detect(forge.heal(doc_b), features="all")
         self.assertEqual(combined.cluster_count, step.cluster_count)
         self.assertEqual(
-            [h.hole_type for p in combined.clusters for h in p.holes],
-            [h.hole_type for p in step.clusters for h in p.holes],
+            [h.hole_type for p in combined.clusters for h in p.features("holes")],
+            [h.hole_type for p in step.clusters for h in p.features("holes")],
         )
 
     def test_detect_returns_same_result_object(self):

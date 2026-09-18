@@ -36,6 +36,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.adapters.dxf.layers import LAYER_BENDING, LAYER_ENGRAVE
+from forge.tools.detect import describe_features
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
@@ -144,14 +145,14 @@ class TestInjectCountersink(unittest.TestCase):
 
     def test_001_countersink_count_present(self):
         """countersink_count deve comparire in cluster.summary."""
-        self.assertIn("countersink_count", self.result.clusters[0].summary)
+        self.assertIn("countersink_count", describe_features(self.result.clusters[0]))
 
     def test_002_countersink_count_value(self):
         """Il DXF ha 1 coppia concentrica → countersink_count == 1."""
-        self.assertEqual(self.result.clusters[0].summary["countersink_count"], 1)
+        self.assertEqual(describe_features(self.result.clusters[0])["countersink_count"], 1)
 
     def test_003_countersink_count_is_int(self):
-        val = self.result.clusters[0].summary["countersink_count"]
+        val = describe_features(self.result.clusters[0])["countersink_count"]
         self.assertIsInstance(val, int)
 
 
@@ -172,14 +173,14 @@ class TestInjectThreadedHoles(unittest.TestCase):
         )
 
     def test_001_threaded_holes_count_present(self):
-        self.assertIn("threaded_holes_count", self.result.clusters[0].summary)
+        self.assertIn("threaded_holes_count", describe_features(self.result.clusters[0]))
 
     def test_002_threaded_holes_count_value(self):
         """Il DXF ha 3 cerchi su layer THREADED → threaded_holes_count == 3."""
-        self.assertEqual(self.result.clusters[0].summary["threaded_holes_count"], 3)
+        self.assertEqual(describe_features(self.result.clusters[0])["threaded_holes_count"], 3)
 
     def test_003_threaded_holes_count_is_int(self):
-        val = self.result.clusters[0].summary["threaded_holes_count"]
+        val = describe_features(self.result.clusters[0])["threaded_holes_count"]
         self.assertIsInstance(val, int)
 
 

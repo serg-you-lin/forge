@@ -1,8 +1,9 @@
 """
-model/bending_line.py
+tools/model/bending_line.py
 
-Linea di piega — OpenFeature.
-Spostata da bridge/edge.py dove conviveva con Edge (topologia adapter).
+Linea di piega — OpenFeature. Spostata da bridge/edge.py dove conviveva con
+Edge (topologia adapter), poi da model/bending_line.py a qui (branch
+refactor/detect-overlay): è output di detect(), non geometria di heal().
 """
 
 from __future__ import annotations

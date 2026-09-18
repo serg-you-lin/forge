@@ -1,5 +1,8 @@
 """
-model/engraving.py
+tools/model/engraving.py
+
+Spostato da model/engraving.py (branch refactor/detect-overlay): è output di
+detect(), non geometria di heal().
 
 Incisione rilevata da detect().
 

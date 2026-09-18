@@ -21,7 +21,7 @@ import ezdxf
 from ..model import ForgeResult, ForgeCluster
 from ..model.document import ForgeDocument
 from ..model.annotation import Annotation, Note, Dimension, Leader
-from ..model.hole import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
+from ..tools.model.hole import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..model.role import ContourRole
 from ..adapters.dxf.exporter import (
     write_segments, write_open_segments, write_engrave_segments,
@@ -136,7 +136,7 @@ def to_dxf(
             )
 
         # Fori
-        for hole in cluster.holes:
+        for hole in cluster.features("holes"):
             layer = ROLE_TO_LAYER.get(hole.role, LAYER_HOLE)
             layer = _work_layer_for_hole(hole) or layer
             write_segments(hole.segments, msp, layer, styles=hole.styles)
@@ -149,7 +149,7 @@ def to_dxf(
         # (che chiude il contorno) emetteva una polilinea col solo punto di
         # start di ogni segmento → in output si vedeva un punto al posto della
         # linea.
-        for eng in cluster.engrave_lines:
+        for eng in cluster.features("engrave_lines"):
             layer_name, _ = WORK_TYPE_TO_LAYER.get("engrave", (TRASH_LAYER, COLOR_TRASH))
             write_engrave_segments(eng.segments, msp, layer_name, styles=eng.styles)
 
@@ -433,7 +433,7 @@ def _write_bending_lines(msp, cluster: ForgeCluster) -> None:
     layer_name, _ = WORK_TYPE_TO_LAYER.get("bending", (TRASH_LAYER, COLOR_TRASH))
     seen: Set[tuple] = set()
 
-    for bl in cluster.bending_lines:
+    for bl in cluster.features("bending_lines"):
         if bl.geometry is None:
             continue
         coords = list(bl.geometry.coords)

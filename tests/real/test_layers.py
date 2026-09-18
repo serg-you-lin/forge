@@ -139,7 +139,7 @@ class TestEntitaBylayer(unittest.TestCase):
         """I fori devono avere un role foro-compatibile (hole, inner, threaded_hole, countersink)."""
         role_fori_validi = {ContourRole.HOLE, ContourRole.INNER, ContourRole.THREADED_HOLE, ContourRole.COUNTERSINK}
         for i, cluster in enumerate(self.result.clusters):
-            for j, hole in enumerate(cluster.holes):
+            for j, hole in enumerate(cluster.features("holes")):
                 with self.subTest(cluster=i, hole=j):
                     self.assertIn(
                         hole.role,
@@ -249,7 +249,7 @@ class TestLineetteBastarde(unittest.TestCase):
         """Le LINE non riconosciute come piega non vengono perse: restano nel
         modello come trash_entities (non più spostate su un layer 'Trash').
         Con 2 sole pieghe reali riconosciute, il resto finisce in trash."""
-        self.assertEqual(len(self.result.clusters[0].bending_lines), 2)
+        self.assertEqual(len(self.result.clusters[0].features("bending_lines")), 2)
         self.assertGreaterEqual(
             len(self.result.trash_entities), 4,
             f"trash_entities inatteso: {len(self.result.trash_entities)}",
@@ -266,7 +266,7 @@ class TestLineetteBastarde(unittest.TestCase):
             return (pa, pb)
 
         model_keys = set()
-        for bl in cluster.bending_lines:
+        for bl in cluster.features("bending_lines"):
             if bl.geometry is None:
                 continue
             coords = list(bl.geometry.coords)

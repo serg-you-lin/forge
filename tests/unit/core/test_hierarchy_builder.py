@@ -91,7 +91,7 @@ class TestOuterConInner(unittest.TestCase):
         self.assertAlmostEqual(self.clusters[0].outer.polygon.area, 10000.0, delta=1.0)
 
     def test_zero_holes(self):
-        self.assertEqual(len(self.clusters[0].holes), 0)
+        self.assertEqual(len(self.clusters[0].features("holes")), 0)
 
     def test_un_inner(self):
         self.assertEqual(len(self.clusters[0].inners), 1)
@@ -125,7 +125,7 @@ class TestNestingFlattened(unittest.TestCase):
         self.assertEqual(len(self.clusters), 1)
 
     def test_zero_holes(self):
-        self.assertEqual(len(self.clusters[0].holes), 0)
+        self.assertEqual(len(self.clusters[0].features("holes")), 0)
 
     def test_due_inners(self):
         self.assertEqual(len(self.clusters[0].inners), 2)

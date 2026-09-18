@@ -45,7 +45,7 @@ for i, cluster in enumerate(result.clusters):
           f"perimetro={cluster.outer.polygon.exterior.length:.1f}")
     print(f"   bbox   : {tuple(round(v, 1) for v in cluster.bbox)}")
     print(f"   inners : {len(cluster.inners)}  (contorni interni, non ancora tipati come foro)")
-    print(f"   holes  : {len(cluster.holes)}   (sempre 0 dopo heal — li fa detect)")
+    print(f"   holes  : {len(cluster.features("holes"))}   (sempre 0 dopo heal — li fa detect)")
     for j, inner in enumerate(cluster.inners):
         print(f"      inner {j}: area={inner.polygon.area:.1f}")
 

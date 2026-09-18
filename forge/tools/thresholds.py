@@ -1,14 +1,18 @@
 """
-rules/thresholds.py
+tools/thresholds.py
 -------------------
-Costanti e regole del dominio manifatturiero — zero dipendenze da formato.
+Costanti e regole di detect() — zero dipendenze da formato.
 
-Queste soglie appartengono al core perché sono decisioni geometriche/semantiche
-indipendenti da come il file è scritto (DXF, SVG, PDF, ...).
+Spostate da rules/thresholds.py (branch refactor/detect-overlay): verificato
+che i due usi (`detect.py`, `hole_detector.py`) sono entrambi già in tools/ —
+non sono soglie di dominio generiche come `rules/palette.py` (che resta in
+`rules/`, mappa colore per l'intero vocabolario dei ruoli, non solo quelli di
+detect).
 
 Chi le usa:
-    detect.py     — HOLE_DIAMETER_THRESHOLD come default di
-                    `detect(max_drill_diameter=...)`
+    detect.py         — HOLE_DIAMETER_THRESHOLD come default di
+                        `detect(max_drill_diameter=...)`
+    hole_detector.py  — THREADED_ARC_MAX_RADIUS_RATIO
 
 La tassonomia dei ruoli (`STRUCTURAL_ROLES`, `is_structural_role`) sta in
 `model/role.py`, non qui: è un fatto sul vocabolario dei ruoli, non una soglia.

@@ -55,7 +55,7 @@ class TestPipelineBendingRoundtrip(unittest.TestCase):
     def test_001_original_has_bending(self):
         result = self.pipeline["result"]
 
-        bending = result.clusters[0].summary["bending_lines"]
+        bending = get_custom(result, "bending_lines")
 
         print(f"\n[bending original] count={(bending)}")
         self.assertGreater(bending, 0)
@@ -149,7 +149,7 @@ class TestPipelineDetectIdempotency(unittest.TestCase):
         result = self.pipeline["result"]
         msp = self.pipeline["msp"]
 
-        before = result.clusters[0].summary["bending_lines"]
+        before = get_custom(result, "bending_lines")
 
         import forge
 
@@ -157,7 +157,7 @@ class TestPipelineDetectIdempotency(unittest.TestCase):
             result, features="all"
         )
 
-        after = result.clusters[0].summary["bending_lines"]
+        after = get_custom(result, "bending_lines")
 
         print(f"\n[idempotency] before={before} after={after}")
         self.assertEqual(before, after)

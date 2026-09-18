@@ -9,23 +9,37 @@ from typing import Optional
 
 from shapely.geometry import LineString, Point
 
-from ..model import (
-    ForgeResult,
-    ForgeCluster,
+from ..model import ForgeResult, ForgeCluster
+from ..model.feature import OpenFeature
+from ..model.role import ContourRole, role_str, is_structural_role
+from .model import (
     BendingLine,
     ClassifiedEntity,
+    Engraving,
+    DetectedFeatures,
     HOLE_TYPE_PLAIN,
     HOLE_TYPE_COUNTERSINK,
     HOLE_TYPE_THREADED,
 )
-from ..model.engraving import Engraving
-from ..model.feature import OpenFeature
-from ..model.role import ContourRole, role_str, is_structural_role
 from .hole_detector import is_threaded_hole
 from ..core.geometry import (
     track_points, track_length, track_shape_type, circular_geometry,
+    group_collinear_lines,
 )
-from ..rules.thresholds import HOLE_DIAMETER_THRESHOLD
+from .thresholds import HOLE_DIAMETER_THRESHOLD
+
+# Tolleranza per raggruppare le bending line collineari in un'unica piega
+# logica. Era `_BENDING_GROUP_TOLERANCE` su `ForgeCluster.summary` prima del
+# refactor detect-overlay — `describe_features()` ha preso il posto di quella
+# property (MAP.md D8, D44).
+_BENDING_GROUP_TOLERANCE = 0.1
+
+
+def _ensure_detected(cluster: ForgeCluster) -> DetectedFeatures:
+    """`cluster.detected`, creandolo alla prima scrittura."""
+    if cluster.detected is None:
+        cluster.detected = DetectedFeatures()
+    return cluster.detected
 
 
 # Ruoli che detect() sa collocare come feature di un cluster. Un proxy con un
@@ -122,6 +136,51 @@ def detect(
     return result
 
 
+def describe_features(cluster: ForgeCluster) -> dict:
+    """
+    Conteggio ricco per i tipi **noti di forge** — fori per tipo, pieghe
+    raggruppate, lunghezza incisioni/marcature. Era `ForgeCluster.summary`
+    per intero prima del refactor detect-overlay (MAP.md D8, D44): si è
+    spostato qui perché serve le costanti `HOLE_TYPE_*`, che `model/` non può
+    importare da `tools/`.
+
+    Non sostituisce `cluster.summary` (property, generica, sempre
+    disponibile anche con solo `heal()`): è un livello in più sopra, per chi
+    vuole il dettaglio dei tipi che solo forge sa riconoscere. Un tool
+    esterno che attacca un suo nome custom a `cluster.detected` non compare
+    qui — compare già in `cluster.summary` come conteggio grezzo.
+    """
+    holes         = cluster.features("holes")
+    bending_lines = cluster.features("bending_lines")
+    engrave_lines = cluster.features("engrave_lines")
+
+    from collections import Counter
+    htypes = Counter(h.hole_type for h in holes)
+
+    bending_groups = (
+        len(group_collinear_lines(
+            [bl.geometry for bl in bending_lines],
+            tolerance=_BENDING_GROUP_TOLERANCE,
+        ))
+        if bending_lines else 0
+    )
+
+    marking = cluster.custom.get("marking_entities", []) or []
+
+    return {
+        "plain_holes_count":    htypes.get(HOLE_TYPE_PLAIN, 0),
+        "countersink_count":    htypes.get(HOLE_TYPE_COUNTERSINK, 0),
+        "threaded_holes_count": htypes.get(HOLE_TYPE_THREADED, 0),
+        "bending_lines":        bending_groups,
+        "total_engrave_length": round(
+            sum(e.length or 0.0 for e in engrave_lines), 4
+        ),
+        "total_marking_length": round(
+            sum(m.get("length") or 0.0 for m in marking), 4
+        ),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Step 1 — labeled shapes
 # ---------------------------------------------------------------------------
@@ -194,7 +253,7 @@ def _detect_labeled(result: ForgeResult) -> None:
             # assegnato da label_map diventa un Hole a prescindere dai
             # `features` richiesti (D15).
             if inner.role in _LABELED_HOLE_ROLES:
-                cluster.holes.append(_labeled_hole_from_contour(inner))
+                _ensure_detected(cluster).add("holes", _labeled_hole_from_contour(inner))
                 continue
 
             if inner.role == ContourRole.UNKNOWN or is_structural_role(inner.role):
@@ -288,7 +347,7 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                     (pts[0][1] + pts[-1][1]) / 2,
                 )
                 if outer.contains(midpoint):
-                    cluster.bending_lines.append(BendingLine(
+                    _ensure_detected(cluster).add("bending_lines", BendingLine(
                         role=ContourRole.BEND,
                         geometry=LineString([pts[0], pts[-1]]),
                         length=length,
@@ -398,7 +457,7 @@ def _promote_geometric_holes(cluster: ForgeCluster, result: ForgeResult,
             continue
         hole = promoted.get(id(c))
         if hole is not None:
-            cluster.holes.append(hole)
+            _ensure_detected(cluster).add("holes", hole)
         else:
             new_inners.append(c)
     cluster.inners = new_inners
@@ -406,7 +465,7 @@ def _promote_geometric_holes(cluster: ForgeCluster, result: ForgeResult,
 
 def _hole_from_contour(contour, diameter, center, *, hole_type, confidence,
                        geometric_hint="", outer_diameter=None):
-    from ..model import Hole
+    from .model import Hole
     return Hole(
         role=ContourRole.HOLE,
         polygon=contour.polygon,
@@ -424,7 +483,7 @@ def _hole_from_contour(contour, diameter, center, *, hole_type, confidence,
 
 def _labeled_hole_from_contour(contour):
     """`ForgeContour` con ruolo foro da label_map → `Hole(source="labeled")`."""
-    from ..model import Hole
+    from .model import Hole
 
     dia, ctr = circular_geometry(contour.polygon, getattr(contour, "segments", []))
     hole_type = _ROLE_TO_HOLE_TYPE.get(contour.role, HOLE_TYPE_PLAIN)
@@ -520,7 +579,9 @@ def _handle_engrave_open(proxy: OpenFeature, result: ForgeResult) -> bool:
     probe = Point(rep) if rep else None
     for cluster in result.clusters:
         if probe and cluster.outer.polygon.contains(probe):
-            cluster.engrave_lines.append(_engraving_from_open(proxy, cluster_label=cluster.label))
+            _ensure_detected(cluster).add(
+                "engrave_lines", _engraving_from_open(proxy, cluster_label=cluster.label)
+            )
             return True
 
     return False
@@ -535,7 +596,7 @@ def _handle_engrave_closed_trash(proxy, result: ForgeResult) -> bool:
     probe = proxy.polygon.representative_point()
     for cluster in result.clusters:
         if cluster.outer.polygon.contains(probe):
-            cluster.engrave_lines.append(_engraving_from_closed(
+            _ensure_detected(cluster).add("engrave_lines", _engraving_from_closed(
                 proxy.polygon,
                 getattr(proxy, "segments", []),
                 cluster_label=cluster.label,
@@ -546,7 +607,7 @@ def _handle_engrave_closed_trash(proxy, result: ForgeResult) -> bool:
 
 
 def _handle_engrave_closed(inner, cluster: ForgeCluster) -> None:
-    cluster.engrave_lines.append(_engraving_from_closed(
+    _ensure_detected(cluster).add("engrave_lines", _engraving_from_closed(
         inner.polygon,
         getattr(inner, "segments", []),
         cluster_label=cluster.label,
@@ -570,7 +631,9 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
             continue
 
         if work_type == "bending":
-            cluster.bending_lines.append(_bending_line_from_data(ce.data, cluster.label))
+            _ensure_detected(cluster).add(
+                "bending_lines", _bending_line_from_data(ce.data, cluster.label)
+            )
 
         _write_custom(ce, cluster)
         return

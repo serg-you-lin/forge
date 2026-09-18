@@ -21,10 +21,13 @@ from forge.model import (
     ForgeContour,
     ForgeCluster,
     ForgeResult,
-    Hole,
     Edge,
+)
+from forge.tools.model import (
+    Hole,
     BendingLine,
     ClassifiedEntity,
+    DetectedFeatures,
     HOLE_TYPE_UNKNOWN,
     HOLE_TYPE_PLAIN,
     HOLE_TYPE_COUNTERSINK,
@@ -309,13 +312,13 @@ class TestForgeCluster(unittest.TestCase):
     def test_001_no_holes_area(self):
         """Area corretta senza fori."""
         cluster = ForgeCluster(outer=self._make_outer(), label="test")
-        print(f"\n[ForgeCluster] area={cluster.area}, holes={len(cluster.holes)}")
+        print(f"\n[ForgeCluster] area={cluster.area}, holes={len(cluster.features('holes'))}")
         self.assertEqual(cluster.area, 10000.0)
 
     def test_002_no_holes_count(self):
         """Lista fori vuota di default."""
         cluster = ForgeCluster(outer=self._make_outer(), label="test")
-        self.assertEqual(len(cluster.holes), 0)
+        self.assertEqual(len(cluster.features("holes")), 0)
 
     def test_003_with_hole_net_area(self):
         """Area netta = outer - foro."""
@@ -323,7 +326,8 @@ class TestForgeCluster(unittest.TestCase):
         outer = self._make_outer()
         hole_poly = Point((50, 50)).buffer(5.0, resolution=64)
         hole = Hole(role=ContourRole.HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
-        cluster = ForgeCluster(outer=outer, holes=[hole])
+        cluster = ForgeCluster(outer=outer, detected=DetectedFeatures())
+        cluster.detected.attach("holes", [hole])
         expected = 10000.0 - math.pi * 25.0
         print(f"\n[ForgeCluster with hole] area={cluster.area:.4f} expected≈{expected:.4f}")
         self.assertAlmostEqual(cluster.area, expected, delta=0.01)
@@ -333,7 +337,8 @@ class TestForgeCluster(unittest.TestCase):
         outer = self._make_outer()
         hole_poly = Point((50, 50)).buffer(5.0, resolution=64)
         hole = Hole(role=ContourRole.HOLE, polygon=hole_poly, diameter=10.0, center=(50, 50))
-        cluster = ForgeCluster(outer=outer, holes=[hole])
+        cluster = ForgeCluster(outer=outer, detected=DetectedFeatures())
+        cluster.detected.attach("holes", [hole])
         result_poly = cluster.polygon_with_holes
         print(f"[ForgeCluster] interiors={len(list(result_poly.interiors))}")
         self.assertEqual(len(list(result_poly.interiors)), 1)
@@ -347,14 +352,14 @@ class TestForgeCluster(unittest.TestCase):
     def test_006_bending_lines_default_empty(self):
         """bending_lines è lista vuota di default."""
         cluster = ForgeCluster(outer=self._make_outer())
-        self.assertIsInstance(cluster.bending_lines, list)
-        self.assertEqual(len(cluster.bending_lines), 0)
+        self.assertIsInstance(cluster.features("bending_lines"), list)
+        self.assertEqual(len(cluster.features("bending_lines")), 0)
 
     def test_007_engrave_lines_default_empty(self):
         """engrave_lines è lista vuota di default."""
         cluster = ForgeCluster(outer=self._make_outer())
-        self.assertIsInstance(cluster.engrave_lines, list)
-        self.assertEqual(len(cluster.engrave_lines), 0)
+        self.assertIsInstance(cluster.features("engrave_lines"), list)
+        self.assertEqual(len(cluster.features("engrave_lines")), 0)
 
     def test_008_custom_default_empty(self):
         """custom è dict vuoto di default."""

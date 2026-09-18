@@ -17,7 +17,7 @@ import os
 from .core.heal import heal
 from .tools.detect import detect
 from .io.dxf import split, cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
-from .rules.thresholds import HOLE_DIAMETER_THRESHOLD
+from .tools.thresholds import HOLE_DIAMETER_THRESHOLD
 from .adapters.dxf.layers import LAYER_ANNOTATION
 from .model.result import ForgeResult
 from .model.document import ForgeDocument
