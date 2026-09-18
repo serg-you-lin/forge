@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from typing import List, Optional
 
-from ...core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg
+from ...core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg
 from ...model.style import EdgeStyle
 
 _STANDARD_LINETYPES = frozenset({"BYLAYER", "BYBLOCK", "CONTINUOUS"})
@@ -169,11 +169,39 @@ def _add_spline(spline: SplineSeg, msp, layer: str,
     return entity
 
 
+def _add_ellipse(ellipse: EllipseSeg, msp, layer: str,
+                  style: Optional[EdgeStyle] = None) -> object:
+    """
+    Materializza una EllipseSeg come ELLIPSE nativa — mai una spline: forge
+    non converte una conica esatta in un'approssimazione (stesso principio di
+    "mai discretizzare una spline in output", vedi MAP.md).
+
+    In DXF un'ELLIPSE è sempre percorsa CCW da `start_param` a `end_param`
+    (nessun flag di verso nel formato): un'EllipseSeg CW copre lo stesso
+    luogo geometrico letta CCW da `end_param` a `start_param` — stesso
+    scambio già usato per ArcSeg in `write_engrave_segments`.
+    """
+    if ellipse.ccw:
+        sp, ep = ellipse.start_param, ellipse.end_param
+    else:
+        sp, ep = ellipse.end_param, ellipse.start_param
+    attribs = _style_attribs(msp.doc, layer, style)
+    return msp.add_ellipse(
+        center=ellipse.center,
+        major_axis=(ellipse.major_axis[0], ellipse.major_axis[1], 0.0),
+        ratio=ellipse.ratio,
+        start_param=sp,
+        end_param=ep,
+        dxfattribs=attribs,
+    )
+
+
 def write_segments(segments: List, msp, layer: str, styles: Optional[List] = None) -> Optional[object]:
     """
     Materializza una lista di segmenti puri su msp.
 
     - CircleSeg → CIRCLE
+    - EllipseSeg → ELLIPSE nativa
     - SplineSeg singola → SPLINE nativa
     - SplineSeg mista a linee/archi → SPLINE native + LWPOLYLINE aperte che
       condividono gli endpoint (il loop chiuso è dato dall'insieme delle
@@ -204,14 +232,17 @@ def write_segments(segments: List, msp, layer: str, styles: Optional[List] = Non
             dxfattribs=_style_attribs(msp.doc, layer, style),
         )
 
+    if len(segments) == 1 and isinstance(segments[0], EllipseSeg):
+        return _add_ellipse(segments[0], msp, layer, style)
+
     if len(segments) == 1 and isinstance(segments[0], SplineSeg):
         return _add_spline(segments[0], msp, layer, style)
 
-    if any(isinstance(s, SplineSeg) for s in segments):
+    if any(isinstance(s, (SplineSeg, EllipseSeg)) for s in segments):
         # Contorno misto: nessuna entità DXF singola può contenere insieme una
-        # spline e una polilinea. Lo materializziamo come più entità native
-        # (SPLINE + LWPOLYLINE aperte) con endpoint coincidenti — il grafo di
-        # reload ricuce il loop. Mai discretizzare la spline.
+        # spline/ellisse e una polilinea. Lo materializziamo come più entità
+        # native (SPLINE/ELLIPSE + LWPOLYLINE aperte) con endpoint coincidenti
+        # — il grafo di reload ricuce il loop. Mai discretizzare.
         created = write_open_segments(segments, msp, layer, styles)
         return created or None
 
@@ -255,10 +286,11 @@ def write_engrave_segments(segments: List, msp, layer: str, styles: Optional[Lis
     È anche coerente con le bending line (emesse come `LINE`) e con quello che
     un CAM si aspetta di trovare sul layer di marcatura.
 
-      - LineSeg   → LINE
-      - ArcSeg    → ARC
-      - SplineSeg → SPLINE nativa (mai discretizzata)
-      - CircleSeg → CIRCLE
+      - LineSeg    → LINE
+      - ArcSeg     → ARC
+      - SplineSeg  → SPLINE nativa (mai discretizzata)
+      - CircleSeg  → CIRCLE
+      - EllipseSeg → ELLIPSE nativa (mai discretizzata a spline)
 
     Una entità per primitiva significa anche uno stile per primitiva: il
     linetype della sorgente (`styles`, allineata a `segments`) è ripristinato
@@ -296,6 +328,8 @@ def write_engrave_segments(segments: List, msp, layer: str, styles: Optional[Lis
             created.append(msp.add_circle(
                 center=seg.center, radius=seg.radius, dxfattribs=attribs,
             ))
+        elif isinstance(seg, EllipseSeg):
+            created.append(_add_ellipse(seg, msp, layer, style))
         elif isinstance(seg, SplineSeg):
             created.append(_add_spline(seg, msp, layer, style))
 
@@ -319,6 +353,7 @@ def write_open_segments(segments: List, msp, layer: str, styles: Optional[List] 
       - LineSeg / ArcSeg → una LWPOLYLINE aperta con bulge
       - SplineSeg        → SPLINE nativa (una per spline)
       - CircleSeg        → CIRCLE
+      - EllipseSeg       → ELLIPSE nativa
 
     Il linetype (`styles`, allineata a `segments`) è sempre ripristinato — un
     run di LineSeg/ArcSeg consecutivi diventa una sola LWPOLYLINE, quindi
@@ -369,6 +404,8 @@ def write_open_segments(segments: List, msp, layer: str, styles: Optional[List] 
                 center=seg.center, radius=seg.radius,
                 dxfattribs=attribs,
             ))
+        elif isinstance(seg, EllipseSeg):
+            created.append(_add_ellipse(seg, msp, layer, style))
         elif isinstance(seg, SplineSeg):
             created.append(_add_spline(seg, msp, layer, style))
 

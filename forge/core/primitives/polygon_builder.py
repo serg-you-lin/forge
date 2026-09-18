@@ -19,18 +19,18 @@ try:
 except Exception:
     _ez_bulge_to_arc = None
 
-from . import LineSeg, ArcSeg, SplineSeg, CircleSeg
+from . import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg
 
 
 def build_polygon(
-    primitives: List[LineSeg | ArcSeg | SplineSeg | CircleSeg],
+    primitives: List[LineSeg | ArcSeg | SplineSeg | CircleSeg | EllipseSeg],
     tolerance:  float = 0.01,
 ) -> Optional[Polygon]:
     """
     Costruisce un Polygon shapely da una lista di primitive geometriche.
 
-    Supporta LineSeg, ArcSeg, CircleSeg, SplineSeg.
-    Tutte le primitive hanno il metodo discretize().
+    Supporta qualunque primitiva con un metodo discretize() (duck typing, non
+    isinstance) — oggi LineSeg, ArcSeg, CircleSeg, SplineSeg, EllipseSeg.
     Restituisce None se la geometria non è valida o ha meno di 3 punti.
     """
     if not primitives:

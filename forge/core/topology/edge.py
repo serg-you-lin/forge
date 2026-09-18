@@ -4,9 +4,9 @@ core/topology/edge.py
 Rappresentazione topologica di una entità geometrica lineare — l'unità che
 graph.py / loop_finder.py / non_contour_edges.py / gap_solver.py usano per
 costruire e percorrere il grafo. Non è una primitiva geometrica (quelle sono
-LineSeg/ArcSeg/SplineSeg/CircleSeg in core/primitives/segments.py, math puro
-senza semantica): `Edge` ne avvolge una con ruolo, provenienza e stile —
-dati di dominio, zero riferimento all'entità sorgente di alcun formato.
+LineSeg/ArcSeg/SplineSeg/CircleSeg/EllipseSeg in core/primitives/segments.py,
+math puro senza semantica): `Edge` ne avvolge una con ruolo, provenienza e
+stile — dati di dominio, zero riferimento all'entità sorgente di alcun formato.
 
 Vive in core/ (non più in adapters/bridge/, D18) perché è core il suo
 consumatore principale: ogni adapter (DXF, PDF, ...) costruisce Edge, ma è
@@ -18,10 +18,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Tuple, Union
 
-from ..primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg
+from ..primitives.segments import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg
 from ...model.style import EdgeStyle
 
-Segment = Union[LineSeg, ArcSeg, SplineSeg, CircleSeg]
+Segment = Union[LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg]
 
 
 @dataclass
