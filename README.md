@@ -172,6 +172,7 @@ right and you need to see where in the chain it breaks.
 ## Full API reference
 
 See [`docs/API.md`](docs/API.md). Architecture and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+For an AI agent writing code against forge, [`docs/LLM.md`](docs/LLM.md) is a dense, token-minimal reference covering the same ground.
 
 ---
 
