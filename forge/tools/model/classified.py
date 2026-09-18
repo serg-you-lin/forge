@@ -1,10 +1,15 @@
 """
-model/classified.py
+tools/model/classified.py
 
 DTO di risultato: una entità classificata da `tools/detect()` senza una classe
-di dominio dedicata (marking, work_type custom). Vive in `model/` perché
-`ForgeResult.classified_entities` la contiene — spostarla in `tools/`
-significherebbe far dipendere `model/` da `tools/`.
+di dominio dedicata (marking, work_type custom).
+
+Spostato da model/classified.py (branch refactor/detect-overlay): la ragione
+per cui era rimasto in model/ (`ForgeResult.classified_entities` lo conteneva,
+e far dipendere model/ da tools/ era vietato) non vale più — `result.py` ora
+importa questo tipo solo sotto `TYPE_CHECKING` (`from __future__ import
+annotations` rende l'annotazione una stringa pigra, zero import a runtime),
+stesso trucco usato per `ForgeCluster.detected`.
 """
 from dataclasses import dataclass
 from dataclasses import field

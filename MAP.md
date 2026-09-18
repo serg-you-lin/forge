@@ -1041,6 +1041,106 @@ ovunque — modulo, test (`tests/unit/test_interpret_annotations.py` →
 
 ---
 
+### D44 — `detect()` come consumatore: `ForgeCluster.detected` overlay aperto per nome  ✅
+
+Sessione di disegno lunga con Federico (2026-09-18, branch
+`refactor/detect-overlay`), partita dalla tensione già segnata in
+`forge-clusters-not-parts`: `ForgeCluster` (prodotto neutro di `heal`) aveva
+comunque `holes`/`bending_lines`/`engrave_lines`/`custom` cablati come campi
+fissi, sempre presenti come liste vuote appena `heal()` finiva — `detect()`
+li riempiva mutandoli direttamente (una decina di siti). Problema concreto,
+non estetico: una lista vuota non distingueva "`detect()` non è mai girato"
+da "è girato e non c'è nessuna feature".
+
+**Decisioni, in ordine di scoperta:**
+
+1. **`holes`/`bending_lines`/`engrave_lines` escono da `ForgeCluster`**, dentro
+   un `detected: Optional[DetectedFeatures] = None` — `None` finché nessuno
+   ci scrive. `custom` **resta** un campo diretto del cluster (non è una
+   detection con `source`/`confidence`, è il dict libero che `inject()`
+   riempie da un `data_injector` esterno — natura diversa, nessuna ambiguità
+   da risolvere lì).
+2. **Niente property di comodo** (`cluster.holes` che torna `[]` se
+   `detected` è `None`): reintrodurrebbe l'ambiguità che il refactor vuole
+   togliere. Un consumatore passa esplicitamente per `cluster.detected.holes`
+   (che esplode se `detected is None`) o per l'accessor sicuro
+   `cluster.features(name)` (sempre `[]`, mai un'eccezione — comodo per un
+   renderer/exporter che deve solo iterare).
+3. **`DetectedFeatures` è un vocabolario aperto per nome**, non uno schema
+   fisso — stessa mossa già fatta per `role` in D27. `detect()` di forge
+   scrive `cluster.detected.attach("holes", [...])`; un tool esterno (un
+   futuro riconoscitore di framer/bendly, o un caso custom tipo "quante
+   flange in su") scrive `attach("flange_view_hint", [...])` con lo stesso
+   metodo — nessuno dei due è privilegiato nello schema. Nato dall'esempio di
+   Federico: la stessa geometria che `detect()` legge come "bending line" un
+   altro tool potrebbe leggerla come "bordo di una flangia che sale", per
+   ricostruire una vista fra più cluster — due letture alla pari, non una
+   principale e una di scarto.
+4. **`DetectedFeature` è un `typing.Protocol`, non un `ABC`** — coerente con
+   D5 ("convenzione, non gerarchia"): il contratto minimo è avere `source:
+   str` + `confidence: float`. `Hole`/`BendingLine`/`Engraving`/
+   `ClassifiedEntity` lo soddisfano già così come sono, zero modifiche — un
+   tipo custom non deve ereditare nulla di forge per "contare".
+5. **`Hole`/`BendingLine`/`Engraving`/`ClassifiedEntity` si spostano in
+   `forge/tools/model/`** (singolare, rispecchia `forge/model/`): sono output
+   di `detect()`, non geometria di `heal()` (`hole-classification-belongs-
+   in-detect`). `ForgeCluster`/`ForgeResult` li referenziano solo sotto
+   `TYPE_CHECKING` (`from __future__ import annotations` rende l'annotazione
+   una stringa pigra) — zero import a runtime, stessa regola di dipendenza
+   di `model`/`adapters` (`ARCHITECTURE.md`) estesa a `tools`. Verificato,
+   non assunto: l'intera suite gira senza un solo import circolare.
+6. **`rules/thresholds.py` → `tools/thresholds.py`**: i suoi due soli
+   consumatori (`detect.py`, `hole_detector.py`) erano già entrambi in
+   `tools/`. `rules/palette.py` **non si sposta** — mappa colore per l'intero
+   vocabolario dei ruoli (`outer`/`inner` inclusi), non solo quelli di detect.
+7. **`cluster.summary` diventa generico e resta sul model**: `{nome}_count:
+   len(items)}` per ogni collezione in `detected`, `{}` se `detected is
+   None` — funziona identico con solo `heal()` (sempre `{}`, come prima) e
+   per qualunque nome custom, senza che forge sappia cosa sia. Il conteggio
+   **ricco** per i tipi noti di forge (fori per tipo, pieghe raggruppate,
+   lunghezza incisioni — quello che `cluster.summary` dava per intero prima
+   di oggi, D8) si è spostato in **`tools.detect.describe_features(cluster)`**,
+   perché serve le costanti `HOLE_TYPE_*` che il model non può importare da
+   `tools`. I due livelli convivono, non si sostituiscono.
+8. **`io/exporter.py::build_metadata()` fonde tre livelli**, non uno: il
+   `summary` generico, `describe_features()` di forge, e un nuovo parametro
+   `extra` (per `save_json`/`save_xml`/`write_metadata_to_dxf` è
+   `extra_metadata`, una **callback** `cluster -> dict` — stesso idioma di
+   `data_injector`/`label_map`/`RoleStyle`, dizionario esplicito del
+   chiamante, mai auto-discovery). Nato da un esempio concreto di Federico:
+   né il summary generico (solo un conteggio) né `describe_features()` (solo
+   i tipi noti di forge) possono mai rispondere a "quante flange in su ha
+   questo cluster" — solo chi ha scritto quel tipo custom lo sa. `extra`
+   bypassa `METADATA_FIELDS`: passarlo è già la scelta esplicita del
+   chiamante, non serve un secondo cancello. `metadata_schema.py` stesso non
+   cambia forma — resta un allow-list curato per il confine esterno non-
+   Python (CAM/ERP/XDATA), verificato che framer/smoother/bendly/Pippo sono
+   tutti consumatori Python in-process che non passano da lì.
+9. **Niente sovrastruttura/API nuova per l'estendibilità**: `role_to_color`,
+   `DetectedFeatures`, `cluster.summary`/`describe_features()`, il parametro
+   `extra` di `build_metadata()` restano implementazioni piccole e
+   indipendenti dello stesso pattern (nome noto → logica ricca, nome
+   sconosciuto → fallback generico), non un framework condiviso — coerente
+   con D5, prematuro da un campione di poche istanze.
+
+**Bug trovato facendo il lavoro**: `core/healing/hierarchy.py::_build_parts`
+costruiva ogni `ForgeCluster` passando `holes=[]` esplicito al costruttore —
+un kwarg morto una volta tolto il campo, non scoperto dall'audit iniziale
+delle letture (`cluster.holes` in lettura) perché è una scrittura al
+costruttore. Trovato dalla suite (410 test rotti in un colpo,
+`TypeError: unexpected keyword argument 'holes'`), non da un audit manuale —
+promemoria che un audit testuale prima di un refactor così esteso non basta,
+serve comunque far girare la suite.
+
+Nessun compat shim. Scaletta completa e il ragionamento passo-passo restavano
+in `TODO.md` durante il lavoro — sezione rimossa da lì a lavoro finito (il
+record vive qui). Suite: **671 passed, 62 subtests**, nessuna regressione —
+verificato anche end-to-end (non solo contando): un fixture con countersink
+scritto a `to_dxf()` produce l'entità sul layer `Countersink` come prima del
+refactor.
+
+---
+
 ## QUESTIONI CHIUSE (storico)
 
 - **Q1 — classificazione hole: topologia o detection?** → risolta da D15

@@ -191,7 +191,6 @@ class HierarchyBuilder:
 
             cluster = ForgeCluster(
                 outer=outer,
-                holes=[],
                 inners=inners,
                 label=self.label,
                 source_file=self.source_file,

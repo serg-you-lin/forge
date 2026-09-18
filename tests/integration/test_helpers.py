@@ -148,11 +148,16 @@ def get_custom(result, key, default=None):
     """
     Shortcut per i conteggi/metadati di una parte.
 
-    I conteggi feature vivono in cluster.summary (MAP.md D8); i dati aggiunti da
-    un data_injector esterno in cluster.custom. Si guardano entrambi.
+    Tre livelli (MAP.md D8, D44): il conteggio grezzo di `cluster.summary`,
+    il dettaglio ricco di `describe_features()` (fori per tipo, pieghe
+    raggruppate...), i dati aggiunti da un data_injector esterno in
+    `cluster.custom`. Si guardano tutti e tre, dal più generico al più
+    specifico.
     """
+    from forge.tools.detect import describe_features
+
     cluster = get_part(result)
-    summary = cluster.summary
-    if key in summary:
-        return summary[key]
+    merged = {**cluster.summary, **describe_features(cluster)}
+    if key in merged:
+        return merged[key]
     return cluster.custom.get(key, default)

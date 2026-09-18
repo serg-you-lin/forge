@@ -68,16 +68,22 @@ forge/
 ├── model/        IL DOMINIO forge                     (dataclass pure + shapely)
 │   ├── document.py   ForgeDocument
 │   ├── result.py     ForgeResult
-│   ├── cluster.py    ForgeCluster — il contenitore
+│   ├── cluster.py    ForgeCluster — il contenitore, `detected` è l'overlay
+│   │                 di detect() (vocabolario aperto per nome — D44)
 │   ├── feature.py    Feature → ClosedFeature / OpenFeature
-│   ├── contour.py / hole.py / engraving.py / bending_line.py / classified.py
+│   ├── contour.py
 │   └── annotation.py Annotation → Note / Dimension / Leader
 │
 ├── tools/        STADI opzionali su un ForgeResult    (il caller sceglie quali e in che ordine)
-│   ├── detect.py     detect()                — classifica le feature nei cluster
+│   ├── detect.py         detect() / describe_features() — classifica le
+│   │                     feature nei cluster (`cluster.detected`)
 │   ├── hole_detector.py  euristiche filettato / svasatura usate da detect()
-│   ├── anchor.py      anchor_annotations()   — àncora le annotazioni ai cluster
-│   └── inject.py     inject()                — testi del cluster → data_injector esterno
+│   ├── anchor.py         anchor_annotations()   — àncora le annotazioni ai cluster
+│   ├── inject.py         inject()                — testi del cluster → data_injector esterno
+│   ├── thresholds.py     soglie di detect() (HOLE_DIAMETER_THRESHOLD...)
+│   └── model/            Hole / BendingLine / Engraving / ClassifiedEntity /
+│                         DetectedFeatures — output di detect(), non
+│                         geometria di heal() (D44): non in `model/` apposta
 │
 ├── io/           RENDERER del modello + serializzazione
 │   ├── dxf.py        to_dxf(), split()       (ex pipeline/write.py)
@@ -85,7 +91,7 @@ forge/
 │   ├── view_model.py to_view_model()
 │   └── exporter.py   save_json / save_xml / XDATA
 │
-├── rules/        REGOLE di dominio                     (soglie, palette, schema, validazione)
+├── rules/        REGOLE di dominio                     (palette, schema, validazione)
 ├── recipes.py    heal_and_detect(), split_to_files()  — la via del 90%
 └── inspect.py    strumento di ispezione a 3 livelli
 ```
@@ -94,10 +100,14 @@ forge/
 `heal` (l'atto del motore, ora in `core/`), gli stadi opzionali (`tools/`) e i
 renderer (`to_dxf`/`split`, ora in `io/` accanto a `to_svg`/`to_json`).
 
-**Regola di dipendenza:** `core` e `model` non importano mai `adapters`. Gli
-`adapters`, `tools` e `io` importano `core` / `model` / `rules`. `recipes`
-mette in fila `core.heal` + `tools` + `io`. Il core non sa da dove viene la
-geometria.
+**Regola di dipendenza:** `core` e `model` non importano mai `adapters` **né
+`tools`** (D44 — stesso principio, `tools` è un pacchetto pari-grado di
+`adapters`/`io`, mai sotto `model`). `adapters`, `tools` e `io` importano
+`core` / `model` / `rules`. Quando `model/` deve comunque annotare un tipo che
+vive in `tools/` (es. `ForgeCluster.detected`), lo fa solo sotto
+`TYPE_CHECKING` — zero import a runtime, `from __future__ import annotations`
+rende l'annotazione una stringa pigra. `recipes` mette in fila `core.heal` +
+`tools` + `io`. Il core non sa da dove viene la geometria.
 
 ---
 
@@ -169,8 +179,14 @@ geometriche sono opt-in: `detect(result, "holes" | "bending" | "engrave" | "all"
   concentrico, raggio di poco maggiore, rapporto ≤ 1.6).
 - **pieghe** → una traccia da bordo a bordo dell'outer, con il punto medio dentro
   il poligono, è una `BendingLine` con il suo angolo.
-- **incisioni** → le tracce con ruolo `engrave` finiscono in `cluster.engrave_lines`
-  se contenute in una parte, altrimenti restano in trash.
+- **incisioni** → le tracce con ruolo `engrave` finiscono in
+  `cluster.features("engrave_lines")` se contenute in una parte, altrimenti
+  restano in trash.
+
+Ogni feature trovata si scrive su `cluster.detected` (D44), non su campi
+fissi del cluster — `cluster.features(name)` legge una collezione per nome,
+`[]` se `detected` è `None` o quel nome non è stato scritto. Vedi "Due
+concetti che tornano ovunque" più sotto.
 
 ### 4. render — `to_dxf` / `split`
 
@@ -189,8 +205,13 @@ segmenti puri del modello, ognuno sul suo layer forge (vedi tabella in
 ### 5. export / inject
 
 `save_json` / `save_xml` scrivono i metadati per parte secondo lo schema
-(`rules/metadata_schema.py`). I conteggi delle feature (fori per tipo, pieghe,
-incisioni) vengono da `cluster.summary` — una property derivata dal modello.
+(`rules/metadata_schema.py`), fondendo tre livelli (D44): `cluster.summary`
+(conteggio grezzo, generico, sempre disponibile — `{nome}_count` per ogni
+collezione attaccata a `cluster.detected`), `tools.detect.describe_features()`
+(il dettaglio ricco che solo forge sa dare sui suoi tipi noti — fori per tipo,
+pieghe raggruppate, lunghezza incisioni), ed `extra`/`extra_metadata` — un
+dizionario o una callback esplicita del chiamante (stesso idioma di
+`data_injector`) per una detection propria che forge non può conoscere.
 `inject` serve solo a passare i testi dentro l'outer a un `data_injector`
 esterno che restituisce codice / materiale / spessore, e a metterli in
 `cluster.custom`.

@@ -1,8 +1,11 @@
 """
 tests/unit/test_cluster_summary.py
 -------------------------------
-`ForgeCluster.summary` (MAP.md D8): i conteggi feature che prima produceva
-`inject()` scrivendo in `cluster.custom`, ora derivati dal modello.
+`describe_features()` (MAP.md D8, D44): i conteggi feature che prima
+produceva `inject()` scrivendo in `cluster.custom`, poi `ForgeCluster.summary`
+per intero (D8), ora sono il livello "ricco" separato dal modello — vive in
+`tools.detect` perché serve le costanti `HOLE_TYPE_*` (branch
+refactor/detect-overlay).
 """
 
 import unittest
@@ -11,18 +14,29 @@ from shapely.geometry import Polygon, LineString
 
 from forge.model.cluster import ForgeCluster
 from forge.model.contour import ForgeContour
-from forge.model.hole import (
-    Hole, HOLE_TYPE_PLAIN, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED,
-)
-from forge.model.bending_line import BendingLine
-from forge.model.engraving import Engraving
 from forge.model.role import ContourRole
+from forge.tools.detect import describe_features
+from forge.tools.model import (
+    Hole, HOLE_TYPE_PLAIN, HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED,
+    BendingLine, Engraving, DetectedFeatures,
+)
 
 
-def _part(**kw):
+def _part(**detected_kw):
+    """
+    ForgeCluster con `detected` popolato dai kwargs (`holes=[...]`,
+    `bending_lines=[...]`, `engrave_lines=[...]`) — stessa comodità di prima
+    del refactor, ma passando per `DetectedFeatures.attach()` invece di
+    campi fissi sul cluster.
+    """
     outer = ForgeContour(polygon=Polygon([(0, 0), (100, 0), (100, 100), (0, 100)]),
                          role=ContourRole.OUTER)
-    return ForgeCluster(outer=outer, **kw)
+    cluster = ForgeCluster(outer=outer)
+    if detected_kw:
+        cluster.detected = DetectedFeatures()
+        for name, items in detected_kw.items():
+            cluster.detected.attach(name, items)
+    return cluster
 
 
 def _hole(t):
@@ -31,10 +45,10 @@ def _hole(t):
                 diameter=1.0, center=(0.5, 0.5), hole_type=t)
 
 
-class TestPartSummary(unittest.TestCase):
+class TestDescribeFeatures(unittest.TestCase):
 
     def test_empty_part_all_zero(self):
-        s = _part().summary
+        s = describe_features(_part())
         self.assertEqual(s, {
             "plain_holes_count": 0, "countersink_count": 0,
             "threaded_holes_count": 0, "bending_lines": 0,
@@ -42,8 +56,9 @@ class TestPartSummary(unittest.TestCase):
         })
 
     def test_holes_counted_by_type(self):
-        s = _part(holes=[_hole(HOLE_TYPE_PLAIN), _hole(HOLE_TYPE_PLAIN),
-                         _hole(HOLE_TYPE_COUNTERSINK), _hole(HOLE_TYPE_THREADED)]).summary
+        cluster = _part(holes=[_hole(HOLE_TYPE_PLAIN), _hole(HOLE_TYPE_PLAIN),
+                               _hole(HOLE_TYPE_COUNTERSINK), _hole(HOLE_TYPE_THREADED)])
+        s = describe_features(cluster)
         self.assertEqual(s["plain_holes_count"], 2)
         self.assertEqual(s["countersink_count"], 1)
         self.assertEqual(s["threaded_holes_count"], 1)
@@ -51,7 +66,8 @@ class TestPartSummary(unittest.TestCase):
     def test_engrave_length_summed(self):
         eng = [Engraving(role=ContourRole.ENGRAVE, length=10.0),
                Engraving(role=ContourRole.ENGRAVE, length=5.5)]
-        self.assertEqual(_part(engrave_lines=eng).summary["total_engrave_length"], 15.5)
+        cluster = _part(engrave_lines=eng)
+        self.assertEqual(describe_features(cluster)["total_engrave_length"], 15.5)
 
     def test_bending_collinear_grouped(self):
         # due segmenti collineari sulla stessa retta → una piega logica
@@ -60,18 +76,38 @@ class TestPartSummary(unittest.TestCase):
             BendingLine(role=ContourRole.BEND, geometry=LineString([(60, 50), (100, 50)]), length=40),
             BendingLine(role=ContourRole.BEND, geometry=LineString([(50, 0), (50, 100)]), length=100),
         ]
-        self.assertEqual(_part(bending_lines=bl).summary["bending_lines"], 2)
+        cluster = _part(bending_lines=bl)
+        self.assertEqual(describe_features(cluster)["bending_lines"], 2)
 
     def test_marking_length_from_custom_entities(self):
         p = _part()
         p.custom["marking_entities"] = [{"length": 3.0}, {"length": 4.0}]
-        self.assertEqual(p.summary["total_marking_length"], 7.0)
+        self.assertEqual(describe_features(p)["total_marking_length"], 7.0)
+
+
+class TestClusterSummaryGeneric(unittest.TestCase):
+    """`cluster.summary` — property, sempre disponibile, conteggio grezzo."""
+
+    def test_no_detected_is_empty(self):
+        self.assertEqual(_part().summary, {})
+
+    def test_generic_count_per_name(self):
+        cluster = _part(holes=[_hole(HOLE_TYPE_PLAIN), _hole(HOLE_TYPE_COUNTERSINK)])
+        self.assertEqual(cluster.summary, {"holes_count": 2})
+
+    def test_works_for_any_custom_name(self):
+        cluster = _part()
+        cluster.detected = DetectedFeatures()
+        cluster.detected.attach("flange_view_hint", [object(), object(), object()])
+        self.assertEqual(cluster.summary, {"flange_view_hint_count": 3})
 
 
 class TestSummaryMatchesGoldenFixtures(unittest.TestCase):
     """
     Prova di equivalenza: i conteggi salvati nei golden fixture (prodotti dal
-    vecchio inject()) devono coincidere con cluster.summary della pipeline attuale.
+    vecchio inject()) devono coincidere con `describe_features()` della
+    pipeline attuale — è il livello ricco che ha preso il posto del vecchio
+    `cluster.summary` per intero.
     """
 
     def test_golden_summary_matches_pipeline(self):
@@ -106,8 +142,9 @@ class TestSummaryMatchesGoldenFixtures(unittest.TestCase):
             if not result.is_valid:
                 continue
             for i, (cluster, pg) in enumerate(zip(result.clusters, golden["clusters"])):
+                rich = describe_features(cluster)
                 for key, expected in (pg.get("summary") or {}).items():
-                    actual = cluster.summary.get(key)
+                    actual = rich.get(key)
                     checked += 1
                     if isinstance(expected, float):
                         self.assertAlmostEqual(actual, expected, delta=0.01,

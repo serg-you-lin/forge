@@ -10,16 +10,18 @@ Per aggiungere, rinominare o rimuovere un campo — modificare solo metadata_sch
 
 import json
 import xml.etree.ElementTree as ET
+from typing import Callable, Optional
 from xml.dom import minidom
 from ..model import ForgeResult, ForgeCluster
 from ..rules.metadata_schema import METADATA_FIELDS
+from ..tools.detect import describe_features
 
 
 # ---------------------------------------------------------------------------
 # Unica fonte di verità per i metadati
 # ---------------------------------------------------------------------------
 
-def build_metadata(cluster: ForgeCluster, schema: dict = None) -> dict:
+def build_metadata(cluster: ForgeCluster, schema: dict = None, extra: dict = None) -> dict:
     """
     Costruisce il dict dei metadati per un ForgeCluster
     applicando lo schema definito in metadata_schema.py.
@@ -32,15 +34,26 @@ def build_metadata(cluster: ForgeCluster, schema: dict = None) -> dict:
     Args:
         cluster:   ForgeCluster da cui estrarre i dati
         schema: schema opzionale — se None usa METADATA_FIELDS da metadata_schema.py
+        extra:  campi extra del chiamante (es. una detection custom, "quante
+                flange in su" — forge non può conoscerla). Uniti a `meta` a
+                fine funzione, **fuori dallo schema**: passarli è già la scelta
+                esplicita del chiamante, non serve un secondo cancello
+                (branch refactor/detect-overlay, MAP.md D44).
     """
     if schema is None:
         schema = METADATA_FIELDS
 
     d = cluster.to_dict()
-    # I conteggi delle feature (fori per tipo, pieghe, incisioni) vengono da
-    # cluster.summary — derivati dal modello (MAP.md D8). cluster.custom porta solo
-    # ciò che un data_injector esterno ha aggiunto (materiale, spessore, ...).
-    custom = {**cluster.summary, **(d.get("custom", {}) or {})}
+    # Tre livelli, non uno (MAP.md D44):
+    #   - cluster.summary       — conteggio grezzo, sempre disponibile, generico
+    #   - describe_features()   — dettaglio ricco per i tipi NOTI di forge
+    #   - cluster.custom        — ciò che inject()/detect() ci ha scritto sopra
+    # Ordine di merge = priorità: il più specifico vince sul più generico.
+    custom = {
+        **cluster.summary,
+        **describe_features(cluster),
+        **(d.get("custom", {}) or {}),
+    }
 
     outer_perimeter = 0.0
     inner_perimeter = 0.0
@@ -54,8 +67,10 @@ def build_metadata(cluster: ForgeCluster, schema: dict = None) -> dict:
 
     calculated = {
         "area"            : d.get("area"),
-        "holes_count"     : d.get("holes_count"),
-        "inner_contours_count" : d.get("inner_contours_count"), 
+        # Non più in to_dict() (non garantito senza detect()) — contato qui
+        # direttamente su cluster.detected.
+        "holes_count"     : len(cluster.features("holes")),
+        "inner_contours_count" : d.get("inner_contours_count"),
         "bbox"            : d.get("bbox"),
         "outer_perimeter" : outer_perimeter,
         "inner_perimeter" : inner_perimeter,
@@ -83,6 +98,9 @@ def build_metadata(cluster: ForgeCluster, schema: dict = None) -> dict:
         elif default is not None:
             meta[output_name] = default
 
+    if extra:
+        meta.update(extra)
+
     return meta
 
 
@@ -103,10 +121,19 @@ def set_schema(schema: dict):
 # Export JSON
 # ---------------------------------------------------------------------------
 
-def save_json(result: ForgeResult, path: str, indent: int = 2):
+def save_json(
+    result: ForgeResult, path: str, indent: int = 2,
+    extra_metadata: Optional[Callable[[ForgeCluster], dict]] = None,
+):
     """
     Salva i metadati in JSON secondo lo schema di metadata_schema.py.
     Le coordinate non vengono incluse.
+
+    `extra_metadata(cluster) -> dict`, se passato, aggiunge campi extra del
+    chiamante nell'output di ogni cluster — stesso idioma di
+    `data_injector`/`label_map`: callback esplicita, mai auto-discovery. Serve
+    a un consumatore con una detection propria (es. una `FlangeViewHint` sua)
+    che forge non può conoscere (MAP.md D44).
     """
     output = {
         "source_file" : result.source_file,
@@ -114,22 +141,31 @@ def save_json(result: ForgeResult, path: str, indent: int = 2):
         "cluster_count"  : result.cluster_count,
         "warnings"    : result.warnings,
         "errors"      : result.errors,
-        "clusters"       : [build_metadata(cluster) for cluster in result.clusters],
+        "clusters"       : [
+            build_metadata(cluster, extra=extra_metadata(cluster) if extra_metadata else None)
+            for cluster in result.clusters
+        ],
     }
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=indent, ensure_ascii=False)
     print(f"[forge] JSON salvato in {path}")
 
 
-def to_json(result: ForgeResult, indent: int = 2) -> str:
-    """Restituisce i metadati come stringa JSON secondo schema."""
+def to_json(
+    result: ForgeResult, indent: int = 2,
+    extra_metadata: Optional[Callable[[ForgeCluster], dict]] = None,
+) -> str:
+    """Restituisce i metadati come stringa JSON secondo schema. Vedi `save_json` per `extra_metadata`."""
     output = {
         "source_file" : result.source_file,
         "is_valid"    : result.is_valid,
         "cluster_count"  : result.cluster_count,
         "warnings"    : result.warnings,
         "errors"      : result.errors,
-        "clusters"       : [build_metadata(cluster) for cluster in result.clusters],
+        "clusters"       : [
+            build_metadata(cluster, extra=extra_metadata(cluster) if extra_metadata else None)
+            for cluster in result.clusters
+        ],
     }
     return json.dumps(output, indent=indent, ensure_ascii=False)
 
@@ -138,9 +174,13 @@ def to_json(result: ForgeResult, indent: int = 2) -> str:
 # Export XML
 # ---------------------------------------------------------------------------
 
-def save_xml(result: ForgeResult, path: str):
+def save_xml(
+    result: ForgeResult, path: str,
+    extra_metadata: Optional[Callable[[ForgeCluster], dict]] = None,
+):
     """
     Salva i metadati in XML secondo lo schema di metadata_schema.py.
+    Vedi `save_json` per `extra_metadata`.
     Struttura:
         <forge>
             <source_file>...</source_file>
@@ -175,7 +215,7 @@ def save_xml(result: ForgeResult, path: str):
 
     clusters_el = ET.SubElement(root, "clusters")
     for cluster in result.clusters:
-        meta = build_metadata(cluster)
+        meta = build_metadata(cluster, extra=extra_metadata(cluster) if extra_metadata else None)
         cluster_el = ET.SubElement(clusters_el, "cluster")
         _dict_to_xml(meta, cluster_el)
 
@@ -230,11 +270,13 @@ def to_nester_input(result: ForgeResult) -> list:
 # XDATA DXF
 # ---------------------------------------------------------------------------
 
-def write_metadata_to_dxf(doc, cluster: ForgeCluster):
+def write_metadata_to_dxf(doc, cluster: ForgeCluster, extra: Optional[dict] = None):
     """
     Scrive i metadati come XDATA sull'entità OuterContour.
     I campi seguono metadata_schema.py — stessa fonte di save_json e save_xml.
     Supporta LWPOLYLINE, POLYLINE e CIRCLE su layer OuterContour.
+
+    `extra`: campi extra del chiamante per questo cluster — vedi `save_json`.
     """
     try:
         from ..adapters.dxf.layers import LAYER_OUTER
@@ -261,7 +303,7 @@ def write_metadata_to_dxf(doc, cluster: ForgeCluster):
         if app_id not in doc.appids:
             doc.appids.add(app_id)
 
-        meta = build_metadata(cluster)
+        meta = build_metadata(cluster, extra=extra)
 
         outer_entity.set_xdata(app_id, [
             (1000, json.dumps(meta, ensure_ascii=False)),

@@ -83,7 +83,7 @@ class TestLoadGeometryRectangleWithHole(unittest.TestCase):
         self.assertEqual(result.cluster_count, 1)
         cluster = result.clusters[0]
         self.assertAlmostEqual(cluster.outer.area, 100 * 50, delta=1e-6)
-        self.assertEqual(len(cluster.holes), 1)
+        self.assertEqual(len(cluster.features("holes")), 1)
 
     def test_to_dxf_writes_a_valid_document(self):
         result = forge.heal_and_detect(self.doc, label="rect_test")

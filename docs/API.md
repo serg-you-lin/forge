@@ -333,6 +333,11 @@ Le lane geometriche sono **opt-in** via `features`:
 
 **Muta** `result` in-place (parti, `trash_entities`, `classified_entities`) **e lo
 ritorna** — la catena resta esplicita: `result = forge.detect(result, "all")`.
+Ogni feature trovata si attacca a `cluster.detected` (D44), leggibile con
+`cluster.features("holes"|"bending_lines"|"engrave_lines")` — `[]` se
+`detect()` non è mai girato. `forge.describe_features(cluster)` dà il
+conteggio ricco per tipo (fori per tipo, pieghe raggruppate, lunghezza
+incisioni).
 
 | parametro | significato |
 |---|---|
@@ -545,8 +550,11 @@ filtraggio per parte è geometrico, servono le posizioni. Si ottiene con
 ritorna stringhe nude). Il `data_injector` riceve comunque `list[str]`.
 
 I **conteggi delle feature** (fori per tipo, pieghe, lunghezza incisioni) NON si
-fanno più qui: sono `cluster.summary`, una property derivata dal modello (MAP.md
-D8). `save_json` / `save_xml` li leggono da lì.
+fanno più qui: vengono da `cluster.summary` (conteggio grezzo, sempre
+disponibile) + `tools.detect.describe_features(cluster)` (il dettaglio ricco
+per i tipi noti di forge — MAP.md D8, D44). `save_json` / `save_xml` li
+fondono automaticamente; per una detection *tua*, che forge non può
+conoscere, passa `extra_metadata` (vedi sotto).
 
 ```python
 import ezdxf
@@ -570,11 +578,22 @@ CAM.
 ### `save_json` / `to_json`
 
 ```python
-forge.save_json(result: ForgeResult, path, indent=2) -> None   # scrive su file
-forge.to_json(result: ForgeResult, indent=2) -> str             # ritorna la stringa
+forge.save_json(
+    result: ForgeResult, path, indent=2,
+    extra_metadata: Callable[[ForgeCluster], dict] = None,
+) -> None   # scrive su file
+forge.to_json(
+    result: ForgeResult, indent=2,
+    extra_metadata: Callable[[ForgeCluster], dict] = None,
+) -> str    # ritorna la stringa
 ```
 
-Metadati per parte secondo schema — **niente coordinate**. Struttura:
+Metadati per parte secondo schema — **niente coordinate**. `extra_metadata`
+(D44), se passata, viene chiamata una volta per cluster e i campi che
+ritorna finiscono nell'output **fuori dallo schema** — passarla è già la
+scelta esplicita del chiamante, stesso idioma di `data_injector`. Serve per
+una detection tua (es. una `FlangeViewHint`) che `cluster.summary`/
+`describe_features()` non possono conoscere. Struttura:
 
 ```json
 {
@@ -600,10 +619,14 @@ Metadati per parte secondo schema — **niente coordinate**. Struttura:
 ### `save_xml`
 
 ```python
-forge.save_xml(result: ForgeResult, path) -> None
+forge.save_xml(
+    result: ForgeResult, path,
+    extra_metadata: Callable[[ForgeCluster], dict] = None,
+) -> None
 ```
 
-Stessi campi di `save_json`, in XML (`<forge><clusters><cluster>…`).
+Stessi campi di `save_json` (`extra_metadata` incluso), in XML
+(`<forge><clusters><cluster>…`).
 
 ### `to_view_model`
 
@@ -683,13 +706,15 @@ forge.save_svg(result, "pezzo.svg")
 ### `write_metadata_to_dxf` / `read_metadata_from_dxf`
 
 ```python
-forge.write_metadata_to_dxf(doc, cluster: ForgeCluster) -> None
+forge.write_metadata_to_dxf(doc, cluster: ForgeCluster, extra: dict = None) -> None
 forge.read_metadata_from_dxf(doc) -> dict
 ```
 
-Scrive / rilegge i metadati (stessi campi di `save_json`) come XDATA `FORGE`
-sull'entità del layer `OuterContour`. `doc` è un `Drawing` `ezdxf` (tipicamente
-quello restituito da `to_dxf`). `read_` ritorna `{}` se non trova niente.
+Scrive / rilegge i metadati (stessi campi di `save_json`, `extra` incluso —
+un dict diretto qui, non una callback, perché opera già su un singolo
+cluster) come XDATA `FORGE` sull'entità del layer `OuterContour`. `doc` è un
+`Drawing` `ezdxf` (tipicamente quello restituito da `to_dxf`). `read_`
+ritorna `{}` se non trova niente.
 
 ```python
 doc_out = forge.to_dxf(result, doc)
@@ -827,14 +852,20 @@ Metodo `to_dict()` → dizionario JSON-ready (usato internamente dagli export).
 |---|---|---|
 | `outer` | `ForgeContour` | profilo esterno (ha `polygon`, `segments`, `role`, `area`, `bbox`) |
 | `inners` | `list[ForgeContour]` | aperture interne non classificate come foro |
-| `holes` | `list[Hole]` | fori — `diameter`, `center`, `hole_type`, `source`, `confidence` |
-| `bending_lines` | `list[BendingLine]` | pieghe — `geometry`, `length`, `angle_deg` |
-| `engrave_lines` | `list[Engraving]` | incisioni — `segments`, `length`, `closed`, `source`, `confidence` |
 | `label` | `str` | etichetta, base del nome file |
 | `custom` | `dict` | dati aggiunti da un `data_injector` esterno (materiale, spessore, codice) |
-| `summary` | property | conteggi feature derivati dal modello: `plain_holes_count`, `countersink_count`, `threaded_holes_count`, `bending_lines` (gruppi collineari), `total_engrave_length`, `total_marking_length` |
+| `detected` | `Optional[DetectedFeatures]` | overlay di `detect()` — `None` finché nessuno ci ha scritto (D44) |
+| `features(name)` | metodo | collezione `name` da `detected` — `[]` se `detected` è `None` o `name` non è stato scritto. Legge `"holes"` (`list[Hole]`), `"bending_lines"` (`list[BendingLine]`), `"engrave_lines"` (`list[Engraving]`), o un nome custom attaccato da un tool esterno |
+| `summary` | property | conteggio **grezzo**, sempre disponibile: `{nome}_count: len(items)` per ogni collezione in `detected` — `{}` se `detected` è `None`. Vedi `tools.detect.describe_features(cluster)` per il conteggio ricco per tipo (`plain_holes_count`, `countersink_count`, `threaded_holes_count`, `bending_lines` gruppi, `total_engrave_length`, `total_marking_length`) |
 | `area` | property | outer − fori − inner |
 | `bbox` | property | `(minx, miny, maxx, maxy)` |
+
+Un consumatore esterno attacca la sua detection con lo stesso meccanismo di
+`detect()`: `cluster.detected = cluster.detected or DetectedFeatures();
+cluster.detected.attach("flange_view_hint", [...])`, poi la legge con
+`cluster.features("flange_view_hint")`. Nessuno dei due è privilegiato nello
+schema (D44) — `DetectedFeature` (`typing.Protocol`, `source`/`confidence`)
+è il contratto minimo, non imposto a runtime.
 
 ### `ForgeContour`
 

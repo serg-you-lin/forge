@@ -33,6 +33,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.adapters.dxf.layers import ROLE_TO_LAYER, LAYER_INNER
+from forge.tools.detect import describe_features
 
 MULTIPLI_DIR      = project_root / "tests" / "examples" / "golden_multipli"
 GOLDEN_DIR        = MULTIPLI_DIR / "golden"
@@ -99,7 +100,7 @@ def generate(force: bool = False, only: str = None):
                     continue
 
                 all_inners = sorted(
-                    cluster.holes + cluster.inners,
+                    cluster.features("holes") + cluster.inners,
                     key=lambda x: x.area,
                     reverse=True,
                 )
@@ -120,7 +121,11 @@ def generate(force: bool = False, only: str = None):
                     "inners_wkt":    [i.polygon.wkt for i in all_inners],
                     "outer_layer":   ROLE_TO_LAYER.get(cluster.outer.role),
                     "inners_layers": [ROLE_TO_LAYER.get(i.role, LAYER_INNER) for i in all_inners],
-                    "summary":       {k: v for k, v in cluster.summary.items() if v},
+                    "summary":       {
+                        k: v for k, v in
+                        {**cluster.summary, **describe_features(cluster)}.items()
+                        if v
+                    },
                 }
 
                 golden_path.write_text(
