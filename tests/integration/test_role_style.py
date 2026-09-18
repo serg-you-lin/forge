@@ -18,7 +18,8 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge import RoleStyle
-from forge.adapters.dxf.layers import LAYER_HOLE, TRASH_LAYER
+from forge.adapters.dxf.layers import TRASH_LAYER
+from forge.tools.manufacturing_role import LAYER_HOLE
 
 
 def _rect_with_hole_and_frame():
@@ -45,15 +46,25 @@ def _rect_with_hole_and_frame():
 
 
 class TestRoleStyleDefaultUnchanged(unittest.TestCase):
-    """Senza role_styles, il comportamento è identico a prima di D37."""
+    """
+    Senza `role_styles=` passato a to_dxf(), il comportamento visivo di
+    "hole" è identico a prima di D37 (stesso magenta) — ma il MECCANISMO è
+    cambiato ("roles out of core"): non è più una voce hardcoded nella
+    palette del motore, è `tools.manufacturing_role` che si registra il
+    proprio colore con `register_role_style`, lo stesso meccanismo pubblico
+    che userebbe un consumatore esterno. Per questo "hole" HA un
+    `true_color` di default (registrato), mentre un ruolo di consumatore
+    mai registrato (`frame`, qui) non ce l'ha.
+    """
 
     def setUp(self):
         self.result, self.doc_in = _rect_with_hole_and_frame()
         self.doc_out = forge.to_dxf(self.result, self.doc_in)
 
-    def test_001_hole_layer_has_no_true_color_override(self):
+    def test_001_hole_layer_has_registered_true_color(self):
         layer = self.doc_out.layers.get(LAYER_HOLE)
-        self.assertFalse(layer.dxf.hasattr("true_color"))
+        self.assertTrue(layer.dxf.hasattr("true_color"))
+        self.assertEqual(layer.rgb, (255, 0, 255))  # magenta, registrato da manufacturing_role
 
     def test_002_frame_layer_created_with_consumer_color(self):
         # Layer creato al volo col nome dello slug (D31), colore di default

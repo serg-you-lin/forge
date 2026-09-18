@@ -42,12 +42,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.adapters.dxf.layers import (
-    ROLE_TO_LAYER,
-    LAYER_INNER,
-    LAYER_OUTER,
-    LAYER_HOLE,
-)
+from forge.adapters.dxf.layers import role_to_dxf_layer
 from forge.io.dxf import cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
 from forge.tools.detect import describe_features
 
@@ -325,13 +320,17 @@ def _make_split_test(golden_path: Path):
         # --- Layer ---
         if "outer_layer" in golden:
             self.assertEqual(
-                ROLE_TO_LAYER.get(part_payload["outer_role"]),
+                role_to_dxf_layer(part_payload["outer_role"]),
                 golden["outer_layer"],
-                msg=f"{label}: outer_layer '{ROLE_TO_LAYER.get(part_payload['outer_role'])}' != atteso '{golden['outer_layer']}'",
+                msg=f"{label}: outer_layer '{role_to_dxf_layer(part_payload['outer_role'])}' != atteso '{golden['outer_layer']}'",
             )
 
         if "inners_layers" in golden:
-            actual_layers = [ROLE_TO_LAYER.get(h_role, LAYER_INNER) for h_role in part_payload["inner_roles"]]
+            # role_to_dxf_layer(), non ROLE_TO_LAYER (statico, solo outer/
+            # inner) — un ruolo manifatturiero come "hole" ha il suo layer
+            # via il registro di rules/palette.py (tools/manufacturing_role.py
+            # lo registra), non nel dict statico del motore (roles out of core).
+            actual_layers = [role_to_dxf_layer(h_role) for h_role in part_payload["inner_roles"]]
             self.assertEqual(
                 Counter(actual_layers),
                 Counter(golden["inners_layers"]),

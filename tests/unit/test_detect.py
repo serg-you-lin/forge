@@ -4,7 +4,8 @@ from pathlib import Path
 import sys
 
 import forge
-from forge.adapters.dxf.layers import LAYER_HOLE, LAYER_INNER
+from forge.adapters.dxf.layers import LAYER_INNER
+from forge.tools.manufacturing_role import LAYER_HOLE
 from forge.tools.thresholds import HOLE_DIAMETER_THRESHOLD
 from forge.tools.model import (
     HOLE_TYPE_PLAIN,
@@ -112,7 +113,9 @@ class TestDetectLabelMap(unittest.TestCase):
             "Svasati": "countersink"
         }
 
-        self.result = forge.heal(forge.document_from_msp(self.msp, label_map=label_map))
+        from forge.tools.manufacturing_role import is_structural
+        self.result = forge.heal(forge.document_from_msp(self.msp, label_map=label_map),
+                                  is_structural=is_structural)
         forge.detect(self.result, features="all")
 
     def test_001_label_map_override(self):
@@ -247,7 +250,7 @@ class TestDetectStyleMap(unittest.TestCase):
 
         cluster = result.clusters[0]
         self.assertEqual(len(cluster.features("bending_lines")), 1)
-        self.assertEqual(cluster.features("bending_lines")[0].role.value, "bending")
+        self.assertEqual(cluster.features("bending_lines")[0].role, "bending")
 
     def test_002_cyan_color_becomes_engrave(self):
         msp = self._rect_with_internal_lines(
@@ -259,7 +262,7 @@ class TestDetectStyleMap(unittest.TestCase):
 
         cluster = result.clusters[0]
         self.assertEqual(len(cluster.features("engrave_lines")), 1)
-        self.assertEqual(cluster.features("engrave_lines")[0].role.value, "engrave")
+        self.assertEqual(cluster.features("engrave_lines")[0].role, "engrave")
 
     def test_003_color_map_accepts_aci_int_and_numeric_string(self):
         for key in (4, "4"):

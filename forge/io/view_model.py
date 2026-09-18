@@ -71,8 +71,13 @@ def _hole_entry(hole, tolerance: float) -> dict:
 def _bending_entry(bl) -> dict:
     coords = _xy(bl.geometry.coords) if bl.geometry else []
     return {
-        "role":       ContourRole.BEND.value,
-        "color":      role_to_hex(ContourRole.BEND),
+        # "bending" è vocabolario di detect (tools/manufacturing_role.py),
+        # non del motore — qui è una stringa letterale apposta, non un
+        # ContourRole: view_model non deve importare quel vocabolario per
+        # sapere il nome di un ruolo che sta solo passando (MAP.md, "roles
+        # out of core").
+        "role":       "bending",
+        "color":      role_to_hex("bending"),
         "points":     coords,
         "closed":     False,
         "length":     round(bl.length, 4),
@@ -83,7 +88,7 @@ def _bending_entry(bl) -> dict:
 
 
 def _engrave_entry(eng, tolerance: float) -> dict:
-    role = getattr(eng, "role", ContourRole.ENGRAVE)
+    role = getattr(eng, "role", "engrave")  # "engrave" letterale, stesso motivo di _bending_entry
     if eng.polygon is not None:
         pts = _poly_points(eng.polygon)
     elif eng.pts:
@@ -191,5 +196,14 @@ def to_view_model(
 
 
 def _palette_dict() -> dict:
-    """role (stringa) → colore hex, per la legenda di un renderer."""
-    return {r.value: role_to_hex(r) for r in ContourRole}
+    """
+    role (stringa) → colore hex, per la legenda di un renderer.
+
+    I tre ruoli del motore + ogni ruolo registrato (`register_role_style`) —
+    detect registra i suoi allo stesso modo di un consumatore esterno, quindi
+    compaiono qui senza che questo file sappia cosa sia un foro o una piega.
+    """
+    from ..rules.palette import registered_role_styles
+    base = {r.value: role_to_hex(r) for r in ContourRole}
+    registered = {role: role_to_hex(role) for role in registered_role_styles()}
+    return {**base, **registered}

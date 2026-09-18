@@ -18,7 +18,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.adapters.dxf.layers import (
+from forge.tools.manufacturing_role import (
     LAYER_BENDING, LAYER_ENGRAVE, LAYER_MARKING,
     LAYER_COUNTERSINK, LAYER_THREADED_HOLE,
 )
@@ -112,6 +112,7 @@ def _make_test(path):
             **config.get("label_map", {})
         }
 
+        from forge.tools.manufacturing_role import is_structural
         result = forge.heal(
             forge.load_dxf(
                 str(dxf_path),
@@ -122,6 +123,7 @@ def _make_test(path):
                 label_map=label_map,
             ),
             tolerance=config.get("tolerance", DEFAULT_TOLERANCE),
+            is_structural=is_structural,
         )
 
         forge.detect(result, features="all")
@@ -433,8 +435,10 @@ def _make_roundtrip_test(path):
         tol = config.get("tolerance", DEFAULT_TOLERANCE)
         label_map = {**GLOBAL_LABEL_MAP, **config.get("label_map", {})}
 
+        from forge.tools.manufacturing_role import is_structural
+
         def _pipeline(doc):
-            r = forge.heal(doc, tolerance=tol)
+            r = forge.heal(doc, tolerance=tol, is_structural=is_structural)
             forge.detect(r, features="all")
             return r
 

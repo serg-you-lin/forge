@@ -22,8 +22,9 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER, LAYER_HOLE
-from forge.rules.palette import COLOR_OUTER, COLOR_INNER, COLOR_HOLE
+from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
+from forge.tools.manufacturing_role import LAYER_HOLE
+from forge.rules.palette import COLOR_OUTER, COLOR_INNER
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
@@ -150,9 +151,9 @@ class TestHealerCircleHole(unittest.TestCase):
         self.assertGreaterEqual(len(self.result.clusters[0].features("holes")), 1)
 
     def test_003_hole_role(self):
-        from forge.model.role import ContourRole
+        from forge.tools.manufacturing_role import HOLE
         for hole in self.result.clusters[0].features("holes"):
-            self.assertEqual(hole.role, ContourRole.HOLE)
+            self.assertEqual(hole.role, HOLE)
 
     def test_004_exact_hole_count(self):
         self.assertEqual(len(self.result.clusters[0].features("holes")), 1)
