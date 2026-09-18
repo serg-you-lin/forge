@@ -16,8 +16,36 @@ cosa costruire prima.
 
 Preventivare bene chiede soprattutto: materiale, spessore, quantità, codice
 pezzo, e una stima di complessità (numero fori, lunghezza taglio, numero
-pieghe). Non chiede — non subito — di ricongiungere viste spezzate o leggere
-la scala. Quella roba serve alla produzione, non al preventivo. NON è VERO, SE IO DEOV SPERE QUANTE LAMIERE COMPERARE, DEVO SAPERE IN CHE SCALA è IL DISEGNO, A PARTIREE DALLA PREVENTIVAZIONE. CAZZO.
+pieghe). Non chiede — non subito — di ricongiungere viste spezzate. Sulla
+scala, vedi la nota sotto: qui la frase originale era imprecisa.
+
+> **Nota (Federico): "leggere la scala" non è roba da produzione — se devo
+> sapere quante lamiere comprare, devo sapere in che scala è il disegno, a
+> partire dalla preventivazione.**
+> **Risposta: hai ragione, la frase era sbagliata — corretta sopra.** Ma vale
+> la pena separare due cose che ho impastato:
+>
+> 1. **Le coordinate che forge misura sono già a scala reale.** Un file DXF
+>    ben fatto è disegnato in model space 1:1 — la "scala" (Drawing
+>    Scale/View Scale/DIMSCALE, vedi `INTERPRETER.md`) è un fattore di
+>    stampa/annotazione, non una trasformazione della geometria. Quindi il
+>    bbox di un cluster che `heal` produce è già la dimensione vera del
+>    pezzo — non c'è un passo "leggi la scala e converti" da fare in più.
+>    Questo pezzo della frase originale (non serve un modulo apposta per
+>    "interpretare la scala") resta vero.
+> 2. **Ma "è già a scala reale" è un'assunzione, non una garanzia — e
+>    proprio per il preventivo non te la puoi permettere.** Un file scalato
+>    male all'origine, o disegnato volutamente non in scala, ti fa comprare
+>    la lamiera sbagliata senza che nulla lo segnali. Il modo economico per
+>    proteggersi è quello che il documento chiama già "gap noto" —
+>    `Dimension.references`/verifica quota-vs-geometria-misurata — e questo
+>    **non è roba da produzione, è roba da preventivo esattamente come dici
+>    tu.** Quindi il passo 4 sotto ("solo quando ti serve davvero
+>    incrociare una quota", trattato come produzione) va corretto: quando
+>    c'è almeno una quota scritta sul disegno, un controllo minimo — la
+>    geometria misurata concorda con quella quota, sì/no — va fatto **prima**
+>    di fidarti del bbox per comprare materiale, non dopo. Vedi step 0 più
+>    sotto.
 
 
 
@@ -27,8 +55,24 @@ la scala. Quella roba serve alla produzione, non al preventivo. NON è VERO, SE 
 |---|---|---|
 | **forge** | il pezzo fabbricato: geometria, topologia, feature (fori/pieghe/incisioni), conteggi (`cluster.summary`) | `dxf-forge`, maturo |
 | **framer** | come il disegno è documentato: cornice, cartiglio, callout, raggruppamento viste | `framer`, pre-alpha, un pezzo su cinque fatto |
-| **l'interprete** | nomenclatura privata del cliente, profili, riempimento buchi da ERP | non esiste ancora un repo — e forse non gli serve nemmeno, vedi `INTERPRETER.md` | NON HO CAPITO COSA INTENDI
+| **l'interprete** | nomenclatura privata del cliente, profili, riempimento buchi da ERP | non esiste ancora un repo — e forse non gli serve nemmeno, vedi `INTERPRETER.md` |
 | **bendly** | sviluppo lamiere — direzione opposta (da specifica a DXF), oracolo di verifica in futuro | `unfold_generator`, alpha, già in uso |
+
+> **Nota (Federico): "forse non gli serve nemmeno [un repo]" — non ho capito
+> cosa intendi.**
+> **Risposta:** non "l'interprete non ti serve" (quello ti serve di sicuro:
+> nomenclatura, profili, ERP restano privati per forza). Intendevo: forse non
+> ti serve un **repo/progetto vero e proprio con un orchestratore** —
+> `pipeline.py` che chiama forge poi framer poi traduzione in sequenza
+> fissa. Perché una volta tolto tutto quello che è finito in framer, quello
+> che resta dell'interprete è poca roba: un paio di file Python privati
+> (`nomenclature.py`, `profiles/`) con dentro le tue tabelle e i tuoi
+> pattern. È abbastanza sottile che potrebbe bastarti chiamare quelle
+> funzioni direttamente da dove oggi chiami forge, senza costruire un
+> pacchetto a parte che le orchestra. Il dettaglio è nella "Domanda aperta"
+> di `INTERPRETER.md`, sezione "L'interprete": non è deciso, resta
+> intenzionalmente aperto finché non vedi quanto pesa in pratica la parte di
+> traduzione privata.
 
 Tutto il resto (Determinismo/Interpretazione/Correzione, il confine
 manifattura/documentazione/privato) è spiegazione del *perché* questa tabella
@@ -57,22 +101,25 @@ sotto, non l'ho toccata senza dirtelo.
 
 ## Ordine consigliato (per il preventivo, non per Pippo intero)
 
+0. **(forge)** `Dimension.references`/`Leader.target` — non per incrociare
+   feature e quota in produzione, ma per il controllo minimo "preventivo":
+   quando c'è almeno una quota scritta, la geometria misurata concorda?
+   Spostato qui dal vecchio punto 4 dopo la nota sulla scala sopra — è
+   preventivo, non produzione.
 1. **(forge, piccolo)** `snap_distance` anche su `inject()` — stessa logica
    già scritta per `anchor_annotations`, la stessa piccola tolleranza.
 2. **(tuo, privato)** scrivi il `data_injector` per il primo cliente che ti
    interessa — regex/pattern per material/thickness/qty/code. Non va nel
    repo pubblico (`forge-reports-drawing-never-guesses-no-shop-nomenclature`).
 3. **A questo punto hai già un primo Pippo-per-preventivi**, su forge da
-   solo: `heal_and_detect` → `inject(data_injector=...)` →
-   `cluster.summary` per la complessità. Nessun modulo nuovo, nessun repo
-   nuovo.
-4. **(forge)** `Dimension.references` / `Leader.target` — solo quando ti
-   serve davvero incrociare una quota con la feature che quota, non prima.
-5. **(framer)** cartiglio — quando ti serve leggere i metadati generali del
+   solo: `heal_and_detect` → controllo quota (step 0, se presente) →
+   `inject(data_injector=...)` → `cluster.summary` per la complessità.
+   Nessun modulo nuovo, nessun repo nuovo.
+4. **(framer)** cartiglio — quando ti serve leggere i metadati generali del
    disegno oltre al singolo pezzo (numero disegno, revisione), non prima.
-6. **(framer, ultimo, il più incerto)** raggruppamento viste / linee di
+5. **(framer, ultimo, il più incerto)** raggruppamento viste / linee di
    rottura — solo quando il caso reale lo chiede, e solo dopo aver guardato
    disegni veri (stessa lezione di framer D5: non scriverlo a tavolino).
 
-I passi 4-6 servono alla produzione più che al preventivo — restano nella
+I passi 4-5 servono alla produzione più che al preventivo — restano nella
 roadmap, ma dopo, non prima.
