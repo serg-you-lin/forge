@@ -39,11 +39,8 @@ un solo `heal()`, verificato manualmente (outer più lungo passa da 90° a 0°,
 la diagonale interna resta intatta e ruota con tutto il resto). Suite verde:
 722 passed.
 
-**Working tree NON ancora committato dalla seconda revisione** — branch
-`refactor/rotate-result-primitive`, checked out, contiene solo questa
-revisione (il primo giro era già stato mergiato in `main` a `0.6.20`; questo
-è un fix sopra quello). Da committare e chiedere a Federico prima di
-mergiare, come da regola standard.
+Branch `refactor/rotate-result-primitive` mergiato `--ff-only` in `main`,
+bump a `0.6.21`. `main` è la verità corrente, niente da committare.
 
 Resta aperto, discusso ma non affrontato:
 - **Pippo che vuole sapere l'inclinazione di una flangia piegata** resta
