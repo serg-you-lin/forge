@@ -854,6 +854,62 @@ Branch `refactor/ellipse-primitive`.
 
 ---
 
+### D46 — `.rotated()` on every primitive, `forge/tools/rotate.py` ✅
+
+First piece of "funzioni geometriche" (TODO.md) actually built, triggered by
+a concrete ask: a script that rotates a whole file so its longest OUTER side
+becomes horizontal — filtered to `role="outer"`, not just any geometry (a
+diagonal internal line, even a long one, must not count).
+
+`.rotated(angle_rad, origin=(0,0))` added to `LineSeg`/`ArcSeg`/`SplineSeg`/
+`CircleSeg`/`EllipseSeg` — same tier and pattern as `.reversed()`, pure
+math, no format dependency. `ArcSeg`/`EllipseSeg` just shift their angular
+fields by `angle`, no re-derivation needed; `SplineSeg` rotates control/
+approx/fit points and the tangent *vectors* (rotated around `(0,0)`, never
+translated by `origin` — a direction, not a point).
+
+`core/geometry.py` gained `segment_length(segment)` (closed form for
+`LineSeg`/`ArcSeg`/`CircleSeg`; `track_length(segment.discretize())` for
+`SplineSeg`/`EllipseSeg`, no constant curvature), `longest_segment(segments)`,
+and `chord_angle_deg(a, b)` — the exact `atan2(...) % 180` formula
+`detect._detect_bending` and `_bending_line_from_data` already had inline
+twice, now shared instead of duplicated a third time.
+
+`forge/tools/rotate.py` (new, experimental — importable as
+`forge.tools.rotate`, not yet in `forge.__init__`'s top-level surface, same
+precautionary stance as `simplify_points` pre-proof, D33):
+
+- `longest_outer_segment(result)` — `(segment, length, angle_deg)` of the
+  longest segment across every `cluster.outer.segments` in a `ForgeResult`.
+  `None` if there is no outer.
+- `rotate_document(doc, angle_rad, origin, tolerance)` — new `ForgeDocument`
+  with every `edge.segment.rotated(...)`, endpoints re-rounded exactly like
+  the adapter does at load time (`round_point`/`node_decimals_for`) so a
+  later `heal()` sees the same coincident nodes. Annotations are **not**
+  rotated yet (no real case has needed it) — `doc.annotations` non-empty
+  adds a warning instead of silently leaving them in the wrong place.
+- `rotate_to_longest_outer(doc, origin=None, target_angle_deg=0.0,
+  tolerance=None)` — the orchestrator. Two passes, not one: "outer" only
+  exists after topology, so pass 1 is `heal(doc)` purely to measure the
+  angle; the actual rotation is applied to the *raw* pre-heal
+  `doc.edges` (via `rotate_document`), and the caller re-heals the rotated
+  document to get a fresh, valid `ForgeResult` — rotating polygons/
+  hierarchy/features of an already-healed `ForgeResult` in place would mean
+  touching every derived structure by hand for the same end result.
+  `origin` defaults to the bbox center of the document's own edges
+  (approximate on arcs — fine for a pivot, the shape doesn't change with
+  `origin`, only where it lands).
+
+New fixture `tests/examples/try_for_rotation.dxf` (generator:
+`tests/generate_rotation_fixture.py`) — 100x400 rectangle (outer verticale,
+lato più lungo = 400) with an internal line diagonal across it, like a
+bending line but not parallel to any side, to prove the outer-only filter.
+Demo script `scripts/17_rotate_to_longest_outer.py`.
+
+Suite: 716 passed (was 693 + rotation tests), no golden touched.
+
+---
+
 ## Closed questions (history)
 
 - **Q1 — hole classification: topology or detection?** → resolved by D15

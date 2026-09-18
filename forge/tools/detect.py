@@ -24,7 +24,7 @@ from .model import (
 from .hole_detector import is_threaded_hole
 from ..core.geometry import (
     track_points, track_length, track_shape_type, circular_geometry,
-    group_collinear_lines,
+    group_collinear_lines, chord_angle_deg,
 )
 from .thresholds import HOLE_DIAMETER_THRESHOLD
 
@@ -351,10 +351,7 @@ def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None
                         role=ContourRole.BEND,
                         geometry=LineString([pts[0], pts[-1]]),
                         length=length,
-                        angle_deg=math.degrees(math.atan2(
-                            pts[-1][1] - pts[0][1],
-                            pts[-1][0] - pts[0][0],
-                        )) % 180,
+                        angle_deg=chord_angle_deg(pts[0], pts[-1]),
                         cluster_label=cluster.label,
                         source="geometric",
                         confidence=0.9,
@@ -689,13 +686,11 @@ def _extract_data(proxy: OpenFeature, work_type: str) -> dict:
     if work_type == "bending" and track_shape_type(pts) == "line" and len(pts) >= 2:
         start = pts[0]
         end   = pts[-1]
-        dx    = end[0] - start[0]
-        dy    = end[1] - start[1]
         return {
             "start":                start,
             "end":                  end,
             "length":               round(length, 4),
-            "angle_deg":            round(math.degrees(math.atan2(dy, dx)) % 180, 4),
+            "angle_deg":            round(chord_angle_deg(start, end), 4),
             "representative_point": rep,
         }
 

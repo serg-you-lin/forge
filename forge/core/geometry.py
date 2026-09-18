@@ -17,6 +17,8 @@ from typing import Optional, Tuple, List
 import numpy as np
 from shapely.geometry import LineString
 
+from .primitives.segments import LineSeg, ArcSeg, CircleSeg
+
 Point = Tuple[float, float]
 
 
@@ -157,6 +159,52 @@ def track_length(pts) -> float:
 def track_shape_type(pts) -> str:
     """`"line"` se la traccia è un solo segmento retto (2 vertici), altrimenti `"curve"`."""
     return "line" if len(pts) == 2 else "curve"
+
+
+# ---------------------------------------------------------------------------
+# Lunghezza e angolo di UNA primitiva nativa — mai stoccati sul modello,
+# sempre derivati (stesso principio di track_length/track_shape_type sopra,
+# ma su un singolo segmento invece che su una catena)
+# ---------------------------------------------------------------------------
+
+def segment_length(segment) -> float:
+    """
+    Lunghezza reale di una primitiva nativa singola (`LineSeg`/`ArcSeg`/
+    `SplineSeg`/`CircleSeg`/`EllipseSeg`). `LineSeg`/`ArcSeg`/`CircleSeg`
+    hanno una formula chiusa; `SplineSeg`/`EllipseSeg` (curvatura non
+    costante, nessuna formula chiusa comoda) riusano la stessa polilinea di
+    `discretize()`, sommata come `track_length`.
+    """
+    if isinstance(segment, LineSeg):
+        return math.hypot(segment.end[0] - segment.start[0], segment.end[1] - segment.start[1])
+    if isinstance(segment, ArcSeg):
+        return segment.radius * segment._sweep()
+    if isinstance(segment, CircleSeg):
+        return 2 * math.pi * segment.radius
+    return track_length(segment.discretize())
+
+
+def longest_segment(segments) -> Tuple[Optional[object], float]:
+    """
+    `(segment, length)` del segmento più lungo in `segments` — `(None, 0.0)`
+    se la lista è vuota. Confronto lineare via `segment_length`.
+    """
+    best_seg, best_len = None, 0.0
+    for seg in segments or []:
+        length = segment_length(seg)
+        if best_seg is None or length > best_len:
+            best_seg, best_len = seg, length
+    return best_seg, best_len
+
+
+def chord_angle_deg(a: Point, b: Point) -> float:
+    """
+    Angolo (gradi, 0-180°) della corda da `a` a `b`. Modulo 180 perché una
+    linea non ha un verso proprio (`a->b` e `b->a` sono lo stesso
+    orientamento) — stesso calcolo già usato da `detect._detect_bending` per
+    l'angolo di una bending line, ora condiviso qui invece che duplicato.
+    """
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])) % 180
 
 
 # ---------------------------------------------------------------------------

@@ -10,52 +10,45 @@ ancora aperto.
 
 ---
 
-## RIPARTENZA — stato a inizio sessione 2026-09-18 (seconda parte)
+## RIPARTENZA — stato a fine sessione 2026-09-18 (seconda parte), da qui la prossima chat
 
 Chiuso: i due lavori impilati sul branch `refactor/ellipse-primitive` sono
 stati splittati in due commit puliti (docs cleanup, poi `EllipseSeg`),
 mergiati `--ff-only` in `main` con bump a `0.6.19`, branch locale eliminato.
-`main` è ora la verità corrente.
 
-**Prossimo argomento, solo discusso, NON ancora iniziato — "funzioni
-geometriche":**
+Chiuso anche il primo pezzo di "funzioni geometriche" (MAP.md D46):
+`.rotated(angle, origin)` su ogni primitiva, `segment_length`/
+`longest_segment`/`chord_angle_deg` in `core/geometry.py`, e
+`forge/tools/rotate.py` (`longest_outer_segment`, `rotate_document`,
+`rotate_to_longest_outer`) — sperimentale, non ancora in `forge.__init__`.
+Script dimostrativo `scripts/17_rotate_to_longest_outer.py` su
+`tests/examples/try_for_rotation.dxf`. Suite verde: 716 passed. **Working
+tree NON ancora committato** — da splittare/committare all'inizio della
+prossima sessione (stesso lavoro fatto per `EllipseSeg`: verificare che sia
+tutto un unico argomento coerente prima di decidere se un commit solo basta,
+poi chiedere a Federico prima di mergiare in `main`).
 
-Inventario fatto (verificato nel codice, non assunto): oggi **nessuna
-primitiva ha un `.length`** (`LineSeg`/`ArcSeg`/`SplineSeg`/`CircleSeg`/
-`EllipseSeg`) e non esiste nessuna funzione "dato un elenco di segmenti, qual
-è il più lungo e che angolo ha". Tutto il resto (area/bbox su
-`ClosedFeature`, `track_length` su una traccia intera, `interior_angle_deg`
-per tre punti) esiste già in `core/geometry.py`.
-
-Proposta emersa (non decisa): aggiungere `segment_length(segment)` (dispatch
-per tipo) e `longest_segment(segments)` a `core/geometry.py` — piccola
-aggiunta, nessun modulo nuovo. Casi che la motivano, discussi ma non
-implementati:
-- **rotazione/orientamento canonico** per un futuro nester: la meccanica
-  ("ruota di X gradi", "trova il lato più lungo e il suo angolo") è roba di
-  forge — un metodo `.rotated(angle, origin)` per primitiva, come
-  `.reversed()`, più un wrapper in `tools/` per un intero cluster. La
-  *decisione* di quanti gradi provare / l'ottimizzazione di impacchettamento
-  restano fuori scope (nesting resta fuori da forge, vedi memoria
-  `nesting-out-of-scope`).
-- **bendly** ha bisogno di lunghezze/angoli per piazzare le proprie quote
-  (per il lettore umano) e oggi duplicherebbe la logica — caso reale, non
-  ipotetico, è l'argomento più forte per esporre queste funzioni.
-- **Pippo che vuole sapere l'inclinazione di una flangia piegata** si è
-  rivelato ambiguo fra due misure diverse: (a) l'orientamento 2D della
-  bending line sullo sviluppo piatto (già misurabile) vs (b) il vero angolo
-  di piega fisico, che in genere non si legge dalla sola direzione della
-  linea — o è scritto altrove sul disegno, o si ricava per trigonometria
-  confrontando la lunghezza vera (sviluppo) con quella proiettata in una
-  vista che mostra la flangia piegata (`arccos(proiettata/vera)`) — ma questo
-  richiede sapere quale edge dello sviluppo corrisponde a quale edge della
-  vista, che è lavoro di framer/interprete, non di forge.
+Resta aperto, discusso ma non affrontato:
+- **Pippo che vuole sapere l'inclinazione di una flangia piegata** resta
+  ambiguo fra due misure diverse: (a) l'orientamento 2D della bending line
+  sullo sviluppo piatto (ora misurabile con `chord_angle_deg`) vs (b) il vero
+  angolo di piega fisico, che in genere non si legge dalla sola direzione
+  della linea — o è scritto altrove sul disegno, o si ricava per
+  trigonometria confrontando la lunghezza vera (sviluppo) con quella
+  proiettata in una vista che mostra la flangia piegata
+  (`arccos(proiettata/vera)`) — ma questo richiede sapere quale edge dello
+  sviluppo corrisponde a quale edge della vista, che è lavoro di
+  framer/interprete, non di forge.
 - **Idea collegata ma volutamente NON la stessa cosa**: "ruotare" una vista
   per farla combaciare con un'altra vista proiettata (per trasferire feature
   da una faccia allo sviluppo) è un problema di matching/registrazione fra
   due insiemi di punti (tipo ICP), non una semplice rotazione — molto più
   grosso, legato al "raggruppamento viste" di `framer` (`FRAMER.md`, ancora
   da scrivere) — non deciso se/come affrontarlo.
+- Le annotazioni (`ForgeDocument.annotations`) non sono ancora ruotate da
+  `rotate_document` (nessun caso reale l'ha ancora richiesto) — se/quando
+  serve, ogni sottoclasse di `Annotation` (`Note`, `Dimension`, `Leader`, ...)
+  ha campi diversi da ruotare, non è un'estensione da un rigo.
 
 **Fitting ellisse da punti grezzi** (generalizzare `arc_fit_tolerance` in
 `tools/simplify_points.py` a un fit ellittico 5-DOF, per Smoother):
