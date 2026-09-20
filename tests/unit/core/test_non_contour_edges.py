@@ -64,6 +64,40 @@ class TestNonContourEdgeDetector(unittest.TestCase):
         result = NonContourEdgeDetector(tolerance=0.01).detect(g, edges)
         self.assertEqual(len(result), 0)
 
+    def test_hull_per_componente_non_per_foglio_intero(self):
+        # Due forme sullo stesso foglio, non connesse tra loro (nessun edge in
+        # comune): un rettangolo grande "A" e, tutto dentro la sua area, un
+        # rettangolino "B" con una diagonale — identico schema del primo test,
+        # in miniatura. Bug reale trovato su un disegno con più viste: un
+        # hull calcolato su TUTTI i nodi del foglio è dominato da A, quindi
+        # anche i lati veri del contorno di B (non solo la sua diagonale)
+        # risultano "interni" a quell'hull enorme e finiscono esclusi per
+        # errore. L'hull va calcolato per componente connessa.
+        a = [
+            _make_edge((0.0, 0.0), (100.0, 0.0)),
+            _make_edge((100.0, 0.0), (100.0, 50.0)),
+            _make_edge((100.0, 50.0), (0.0, 50.0)),
+            _make_edge((0.0, 50.0), (0.0, 0.0)),
+        ]
+        b = [
+            _make_edge((40.0, 20.0), (41.0, 20.0)),
+            _make_edge((41.0, 20.0), (41.0, 22.0)),
+            _make_edge((41.0, 22.0), (40.0, 22.0)),
+            _make_edge((40.0, 22.0), (40.0, 20.0)),
+            _make_edge((40.0, 20.0), (41.0, 22.0)),  # diagonale di B, non di contorno
+        ]
+        edges = a + b
+        g = build_node_graph(edges)
+        result = NonContourEdgeDetector(tolerance=0.01).detect(g, edges)
+
+        b_contour_ids = {id(e) for e in b[:4]}
+        b_diagonal_id = id(b[-1])
+
+        self.assertEqual(result & b_contour_ids, set(),
+                          "i lati veri del contorno di B non vanno esclusi")
+        self.assertIn(b_diagonal_id, result,
+                       "la diagonale di B resta un edge non di contorno")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

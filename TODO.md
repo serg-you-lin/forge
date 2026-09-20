@@ -111,18 +111,89 @@ committato — la storia sta nel git log e in `MAP.md`).
   si intersecano davvero è una scelta di design da rivedere con un file
   reale (workaround oggi: alzare `tolerance`).
 - **outer che non si chiude su viste vere, ricorrente** — non più un caso
-  isolato: tre disegni reali indipendenti, stesso sintomo. `PARTCODE`
-  (framer MAP D5, mesi fa): pezzi veri non chiudono in `heal`, tanti archi e
-  linee di costruzione. `PARTCODE` (framer, survey reale): di 3 viste sullo
-  stesso foglio, 1 sana, 2 no. `SHEET_BLANK` (idem): un rettangolo
-  finisce **tutto** in trash — causa trovata, non solo sospettata: nel DXF
-  sorgente il lato non è una polilinea unica ma un tratto lungo più due
-  schegge d'angolo da 0.2mm che dovrebbero completarlo, e non si saldano in
-  un anello chiuso. Non ancora deciso se e come intervenire (tolleranza di
-  snap? un pre-pass che unisce segmenti collineari quasi-adiacenti prima del
-  graph-building?) — segnato qui perché ora ci sono abbastanza casi reali
-  per giustificare di guardarci dentro sul serio, non più "aspettiamo altri
-  disegni".
+  isolato: tre disegni reali indipendenti, stesso sintomo in superficie
+  ("outer vero, tutto in trash") ma **cause diverse** — non è un bug solo,
+  sono almeno due famiglie distinte sotto lo stesso sintomo:
+  - `PARTCODE` (framer MAP D5, mesi fa): pezzi veri non chiudono in `heal`,
+    tanti archi e linee di costruzione — causa non ancora ri-analizzata con
+    gli strumenti di oggi.
+  - `SHEET_BLANK` — **non è un gap di arrotondamento**: verificato
+    (`lab/heal_repair_experiment.py`, locale/framer, non in git — usa e
+    getta) che la distanza minima reale tra endpoint liberi in tutto il file
+    è 5mm, non 0.2mm come ipotizzato in una prima lettura veloce del DXF.
+    Ispezionando `result.trash_entities` il rettangolo che dovrebbe chiudersi
+    è in realtà **tracciato due volte**, quasi sovrapposto: ai due lati
+    verticali corrispondono due segmenti paralleli 0.2mm apart (es.
+    x=55.1 *e* x=55.3), e i lati orizzontali lunghi partono dal secondo
+    tracciato (x=55.3→122.9) lasciando le due "schegge" da 0.2mm come
+    frammenti isolati agli angoli — non un gap da chiudere, ma geometria
+    **doppia e in competizione** (ipotesi più probabile: linee di
+    estensione/witness di una quotatura esplosa in LINE grezze dal
+    convertitore DWG→DXF, quasi coincidenti col contorno vero per
+    convenzione di disegno). Provato ad allargare (offline, non in
+    produzione) SOLO il raggio di ricerca del repair-angoli
+    (`_repair_merged_corners`) da 0.05 a 1.0mm, isolato dal resto della
+    pipeline: **zero effetto a qualunque raggio** — coerente col fatto che
+    non c'è nessun gap piccolo da allargare, il problema è a monte
+    (duplicazione), non nella tolleranza di chiusura. Ipotesi di fix da
+    esplorare (non ancora tentata): un pre-pass che riconosce coppie di
+    segmenti quasi-paralleli e quasi-coincidenti (distanza sub-mm,
+    sovrapposizione lungo la direzione) e ne scarta/fonde uno prima del
+    graph-building — rischioso perché lo stesso pattern potrebbe comparire
+    per feature reali vicine, va guardato con più file reali prima di
+    scriverlo.
+  - `PARTCODE` (framer, survey reale): di 3 viste sullo stesso foglio, 1
+    sana, 2 no. Sintomo diverso da `TRG19E`: `result.trash_entities` qui non
+    sono ~10 frammenti ma **1682**, con lunghe catene di segmenti minuscoli
+    (~0.3-0.5mm ciascuno) che sembrano un profilo curvo scomposto in tanti
+    tratti retti che non richiudono l'anello — non ancora capito se manchi
+    un singolo anello di congiunzione in fondo alla catena o se la
+    frammentazione stessa sia il problema. Stesso test offline (raggio
+    repair-angoli fino a 1mm): zero effetto anche qui.
+
+  In sintesi: la pista "tolleranza troppo stretta" è stata provata e
+  smentita sperimentalmente su tutti e tre (v. `lab/heal_repair_experiment.py`
+  in framer — offline, non tocca forge). Il problema reale sembra essere
+  **geometria duplicata/frammentata a monte**, non chiusura di gap — un
+  fix qui richiede prima di guardare con calma dentro `PARTCODE` con lo
+  stesso livello di dettaglio già fatto su `TRG19E`. Non ancora deciso se e
+  quando aprire un'indagine dedicata.
+
+  Branch aperto per affrontare questi tre: `refactor/heal-branch-topology`
+  — si parte da `TRG19E` (il più semplice: la doppia tracciatura crea 4
+  nodi a grado 3 espliciti, non solo simmetria/frammentazione).
+
+- **outer che non chiude su un grafo densamente ramificato — causa distinta
+  dal punto precedente, non va nello stesso branch** — trovato su
+  `tests/lab/3d_1.dxf` (una vista isolata da un disegno con più viste,
+  export Creo via ODA File Converter, 259/423 entità sono SPLINE). Qui non
+  c'è nessun gap: la componente connessa più grande ha 70 nodi, zero
+  estremi liberi anche a 1mm di tolleranza (provato 0.1/0.3/0.5/1.0, zero
+  differenza sul risultato), ma **64 di quei 70 nodi sono a grado>2**.
+  L'euristica di `loop_finder.py` ("prosegui nella direzione più collineare
+  all'arrivo") regge i bivi isolati visti finora, ma non un grafo dove il
+  91% dei nodi è un bivio: il perimetro vero finisce interamente in
+  `Trash` (bounding box del Trash identica a quella dell'intero disegno),
+  mentre le feature interne (fori, bozze), chiudendosi bene da sole,
+  emergono come cluster di primo livello invece che come inner — non è un
+  bug di hierarchy, è che l'outer che dovrebbe contenerle non viene mai
+  costruito.
+  Trovato anche perché il dedup esistente non l'ha già ripulita:
+  `sanitize.py::_key_for` (usato da `core/healing/normalizer.
+  find_duplicates`) copre solo LINE/LWPOLYLINE/POLYLINE/CIRCLE/ARC — SPLINE
+  produce `key=None` e viene ignorata da `find_duplicates`, quindi su un
+  file quasi tutto SPLINE il dedup di fatto non gira. Anche dove si applica,
+  la chiave è un'uguaglianza esatta a 2 decimali: due entità quasi
+  coincidenti ma scostate di qualche decimo di mm (come le tracciature
+  doppie viste sia qui che in `TRG19E`) hanno chiavi diverse e non vengono
+  mai considerate duplicate — è un dedup per copie esatte, non per
+  prossimità.
+  Non è la stessa causa del punto precedente: lì servirebbe riconoscere
+  geometria doppia/quasi-coincidente; qui servirebbe un'estrazione loop
+  planare corretta (es. half-edge/DCEL con una regola di svolta coerente),
+  che è un algoritmo diverso, non un'estensione dell'euristica attuale — va
+  affrontato a parte, dopo, per non far esplodere lo scope del branch
+  aperto sopra.
 
 ---
 

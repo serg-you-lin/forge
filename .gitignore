@@ -55,10 +55,12 @@ desktop.ini
 # Local data / generated test artifacts
 # ===========================================================================
 
-# DXF files are not versioned by default.
+# DXF/DWG files are not versioned by default.
 # Test fixtures under tests/data/ are explicitly kept.
 *.dxf
+*.dwg
 !tests/data/**/*.dxf
+!tests/data/**/*.dwg
 
 # Generated test examples / artifacts
 tests/examples/
