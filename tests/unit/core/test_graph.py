@@ -1,9 +1,10 @@
 # tests/unit/core/test_graph.py
 
+import math
 import unittest
 from forge.core.topology.graph import Graph, build_node_graph, cluster_points
 from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg
+from forge.core.primitives.segments import LineSeg, ArcSeg
 from forge.model.role import ContourRole
 
 
@@ -14,6 +15,14 @@ def _make_edge(p1, p2):
         end=p2,
         segment=LineSeg(start=p1, end=p2),
     )
+
+
+def _arc_edge(center, radius, start_deg, end_deg):
+    seg = ArcSeg(center=center, radius=radius,
+                 start_angle=math.radians(start_deg), end_angle=math.radians(end_deg), ccw=True)
+    start = (center[0] + radius * math.cos(seg.start_angle), center[1] + radius * math.sin(seg.start_angle))
+    end = (center[0] + radius * math.cos(seg.end_angle), center[1] + radius * math.sin(seg.end_angle))
+    return Edge(role=ContourRole.UNKNOWN, start=start, end=end, segment=seg)
 
 def _triangle_edges():
     a, b, c = (0.0, 0.0), (1.0, 0.0), (0.5, 1.0)
@@ -102,6 +111,37 @@ class TestBuildNodeGraphClustering(unittest.TestCase):
         g = build_node_graph(edges, epsilon=0.1)
         seen = {id(e) for conn in g.nodes.values() for e, _ in conn}
         self.assertEqual(seen, {id(e) for e in edges})
+
+
+class TestCloseSelfLoop(unittest.TestCase):
+
+    def test_arco_quasi_chiuso_diventa_loop_degenere(self):
+        # arc_arc_gap: un arco da 359.9 gradi, i suoi due estremi finiscono
+        # nello stesso cluster epsilon -- ma lo sviluppo reale (raggio*sweep)
+        # e' enorme, non e' rumore: deve chiudersi, non sparire.
+        edge = _arc_edge((0.0, 0.0), 50.0, 0.0, 359.9)
+        g = build_node_graph([edge], epsilon=0.5)
+        self.assertEqual(len(g.nodes), 0)
+        self.assertEqual(len(g.degenerate_loops), 1)
+        closed = g.degenerate_loops[0]
+        self.assertEqual(closed.start, closed.end)
+
+    def test_arco_corto_resta_scartato(self):
+        # Sviluppo reale piccolo (raggio 0.5, sweep 5 gradi): e' proprio uno
+        # sliver, il comportamento di sempre (scartato, non un loop) non deve
+        # cambiare.
+        edge = _arc_edge((0.0, 0.0), 0.5, 0.0, 5.0)
+        g = build_node_graph([edge], epsilon=0.5)
+        self.assertEqual(len(g.nodes), 0)
+        self.assertEqual(len(g.degenerate_loops), 0)
+
+    def test_epsilon_zero_non_tocca_larco_quasi_chiuso(self):
+        # Senza clustering (epsilon=0, comportamento storico) i due estremi
+        # restano nodi distinti: l'arco e' un edge normale, non un loop.
+        edge = _arc_edge((0.0, 0.0), 50.0, 0.0, 359.9)
+        g = build_node_graph([edge], epsilon=0.0)
+        self.assertEqual(len(g.degenerate_loops), 0)
+        self.assertEqual(len(g.nodes), 2)
 
 
 if __name__ == "__main__":

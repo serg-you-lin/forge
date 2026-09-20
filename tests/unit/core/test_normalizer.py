@@ -1,13 +1,23 @@
 # tests/unit/core/test_normalizer.py
 
+import math
 import unittest
-from forge.core.healing.normalizer import merge_collinear_overlaps
+from forge.core.healing.normalizer import merge_collinear_overlaps, merge_cocircular_overlaps
 from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg
+from forge.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
 
 
 def _line(p1, p2, role="unknown"):
     return Edge(role=role, start=p1, end=p2, segment=LineSeg(start=p1, end=p2))
+
+
+def _arc(center, radius, start_deg, end_deg, role="unknown"):
+    seg = ArcSeg(center=center, radius=radius,
+                 start_angle=math.radians(start_deg), end_angle=math.radians(end_deg), ccw=True)
+    start = (center[0] + radius * math.cos(seg.start_angle), center[1] + radius * math.sin(seg.start_angle))
+    end = (center[0] + radius * math.cos(seg.end_angle), center[1] + radius * math.sin(seg.end_angle))
+    return Edge(role=role, start=(round(start[0], 3), round(start[1], 3)),
+                end=(round(end[0], 3), round(end[1], 3)), segment=seg)
 
 
 def _line_raw(rounded_p1, rounded_p2, raw_p1, raw_p2, role="unknown"):
@@ -142,6 +152,98 @@ class TestMergeCollinearOverlaps(unittest.TestCase):
         self.assertEqual(out[0].end, (30.0, 0.0))
         self.assertEqual(out[0].segment.start, (0.0, 0.0))
         self.assertEqual(out[0].segment.end, (30.0, 0.0))
+
+
+class TestMergeCocircularOverlaps(unittest.TestCase):
+
+    def test_catena_di_frammenti_si_fonde(self):
+        # golden piega_cazzuta: un arco tracciato a 4 spezzoni consecutivi
+        # che si toccano esattamente -> un solo ArcSeg da 0 a 200 gradi.
+        edges = [
+            _arc((0.0, 0.0), 10.0, 0.0, 50.0),
+            _arc((0.0, 0.0), 10.0, 50.0, 120.0),
+            _arc((0.0, 0.0), 10.0, 120.0, 160.0),
+            _arc((0.0, 0.0), 10.0, 160.0, 200.0),
+        ]
+        out = merge_cocircular_overlaps(edges)
+        self.assertEqual(len(out), 1)
+        seg = out[0].segment
+        self.assertAlmostEqual(math.degrees(seg.start_angle), 0.0)
+        self.assertAlmostEqual(math.degrees(seg.end_angle), 200.0)
+        self.assertNotEqual(out[0].start, out[0].end)
+
+    def test_sliver_degenere_assorbito(self):
+        # golden piega_cazzuta: uno spezzone di 0.008 gradi (rumore) in mezzo
+        # alla catena sparisce nel fuso invece di restare un nodo spurio.
+        edges = [
+            _arc((0.0, 0.0), 10.0, 0.0, 50.0),
+            _arc((0.0, 0.0), 10.0, 50.0, 50.008),
+            _arc((0.0, 0.0), 10.0, 50.008, 120.0),
+        ]
+        out = merge_cocircular_overlaps(edges)
+        self.assertEqual(len(out), 1)
+
+    def test_due_semicerchi_chiudono_il_cerchio(self):
+        # golden cerchi_ciambella: un foro disegnato come 2 semicirchi ->
+        # un giro intero e' un cerchio (CircleSeg), non un ArcSeg a 360 gradi
+        # -- niente traccia di quale frammento fosse il primo.
+        edges = [
+            _arc((0.0, 0.0), 10.0, 0.0, 180.0),
+            _arc((0.0, 0.0), 10.0, 180.0, 360.0),
+        ]
+        out = merge_cocircular_overlaps(edges)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0].start, out[0].end)
+        self.assertIsInstance(out[0].segment, CircleSeg)
+        self.assertEqual(out[0].segment.radius, 10.0)
+
+    def test_gap_vero_non_si_chiude_per_errore(self):
+        # arc_arc_gap: un gap reale (qui volutamente grande, 10 gradi) su un
+        # lato non deve sparire solo perché l'altro lato tocca esattamente.
+        edges = [
+            _arc((0.0, 0.0), 10.0, 0.0, 170.0),
+            _arc((0.0, 0.0), 10.0, 180.0, 360.0),
+        ]
+        out = merge_cocircular_overlaps(edges)
+        self.assertEqual(len(out), 1)
+        seg = out[0].segment
+        self.assertAlmostEqual(math.degrees(seg._sweep()), 350.0)
+        self.assertNotEqual(out[0].start, out[0].end)
+
+    def test_ruolo_gia_assegnato_non_e_candidato(self):
+        edges = [
+            _arc((0.0, 0.0), 10.0, 0.0, 50.0, role="engrave"),
+            _arc((0.0, 0.0), 10.0, 50.0, 120.0, role="engrave"),
+        ]
+        out = merge_cocircular_overlaps(edges)
+        self.assertEqual(len(out), 2)
+
+    def test_cerchi_diversi_non_si_fondono(self):
+        edges = [
+            _arc((0.0, 0.0), 10.0, 0.0, 50.0),
+            _arc((0.0, 0.0), 20.0, 0.0, 50.0),
+        ]
+        out = merge_cocircular_overlaps(edges)
+        self.assertEqual(len(out), 2)
+
+    def test_ordine_preservato(self):
+        others = [_line((i * 100.0, 0.0), (i * 100.0 + 1.0, 0.0)) for i in range(3)]
+        chain = [
+            _arc((0.0, 0.0), 10.0, 0.0, 50.0),
+            _arc((0.0, 0.0), 10.0, 50.0, 120.0),
+        ]
+        edges = [others[0], chain[0], others[1], chain[1], others[2]]
+        out = merge_cocircular_overlaps(edges)
+
+        self.assertEqual(len(out), 4)  # 3 "others" + 1 fuso
+        self.assertIs(out[0], others[0])
+        seg = out[1].segment
+        self.assertAlmostEqual(math.degrees(seg.end_angle), 120.0)
+        self.assertIs(out[2], others[1])
+        self.assertIs(out[3], others[2])
+
+    def test_lista_vuota(self):
+        self.assertEqual(merge_cocircular_overlaps([]), [])
 
 
 if __name__ == "__main__":

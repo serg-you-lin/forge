@@ -43,10 +43,11 @@ healing: i nodi topologici reali (angoli, diramazioni) distano molto di più.
 
 import math
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Tuple, List, Dict
 
 from ..geometry import round_point
+from ..primitives.segments import ArcSeg, CircleSeg, segment_endpoints
 from .edge import Edge
 
 
@@ -250,6 +251,22 @@ def cluster_points(points: list, epsilon: float) -> Dict[Tuple, Tuple]:
 # Costruzione grafo
 # ---------------------------------------------------------------------------
 
+def _close_self_loop(edge: Edge, epsilon: float):
+    """ArcSeg il cui sviluppo (raggio*sweep) supera epsilon -> CircleSeg (loop degenere vero). Altrimenti `None` (sliver, v. MAP.md D52)."""
+    seg = edge.segment
+    if not isinstance(seg, ArcSeg):
+        return None
+    if seg.radius * seg._sweep() <= epsilon:
+        return None
+
+    # Un giro intero è un cerchio, non "un ArcSeg che riparte da dove
+    # capitava il suo estremo originale" — stesso primitivo di un CIRCLE
+    # nativo, stesso punto canonico (`segment_endpoints`).
+    closed_segment = CircleSeg(center=seg.center, radius=seg.radius)
+    anchor = segment_endpoints(closed_segment)[0]
+    return replace(edge, start=anchor, end=anchor, segment=closed_segment)
+
+
 def build_node_graph(edges: list, epsilon: float = 0.0) -> Graph:
     """
     Costruisce il Graph da list[Edge].
@@ -287,9 +304,11 @@ def build_node_graph(edges: list, epsilon: float = 0.0) -> Graph:
         s = canon(edge.start)
         e = canon(edge.end)
         if s == e:
-            # Endpoint distinti collassati dal clustering: sliver più corto di
-            # epsilon. Non è un loop strutturale — lo si lascia fuori dal grafo
-            # e lo raccoglie edges_to_open_features come traccia aperta.
+            # Endpoint collassati dal clustering: sliver, salvo che l'edge
+            # abbia sviluppo reale non trascurabile (v. MAP.md D52).
+            closed = _close_self_loop(edge, epsilon)
+            if closed is not None:
+                degenerate.append(closed)
             continue
 
         raw[s].append((edge, e))
