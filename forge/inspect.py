@@ -167,9 +167,8 @@ def inspect_document(doc, graph: bool = True, limit: Optional[int] = 60) -> None
         if limit is not None and i >= limit:
             print(f"  ... e altri {len(edges) - limit}")
             break
-        cp = " [closed_path]" if e.closed_path else ""
         print(f"  [{i}] role={_role(e.role):<13} {_p(e.start)} -> {_p(e.end)}  "
-              f"{_describe_segment(e.segment)}{cp}")
+              f"{_describe_segment(e.segment)}")
 
     anns = getattr(doc, "annotations", []) or []
     if anns:

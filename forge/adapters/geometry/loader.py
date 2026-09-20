@@ -196,7 +196,6 @@ class GeometryAdapter(ForgeAdapter):
                 start=self._round(a),
                 end=self._round(b),
                 segment=LineSeg(start=a, end=b),
-                closed_path=closed,
             ))
         return edges
 

@@ -347,7 +347,7 @@ class DxfAdapter(ForgeAdapter):
         edges = []
         seen_segment_keys = set()
 
-        def _append_edge(role, segment, closed_path=False, style=None):
+        def _append_edge(role, segment, style=None):
             key = _segment_key(segment)
             if key in seen_segment_keys:
                 return
@@ -362,7 +362,6 @@ class DxfAdapter(ForgeAdapter):
                 start=start_r,
                 end=end_r,
                 segment=segment,
-                closed_path=closed_path,
                 style=style or EdgeStyle(),
             ))
 
@@ -423,12 +422,8 @@ class DxfAdapter(ForgeAdapter):
                 primitives = DxfEntityDispatcher(entity).parse() or []
                 if not isinstance(primitives, list):
                     primitives = [primitives]
-                poly_closed = bool(
-                    getattr(entity, "is_closed", False)
-                    or getattr(entity, "closed", False)
-                )
                 for segment in primitives:
-                    _append_edge(role, segment, closed_path=poly_closed, style=style)
+                    _append_edge(role, segment, style=style)
                 continue
 
             # LINE / ARC / SPLINE / ELLIPSE aperta

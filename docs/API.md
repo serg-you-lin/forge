@@ -314,8 +314,6 @@ forge.detect(
     max_drill_diameter=32.1,            # HOLE_DIAMETER_THRESHOLD
     bending_tolerance=1.0,
     engrave_tolerance=1.0,
-    deduplicate_boundary_open=True,
-    boundary_tolerance=0.05,
 ) -> ForgeResult
 ```
 
@@ -349,7 +347,6 @@ incisioni).
 | `max_drill_diameter` | parametro di processo: sotto questo Ø un contorno circolare è un foro da punta, sopra resta contorno interno. Default `32.1` mm. |
 | `bending_tolerance` | lunghezza minima di una traccia perché sia considerata piega. |
 | `engrave_tolerance` | riservato all'inferenza geometrica delle incisioni (oggi no-op). |
-| `deduplicate_boundary_open` | rimuove dalla trash i segmenti aperti che coincidono col bordo outer. |
 
 ```python
 result = forge.heal(doc)
@@ -367,7 +364,6 @@ forge.heal_and_detect(
     features="all",
     max_drill_diameter=32.1,
     bending_tolerance=1.0, engrave_tolerance=1.0,
-    deduplicate_boundary_open=True, boundary_tolerance=0.05,
 ) -> ForgeResult
 ```
 
@@ -779,7 +775,7 @@ layer, dettaglio di ogni entità. Non tocca `forge`.
 forge.inspect_document(doc, graph=True, limit=60) -> None
 ```
 **Livello 2** — un `ForgeDocument` (o un path): `source_meta`, warning del loader,
-gli `Edge` (ruolo, primitiva, endpoint, `closed_path`), le annotazioni, e il
+gli `Edge` (ruolo, primitiva, endpoint), le annotazioni, e il
 grafo dei nodi (nodi totali, loop degeneri, nodi di branching, estremi liberi).
 "Cosa ha capito l'adapter."
 

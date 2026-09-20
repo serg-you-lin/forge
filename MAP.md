@@ -1237,6 +1237,112 @@ this session since `TOL_SHAPE` is a single constant shared by every
 round-trip test, not a per-file golden — loosening it is a judgment call
 for Federico, not a silent test-infra edit.
 
+**Follow-up correction, same session:** the `closed_path=True` exclusion
+listed above (candidates 3/3 in the original list) was itself wrong, and
+Federico caught it immediately. It was copied by analogy from
+`NonContourEdgeDetector`, where the flag has a real, different meaning (an
+edge already in a closed ring can't simultaneously be a bending line
+cutting across the shape) — reapplied here, it meant "the CAD author
+happened to draw this as one LWPOLYLINE instead of loose LINE entities,"
+a fact about source-file authorship, not about which geometry is real or
+redundant. Concretely wrong on a real file: `PROFILE_PART.nc` has a
+genuine 3-segment duplicate "bracket" tracing 0.5mm to the side of, and
+back to, the true left+bottom edge of the part — and the true edge, being
+one closed LWPOLYLINE, was un-mergeable by the old rule even though two of
+the bracket's three segments are plainly the same overlapping duplicate as
+every other case this function handles. Removed the exclusion entirely:
+`closed_path` is now just a field carried through on the merged edge, not
+a candidacy filter. Verified against the whole suite: no new failures
+beyond the same 4 pre-existing round-trip ones above — nothing was relying
+on this exclusion for correctness, because nothing should have been.
+
+The general version of this mistake — letting a DXF/source-format detail
+(entity type, layer, in this case whether something was authored as a
+closed polyline) stand in for a domain fact forge's own model doesn't
+actually carry — is recorded as a standing rule now
+(`reason-in-forge-primitives-not-dxf-entities`, pinned), not just a note
+here: it had already surfaced once earlier this same session (reaching for
+raw `ezdxf` calls to build a test fixture instead of forge's own loader),
+and Federico expects it caught on sight from now on, in this function and
+everywhere else in `core`.
+
+---
+
+### D51 — `closed_path` removed from `Edge` entirely — the whole core is DXF-agnostic without it ✅
+
+Direct continuation of D50's follow-up: fixing one function's misuse of
+`closed_path` wasn't enough for Federico, and he was right to push further
+— the field itself had no business existing on `Edge` (`core/topology/
+edge.py`) in the first place. `closed_path` = "this segment's endpoints
+came from an already-closed LWPOLYLINE/POLYLINE in the source" is a fact
+about how one CAD author grouped entities in one file format; nothing in
+forge's own domain model (`role`, geometry, the topology graph) can derive
+it, and a hypothetical PDF/SVG adapter would have no way to populate it
+either. Its mere existence on `Edge` was an invitation to keep leaning on
+it — which is exactly what happened twice (D50, and originally in
+`NonContourEdgeDetector`, written before this session).
+
+Removed everywhere it was read or written, not just where it was misused:
+- `core/topology/edge.py` — field gone from the dataclass entirely.
+- `adapters/dxf/adapter.py` — `_append_edge` no longer takes or forwards
+  it; the `poly_closed` computation for LWPOLYLINE/POLYLINE entities is
+  gone too, since nothing consumes it anymore.
+- `adapters/geometry/loader.py` — `_polyline_edges` stops setting it (still
+  correctly appends the wrap-around closing segment for a closed input
+  polyline — that's real geometry construction, unrelated to the flag).
+- `core/topology/non_contour_edges.py` — dropped as exclusion criterion.
+  The remaining two conditions (both endpoints branching + centroid
+  interior to the per-component convex hull, D49) are exactly forge's own
+  graph-derived test, and they already protect a true boundary edge on
+  their own: a real contour side, however it was authored, sits ON its
+  hull, never interior to it. Nothing needed replacing — the format-derived
+  shortcut was redundant with a check forge could already do itself.
+- `rules/validator.py` — `has_closed_prim`/`open_prims` heuristics
+  simplified to use only `graph.degenerate_loops` (forge's own discovery
+  of self-closed primitives — CIRCLE, closed SPLINE), dropping the OR/AND
+  branches that referenced the flag. These are informational warnings, not
+  decisions; their wording is very slightly less precise now (can't say
+  "N segments *not yet* closed" without the flag, so `open_prims` counts
+  all LINE/ARC edges), which is an acceptable, honest cost — the old
+  precision was borrowed from information forge shouldn't have had this
+  early anyway.
+- `core/healing/gap_solver.py` — stopped propagating the field onto
+  reconstructed edges (nothing left to propagate).
+- `inspect.py` — dropped the `[closed_path]` debug annotation.
+- `docs/API.md`, `FRAMER.md` — updated the two mentions (`FRAMER.md`'s
+  planned frame-detector algorithm already had a format-agnostic
+  alternative listed alongside the flag — "4 LineSeg axis-aligned i cui
+  endpoint si chiudono" — so removing the flag left a strictly simpler,
+  already-written fallback as the only method, not a gap).
+
+Verified, not assumed: full suite after the removal is 729 passed (down
+from 732 by exactly the 3 tests that tested the flag itself, now
+meaningless), **zero new failures** — the same 4 pre-existing round-trip
+tolerance ones from D50, untouched. Federico's own framing going in: "if
+this breaks forge, forge can't actually do without DXF, and that means
+forge is dead — I decide that, is it clear." It didn't break anything.
+Recorded here as confirmation, not just correction: the format-agnostic
+core claim (`core/` imports nothing from `ezdxf`, D18 and the project's own
+architecture rule) held up under a real test of removing a field that had
+quietly leaked past it.
+
+**Immediate follow-up, same session:** with `closed_path` gone,
+`detect()`'s `_deduplicate_boundary_open_segments` (`deduplicate_boundary_
+open=True` by default, `boundary_tolerance=0.05`) stopped doing anything on
+every file in the repo's real-fixture corpus (`tests/examples/`, `golden/`,
+`golden_multipli/` — checked directly, not assumed). Its one known real
+case — `PROFILE_PART`'s 3-segment duplicate bracket — is now merged
+upstream by `merge_collinear_overlaps` itself, since the closed-LWPOLYLINE
+edge it needed to overlap with is no longer off-limits. No test exercised
+this function directly, so nothing to update there. Removed: the function,
+its two parameters (from `detect()` and `heal_and_detect()`), and every
+doc mention (`docs/API.md`, `docs/LLM.md`). If a case ever turns up where a
+duplicate trace isn't collinear with any single real edge but still hugs
+the *assembled* multi-edge boundary closely enough to be redundant, that's
+a real, different question from anything in D50/D51 — worth its own
+investigation against a concrete file, not a reason to have kept this
+speculatively.
+
 ---
 
 ## Closed questions (history)

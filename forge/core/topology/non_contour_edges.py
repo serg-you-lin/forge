@@ -11,11 +11,15 @@ ma anche un asse, una mezzeria, una tracciatura passante). La semantica vera
 sta in `tools/detect._detect_bending`, che li ripesca dalla trash.
 
 Un edge è escluso se:
-  1. Non proviene da un percorso già chiuso (closed_path) — quello è
-     contorno per definizione
-  2. Entrambi gli endpoint sono nodi branching nel grafo (degree > 2)
-  3. Il centroide è interno al convex hull della SUA componente connessa —
+  1. Entrambi gli endpoint sono nodi branching nel grafo (degree > 2)
+  2. Il centroide è interno al convex hull della SUA componente connessa —
      non corre lungo il bordo di quella forma
+
+Nessun'altra condizione: da dove viene l'edge nel formato sorgente (una
+LWPOLYLINE già chiusa piuttosto che una LINE sciolta) non è mai un criterio
+qui — un lato vero di contorno, comunque tracciato, sta sempre sul bordo del
+hull (criterio 2 lo salva da solo); solo una vera diagonale interna ci
+finisce dentro, a prescindere da come è stata disegnata.
 
 Il convex hull è per componente connessa, non sull'intero documento: un
 foglio con più viste/pezzi indipendenti (nessun edge in comune) userebbe
@@ -46,7 +50,6 @@ class NonContourEdgeDetector:
 
         candidates = [
             e for e in edges
-            if not getattr(e, "closed_path", False)
             if e.start in branching and e.end in branching
         ]
         if not candidates:

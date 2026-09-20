@@ -138,8 +138,6 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
 
     Esclusi a monte, mai candidati alla fusione:
       - segmenti non LineSeg (ARC/SPLINE non sono "collineari")
-      - edge con `closed_path=True` — provengono da un anello già chiuso,
-        contorno per definizione (stessa esclusione di NonContourEdgeDetector)
       - edge con `role` già diverso da UNKNOWN — un ruolo assegnato da
         label_map (bending/engrave/hole/...) è dato di dominio: quegli edge
         non entrano mai nel graph-building (`HealStep._split_labeled` li leva
@@ -149,11 +147,24 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
         disegno (font vettoriale), non per errore, e fonderli cambiava la
         feature attesa
 
+    Niente qui guarda da dove viene l'edge nel formato sorgente (una
+    polilinea già chiusa contro linee sciolte, un layer, un tipo di
+    entità): una versione precedente escludeva gli edge di un percorso già
+    chiuso per analogia con `NonContourEdgeDetector` (dove un'esclusione
+    simile ha un significato diverso: un edge di un anello chiuso non può
+    ANCHE essere una piega che lo attraversa), ma qui non proteggeva niente
+    di reale — un lato vero disegnato come polilinea e un doppione
+    disegnato come LINE sciolte sono la stessa identica situazione di
+    qualunque altra coppia, e l'esclusione impediva di vederlo (golden
+    reale `PROFILE_PART`: una staffa di scarto a 3 lati duplicava
+    esattamente un lato di una polilinea chiusa). Rimossa: `Edge` non porta
+    più quel dato, per lo stesso motivo (MAP.md, seguito D50).
+
     Il segmento sostituto usa i due estremi reali più lontani lungo la retta
     (le proiezioni minima e massima) — mai un punto fabbricato — e conserva
-    `style`/`closed_path` del primo edge del gruppo in ordine di input (lo
-    stile può differire leggermente fra spezzoni, si tiene quello del primo;
-    `role` è UNKNOWN per ogni membro per costruzione).
+    `style` del primo edge del gruppo in ordine di input (lo stile può
+    differire leggermente fra spezzoni, si tiene quello del primo; `role` è
+    UNKNOWN per ogni membro per costruzione).
 
     Restituisce una nuova lista di Edge della STESSA lunghezza relativa e nel
     MEDESIMO ordine di input per tutto ciò che non fonde: un pre-pass di
@@ -172,7 +183,7 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
     buckets: dict = {}
     for edge in edges:
         seg = edge.segment
-        if not isinstance(seg, LineSeg) or edge.closed_path or edge.role != ContourRole.UNKNOWN:
+        if not isinstance(seg, LineSeg) or edge.role != ContourRole.UNKNOWN:
             continue
         buckets.setdefault(_line_key(seg.start, seg.end), []).append(edge)
 
@@ -263,8 +274,8 @@ def _register_merge(chain: List[tuple], original_index: dict, replacement: dict,
     representative = min(members, key=lambda e: original_index[id(e)])
 
     merged_segment = LineSeg(start=lo_start_pt, end=hi_end_pt)
-    # role/style/closed_path del rappresentante (il primo membro in ordine di
-    # input, non necessariamente il primo nella catena ordinata per t)
+    # role/style del rappresentante (il primo membro in ordine di input, non
+    # necessariamente il primo nella catena ordinata per t)
     replacement[id(representative)] = replace(
         representative, start=lo_start_pt, end=hi_end_pt, segment=merged_segment
     )

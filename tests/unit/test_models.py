@@ -189,7 +189,7 @@ class TestHole(unittest.TestCase):
 class TestEdge(unittest.TestCase):
     """
     Dopo il refactoring Edge è dati puri: role + start/end + segment
-    (primitiva nativa) + closed_path. Nessun source_ref, layer o geometry.
+    (primitiva nativa) + style. Nessun source_ref, layer o geometry.
     """
 
     def _seg(self, start=(0.0, 0.0), end=(100.0, 0.0)):
@@ -214,18 +214,6 @@ class TestEdge(unittest.TestCase):
         seg = self._seg()
         edge = Edge(role=ContourRole.UNKNOWN, start=(0, 0), end=(1, 1), segment=seg)
         self.assertIs(edge.segment, seg)
-
-    def test_003_closed_path_default_false(self):
-        """closed_path è False di default."""
-        edge = Edge(role=ContourRole.UNKNOWN, start=(0, 0), end=(1, 1),
-                    segment=self._seg((0, 0), (1, 1)))
-        self.assertFalse(edge.closed_path)
-
-    def test_004_closed_path_flag(self):
-        """closed_path segnala geometria proveniente da un percorso chiuso."""
-        edge = Edge(role=ContourRole.OUTER, start=(0, 0), end=(1, 1),
-                    segment=self._seg((0, 0), (1, 1)), closed_path=True)
-        self.assertTrue(edge.closed_path)
 
     def test_005_role_preserved(self):
         """role cached sull'Edge — assegnato dall'adapter, mai dal layer DXF."""
