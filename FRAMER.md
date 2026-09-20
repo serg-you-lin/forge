@@ -107,8 +107,10 @@ che su `RawSegment` propri.
 
 ### Cornice
 
-1. Tra gli `edge`, trova i **rettangoli chiusi**: un `closed_path` a 4 lati, o 4
-   `LineSeg` axis-aligned i cui endpoint si chiudono.
+1. Tra gli `edge`, trova i **rettangoli chiusi**: 4 `LineSeg` axis-aligned i
+   cui endpoint si chiudono (nessun flag di provenienza dal formato — la
+   chiusura è un fatto geometrico che si verifica sugli endpoint, non
+   qualcosa che l'adapter può dichiarare in anticipo).
 2. Filtra quelli con **ratio ≈ √2** (formati ISO), tolleranza ±5%
    (`RATIO_TOLERANCE`).
 3. Per ogni candidato calcola il **contenimento**: frazione della geometria
@@ -202,8 +204,7 @@ step `titleblock.py` dell'interprete (`INTERPRETER.md` passo [8]) — o lo è.
 ## Stato e prossimi passi
 
 - [ ] recuperare `frame_detector.py` da `ccbb34f^` e riscriverlo sulle primitive
-      di forge (`Edge` / `LineSeg` / `closed_path`), niente `RawSegment`, niente
-      `print("DEBUG")`
+      di forge (`Edge` / `LineSeg`), niente `RawSegment`, niente `print("DEBUG")`
 - [x] decidere l'interfaccia con `heal` — **B**, chiusa in forge D30
       (`is_structural_role` unico, `_split_labeled` generalizzato, `detect()`
       non tocca i ruoli sconosciuti, `forge.normalize_role` pubblica)

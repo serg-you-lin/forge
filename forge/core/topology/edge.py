@@ -38,15 +38,20 @@ class Edge:
         end        : endpoint arrotondato alla tolerance
         segment    : primitiva geometrica nativa — mai discretizzata qui,
                      la discretizzazione avviene nel LoopFinder via .discretize()
-        closed_path: True se il segmento proviene da un percorso già chiuso
-                     (LWPOLYLINE/POLYLINE closed). Geometria strutturale di
-                     contorno per definizione — non può essere una linea di piega.
         style      : aspetto grezzo (linetype/colore) dell'entità sorgente —
                      captato dall'adapter, mai interpretato qui (Cluster E).
+
+    Deliberatamente NIENTE campo che dica "veniva da una LWPOLYLINE chiusa"
+    o simili: se un percorso è già chiuso è un fatto che il grafo di forge
+    scopre da sé (`Graph.degenerate_loops`, un loop trovato dal
+    `LoopFinder`) — non un'informazione che l'adapter può accorciare
+    consegnandola come flag. Un flag così è la provenienza nel formato
+    sorgente travestita da proprietà topologica: un adapter PDF/SVG non
+    avrebbe modo di popolarlo, e il core non deve mai aver bisogno che lo
+    faccia (trovato e tolto: MAP.md, seguito D50).
     """
-    role:        str
-    start:       Tuple[float, float]
-    end:         Tuple[float, float]
-    segment:     Segment
-    closed_path: bool = False
-    style:       EdgeStyle = field(default_factory=EdgeStyle)
+    role:    str
+    start:   Tuple[float, float]
+    end:     Tuple[float, float]
+    segment: Segment
+    style:   EdgeStyle = field(default_factory=EdgeStyle)

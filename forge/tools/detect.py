@@ -101,8 +101,6 @@ def detect(
     max_drill_diameter: float = HOLE_DIAMETER_THRESHOLD,
     bending_tolerance: float = 1.0,
     engrave_tolerance: float = 1.0,
-    deduplicate_boundary_open: bool = True,
-    boundary_tolerance: float = 0.05,
 ) -> ForgeResult:
     """
     Classifica le feature dentro le parti già trovate da heal().
@@ -126,8 +124,6 @@ def detect(
     feats = _normalize_features(features)
 
     _detect_labeled(result)
-    if deduplicate_boundary_open:
-        _deduplicate_boundary_open_segments(result, tolerance=boundary_tolerance)
     if "bending" in feats:
         _detect_bending(result, bending_tolerance=bending_tolerance)
     if "engrave" in feats:
@@ -290,39 +286,6 @@ def _detect_labeled(result: ForgeResult) -> None:
 # ---------------------------------------------------------------------------
 # Step 2 — bending geometrico
 # ---------------------------------------------------------------------------
-
-def _deduplicate_boundary_open_segments(result: ForgeResult, tolerance: float = 0.05) -> None:
-    if not result.clusters or not result.trash_entities:
-        return
-
-    kept    = []
-    removed = 0
-
-    for proxy in result.trash_entities:
-        pts = _proxy_pts(proxy)
-        if track_shape_type(pts) != "line" or len(pts) < 2:
-            kept.append(proxy)
-            continue
-
-        segment = LineString([pts[0], pts[-1]])
-        on_boundary = False
-        for cluster in result.clusters:
-            if cluster.outer.polygon.boundary.buffer(tolerance).covers(segment):
-                on_boundary = True
-                break
-
-        if on_boundary:
-            removed += 1
-        else:
-            kept.append(proxy)
-
-    if removed:
-        result.warnings.append(
-            f"detect(): rimossi {removed} segmenti aperti sovrapposti al bordo outer"
-        )
-
-    result.trash_entities = kept
-
 
 def _detect_bending(result: ForgeResult, bending_tolerance: float = 1.0) -> None:
     promoted_ids: set[int] = set()

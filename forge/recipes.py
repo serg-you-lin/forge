@@ -28,9 +28,7 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
                     features="all",
                     max_drill_diameter: float = HOLE_DIAMETER_THRESHOLD,
                     bending_tolerance: float = 1.0,
-                    engrave_tolerance: float = 1.0,
-                    deduplicate_boundary_open: bool = True,
-                    boundary_tolerance: float = 0.05) -> ForgeResult:
+                    engrave_tolerance: float = 1.0) -> ForgeResult:
     """
     heal() + detect() in un colpo solo — la via del 90% dei chiamanti.
 
@@ -45,8 +43,7 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
 
     `detect()` viene saltato se `heal()` non produce cluster validi (il result
     torna comunque, con `is_valid=False` e gli errori popolati). I parametri
-    `features` / `max_drill_diameter` / `*_tolerance` / `deduplicate_boundary_open`
-    / `boundary_tolerance` sono quelli di `detect()`.
+    `features` / `max_drill_diameter` / `*_tolerance` sono quelli di `detect()`.
 
     Restano disponibili `heal()` e `detect()` separati: un renderer o un
     nesting tool possono volere la sola topologia.
@@ -59,9 +56,7 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
                features=features,
                max_drill_diameter=max_drill_diameter,
                bending_tolerance=bending_tolerance,
-               engrave_tolerance=engrave_tolerance,
-               deduplicate_boundary_open=deduplicate_boundary_open,
-               boundary_tolerance=boundary_tolerance)
+               engrave_tolerance=engrave_tolerance)
 
     return result
 

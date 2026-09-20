@@ -6,8 +6,8 @@ from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg
 
 
-def _line(p1, p2, role="unknown", closed_path=False):
-    return Edge(role=role, start=p1, end=p2, segment=LineSeg(start=p1, end=p2), closed_path=closed_path)
+def _line(p1, p2, role="unknown"):
+    return Edge(role=role, start=p1, end=p2, segment=LineSeg(start=p1, end=p2))
 
 
 def _line_raw(rounded_p1, rounded_p2, raw_p1, raw_p2, role="unknown"):
@@ -95,15 +95,6 @@ class TestMergeCollinearOverlaps(unittest.TestCase):
             _line((0.0, 0.0), (10.0, 0.0), role="engrave"),
             _line((5.0, 0.0), (15.0, 0.0), role="engrave"),
             _line((8.0, 0.0), (20.0, 0.0), role="engrave"),
-        ]
-        out = merge_collinear_overlaps(edges)
-        self.assertEqual(len(out), 3)
-
-    def test_closed_path_non_e_candidato(self):
-        edges = [
-            _line((0.0, 0.0), (10.0, 0.0), closed_path=True),
-            _line((5.0, 0.0), (15.0, 0.0), closed_path=True),
-            _line((8.0, 0.0), (20.0, 0.0), closed_path=True),
         ]
         out = merge_collinear_overlaps(edges)
         self.assertEqual(len(out), 3)

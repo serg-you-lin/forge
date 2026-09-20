@@ -99,9 +99,7 @@ def validate(doc: ForgeDocument) -> ForgeResult:
     tol = doc.source_meta.get("tolerance", 0.05)
     graph = build_node_graph(edges, epsilon=tol)
     has_junction = any(len(conn) >= 2 for conn in graph.nodes.values())
-    has_closed_prim = bool(graph.degenerate_loops) or any(
-        getattr(e, "closed_path", False) for e in edges
-    )
+    has_closed_prim = bool(graph.degenerate_loops)
     if not has_junction and not has_closed_prim:
         result.warnings.append(
             "Nessun endpoint condiviso alla tolleranza dichiarata e nessuna "
@@ -113,7 +111,6 @@ def validate(doc: ForgeDocument) -> ForgeResult:
     open_prims = sum(
         1 for e in edges
         if isinstance(e.segment, (LineSeg, ArcSeg))
-        and not getattr(e, "closed_path", False)
     )
     if open_prims:
         result.warnings.append(

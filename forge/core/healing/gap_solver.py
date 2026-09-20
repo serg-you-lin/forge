@@ -351,7 +351,6 @@ def apply_gap_fixes(edges: List[Edge], fixes: List[GapFix], node_decimals: int =
                 start=node if fix.role == "start" else base.start,
                 end=node if fix.role == "end" else base.end,
                 segment=new_seg,
-                closed_path=getattr(base, "closed_path", False),
             )
         elif isinstance(fix, AddSegment):
             a = (float(fix.pt_a[0]), float(fix.pt_a[1]))
