@@ -20,7 +20,7 @@ import os
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/lab/3d_1.dxf"
+INPUT     = r"tests/examples/dedup.dxf"
 TOLERANCE = 0.05
 LABEL_MAP = {
     "Filettati": "threaded_hole",

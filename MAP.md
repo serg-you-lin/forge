@@ -1097,6 +1097,118 @@ inert for every existing fixture).
 
 ---
 
+### D49 — `NonContourEdgeDetector`'s convex hull is per connected component, not per sheet ✅
+
+Found on `tests/lab/SHEET_BLANK.dxf` (a real multi-view sheet: a plate
+outline plus a second, much smaller "thickness" view above it — two shapes,
+no edge in common). The small view's own outer never closed, at *any*
+tolerance from 0.05 to 1.0 — not a gap: the raw graph showed 4 branching
+nodes (degree > 2) with zero free endpoints. `NonContourEdgeDetector`
+excludes an edge as "non-contour" (a pass-through line, e.g. a bending line)
+when both its endpoints are branching *and* its centroid sits inside the
+convex hull rather than on it — but the hull was built from
+`graph.nodes.keys()`, i.e. every node in the whole document. With two
+disconnected shapes on one sheet, that hull is dominated by the bigger one:
+3 of the small view's 4 sides measured 0.2-1.0mm from that combined hull's
+boundary (above tolerance) and got excluded as if they were interior
+chords, leaving too few edges for the loop-finder to close anything — the
+4th side survived only because it happened to touch the sheet's overall
+hull by coincidence.
+
+Fix: `Graph.connected_components()` (new, plain BFS over `graph.nodes`) —
+`NonContourEdgeDetector` now builds one hull per component and looks up the
+right one per candidate edge, instead of one hull for the whole graph. A
+sheet with a single connected shape (every golden fixture with a bending
+line, e.g. `linee_di_piegatura_interne.dxf`) gets the exact same hull as
+before — zero behavior change there, which is why the fix carries no risk
+for the existing suite.
+
+Suite: 726 passed (new test:
+`test_hull_per_componente_non_per_foglio_intero`, two disconnected shapes on
+one graph, asserts the small one's real contour edges survive). TRG19E now
+heals to 2 clean clusters (the plate, area 8159.97, and the thickness strip,
+68.0 — exactly 68mm × 1mm).
+
+---
+
+### D50 — `merge_collinear_overlaps`: a line drawn as overlapping fragments is one edge, not several ✅
+
+Found on `tests/examples/dedup.dxf` (built for this investigation): a
+trapezoid with three internal bend lines, but every straight side was
+traced as 3-4 overlapping LINE fragments instead of one segment (a common
+CAD-export/redraw artifact — Federico's own suspicion, confirmed against a
+concrete file). Each internal fragment endpoint is a spurious node the exact
+graph sees as a real corner: `heal()` found zero loops and fell back to
+`polygonize`, which sliced the trapezoid into 4 meaningless rectangles
+instead of 1 part with 3 bending lines.
+
+New `core/healing/normalizer.merge_collinear_overlaps(edges)`: groups
+`LineSeg` edges by *exact* infinite line (canonical angle + perpendicular
+offset, fixed tight precision — deliberately NOT the caller's heal
+tolerance, see below), then chain-merges the ones whose projections onto
+that line truly overlap (positive-length shared interval, checked via a
+sweep) into one edge spanning the true extremes. Runs in `HealStep.run()`
+before anything else — before `_split_labeled()`, before any gap-closing —
+so the graph never sees the spurious nodes at all.
+
+Three false starts, each caught by the golden suite rather than assumed
+away, each narrowing the rule:
+
+1. **Touch is not overlap.** First version chain-merged on `lo <= hi +
+   tolerance` (bridges touching AND overlapping segments). Broke
+   `fa_che_non_mi_incazzi` (a real ~154mm² notch vanished): two sides of an
+   actual corner cut touched a longer edge end-to-end and got swallowed
+   into it. A vertex where two edges meet at one point is normal contour
+   geometry, not a redrawn line — tightened to strictly-positive overlap
+   (`lo < hi - 1e-6`, a float-noise guard, not a user tolerance).
+2. **Offset precision must not scale with heal tolerance.** First version
+   rounded the perpendicular offset to `tolerance`-derived decimals — at
+   tolerance 0.5 that's *zero* decimals, so two real, distinct parallel
+   features 0.5mm apart (a tooth/slot pattern in
+   `fa_che_non_mi_incazzi`/`la_104`) rounded to the same integer offset and
+   merged as if they were one line. "Same infinite line" is a geometric-
+   precision question, not a gap-closing one — decoupled entirely: fixed
+   `_OFFSET_DECIMALS = 3` (0.001mm), independent of whatever tolerance the
+   caller passes to `heal()`.
+3. **A pair can be coincidence; three can't, in practice.** Even with (1)
+   and (2) fixed, `la_104` and `PROFILE_PART.nc` (real files) still broke:
+   in both, two *unrelated* strokes of engraved text/marking geometry
+   happened to be collinear and overlap — a "1" and an adjacent letter's
+   vertical, or similar. Merging them corrupted two nearby real parts.
+   Restricted merges to `role == ContourRole.UNKNOWN` only first (labeled
+   edges never enter graph-building anyway, so merging them buys nothing
+   and risks exactly this), which fixed `la_104` — its strokes were already
+   role `engrave`. `7074`'s strokes were `unknown` too, so the role guard
+   didn't help there: added `_MIN_CHAIN_TO_MERGE = 3` — two independent
+   segments landing on the same line and overlapping is plausible
+   coincidence (found twice, both in text-like stroke geometry); three or
+   more, independently, is a far rarer coincidence and a much stronger
+   signal of "the same line, redrawn." Trades away the simplest 2-copy
+   duplicate case for safety on real files — a deliberate, discussed
+   choice, not an oversight.
+
+A fourth bug had nothing to do with the merge rule itself: even at zero
+edges actually merged, the first implementation rebuilt the list as
+"bucketed groups, then everything else appended at the end" — pure
+reordering, no geometry change — and that reordering alone flipped
+`7074`'s result (4 clusters shrank to 2 real + 2 near-zero slivers), because
+the loop-finder's angular-deviation tie-break at a branching node is
+order-sensitive. Rewritten to preserve input order exactly: untouched edges
+never move, a merged group occupies its first (by input order) member's
+position, nothing else shifts. General lesson, not specific to this
+function: **a cleanup pre-pass must be a no-op on anything it doesn't
+touch, including list order** — order-dependent tie-breaks elsewhere in the
+topology code are a latent fragility worth remembering, not just worked
+around here.
+
+Suite: 734 passed (8 new tests in `tests/unit/core/test_normalizer.py`:
+chain-of-3 merges, chain-of-2 doesn't, touch-only doesn't, parallel-not-
+collinear doesn't, non-UNKNOWN role doesn't, `closed_path` doesn't, order
+preserved around a merge, empty input). `dedup.dxf` now heals to 1 cluster
+(area 363.0) with 3 bending lines, matching the hand-verified true shape.
+
+---
+
 ## Closed questions (history)
 
 - **Q1 — hole classification: topology or detection?** → resolved by D15
