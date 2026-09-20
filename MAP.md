@@ -1345,6 +1345,62 @@ speculatively.
 
 ---
 
+### D52 — `merge_cocircular_overlaps`: same fix as D50, for ArcSeg ✅
+
+Federico's own question: "same as the lines — can we do this for circles
+too?" Checked first, not assumed: real corpus has the exact same pattern —
+an arc drawn as 4-5 touching fragments (`piega_cazzuta`,
+`ORDERCODE_lineette_bastarde`), two semicircles making one full hole
+(`cerchi_ciambella`). Each fragment boundary is a spurious node in the
+graph, same as D50's collinear lines.
+
+Added `normalizer.merge_cocircular_overlaps`: same design as
+`merge_collinear_overlaps` (fixed-precision grouping key, chain on
+touch-or-overlap, only `role == UNKNOWN` is excluded, order-preserving),
+adapted to a circular domain — angles are ordered in `[0, 2*pi)` and the
+last fragment is unwrapped by `+2*pi` before chaining if it closes back
+into the first, so a real gap elsewhere on the circle doesn't get bridged
+by mistake. If the merged chain covers a full turn, the result has
+`Edge.start == Edge.end`, same as any native CIRCLE.
+
+This immediately exposed two bugs that had nothing to do with the new
+function itself — the merge was correct, downstream code wasn't ready for
+the edge shape it can now legitimately produce:
+
+1. **Gap-closer discarded near-closed loops as noise.**
+   `TestArcArcSameCircleClose` (`arc_arc_gap.dxf`, two semicircles: one side
+   touches exactly, the other has a real ~0.11° gap meant to close under
+   `tolerance`) started failing. `merge_cocircular_overlaps` correctly fuses
+   the exact-touch side into one ~360°-minus-a-sliver arc; but
+   `build_node_graph`'s epsilon-clustering had a rule — "if an edge's two
+   endpoints collapse into the same node, it's a sliver, drop it" — that
+   never checked the edge's actual length, only endpoint proximity. Proven
+   pre-existing and unrelated to the merge: a single hand-built native
+   ArcSeg of 359.9° sweep with close endpoints hit the exact same bug with
+   zero merging involved. Fixed in `graph.py`: when clustering collapses an
+   edge's endpoints, check real extent (`radius * sweep` for an ArcSeg)
+   against `epsilon` first — real extent wins, the edge becomes a proper
+   degenerate loop (closed exactly, one endpoint reused for both ends), only
+   a genuinely negligible edge still gets dropped. LineSeg is unaffected by
+   construction (its length *is* its endpoint distance, so it can never
+   clear this bar once its endpoints already clustered).
+
+2. **A full-circle ArcSeg can't be one bulge segment.** Once (1) let
+   `arc_arc_gap` actually heal, writing it back to DXF crashed: a single
+   ArcSeg with sweep = 2*pi needs `bulge = tan(sweep/4) = tan(pi/2)`, which
+   is undefined. Fixed in `adapters/dxf/exporter.py`
+   (`segments_to_pts_with_bulge`): a full-circle ArcSeg is split into two
+   180°-ish halves before bulge conversion — standard DXF convention, same
+   thing CAD software already does when it exports a circle as a
+   polyline.
+
+Suite: 740 passed, same 4 pre-existing round-trip tolerance failures as
+D50/D51 (untouched, `TOL_SHAPE` question still open). New unit tests:
+`TestMergeCocircularOverlaps` (`tests/unit/core/test_normalizer.py`) and
+`TestCloseSelfLoop` (`tests/unit/core/test_graph.py`).
+
+---
+
 ## Closed questions (history)
 
 - **Q1 — hole classification: topology or detection?** → resolved by D15

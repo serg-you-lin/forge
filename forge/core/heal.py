@@ -75,6 +75,7 @@ class HealStep:
         if not self.result.is_valid:
             return self.result
         self._merge_collinear_overlaps()
+        self._merge_cocircular_overlaps()
         self._split_labeled()
         self._preprocess()
         self.result.all_arcs = [
@@ -168,6 +169,22 @@ class HealStep:
         if n_merged:
             self.result.warnings.append(
                 f"{n_merged} segmenti collineari sovrapposti fusi prima della ricerca loop."
+            )
+        self.edges = merged
+
+    def _merge_cocircular_overlaps(self):
+        """
+        Stesso motivo di `_merge_collinear_overlaps`, sugli archi: un arco
+        tracciato a spezzoni che si toccano/sovrappongono (o due semicirchi
+        che insieme fanno un foro pieno) sono nodi spuri nel grafo —
+        `normalizer.merge_cocircular_overlaps`.
+        """
+        from .healing.normalizer import merge_cocircular_overlaps
+        merged = merge_cocircular_overlaps(self.edges)
+        n_merged = len(self.edges) - len(merged)
+        if n_merged:
+            self.result.warnings.append(
+                f"{n_merged} archi co-circolari sovrapposti fusi prima della ricerca loop."
             )
         self.edges = merged
 

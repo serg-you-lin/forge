@@ -22,9 +22,13 @@ contare come due":
                              sostituisce il gruppo, non solo confrontare due
                              valori.
 
+merge_cocircular_overlaps — stesso principio, sugli ArcSeg co-circolari
+                             invece dei LineSeg collineari (v. MAP.md D52).
+
 Funzioni pubbliche:
-    find_duplicates          — dato un iterabile di (key, ref), i ref duplicati
-    merge_collinear_overlaps — dato un iterabile di Edge, i gruppi da fondere
+    find_duplicates           — dato un iterabile di (key, ref), i ref duplicati
+    merge_collinear_overlaps  — dato un iterabile di Edge, i gruppi LineSeg da fondere
+    merge_cocircular_overlaps — dato un iterabile di Edge, i gruppi ArcSeg da fondere
 """
 
 from __future__ import annotations
@@ -32,7 +36,7 @@ import math
 from dataclasses import replace
 from typing import Any, Hashable, Iterable, List, Tuple
 
-from ..primitives.segments import LineSeg
+from ..primitives.segments import LineSeg, ArcSeg, CircleSeg, segment_endpoints
 from ..topology.edge import Edge
 from ...model.role import ContourRole
 
@@ -278,6 +282,147 @@ def _register_merge(chain: List[tuple], original_index: dict, replacement: dict,
     # necessariamente il primo nella catena ordinata per t)
     replacement[id(representative)] = replace(
         representative, start=lo_start_pt, end=hi_end_pt, segment=merged_segment
+    )
+    for e in members:
+        if e is not representative:
+            drop.add(id(e))
+
+
+# ---------------------------------------------------------------------------
+# merge_cocircular_overlaps
+# ---------------------------------------------------------------------------
+
+_TWO_PI = 2.0 * math.pi
+
+
+def _arc_key(center, radius) -> Tuple[float, float, float]:
+    """Chiave del cerchio (centro+raggio) a precisione fissa — v. `_line_key`."""
+    return (
+        round(center[0], _OFFSET_DECIMALS),
+        round(center[1], _OFFSET_DECIMALS),
+        round(radius, _OFFSET_DECIMALS),
+    )
+
+
+def merge_cocircular_overlaps(edges: Iterable[Edge]) -> List[Edge]:
+    """
+    `merge_collinear_overlaps` per gli ArcSeg: fonde gruppi co-circolari
+    (stesso centro+raggio, `_arc_key`) che si toccano/sovrappongono
+    angolarmente in un solo Edge ciascuno, incatenando a catena sul dominio
+    circolare [0, 2*pi) (srotolando oltre il taglio 0/2*pi quando serve).
+    Se la copertura totale chiude un giro intero, il fuso ha
+    Edge.start == Edge.end (loop degenere, v. MAP.md D52).
+
+    Stesse regole di `merge_collinear_overlaps`: esclude segmenti non ArcSeg
+    e `role != UNKNOWN`; usa `edge.start`/`edge.end` (arrotondati) come
+    estremi conservati, mai il punto ricalcolato a piena precisione;
+    preserva l'ordine di input per tutto ciò che non fonde.
+    """
+    edges = list(edges)
+    original_index = {id(e): i for i, e in enumerate(edges)}
+
+    buckets: dict = {}
+    for edge in edges:
+        seg = edge.segment
+        if not isinstance(seg, ArcSeg) or edge.role != ContourRole.UNKNOWN:
+            continue
+        buckets.setdefault(_arc_key(seg.center, seg.radius), []).append(edge)
+
+    replacement: dict = {}
+    drop: set = set()
+
+    for group in buckets.values():
+        if len(group) < 2:
+            continue
+        _merge_arc_group(group, original_index, replacement, drop)
+
+    result: List[Edge] = []
+    for edge in edges:
+        if id(edge) in drop:
+            continue
+        result.append(replacement.get(id(edge), edge))
+    return result
+
+
+def _merge_arc_group(group: List[Edge], original_index: dict, replacement: dict, drop: set) -> None:
+    """
+    Un gruppo di ArcSeg sullo stesso cerchio -> spezza in catene di
+    contatto/sovrapposizione angolare, ricongiunge l'ultima alla prima se
+    insieme chiudono il giro, registra una fusione per catena di 2+.
+    """
+    spans = []
+    for e in group:
+        seg = e.segment
+        sweep = seg._sweep()
+        if seg.ccw:
+            lo_angle, lo_point, hi_point = seg.start_angle % _TWO_PI, e.start, e.end
+        else:
+            lo_angle, lo_point, hi_point = seg.end_angle % _TWO_PI, e.end, e.start
+        hi_angle = lo_angle + sweep
+        spans.append((lo_angle, lo_point, hi_angle, hi_point, e, seg.center, seg.radius))
+
+    spans.sort(key=lambda s: s[0])
+
+    chains: List[list] = [[spans[0]]]
+    cur_hi = spans[0][2]
+    for span in spans[1:]:
+        lo, hi = span[0], span[2]
+        if lo <= cur_hi + _CHAIN_GAP_EPS:
+            chains[-1].append(span)
+            cur_hi = max(cur_hi, hi)
+        else:
+            chains.append([span])
+            cur_hi = hi
+
+    if len(chains) > 1:
+        first_lo = chains[0][0][0]
+        last_hi = max(s[2] for s in chains[-1])
+        if last_hi >= first_lo + _TWO_PI - _CHAIN_GAP_EPS:
+            # L'ultima catena chiude il giro nel primo: srotola la prima di
+            # +2*pi (i PUNTI restano quelli reali, solo l'angolo usato per
+            # l'ordinamento si sposta) e appendila in coda, così la catena
+            # unita resta monotona attraverso il taglio 0/2*pi.
+            shifted_first = [
+                (lo + _TWO_PI, lo_pt, hi + _TWO_PI, hi_pt, e, c, r)
+                for (lo, lo_pt, hi, hi_pt, e, c, r) in chains[0]
+            ]
+            chains[-1] = chains[-1] + shifted_first
+            chains.pop(0)
+
+    for chain in chains:
+        _register_arc_merge(chain, original_index, replacement, drop)
+
+
+def _register_arc_merge(chain: List[tuple], original_index: dict, replacement: dict, drop: set) -> None:
+    if len(chain) < 2:
+        return
+
+    lo_span = min(chain, key=lambda s: s[0])
+    hi_span = max(chain, key=lambda s: s[2])
+    lo_point = lo_span[1]
+    center, radius = lo_span[5], lo_span[6]
+
+    total_sweep = hi_span[2] - lo_span[0]
+    is_full_circle = total_sweep >= _TWO_PI - _CHAIN_GAP_EPS
+
+    members = [c[4] for c in chain]
+    representative = min(members, key=lambda e: original_index[id(e)])
+
+    if is_full_circle:
+        # Un giro intero è un cerchio, non "un ArcSeg che parte da dove
+        # capitava la prima fusione": stesso primitivo di un CIRCLE nativo,
+        # nessuna traccia di quale frammento fosse il primo.
+        merged_segment = CircleSeg(center=center, radius=radius)
+        end_point = lo_point = segment_endpoints(merged_segment)[0]
+    else:
+        end_point = hi_span[3]
+        merged_segment = ArcSeg(
+            center=center, radius=radius,
+            start_angle=lo_span[0], end_angle=hi_span[2], ccw=True,
+        )
+
+    replacement[id(representative)] = replace(
+        representative, start=lo_point, end=end_point, segment=merged_segment
     )
     for e in members:
         if e is not representative:
