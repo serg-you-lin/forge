@@ -35,3 +35,4 @@ class ClassifiedEntity:
     data:       dict = field(default_factory=dict)
     polygon:    Any  = None
     representative_point: Optional[Tuple[float, float]] = None
+    line:       Any  = None  # shapely LineString — geometria intera per un'entita' aperta (v. MAP.md D54)
