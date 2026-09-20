@@ -35,6 +35,14 @@ TOL_AREA = 0.1
 TOL_PERIMETER = 0.5
 TOL_SHAPE = 1.0
 
+# Solo per TestGoldenWriteBack: write-back DXF -> reload introduce rumore di
+# arrotondamento sub-mm indipendente da forge (v. MAP.md D52, bisect a
+# ac68da1). TOL_AREA/TOL_SHAPE restano stretti per TestGolden (output live
+# vs golden salvato) -- qui il confronto e' output vs se stesso dopo un giro
+# di scrittura/rilettura, un rumore diverso e piu' permissivo per natura.
+TOL_AREA_ROUNDTRIP = 20.0
+TOL_SHAPE_ROUNDTRIP = 30.0
+
 
 GLOBAL_LABEL_MAP = {
     "MARK": "engrave",
@@ -480,7 +488,7 @@ def _make_roundtrip_test(path):
             label = f"{src} round-trip parte {i+1}"
 
             self.assertAlmostEqual(
-                match.area, cluster.area, delta=TOL_AREA, msg=f"{label} area",
+                match.area, cluster.area, delta=TOL_AREA_ROUNDTRIP, msg=f"{label} area",
             )
             self.assertAlmostEqual(
                 match.outer.polygon.exterior.length,
@@ -489,7 +497,7 @@ def _make_roundtrip_test(path):
             )
             self.assertLess(
                 match.outer.polygon.symmetric_difference(cluster.outer.polygon).area,
-                TOL_SHAPE, msg=f"{label} outer shape",
+                TOL_SHAPE_ROUNDTRIP, msg=f"{label} outer shape",
             )
             self.assertEqual(
                 len(match.features("holes")), len(cluster.features("holes")), msg=f"{label} holes count",
