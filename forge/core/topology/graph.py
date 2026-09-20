@@ -99,6 +99,37 @@ class Graph:
             groups[canon].append(pt)
         return [(c, m) for c, m in groups.items() if len(m) > 1]
 
+    def connected_components(self) -> List[set]:
+        """
+        Componenti connesse del grafo (BFS sui nodi).
+
+        Un foglio con più viste/pezzi indipendenti produce più componenti —
+        nodi mai raggiungibili l'uno dall'altro perché non condividono nessun
+        edge. Serve a chi deve ragionare per forma (es. `NonContourEdgeDetector`,
+        che altrimenti calcolerebbe un convex hull su tutto il foglio invece
+        che sulla singola vista, scambiando lati di contorno di una vista
+        piccola per "interni" solo perché un'altra vista sullo stesso foglio è
+        più grande).
+        """
+        seen: set = set()
+        components: List[set] = []
+        for start in self.nodes:
+            if start in seen:
+                continue
+            stack = [start]
+            comp: set = set()
+            while stack:
+                n = stack.pop()
+                if n in comp:
+                    continue
+                comp.add(n)
+                for _edge, neighbor in self.nodes.get(n, []):
+                    if neighbor not in comp:
+                        stack.append(neighbor)
+            seen |= comp
+            components.append(comp)
+        return components
+
     def open_nodes(self) -> list:
         """
         Nodi con un solo edge incidente — gli estremi liberi del grafo.
