@@ -1144,68 +1144,98 @@ instead of 1 part with 3 bending lines.
 
 New `core/healing/normalizer.merge_collinear_overlaps(edges)`: groups
 `LineSeg` edges by *exact* infinite line (canonical angle + perpendicular
-offset, fixed tight precision — deliberately NOT the caller's heal
-tolerance, see below), then chain-merges the ones whose projections onto
-that line truly overlap (positive-length shared interval, checked via a
-sweep) into one edge spanning the true extremes. Runs in `HealStep.run()`
-before anything else — before `_split_labeled()`, before any gap-closing —
-so the graph never sees the spurious nodes at all.
+offset, fixed tight precision `_OFFSET_DECIMALS = 3` — deliberately NOT the
+caller's heal tolerance: "same infinite line" is a geometric-precision
+question, not a gap-closing one, and coupling it to a loose heal tolerance
+once rounded two real, distinct parallel features 0.5mm apart to the same
+offset and merged them as if one line, on `fa_che_non_mi_incazzi`), then
+chain-merges the ones that touch or overlap (a shared endpoint, or a
+positive-length shared interval — both checked via a sweep on the
+projection onto that line) into one edge spanning the true extremes. Runs
+in `HealStep.run()` before anything else — before `_split_labeled()`,
+before any gap-closing — so the graph never sees the spurious nodes at all.
 
-Three false starts, each caught by the golden suite rather than assumed
-away, each narrowing the rule:
+The rule looks almost trivial in hindsight — merge anything that touches or
+overlaps on the same exact line, 2 is enough — but getting there took two
+rounds of over-correction, each caught by the golden suite and each walked
+back once its real cause was found:
 
-1. **Touch is not overlap.** First version chain-merged on `lo <= hi +
-   tolerance` (bridges touching AND overlapping segments). Broke
-   `fa_che_non_mi_incazzi` (a real ~154mm² notch vanished): two sides of an
-   actual corner cut touched a longer edge end-to-end and got swallowed
-   into it. A vertex where two edges meet at one point is normal contour
-   geometry, not a redrawn line — tightened to strictly-positive overlap
-   (`lo < hi - 1e-6`, a float-noise guard, not a user tolerance).
-2. **Offset precision must not scale with heal tolerance.** First version
-   rounded the perpendicular offset to `tolerance`-derived decimals — at
-   tolerance 0.5 that's *zero* decimals, so two real, distinct parallel
-   features 0.5mm apart (a tooth/slot pattern in
-   `fa_che_non_mi_incazzi`/`la_104`) rounded to the same integer offset and
-   merged as if they were one line. "Same infinite line" is a geometric-
-   precision question, not a gap-closing one — decoupled entirely: fixed
-   `_OFFSET_DECIMALS = 3` (0.001mm), independent of whatever tolerance the
-   caller passes to `heal()`.
-3. **A pair can be coincidence; three can't, in practice.** Even with (1)
-   and (2) fixed, `la_104` and `PROFILE_PART.nc` (real files) still broke:
-   in both, two *unrelated* strokes of engraved text/marking geometry
-   happened to be collinear and overlap — a "1" and an adjacent letter's
-   vertical, or similar. Merging them corrupted two nearby real parts.
-   Restricted merges to `role == ContourRole.UNKNOWN` only first (labeled
-   edges never enter graph-building anyway, so merging them buys nothing
-   and risks exactly this), which fixed `la_104` — its strokes were already
-   role `engrave`. `7074`'s strokes were `unknown` too, so the role guard
-   didn't help there: added `_MIN_CHAIN_TO_MERGE = 3` — two independent
-   segments landing on the same line and overlapping is plausible
-   coincidence (found twice, both in text-like stroke geometry); three or
-   more, independently, is a far rarer coincidence and a much stronger
-   signal of "the same line, redrawn." Trades away the simplest 2-copy
-   duplicate case for safety on real files — a deliberate, discussed
-   choice, not an oversight.
+- **Round 1 (this session, first pass):** a version that also treated touch
+  as overlap broke `fa_che_non_mi_incazzi` (an area grew by ~150mm², later
+  traced to a different bug below); a version that required only 2
+  overlapping members broke `la_104` and `PROFILE_PART.nc` (two
+  *unrelated* engraved-text strokes happened to be collinear and overlap,
+  and merging them corrupted nearby real parts). Concluded from this:
+  touch must never merge, and overlap needs 3+ independent members to trust
+  it's not coincidence (`_MIN_CHAIN_TO_MERGE = 3`).
+- **The real bug, found while re-examining round 1 at Federico's insistence
+  (he pushed back hard on both restrictions, correctly):** the merged
+  edge's endpoints were built from `segment.start`/`segment.end` (the
+  native primitive's full-precision coordinate) instead of `edge.start`/
+  `edge.end` (the *rounded* coordinate the adapter produces from
+  `segment_endpoints()`, D18 — the one that's actually the node identity in
+  the topology graph). On real, non-round coordinates the two differ by a
+  fraction of a mm; a merged edge built from the wrong one can fail to
+  reconnect to a genuine neighbor (an `ArcSeg` closing a corner, another
+  `LINE`) by that same fraction — which was the actual cause of
+  `fa_che_non_mi_incazzi`'s vanishing area, not touch.
+- **Round 2, after fixing that:** re-tested touch-permissive and
+  chain-of-2 against the *entire* real-file corpus (`fa_che_non_mi_incazzi`,
+  `piega_cazzuta`, `ORDERCODE_P1NoLineaPiega`, `la_104`, `PROFILE_PART`,
+  `collinear_ends` — a fixture built specifically to test this). None broke
+  structurally: same cluster/inner counts, same bending lines, areas within
+  single-digit-to-low-double-digit mm² of the original (the expected effect
+  of a straight merged edge replacing a chain of independently-rounded
+  points that don't sit perfectly on that line — a representational
+  artifact, not a defect; neither reading is "more correct"). `la_104`'s
+  specific pair (two engraved-text strokes, one fully containing the
+  other) turned out to need no protection at all: the union of two 1D
+  intervals is always well-defined — the shorter's span, contained inside
+  the longer's, contributes nothing new. **Removed `_MIN_CHAIN_TO_MERGE`
+  entirely and let touch chain like overlap does** — role exclusion
+  (`role == ContourRole.UNKNOWN` only, unchanged) remains the one guard
+  that's still load-bearing, because it protects something the geometry
+  genuinely can't decide on its own: whether a label_map-assigned role is
+  domain intent or a human mistake (D30's territory, not this function's).
 
-A fourth bug had nothing to do with the merge rule itself: even at zero
-edges actually merged, the first implementation rebuilt the list as
+Order preservation was a separate, unrelated bug caught along the way: even
+at zero edges merged, the first implementation rebuilt the list as
 "bucketed groups, then everything else appended at the end" — pure
-reordering, no geometry change — and that reordering alone flipped
-`7074`'s result (4 clusters shrank to 2 real + 2 near-zero slivers), because
-the loop-finder's angular-deviation tie-break at a branching node is
-order-sensitive. Rewritten to preserve input order exactly: untouched edges
-never move, a merged group occupies its first (by input order) member's
-position, nothing else shifts. General lesson, not specific to this
+reordering, no geometry change — and that alone flipped `PROFILE_PART`'s
+result, because the loop-finder's angular-deviation tie-break at a
+branching node is order-sensitive. Rewritten to preserve input order
+exactly: untouched edges never move, a merged group occupies its first (by
+input order) member's position. General lesson, not specific to this
 function: **a cleanup pre-pass must be a no-op on anything it doesn't
-touch, including list order** — order-dependent tie-breaks elsewhere in the
-topology code are a latent fragility worth remembering, not just worked
-around here.
+touch, including list order.**
 
-Suite: 734 passed (8 new tests in `tests/unit/core/test_normalizer.py`:
-chain-of-3 merges, chain-of-2 doesn't, touch-only doesn't, parallel-not-
-collinear doesn't, non-UNKNOWN role doesn't, `closed_path` doesn't, order
-preserved around a merge, empty input). `dedup.dxf` now heals to 1 cluster
+Suite: 736 passed (10 tests in `tests/unit/core/test_normalizer.py`,
+including one reproducing `la_104`'s exact contained-pair coordinates and
+one asserting the merged edge uses the rounded point, not the raw one).
+Six real-file goldens updated to the new (structurally identical,
+numerically tiny-mm²-different) areas/perimeters/WKT — `piega_cazzuta`,
+`lineette_bastarde`, `arc_ocs_flip_loop.dxf`, `ORDERCODE_P1NoLineaPiega`
+(single-file and split) and `fa_che_non_mi_incazzi`/`ORDERCODESviluppo`
+(split), patched surgically (only the fields the new geometry actually
+changed) rather than via a blind `--force` regenerate, which would have
+also pulled in an unrelated, pre-existing drift between what
+`generate_golden.py` writes into `summary` and what `test_golden.py`
+checks (`bending_lines_count`/`holes_count` present in one, absent from the
+other) — not this session's bug, not fixed here, still latent for whoever
+next runs a full `--force` regeneration. `dedup.dxf` heals to 1 cluster
 (area 363.0) with 3 bending lines, matching the hand-verified true shape.
+
+Left open, not a regression: 4 round-trip self-consistency tests
+(`TestGoldenWriteBack`, write→re-read→re-heal compared against the direct
+result) now exceed their shared `TOL_SHAPE = 1.0` symmetric-difference
+tolerance by a small margin (up to ~23mm² on parts spanning hundreds of
+thousands of mm²) — same area, same vertex count, same cluster/inner
+counts, the difference is scattered thinly across the whole boundary. Looks
+like DXF arc re-fitting noise on the write/read cycle, compounding with the
+now-more-frequent merging rather than a new defect; not chased further
+this session since `TOL_SHAPE` is a single constant shared by every
+round-trip test, not a per-file golden — loosening it is a judgment call
+for Federico, not a silent test-infra edit.
 
 ---
 
