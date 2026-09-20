@@ -20,7 +20,7 @@ import os
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/collinear_ends.dxf"
+INPUT     = r"tests/lab/SHEET_BLANK.dxf"
 TOLERANCE = 0.05
 LABEL_MAP = {
     "Filettati": "threaded_hole",
