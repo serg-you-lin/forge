@@ -74,6 +74,7 @@ class HealStep:
         self._load()
         if not self.result.is_valid:
             return self.result
+        self._merge_collinear_overlaps()
         self._split_labeled()
         self._preprocess()
         self.result.all_arcs = [
@@ -149,6 +150,26 @@ class HealStep:
         if self._is_structural_fn is not None:
             return self._is_structural_fn(role)
         return is_structural_role(role)
+
+    def _merge_collinear_overlaps(self):
+        """
+        Fonde a monte di tutto il resto le rette tracciate a spezzoni
+        sovrapposti (linetype esploso, ridisegno per errore, congiunzioni di
+        quotatura quasi coincidenti col contorno) — vedi
+        `normalizer.merge_collinear_overlaps`. Senza, ogni estremo interno di
+        spezzone è un nodo spurio nel grafo topologico: il contorno vero non
+        chiude più, a qualunque tolleranza (trovato su un disegno reale dove
+        un trapezio con tre pieghe interne, tracciato a spezzoni, andava
+        tutto in trash — non un gap, proprio nodi in più che non c'erano).
+        """
+        from .healing.normalizer import merge_collinear_overlaps
+        merged = merge_collinear_overlaps(self.edges)
+        n_merged = len(self.edges) - len(merged)
+        if n_merged:
+            self.result.warnings.append(
+                f"{n_merged} segmenti collineari sovrapposti fusi prima della ricerca loop."
+            )
+        self.edges = merged
 
     def _split_labeled(self):
         """

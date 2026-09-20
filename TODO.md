@@ -112,56 +112,47 @@ committato — la storia sta nel git log e in `MAP.md`).
   reale (workaround oggi: alzare `tolerance`).
 - **outer che non si chiude su viste vere, ricorrente** — non più un caso
   isolato: tre disegni reali indipendenti, stesso sintomo in superficie
-  ("outer vero, tutto in trash") ma **cause diverse** — non è un bug solo,
-  sono almeno due famiglie distinte sotto lo stesso sintomo:
+  ("outer vero, tutto in trash") ma **cause diverse** — non era un bug solo:
   - `PARTCODE` (framer MAP D5, mesi fa): pezzi veri non chiudono in `heal`,
     tanti archi e linee di costruzione — causa non ancora ri-analizzata con
     gli strumenti di oggi.
-  - `SHEET_BLANK` — **non è un gap di arrotondamento**: verificato
-    (`lab/heal_repair_experiment.py`, locale/framer, non in git — usa e
-    getta) che la distanza minima reale tra endpoint liberi in tutto il file
-    è 5mm, non 0.2mm come ipotizzato in una prima lettura veloce del DXF.
-    Ispezionando `result.trash_entities` il rettangolo che dovrebbe chiudersi
-    è in realtà **tracciato due volte**, quasi sovrapposto: ai due lati
-    verticali corrispondono due segmenti paralleli 0.2mm apart (es.
-    x=55.1 *e* x=55.3), e i lati orizzontali lunghi partono dal secondo
-    tracciato (x=55.3→122.9) lasciando le due "schegge" da 0.2mm come
-    frammenti isolati agli angoli — non un gap da chiudere, ma geometria
-    **doppia e in competizione** (ipotesi più probabile: linee di
-    estensione/witness di una quotatura esplosa in LINE grezze dal
-    convertitore DWG→DXF, quasi coincidenti col contorno vero per
-    convenzione di disegno). Provato ad allargare (offline, non in
-    produzione) SOLO il raggio di ricerca del repair-angoli
-    (`_repair_merged_corners`) da 0.05 a 1.0mm, isolato dal resto della
-    pipeline: **zero effetto a qualunque raggio** — coerente col fatto che
-    non c'è nessun gap piccolo da allargare, il problema è a monte
-    (duplicazione), non nella tolleranza di chiusura. Ipotesi di fix da
-    esplorare (non ancora tentata): un pre-pass che riconosce coppie di
-    segmenti quasi-paralleli e quasi-coincidenti (distanza sub-mm,
-    sovrapposizione lungo la direzione) e ne scarta/fonde uno prima del
-    graph-building — rischioso perché lo stesso pattern potrebbe comparire
-    per feature reali vicine, va guardato con più file reali prima di
-    scriverlo.
+  - `SHEET_BLANK` ✅ **risolto, MAP.md D49** — non era un gap né una
+    duplicazione da fondere: il file ha due viste indipendenti sullo stesso
+    foglio (il piano e, sopra, una vista sottile dello spessore), e
+    `NonContourEdgeDetector` calcolava il convex hull su TUTTO il documento
+    invece che per singola forma connessa — la vista piccola perdeva 3 dei
+    suoi 4 lati veri, scambiati per corde interne perché "dentro" l'hull
+    dominato dalla vista grande. Fix: hull per componente connessa
+    (`Graph.connected_components()`, nuovo). Ora chiude in 2 cluster puliti.
   - `PARTCODE` (framer, survey reale): di 3 viste sullo stesso foglio, 1
     sana, 2 no. Sintomo diverso da `TRG19E`: `result.trash_entities` qui non
     sono ~10 frammenti ma **1682**, con lunghe catene di segmenti minuscoli
     (~0.3-0.5mm ciascuno) che sembrano un profilo curvo scomposto in tanti
     tratti retti che non richiudono l'anello — non ancora capito se manchi
     un singolo anello di congiunzione in fondo alla catena o se la
-    frammentazione stessa sia il problema. Stesso test offline (raggio
-    repair-angoli fino a 1mm): zero effetto anche qui.
+    frammentazione stessa sia il problema. Non ancora riverificato con gli
+    strumenti di oggi (D49/D50) — segmenti di un profilo curvo hanno
+    direzioni leggermente diverse l'uno dall'altro, quindi `D50` (che
+    richiede la STESSA retta esatta) probabilmente non li tocca; da
+    verificare comunque su un file reale prima di escluderlo.
 
-  In sintesi: la pista "tolleranza troppo stretta" è stata provata e
-  smentita sperimentalmente su tutti e tre (v. `lab/heal_repair_experiment.py`
-  in framer — offline, non tocca forge). Il problema reale sembra essere
-  **geometria duplicata/frammentata a monte**, non chiusura di gap — un
-  fix qui richiede prima di guardare con calma dentro `PARTCODE` con lo
-  stesso livello di dettaglio già fatto su `TRG19E`. Non ancora deciso se e
-  quando aprire un'indagine dedicata.
+  Non ancora deciso se/quando riaprire un'indagine dedicata su `PARTCODE`
+  e `PARTCODE` — `refactor/heal-branch-topology` (D49, D50) ha chiuso il
+  caso più semplice dei tre, non gli altri due.
 
-  Branch aperto per affrontare questi tre: `refactor/heal-branch-topology`
-  — si parte da `TRG19E` (il più semplice: la doppia tracciatura crea 4
-  nodi a grado 3 espliciti, non solo simmetria/frammentazione).
+- **linea tracciata a spezzoni sovrapposti** ✅ **risolto, MAP.md D50** —
+  pattern distinto dal precedente (non viste multiple, una singola riga
+  ridisegnata più volte quasi sullo stesso tratto). Trovato e riprodotto su
+  `tests/examples/dedup.dxf`: un trapezio coi lati tracciati a 3-4 frammenti
+  sovrapposti mandava tutto in `polygonize` invece di chiudere.
+  `core/healing/normalizer.merge_collinear_overlaps()` (nuovo, gira in
+  `heal()` prima di tutto il resto) fonde solo sovrapposizioni vere (non il
+  semplice contatto punta-coda, che è geometria normale) fra 3+ frammenti
+  indipendenti sulla stessa retta esatta, mai fra edge con un ruolo già
+  assegnato — il dettaglio di tre falsi positivi prima di questa versione
+  (intaglio reale inghiottito, feature parallele reali fuse per
+  arrotondamento troppo grezzo, coppie di tratti di testo/incisione
+  scambiate per la stessa riga) è in MAP.md D50, non ripetuto qui.
 
 - **outer che non chiude su un grafo densamente ramificato — causa distinta
   dal punto precedente, non va nello stesso branch** — trovato su
@@ -188,12 +179,13 @@ committato — la storia sta nel git log e in `MAP.md`).
   doppie viste sia qui che in `TRG19E`) hanno chiavi diverse e non vengono
   mai considerate duplicate — è un dedup per copie esatte, non per
   prossimità.
-  Non è la stessa causa del punto precedente: lì servirebbe riconoscere
+  Non è la stessa causa degli altri punti: lì servirebbe riconoscere
   geometria doppia/quasi-coincidente; qui servirebbe un'estrazione loop
   planare corretta (es. half-edge/DCEL con una regola di svolta coerente),
   che è un algoritmo diverso, non un'estensione dell'euristica attuale — va
-  affrontato a parte, dopo, per non far esplodere lo scope del branch
-  aperto sopra.
+  affrontato a parte. `merge_collinear_overlaps` (MAP.md D50, fatto dopo
+  questa nota) non aiuta qui: lavora solo su `LineSeg`, e questo file è quasi
+  tutto SPLINE.
 
 ---
 
