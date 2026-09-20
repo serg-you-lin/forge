@@ -224,12 +224,14 @@ def _detect_labeled(result: ForgeResult) -> None:
         work_type = role_str(proxy.role)
         data = _extract_data(proxy, work_type)
         rep  = data.pop("representative_point", None)
+        pts  = _proxy_pts(proxy)
         ce   = ClassifiedEntity(
             work_type=work_type,
             confidence=1.0,
             source="labeled",
             data=data,
             representative_point=rep,
+            line=LineString(pts) if len(pts) >= 2 else None,
         )
         result.classified_entities.append(ce)
         _assign_to_part(ce, result)
@@ -580,15 +582,29 @@ def _handle_engrave_closed(inner, cluster: ForgeCluster) -> None:
 # Assegnazione al cluster contenitore
 # ---------------------------------------------------------------------------
 
-def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
-    probe = _probe_point(ce)
-    if probe is None:
-        return
+_LABEL_COVER_EPS = 1e-3  # mm — precisione geometrica, non tolleranza utente (v. MAP.md D54)
 
+
+def _belongs_to_cluster(ce: ClassifiedEntity, cluster: ForgeCluster) -> bool:
+    """
+    Un'entità aperta (marking/bending) appartiene al cluster se la sua
+    geometria INTERA è coperta dal contorno outer — non solo un punto
+    rappresentativo: quello fallisce per costruzione su un'entità che giace
+    esattamente sul bordo (shapely `contains` esclude il bordo per
+    definizione), il caso comune di una piega o una marcatura tracciata
+    proprio sul lato del pezzo.
+    """
+    if ce.line is not None:
+        return cluster.outer.polygon.buffer(_LABEL_COVER_EPS).covers(ce.line)
+    probe = _probe_point(ce)
+    return probe is not None and cluster.outer.polygon.contains(probe)
+
+
+def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
     work_type = ce.work_type.lower()
 
     for cluster in result.clusters:
-        if not cluster.outer.polygon.contains(probe):
+        if not _belongs_to_cluster(ce, cluster):
             continue
 
         if work_type == "bending":

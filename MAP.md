@@ -1450,6 +1450,24 @@ Suite: 744 passed.
 
 ---
 
+### D54 — a labeled line fully on the outer boundary is absorbed, not orphaned ✅
+
+`_assign_to_part` (`detect.py`) matched a labeled entity (bending/marking) to
+its cluster with one representative point and `polygon.contains()` — always
+false for a line lying exactly on the outer's own boundary (shapely excludes
+the boundary from `contains`), so a bending/marking line coincident with the
+edge of its own part always fell into "not contained in any cluster",
+whether or not the part actually closed. Fixed: `ClassifiedEntity` now
+carries the entity's full `LineString` (`line`), and `_belongs_to_cluster`
+checks `outer.polygon.buffer(1e-3).covers(line)` — the whole line inside or
+on the boundary, not one point strictly inside. Two new fixtures
+(`mark_totally_shared.dxf`, `mark_partial_shared.dxf`) confirm the two
+outcomes: fully covered → absorbed silently; genuinely bridging a real gap
+in the outer → still orphaned with the warning, unchanged. Suite: 744
+passed.
+
+---
+
 ## Closed questions (history)
 
 - **Q1 — hole classification: topology or detection?** → resolved by D15
