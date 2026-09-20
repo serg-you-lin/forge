@@ -146,13 +146,14 @@ committato — la storia sta nel git log e in `MAP.md`).
   `tests/examples/dedup.dxf`: un trapezio coi lati tracciati a 3-4 frammenti
   sovrapposti mandava tutto in `polygonize` invece di chiudere.
   `core/healing/normalizer.merge_collinear_overlaps()` (nuovo, gira in
-  `heal()` prima di tutto il resto) fonde solo sovrapposizioni vere (non il
-  semplice contatto punta-coda, che è geometria normale) fra 3+ frammenti
-  indipendenti sulla stessa retta esatta, mai fra edge con un ruolo già
-  assegnato — il dettaglio di tre falsi positivi prima di questa versione
-  (intaglio reale inghiottito, feature parallele reali fuse per
-  arrotondamento troppo grezzo, coppie di tratti di testo/incisione
-  scambiate per la stessa riga) è in MAP.md D50, non ripetuto qui.
+  `heal()` prima di tutto il resto) fonde 2 o più frammenti che si toccano
+  o si sovrappongono sulla stessa retta esatta, mai fra edge con un ruolo
+  già assegnato — quel filtro sul ruolo resta l'unica vera protezione,
+  perché decide qualcosa che la geometria da sola non può decidere (un
+  ruolo da label_map è dato di dominio, D30). Il dettaglio di due giri di
+  falsi positivi prima di arrivare qui (e del bug di arrotondamento che
+  in realtà li causava, non il contatto o il numero di frammenti) è in
+  MAP.md D50, non ripetuto qui.
 
 - **outer che non chiude su un grafo densamente ramificato — causa distinta
   dal punto precedente, non va nello stesso branch** — trovato su

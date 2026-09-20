@@ -70,8 +70,7 @@ def find_duplicates(
 
 _ANGLE_DECIMALS  = 7  # direzione: quasi-esatta per costruzione, non tollerante
 _OFFSET_DECIMALS = 3  # 0.001mm — "stessa retta", non "retta vicina"
-_OVERLAP_EPS     = 1e-6  # guardia da rumore in virgola mobile, non tolleranza utente
-_MIN_CHAIN_TO_MERGE = 3  # sotto, la sovrapposizione può essere coincidenza (v. _merge_chain)
+_CHAIN_GAP_EPS   = 1e-6  # guardia da rumore in virgola mobile, non tolleranza utente
 
 
 def _line_key(p1, p2) -> Tuple[float, float]:
@@ -103,28 +102,39 @@ def _line_key(p1, p2) -> Tuple[float, float]:
 
 def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
     """
-    Fonde gruppi di LineSeg collineari e sovrapposti in un solo Edge ciascuno.
+    Fonde gruppi di LineSeg collineari (stessa retta infinita, `_line_key`)
+    che si toccano o si sovrappongono in un solo Edge ciascuno — a catena: il
+    primo membro non deve toccare/sovrapporsi all'ultimo, basta una sequenza
+    di contatti/sovrapposizioni intermedi, esattamente come un fascio di
+    segmenti che insieme disegnano una riga sola. Bastano 2 membri: l'unione
+    di due intervalli 1D che si toccano o si sovrappongono è sempre e
+    comunque ben definita (il segmento più lungo, se uno contiene l'altro;
+    l'estensione totale, altrimenti) — non c'è modo di "sbagliare" a fondere
+    solo 2 pezzi collineari, la domanda semmai è se DEVONO restare due
+    feature distinte a valle (v. sotto).
 
-    Una riga tracciata a spezzoni sovrapposti (linetype esploso, ridisegno
-    per errore, congiunzione di quotatura) produce nodi spuri ad ogni
-    estremo interno di spezzone — il grafo topologico li vede come angoli
-    veri e non chiude il contorno. Qui si riconosce il pattern PRIMA che
-    quei nodi esistano: stessa retta infinita (vedi `_line_key`) + intervalli
-    che si sovrappongono per una lunghezza positiva lungo quella retta, a
-    catena (il primo spezzone non deve sovrapporsi all'ultimo, basta una
-    sequenza di sovrapposizioni intermedie — esattamente come un fascio di
-    segmenti che insieme disegnano una riga sola) — e solo se la catena ha
-    almeno `_MIN_CHAIN_TO_MERGE` (3) membri: vedi `_merge_chain` per perché
-    una catena di 2 non basta.
+    Storia della soglia minima che c'era qui prima (rimossa): un'ipotesi di
+    "servono almeno 3 pezzi indipendenti, una coppia può essere coincidenza"
+    è nata da due golden reali (`la_104`, `PROFILE_PART`) dove fondere
+    esattamente 2 tratti — due caratteri di un'incisione allineati per caso,
+    non un errore di disegno — sembrava aver rotto un pezzo vicino. Causa
+    vera, trovata dopo: un bug di arrotondamento (sotto), non il numero di
+    pezzi. Con quel bug corretto, fondere quelle stesse coppie non rompe più
+    niente su nessun file della suite — l'unione di 2 intervalli è sempre
+    corretta, il numero di pezzi non era mai stato la variabile giusta.
 
-    Il semplice contatto punta-coda (un segmento finisce esattamente dove
-    inizia il successivo, sovrapposizione di lunghezza zero) NON basta e non
-    va fuso: è la geometria normalissima di due lati consecutivi di una
-    polilinea esplosa in LINE separate — un vertice vero, non una riga
-    ridisegnata due volte. Confuso con l'overlap una volta (v. golden
-    `fa_che_non_mi_incazzi`): un piccolo intaglio reale spariva perché i suoi
-    due lati, collineari con l'edge esterno su cui si affacciano, venivano
-    fusi dentro di esso.
+    Bug di arrotondamento (fisso, non riguarda "quanti pezzi"): il punto
+    conservato come estremo del fuso dev'essere quello ARROTONDATO
+    dell'Edge (`edge.start`/`edge.end` — l'identità del nodo nel grafo,
+    l'adapter li produce arrotondando `segment_endpoints(segment)`, D18 /
+    adapter.py `_append_edge`), non quello a piena precisione del segmento
+    nativo. Su coordinate reali (mai numeri tondi) i due differiscono di una
+    frazione di mm — un fuso costruito sulla precisione piena del segmento
+    può non agganciarsi più esattamente al nodo del vicino reale (un ArcSeg
+    che chiude l'angolo, un'altra LINE), e quel sub-mm di scarto spezza il
+    contorno. La proiezione `_t` per ordinamento/sovrapposizione resta a
+    piena precisione — è solo il punto conservato come estremo che dev'
+    essere quello arrotondato.
 
     Esclusi a monte, mai candidati alla fusione:
       - segmenti non LineSeg (ARC/SPLINE non sono "collineari")
@@ -188,29 +198,38 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
         def _t(point, _ux=ux, _uy=uy, _origin=s0):
             return (point[0] - _origin[0]) * _ux + (point[1] - _origin[1]) * _uy
 
-        # Ogni span porta già i punti reali (non solo i valori t) che
-        # realizzano lo e hi, in modo che fondere non debba mai
-        # ricalcolare/indovinare quale estremo dell'edge era quello giusto.
+        # Ogni span porta il punto ARROTONDATO dell'Edge (non quello a piena
+        # precisione del segmento nativo) come estremo di lo/hi: è
+        # `edge.start`/`edge.end` a essere l'identità del nodo nel grafo
+        # (l'adapter arrotonda `segment_endpoints(segment)` per produrli, D18
+        # / adapter.py `_append_edge`) — un fuso costruito sulla precisione
+        # piena del segmento può risultare vicinissimo ma NON identico al
+        # nodo del vicino reale (es. un ArcSeg che chiude l'angolo), e quel
+        # sub-mm di scarto basta a spezzare l'aggancio. La proiezione `_t`
+        # per l'ordinamento/sovrapposizione resta a piena precisione — è solo
+        # il punto conservato come estremo che deve essere quello arrotondato.
         spans = []
         for e in group:
             t_start, t_end = _t(e.segment.start), _t(e.segment.end)
             if t_start <= t_end:
-                spans.append((t_start, e.segment.start, t_end, e.segment.end, e))
+                spans.append((t_start, e.start, t_end, e.end, e))
             else:
-                spans.append((t_end, e.segment.end, t_start, e.segment.start, e))
+                spans.append((t_end, e.end, t_start, e.start, e))
         spans.sort(key=lambda s: s[0])
 
         chains: List[list] = [[spans[0]]]
         cur_hi = spans[0][2]
         for span in spans[1:]:
             lo, hi = span[0], span[2]
-            # Sovrapposizione VERA (intervallo condiviso di lunghezza
-            # positiva), non il semplice contatto punta-coda: due lati
-            # consecutivi di una polilinea esplosa toccano allo stesso punto
-            # (lo == cur_hi) ed è geometria legittima — un vertice reale, non
-            # una riga ridisegnata due volte. `_OVERLAP_EPS` è solo rumore
-            # in virgola mobile, non una tolleranza geometrica dell'utente.
-            if lo < cur_hi - _OVERLAP_EPS:
+            # Contatto (lo == cur_hi, due lati consecutivi di una polilinea
+            # esplosa) O sovrapposizione vera (lo < cur_hi): in entrambi i
+            # casi l'unione dei due intervalli è ben definita e corretta,
+            # quindi in entrambi i casi si incatenano. `_CHAIN_GAP_EPS` è
+            # solo rumore in virgola mobile (un contatto vero può risultare
+            # `lo` di un pelo oltre `cur_hi` per errore di proiezione), non
+            # una tolleranza geometrica dell'utente — un gap vero (i due
+            # segmenti non si toccano affatto) resta fuori dalla catena.
+            if lo <= cur_hi + _CHAIN_GAP_EPS:
                 chains[-1].append(span)
                 cur_hi = max(cur_hi, hi)
             else:
@@ -230,20 +249,11 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
 
 def _register_merge(chain: List[tuple], original_index: dict, replacement: dict, drop: set) -> None:
     """
-    Una catena di span sovrapposti -> registra la fusione, o non fa nulla se
-    la catena è troppo corta per fidarsene.
-
-    Una catena di 2 può capitare per coincidenza — due tratti indipendenti
-    (spesso lettere/marcature disegnate a segmenti: cifre e lettere hanno
-    aste verticali/orizzontali che si allineano per caso) che si sovrappongono
-    senza essere la stessa riga ridisegnata. Trovato su un golden reale
-    (`PROFILE_PART`): due aste di caratteri diversi, stessa x, si
-    sovrappongono in y — fondendole si è distrutta la forma di entrambi i
-    pezzi vicini. Tre o più segmenti indipendenti allineati e sovrapposti
-    sulla stessa retta sono una coincidenza molto più rara: sotto quella
-    soglia non si fonde, sopra sì.
+    Una catena di 2+ span che si toccano/sovrappongono -> registra la
+    fusione. Una catena di 1 (nessun altro membro tocca o si sovrappone)
+    non fa nulla: non c'è niente da fondere.
     """
-    if len(chain) < _MIN_CHAIN_TO_MERGE:
+    if len(chain) < 2:
         return
 
     lo_start_pt = min(chain, key=lambda s: s[0])[1]
