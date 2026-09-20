@@ -294,8 +294,14 @@ def _emit_annotation(msp, ann: Annotation, annotation_layer: Optional[str]) -> N
 def _emit_note(msp, note: Note, attribs: dict) -> None:
     if not note.text:
         return
+    width = note.width_factor or 1.0
     if note.source_kind == "MTEXT":
-        entity = msp.add_mtext(note.text, dxfattribs={
+        # MTEXT non ha un attributo per-entità per lo stretch dei glifi (il suo
+        # gruppo 41 è la larghezza di colonna, un'altra cosa): si ottiene con
+        # un codice di formattazione inline, non con uno stile dedicato — resta
+        # un override numerico, niente stili con nome da inventare o mappare.
+        text = note.text if width == 1.0 else f"\\W{width:.4g};{note.text}"
+        entity = msp.add_mtext(text, dxfattribs={
             **attribs,
             "char_height": note.height or 2.5,
             "rotation": note.rotation or 0.0,
@@ -307,6 +313,7 @@ def _emit_note(msp, note: Note, attribs: dict) -> None:
             "height": note.height or 2.5,
             "rotation": note.rotation or 0.0,
             "insert": note.position,
+            "width": width,
         })
 
 

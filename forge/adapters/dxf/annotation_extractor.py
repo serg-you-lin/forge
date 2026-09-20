@@ -72,6 +72,7 @@ def _to_annotation(entity) -> Optional[Annotation]:
             height=_f(raw_h) or 2.5,
             rotation=_f(dxf.get("rotation", 0.0)) or 0.0,
             source_kind=kind,
+            width_factor=_width_factor(entity),
         )
 
     if kind == "DIMENSION":
@@ -150,6 +151,32 @@ def _extract_content(entity) -> str:
     if t == "MTEXT":
         return clean_mtext(entity.text)
     return ""
+
+
+def _width_factor(entity) -> float:
+    """
+    Stretch orizzontale effettivo del testo (1.0 = nessuno).
+
+    TEXT porta un proprio override (gruppo DXF 41) che vince se non è il
+    default neutro; MTEXT non ha un equivalente per-entità utilizzabile (il
+    suo gruppo 41 è la larghezza di colonna, non lo stretch dei glifi) — in
+    quel caso, e quando TEXT non ha un override esplicito, si legge il valore
+    dallo STYLE assegnato all'entità (dove i cartigli SolidWorks, per dire,
+    tengono davvero la condensazione).
+    """
+    if entity.dxftype() == "TEXT":
+        try:
+            own = float(entity.dxf.get("width", 1.0))
+        except (TypeError, ValueError):
+            own = 1.0
+        if own != 1.0:
+            return own
+
+    try:
+        style = entity.doc.styles.get(entity.dxf.get("style", "Standard"))
+        return float(style.dxf.width)
+    except Exception:
+        return 1.0
 
 
 # ---------------------------------------------------------------------------

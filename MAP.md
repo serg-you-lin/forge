@@ -1046,6 +1046,55 @@ by running it and fixed, not searched for by eye.
 Suite: 725 passed (was 722 — 3 new tests for `tools.manufacturing_role.
 is_structural` and the normalize_role/slug distinction), no golden touched.
 
+### D48 — `Annotation.width_factor`: text stretch is domain data, not a DXF style name ✅
+
+Found from framer, on a real SolidWorks title block (`SHEET_BLANK.dxf`,
+via framer's `lab/` real-drawing survey): its cartiglio text uses style
+`SLDTEXTSTYLE0`, condensed to `width=0.605` — normal for a title block
+packing many fields into narrow cells. `to_dxf()` rewrites every `Note` onto
+a single generic `Standard` style (`width=1.0`): same font file (`txt` both
+sides, not a font substitution), but glyphs render ~65% wider — text that fit
+its cell in the source overflows it in forge's own output. Visually
+confirmed before/after on the real file.
+
+Root cause traced one level deeper than the write side: `Note` never carried
+the value at all — `DxfAnnotationExtractor` already dropped it on read,
+before forge had a chance to lose it on write.
+
+Federico's constraint, stated up front: fix it **format-agnostic first** —
+the same need will exist for a text-bearing format forge doesn't read yet
+(a PDF, say), and nothing should be invented per-format when it's the same
+concept every time. So the fix lives in three layers, each touching only
+what its own boundary allows:
+
+- `model/annotation.py`: `Annotation.width_factor: float = 1.0` — horizontal
+  stretch relative to nominal height, `1.0` = none. A neutral number, no DXF
+  concept in `core`/`model` (same bar as D47).
+  It's the exact same axis a PDF text matrix's `Tz` (horizontal scaling)
+  operator or a CSS `font-stretch` would map onto — the field earns its
+  place by describing the same thing across formats, not by being convenient
+  for DXF today.
+- `adapters/dxf/annotation_extractor.py`: new `_width_factor(entity)` — a
+  `TEXT`'s own override (DXF group 41 on the entity) wins if it isn't the
+  neutral default; otherwise (always, for `MTEXT`) falls back to the
+  `width` of the entity's assigned STYLE table entry. `MTEXT`'s own group 41
+  is a different thing entirely (column wrap width, not glyph stretch) —
+  reading it as a stretch factor would have been a silent wrong answer, not
+  a missing one.
+- `io/dxf.py` `_emit_note`: applies the neutral number back, per format,
+  where that format actually has a knob for it — `TEXT` takes it directly as
+  its own `width` DXF attribute (no named style needed); `MTEXT` has no
+  per-entity stretch attribute at all, so it's an inline `\Wfactor;`
+  formatting code prefixed onto the string, applied only when the factor
+  isn't the default (keeps plain text plain).
+
+No new style objects created or matched by name in either direction — a
+consumer never has to know or preserve `SLDTEXTSTYLE0`, only the number it
+implied.
+
+Suite: 725 passed, no golden touched (the new field defaults to `1.0`,
+inert for every existing fixture).
+
 ---
 
 ## Closed questions (history)
