@@ -1427,6 +1427,29 @@ Suite: 744 passed.
 
 ---
 
+### D53 — `layer_to_role` renamed to `label_to_role`: "layer" has no equivalent in other formats, so it can't be a core name ✅
+
+Federico, direct: no DXF word may exist anywhere near `Edge`, not even a
+function name in `model/role.py`. Checked what other formats call their
+equivalent of a DXF layer — nothing does (SVG has groups/classes, PDF at
+most an unrelated OCG, a hypothetical format has nothing at all) — so a
+core-level function named `layer_to_role` quietly assumes every format has
+layers, which is false, even though its own mechanism (a plain dict lookup)
+never touched ezdxf. Renamed to `label_to_role(label, label_map)` — already
+forge's own word (`label_map` is the public parameter name on `load_dxf()`)
+instead of a borrowed DXF one. Renamed the one call site (`adapter.py`,
+local variable `layer` → `label`, still assigned from `entity.dxf.layer`,
+the one place that name is unavoidable — it's ezdxf's own attribute).
+`EdgeStyle` was already layer-free (verified: no such field), so this was a
+naming-only fix, not a data-flow one — the earlier idea of also delaying
+the decision to a separate post-load pass was dropped: it would have
+required carrying "layer" forward on `Edge` to bridge the two passes,
+which is exactly what must never happen.
+
+Suite: 744 passed.
+
+---
+
 ## Closed questions (history)
 
 - **Q1 — hole classification: topology or detection?** → resolved by D15

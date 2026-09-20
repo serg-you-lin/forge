@@ -27,9 +27,10 @@ chiamante entra nel modello: la ripulisce una volta sola in uno slug sicuro,
 così tutto il codice a valle (nomi layer DXF, chiavi/valori serializzati,
 attributi SVG) se ne può fidare senza ri-validarla.
 
-``layer_to_role()`` è la mappatura pura nome-layer → ruolo via ``label_map`` —
-nessuna dipendenza da ezdxf o dal formato, usata dal core e dagli adapter per
-tradurre ``label_map`` senza mai toccare l'entità sorgente.
+``label_to_role()`` è la mappatura pura etichetta → ruolo via ``label_map`` —
+nessuna dipendenza da ezdxf o dal formato (l'etichetta è un layer per un
+adapter DXF, qualunque altra cosa per un adapter diverso), usata dagli
+adapter per tradurre ``label_map`` senza mai toccare l'entità sorgente.
 """
 
 from __future__ import annotations
@@ -144,17 +145,19 @@ def role_str(role) -> str:
     return role.value if isinstance(role, ContourRole) else str(role)
 
 
-def layer_to_role(layer: str, label_map: Dict[str, str]) -> str:
+def label_to_role(label: str, label_map: Dict[str, str]) -> str:
     """
-    Traduce un nome layer nel ruolo corrispondente via ``label_map``.
+    Traduce un'etichetta grezza nel ruolo corrispondente via ``label_map``.
 
-    Pura — non tocca mai un'entità sorgente. ``label_map`` è
-    ``{nome_layer: work_type}``, chiavi case-insensitive. Un ``work_type`` che
+    Pura — non tocca mai un'entità sorgente, non sa da dove arrivi
+    ``label`` (un layer per un adapter DXF, qualunque altra cosa per un
+    adapter diverso: nessun formato è privilegiato qui). ``label_map`` è
+    ``{etichetta: work_type}``, chiavi case-insensitive. Un ``work_type`` che
     forge non conosce viene conservato (passa per ``normalize_role``), non
     schiacciato a ``UNKNOWN``.
     """
-    layer = layer or ""
-    work_type = label_map.get(layer, label_map.get(layer.lower(), ""))
+    label = label or ""
+    work_type = label_map.get(label, label_map.get(label.lower(), ""))
     if not work_type:
         return ContourRole.UNKNOWN.value
     return normalize_role(work_type)

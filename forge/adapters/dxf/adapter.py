@@ -21,7 +21,7 @@ from ...core.primitives.polygon_builder import build_polygon
 from ...core.adapter_base import ForgeAdapter
 from ...core.geometry import round_point
 from ...core.topology.edge import Edge, Segment
-from ...model.role import ContourRole, layer_to_role, normalize_role
+from ...model.role import ContourRole, label_to_role, normalize_role
 from ...model.style import EdgeStyle
 
 from .parser import DxfEntityDispatcher
@@ -156,7 +156,7 @@ def _entity_style(entity) -> EdgeStyle:
 # non dice nulla: linetype_map matcha sul nome del linetype (case-insensitive),
 # color_map sul colore ACI dell'entità (nome standard, es. "cyan", o intero).
 # Il layer resta la lane autoritativa — questa lane si applica solo se
-# layer_to_role() non ha già deciso (D5, doppio binario di provenienza).
+# label_to_role() non ha già deciso (D5, doppio binario di provenienza).
 
 # Nomi colore ACI standard (1-9 + il rosa "pink" usato da rules/palette.py),
 # stesso vocabolario di ACI_TO_HEX letto al contrario — qui serve solo per
@@ -195,7 +195,7 @@ def _normalize_color_map(color_map) -> Dict[int, str]:
 def _style_role(style: EdgeStyle, linetype_map: Dict[str, str], color_map: Dict[int, str]) -> str:
     """
     Ruolo dedotto dall'aspetto grezzo di un'entità (linetype poi colore),
-    chiamata solo quando layer_to_role() non ha già assegnato un ruolo. Un
+    chiamata solo quando label_to_role() non ha già assegnato un ruolo. Un
     work_type sconosciuto viene conservato (via normalize_role), non
     schiacciato a UNKNOWN.
     """
@@ -370,12 +370,12 @@ class DxfAdapter(ForgeAdapter):
                 continue
 
             dtype = entity.dxftype()
-            layer = (
+            label = (
                 entity.dxf.layer
                 if entity.dxf.hasattr("layer")
                 else ""
             )
-            role = layer_to_role(layer, self._label_map)
+            role = label_to_role(label, self._label_map)
             style = _entity_style(entity)
             if role == ContourRole.UNKNOWN and (self._linetype_map or self._color_map):
                 role = _style_role(style, self._linetype_map, self._color_map)
