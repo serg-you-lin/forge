@@ -110,6 +110,19 @@ committato — la storia sta nel git log e in `MAP.md`).
   `distance > tolerance` anche per gli archi; esentarli quando i loro cerchi
   si intersecano davvero è una scelta di design da rivedere con un file
   reale (workaround oggi: alzare `tolerance`).
+- **outer che non si chiude su viste vere, ricorrente** — non più un caso
+  isolato: tre disegni reali indipendenti, stesso sintomo. `PARTCODE`
+  (framer MAP D5, mesi fa): pezzi veri non chiudono in `heal`, tanti archi e
+  linee di costruzione. `PARTCODE` (framer, survey reale): di 3 viste sullo
+  stesso foglio, 1 sana, 2 no. `SHEET_BLANK` (idem): un rettangolo
+  finisce **tutto** in trash — causa trovata, non solo sospettata: nel DXF
+  sorgente il lato non è una polilinea unica ma un tratto lungo più due
+  schegge d'angolo da 0.2mm che dovrebbero completarlo, e non si saldano in
+  un anello chiuso. Non ancora deciso se e come intervenire (tolleranza di
+  snap? un pre-pass che unisce segmenti collineari quasi-adiacenti prima del
+  graph-building?) — segnato qui perché ora ci sono abbastanza casi reali
+  per giustificare di guardarci dentro sul serio, non più "aspettiamo altri
+  disegni".
 
 ---
 

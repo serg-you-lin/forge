@@ -64,12 +64,21 @@ class Annotation:
     ``source_kind`` conserva il tipo entità nel formato sorgente
     ("TEXT" | "MTEXT" | "DIMENSION" | "LEADER" | "MULTILEADER"): guida la
     riscrittura e resta l'etichetta che i consumatori usano via ``kind``.
+
+    ``width_factor`` è lo stretch orizzontale del testo rispetto alla sua
+    altezza nominale (1.0 = nessuno) — concetto neutro, non specifico DXF: un
+    domani un adapter PDF lo popolerebbe dalla propria matrice di testo,
+    esattamente come l'adapter DXF lo legge dallo stile assegnato all'entità.
+    Senza, un consumatore che riscrive il testo su uno stile generico perde la
+    condensazione dell'originale e il testo sborda dalla sua cella (caso
+    reale: cartigli SolidWorks, stile a 0.6, riscritti su "Standard" a 1.0).
     """
     position:    Point
     layer:       str           = "0"
     origin:      Optional[str]  = None   # provenienza nella sorgente — diagnostica
     cluster_ref:    Optional[int]  = None   # indice in result.clusters della parte che la contiene (fase anchor)
     source_kind: str            = ""
+    width_factor: float         = 1.0
 
     @property
     def kind(self) -> str:
