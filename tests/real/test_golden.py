@@ -387,7 +387,13 @@ def _make_test(path):
             # Fixture vecchi usano la chiave "custom", i nuovi "summary": stesso
             # contenuto, ora prodotto da cluster.summary invece che da inject().
             expected_summary = expected.get("summary", expected.get("custom", {}))
-            rich_summary = describe_features(cluster)
+            # Stessa unione usata da generate_golden.py per costruire "summary"
+            # (conteggi grezzi di cluster.summary + conteggi ricchi di
+            # describe_features): confrontare solo contro describe_features
+            # fa fallire sempre qualunque chiave presente solo nell'altro
+            # dizionario (es. bending_lines_count vs bending_lines), a
+            # prescindere dalla geometria.
+            rich_summary = {**cluster.summary, **describe_features(cluster)}
             for key, value in expected_summary.items():
                 actual = rich_summary.get(key)
                 if isinstance(value, float):

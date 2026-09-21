@@ -135,12 +135,23 @@ class TestMergeCollinearOverlaps(unittest.TestCase):
     def test_lista_vuota(self):
         self.assertEqual(merge_collinear_overlaps([]), [])
 
-    def test_estremi_fusi_usano_il_punto_arrotondato_non_quello_grezzo(self):
+    def test_estremi_fusi_edge_arrotondato_segment_grezzo(self):
         # Su coordinate non tonde edge.start/end (arrotondati, identita' del
         # nodo nel grafo) e segment.start/end (piena precisione) differiscono
-        # di una frazione di mm — il fuso deve riprendere quelli arrotondati,
-        # altrimenti non si aggancia più al vicino reale (bug trovato su
-        # fa_che_non_mi_incazzi.dxf: un pezzo vero spariva del tutto).
+        # di una frazione di mm — due scopi diversi, mai mischiati (stesso
+        # principio già in gap_solver.apply_gap_fixes):
+        #   - Edge.start/end del fuso RESTANO arrotondati: servono a
+        #     riagganciarsi al nodo del vicino reale nel grafo, altrimenti un
+        #     pezzo vero può sparire del tutto (bug trovato su
+        #     fa_che_non_mi_incazzi.dxf).
+        #   - il LineSeg fuso (edge.segment) porta invece SEMPRE il punto
+        #     grezzo a piena precisione, mai quello arrotondato: è quello che
+        #     l'export legge per costruire la geometria in output, e un fuso
+        #     il cui segmento porta il punto arrotondato produce uno scalino
+        #     visibile appena affianca un lato nativo mai toccato dal merge
+        #     nello stesso contorno (bug trovato su SHEET_BLANK.dxf: un
+        #     lato "verticale" con dx=0.031 invece di 0, lunghezza 0.97
+        #     invece di 1).
         edges = [
             _line_raw((0.0, 0.0), (10.0, 0.0), (0.0000003, 0.0), (10.0000003, 0.0)),
             _line_raw((8.0, 0.0), (20.0, 0.0), (8.0000003, 0.0), (20.0000003, 0.0)),
@@ -150,8 +161,8 @@ class TestMergeCollinearOverlaps(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0].start, (0.0, 0.0))
         self.assertEqual(out[0].end, (30.0, 0.0))
-        self.assertEqual(out[0].segment.start, (0.0, 0.0))
-        self.assertEqual(out[0].segment.end, (30.0, 0.0))
+        self.assertEqual(out[0].segment.start, (0.0000003, 0.0))
+        self.assertEqual(out[0].segment.end, (30.0000003, 0.0))
 
 
 class TestMergeCocircularOverlaps(unittest.TestCase):
