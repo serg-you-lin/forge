@@ -51,7 +51,7 @@ forge.save_json(result, "out.json")
 | `load_geometry` | `(entities: list[dict], tolerance=0.05, source_path="") -> ForgeDocument` | builds a `ForgeDocument` from pure geometry, no file. Entity `type`: `line`(start,end) / `arc`(center,radius,start_angle,end_angle deg,ccw) / `circle`(center,radius) / `polyline`(points,closed) / `spline`(control_points,knots,degree,weights?,fit_points?,closed?) / `ellipse`(center,major_axis vector,ratio?,start_param?,end_param?,ccw?). Optional `role` per entity, same open vocabulary as `label_map`. |
 | `validate` | `(doc: ForgeDocument) -> ForgeResult` | input validation, no mutation. `is_valid=False` = unworkable (no geometry / NaN / all-degenerate). Warnings = workable but flagged. |
 | `validate_result` | `(result: ForgeResult) -> ForgeResult` | output validation, **mutates** `result`. Called automatically by `heal()` — call manually only if you build a `ForgeResult` another way. |
-| `heal` | `(doc, tolerance=None, label="", source_file="", is_structural=None) -> ForgeResult` | topology reconstruction: gap-closing, bend-line candidate extraction, loop search, outer/inner containment tree. Does **not** classify holes (D15). `tolerance=None` → reuses `doc.source_meta["tolerance"]`. If no closed outer forms, `result.is_valid=False`. `is_structural(role)->bool` decides which already-labeled edges stay in the graph — `heal()` alone knows only outer/inner; without it a labeled `"hole"` is treated as non-structural (excluded, warned). `heal_and_detect`/`split_to_files` inject `tools.manufacturing_role.is_structural` automatically. |
+| `heal` | `(doc, tolerance=None, label="", source_file="", is_structural=None) -> ForgeResult` | topology reconstruction: gap-closing, non-contour edge exclusion (candidates for "something else" — `non_contour_candidates()` exposes the same criterion, see below), loop search, outer/inner containment tree. Does **not** classify holes (D15). `tolerance=None` → reuses `doc.source_meta["tolerance"]`. If no closed outer forms, `result.is_valid=False`. `is_structural(role)->bool` decides which already-labeled edges stay in the graph — `heal()` alone knows only outer/inner; without it a labeled `"hole"` is treated as non-structural (excluded, warned). `heal_and_detect`/`split_to_files` inject `tools.manufacturing_role.is_structural` automatically. |
 | `detect` | `(result, features=None, *, max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | classifies features. Bare call = only the `label_map`/`linetype_map`/`color_map` lane + topology cleanup, **no** geometric inference. `features`: `None`/`()` / `"all"` / subset of `{"holes","bending","engrave"}` (= `ALL_FEATURES`). Holes: circular inner contour Ø < `max_drill_diameter` → `Hole` (`plain`/`countersink`/`threaded`); above threshold stays a plain inner contour. **Mutates in place, also returns.** |
 | `ALL_FEATURES` | `frozenset({"holes","engrave","bending"})` | the `"all"` set. |
 | `describe_features` | `(cluster: ForgeCluster) -> dict` | rich per-type feature counts (`plain_holes_count`, `countersink_count`, `threaded_holes_count`, grouped bend lines, `total_engrave_length`...). `cluster.summary` is the raw always-available count; this is the detailed version for forge's known types. |
@@ -73,6 +73,7 @@ forge.save_json(result, "out.json")
 | `normalize_role` / `is_structural_role` | `(value) -> str` / `(role) -> bool` | role-vocabulary primitives (see below). `is_structural_role` is the engine's own minimal predicate (outer/inner only) — the *extended* one detect uses is `tools.manufacturing_role.is_structural`. |
 | `RoleStyle` | `dataclass(color: tuple[int,int,int]|None, linetype: str|None, lineweight: float|None, layer_name: str|None)` | per-role visual override for `to_dxf`/`split` via `role_styles={role: RoleStyle(...)}`. `None` fields keep forge's default. Wins over anything `register_role_style` registered for the same role. |
 | `register_role_style` | `(role, style: RoleStyle) -> None` | registers a `RoleStyle` **once**, applied to every later `to_dxf`/`split` automatically — same idiom as `set_schema`. `tools.manufacturing_role` uses this exact call (no special privilege) to register its own default colors/layer names at import time. |
+| `non_contour_candidates` | `(doc, tolerance=None) -> list[Edge]` | same topological criterion `heal()` uses internally to exclude an edge from the contour graph (branching + centroid outside its connected component's convex hull, D49) — asserts **no** meaning (not "bending", not anything). `detect()`'s `_detect_bending` is just one interpretation of these candidates, not privileged. A consumer that never calls `detect()` (framer, the interpreter) and wants a different interpretation (a raised-feature edge in a plan view is not a bend line) calls this to get the same candidate set without re-deriving the criterion, then sets `edge.role` on the returned `Edge`s (references into `doc.edges` — mutation is reflected there) **before** `heal()`. Runs on `doc.edges` as-is, before `heal()`'s own merge/gap-closing preprocessing — meant to decide roles pre-`heal()`, not to predict its exact excluded set to the edge case. |
 
 ### Debug/inspect (stdout only, 3 levels in order)
 
@@ -158,6 +159,26 @@ result = forge.heal(doc, is_structural=roles.is_structural)   # only if FLANGE_U
 result = forge.detect(result, "all")
 forge.to_dxf(result, doc)   # FlangeUp layer, orange — registered once, applies automatically
 ```
+
+That assumes the CAD source already puts flange edges on their own layer
+(`label_map={"FlangeMarks": ...}`). When it doesn't — you only know
+geometrically that an edge sits where a bend line *would* sit (both endpoints
+on a branching node, interior to its shape's hull) and have to decide for
+yourself whether it's really a bend or a raised-feature edge — use
+`non_contour_candidates(doc)` instead of a `label_map` layer:
+
+```python
+for edge in forge.non_contour_candidates(doc):
+    if your_tool.looks_like_flange(edge):     # your own geometry/cross-view logic
+        edge.role = roles.FLANGE_UP
+
+result = forge.heal(doc, is_structural=roles.is_structural)
+```
+
+Same candidates `heal()` would have excluded and left as `role="unknown"` in
+`trash_entities` anyway — this just lets you label them with your own meaning
+before `heal()` runs, instead of after, and instead of `detect()`'s default
+guess (`"bending"`, confidence 0.9) if you were calling `detect()` at all.
 
 If your role is purely decorative (never part-contour geometry), skip
 `is_structural` entirely and skip passing anything to `heal()` — the default

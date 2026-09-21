@@ -1466,6 +1466,45 @@ outcomes: fully covered → absorbed silently; genuinely bridging a real gap
 in the outer → still orphaned with the warning, unchanged. Suite: 744
 passed.
 
+### D55 — `non_contour_candidates()`: the non-contour test becomes a public primitive ✅
+Real framer case: a plan view with a raised flange. `heal()` already excludes
+the flange's edges from the contour graph via `NonContourEdgeDetector`
+(branching + centroid outside its component's hull, D49) without asserting
+what they are — that "candidate, unlabeled" state was already the right
+shape. The only place that turns a candidate into a claim is `detect()`'s
+`_detect_bending`, which guesses `"bending"` at confidence 0.9 — wrong for a
+raised-feature edge, and framer never calls `detect()` anyway, so it never
+even saw this candidate set to begin with; it only had the coarser signal
+"role stayed `unknown`, ended up in `trash_entities`", not "this specific
+edge is where a crossing line would sit."
+
+Federico: heal shouldn't need to know it's a bend line, only say "this is a
+candidate for being something else" — already true — "and that something
+else should be handled by the caller." Confirmed: expose the same class
+`heal()` already uses internally (not have framer reimplement the
+branching+hull-interior test itself), so there is one source of truth for
+"is this a non-contour candidate", not two that can drift apart.
+
+`forge/tools/non_contour.py`: `non_contour_candidates(doc, tolerance=None) ->
+list[Edge]` — builds the same kind of graph `HealStep._find_non_contour_edges`
+does (`build_node_graph(edges, epsilon=0.0)`) and runs the same
+`NonContourEdgeDetector`, same tolerance fallback as `heal()`
+(`doc.source_meta["tolerance"]`). Returns the actual `Edge` objects (not ids)
+so the caller sets `.role` directly and it's already reflected in `doc.edges`
+— hands straight into the D30 pre-`heal()` role-injection contract, no new
+mechanism needed on top.
+
+Documented caveat, not fixed: runs on `doc.edges` as given, before `heal()`'s
+own `_merge_collinear_overlaps`/`_merge_cocircular_overlaps`/gap-closing
+preprocessing, so on a drawing with duplicate or sub-tolerance-gap segments
+the result can differ slightly from what `heal()` would exclude once it
+actually runs. Acceptable for the intended use (deciding `edge.role` *before*
+`heal()`) since `heal()` itself still has the final say on what stays in the
+graph — exposing the mid-pipeline preprocessed state too would be a bigger
+surface for no case that needs it yet.
+
+Suite: 750 passed (8 new). `main` → 0.6.24.
+
 ---
 
 ## Closed questions (history)

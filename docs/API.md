@@ -276,8 +276,10 @@ forge.heal(doc: ForgeDocument, tolerance=None, label="", source_file="",
 ```
 
 Il passo difficile: ricostruzione della topologia. Lavora su `doc.edges`, zero
-`ezdxf`. Chiude i gap, individua le linee di piega candidate, trova i loop chiusi,
-costruisce l'albero di contenimento outer / inner.
+`ezdxf`. Chiude i gap, esclude dal grafo gli edge che non chiudono un contorno
+(candidati a "qualcos'altro" — `non_contour_candidates()` espone lo stesso
+criterio a un consumatore, vedi sezione 8), trova i loop chiusi, costruisce
+l'albero di contenimento outer / inner.
 
 `heal()` **non classifica i fori** (D15): consegna solo `ForgeCluster(outer,
 inners=[ForgeContour...])`. La promozione a `Hole` è di `detect(features="holes")`.
@@ -934,6 +936,47 @@ ruoli foro — quello che `heal_and_detect()`/`split_to_files()` passano a
 layer di default con `register_role_style` al proprio import — nessun
 trattamento privilegiato, stesso meccanismo pubblico di un consumatore
 esterno (MAP.md D47).
+
+### `non_contour_candidates`
+
+```python
+forge.non_contour_candidates(doc: ForgeDocument, tolerance=None) -> list[Edge]
+```
+
+Edge di `doc.edges` che il criterio topologico di `heal()` escluderebbe dal
+grafo dei contorni (branching + centroide fuori dal convex hull della sua
+componente connessa, MAP.md D49) — **senza dire cosa siano**. `heal()` da solo
+non assegna un significato a questi edge: li esclude e basta, restano in
+`trash_entities` col ruolo che avevano. È `detect()` a interpretarli
+(`_detect_bending`: dritto, estremi sul contorno esterno → `"bending"`,
+confidence 0.9) — un'interpretazione a valle come un'altra, non privilegiata.
+
+Un consumatore che non chiama `detect()` (framer, l'interprete) e vuole
+un'interpretazione propria (un bordo di feature in rilievo vista in pianta non
+è una piega) chiama `non_contour_candidates(doc)` per ottenere la stessa lista
+di candidati che `heal()` userebbe, senza duplicare il criterio, e decide da
+sé come marcarli — poi assegna `edge.role` sugli `Edge` restituiti (sono
+riferimenti dentro `doc.edges`, mutarli si riflette lì) **prima** di chiamare
+`heal()` (vedi `ContourRole` sopra, FRAMER.md, MAP.md D55).
+
+| parametro | significato |
+|---|---|
+| `tolerance` | se `None`, ripresa da `doc.source_meta["tolerance"]` — stesso fallback di `heal()`. |
+
+Lavora su `doc.edges` così come sono, **prima** che `heal()` fonda segmenti
+sovrapposti/cocircolari e chiuda i gap minuscoli (i suoi primi passi interni,
+D50/D52): su un disegno con duplicati o gap sotto tolleranza il risultato può
+differire di poco da quello che `heal()` escluderebbe a conti fatti. Non è un
+problema per l'uso previsto — decidere `edge.role` prima di `heal()` — perché
+la parola finale su cosa resta nel grafo la dice comunque `heal()` stesso.
+
+```python
+for edge in forge.non_contour_candidates(doc):
+    if <la tua logica decide che è un bordo di feature in rilievo>:
+        edge.role = forge.normalize_role("flange_up")
+
+result = forge.heal(doc)   # "flange_up" è già fuori dal grafo, mai indovinato "bending"
+```
 
 ---
 
