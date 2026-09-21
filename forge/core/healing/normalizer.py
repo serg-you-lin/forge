@@ -127,18 +127,25 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
     niente su nessun file della suite — l'unione di 2 intervalli è sempre
     corretta, il numero di pezzi non era mai stato la variabile giusta.
 
-    Bug di arrotondamento (fisso, non riguarda "quanti pezzi"): il punto
-    conservato come estremo del fuso dev'essere quello ARROTONDATO
-    dell'Edge (`edge.start`/`edge.end` — l'identità del nodo nel grafo,
+    Due estremi, due scopi, mai mischiati (stesso principio già in
+    `gap_solver.apply_gap_fixes`: "il segmento conserva il punto reale, solo
+    il nodo topologico dell'Edge viene arrotondato"): `Edge.start`/`Edge.end`
+    del fuso portano il punto ARROTONDATO (l'identità del nodo nel grafo,
     l'adapter li produce arrotondando `segment_endpoints(segment)`, D18 /
-    adapter.py `_append_edge`), non quello a piena precisione del segmento
-    nativo. Su coordinate reali (mai numeri tondi) i due differiscono di una
-    frazione di mm — un fuso costruito sulla precisione piena del segmento
-    può non agganciarsi più esattamente al nodo del vicino reale (un ArcSeg
-    che chiude l'angolo, un'altra LINE), e quel sub-mm di scarto spezza il
-    contorno. La proiezione `_t` per ordinamento/sovrapposizione resta a
-    piena precisione — è solo il punto conservato come estremo che dev'
-    essere quello arrotondato.
+    adapter.py `_append_edge`) — quello serve a riagganciarsi esattamente al
+    nodo del vicino reale (un ArcSeg che chiude l'angolo, un'altra LINE): un
+    fuso il cui Edge.start/end fosse a piena precisione del segmento nativo
+    può risultare vicinissimo ma non identico a quel nodo, e il sub-mm di
+    scarto spezza il contorno. Il `LineSeg` fuso (`edge.segment`), invece,
+    porta SEMPRE il punto reale a piena precisione — mai quello arrotondato:
+    è quello che l'export legge per costruire la geometria in output (area,
+    lunghezza, poligono scritto), e un fuso il cui segmento porta il punto
+    arrotondato produce, appena affianca nello stesso contorno un lato
+    nativo mai toccato dal merge, uno scalino visibile nel punto che
+    dovrebbe essere lo stesso angolo — due fonti di verità diverse cucite
+    insieme (trovato su un caso reale: un lato "verticale" con dx=0.031
+    invece di 0, lunghezza 0.97 invece di 1). La proiezione `_t` per
+    ordinamento/sovrapposizione resta a piena precisione in entrambi i casi.
 
     Esclusi a monte, mai candidati alla fusione:
       - segmenti non LineSeg (ARC/SPLINE non sono "collineari")
@@ -213,23 +220,31 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
         def _t(point, _ux=ux, _uy=uy, _origin=s0):
             return (point[0] - _origin[0]) * _ux + (point[1] - _origin[1]) * _uy
 
-        # Ogni span porta il punto ARROTONDATO dell'Edge (non quello a piena
-        # precisione del segmento nativo) come estremo di lo/hi: è
-        # `edge.start`/`edge.end` a essere l'identità del nodo nel grafo
-        # (l'adapter arrotonda `segment_endpoints(segment)` per produrli, D18
-        # / adapter.py `_append_edge`) — un fuso costruito sulla precisione
-        # piena del segmento può risultare vicinissimo ma NON identico al
-        # nodo del vicino reale (es. un ArcSeg che chiude l'angolo), e quel
-        # sub-mm di scarto basta a spezzare l'aggancio. La proiezione `_t`
-        # per l'ordinamento/sovrapposizione resta a piena precisione — è solo
-        # il punto conservato come estremo che deve essere quello arrotondato.
+        # Ogni span porta DUE coppie di estremi, per due scopi diversi (stesso
+        # principio già in gap_solver.apply_gap_fixes: "il segmento conserva
+        # il punto reale, solo il nodo topologico dell'Edge viene
+        # arrotondato"): `edge.start`/`edge.end` (arrotondati) sono l'identità
+        # del nodo nel grafo — quelli che il fuso deve riusare per riagganciarsi
+        # esattamente al vicino reale (D50: un fuso costruito sulla precisione
+        # piena del segmento può non coincidere col nodo del vicino di un
+        # sub-mm e spezzare il contorno). `seg.start`/`seg.end` (piena
+        # precisione) sono la geometria vera — quella che finisce nel
+        # `LineSeg` fuso, perché è quella che l'export legge: un fuso il cui
+        # SEGMENTO porta il punto arrotondato produce, appena affianca un lato
+        # nativo mai toccato dal merge, un contorno con uno scalino nel punto
+        # che dovrebbe essere lo stesso angolo (trovato su un caso reale,
+        # TRG19E: un lato "verticale" con dx=0.031 invece di 0, lunghezza 0.97
+        # invece di 1 — la firma esatta di due fonti di verità diverse cucite
+        # nello stesso contorno). La proiezione `_t` per ordinamento/
+        # sovrapposizione resta a piena precisione in entrambi i casi.
         spans = []
         for e in group:
-            t_start, t_end = _t(e.segment.start), _t(e.segment.end)
+            seg = e.segment
+            t_start, t_end = _t(seg.start), _t(seg.end)
             if t_start <= t_end:
-                spans.append((t_start, e.start, t_end, e.end, e))
+                spans.append((t_start, e.start, t_end, e.end, e, seg.start, seg.end))
             else:
-                spans.append((t_end, e.end, t_start, e.start, e))
+                spans.append((t_end, e.end, t_start, e.start, e, seg.end, seg.start))
         spans.sort(key=lambda s: s[0])
 
         chains: List[list] = [[spans[0]]]
@@ -271,13 +286,17 @@ def _register_merge(chain: List[tuple], original_index: dict, replacement: dict,
     if len(chain) < 2:
         return
 
-    lo_start_pt = min(chain, key=lambda s: s[0])[1]
-    hi_end_pt   = max(chain, key=lambda s: s[2])[3]
+    lo_span = min(chain, key=lambda s: s[0])
+    hi_span = max(chain, key=lambda s: s[2])
+    lo_start_pt = lo_span[1]   # arrotondato — identità del nodo (Edge.start/end)
+    hi_end_pt   = hi_span[3]
+    lo_native   = lo_span[5]   # piena precisione — geometria vera (nel LineSeg)
+    hi_native   = hi_span[6]
 
     members = [c[4] for c in chain]
     representative = min(members, key=lambda e: original_index[id(e)])
 
-    merged_segment = LineSeg(start=lo_start_pt, end=hi_end_pt)
+    merged_segment = LineSeg(start=lo_native, end=hi_native)
     # role/style del rappresentante (il primo membro in ordine di input, non
     # necessariamente il primo nella catena ordinata per t)
     replacement[id(representative)] = replace(

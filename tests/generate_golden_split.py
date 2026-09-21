@@ -32,7 +32,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.adapters.dxf.layers import ROLE_TO_LAYER, LAYER_INNER
+from forge.adapters.dxf.layers import role_to_dxf_layer
 from forge.tools.detect import describe_features
 
 MULTIPLI_DIR      = project_root / "tests" / "examples" / "golden_multipli"
@@ -119,8 +119,14 @@ def generate(force: bool = False, only: str = None):
                     ),
                     "outer_wkt":     cluster.outer.polygon.wkt,
                     "inners_wkt":    [i.polygon.wkt for i in all_inners],
-                    "outer_layer":   ROLE_TO_LAYER.get(cluster.outer.role),
-                    "inners_layers": [ROLE_TO_LAYER.get(i.role, LAYER_INNER) for i in all_inners],
+                    "outer_layer":   role_to_dxf_layer(cluster.outer.role),
+                    # role_to_dxf_layer, non ROLE_TO_LAYER.get(...) da solo: quel
+                    # dict conosce solo outer/inner, un ruolo manifatturiero
+                    # (es. "hole") risolve al suo layer registrato solo passando
+                    # da qui — stessa funzione che usa il confronto in
+                    # test_golden_split.py, altrimenti golden e test parlano
+                    # due lingue diverse per lo stesso contorno.
+                    "inners_layers": [role_to_dxf_layer(i.role) for i in all_inners],
                     "summary":       {
                         k: v for k, v in
                         {**cluster.summary, **describe_features(cluster)}.items()

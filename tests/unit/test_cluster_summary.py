@@ -143,7 +143,12 @@ class TestSummaryMatchesGoldenFixtures(unittest.TestCase):
             if not result.is_valid:
                 continue
             for i, (cluster, pg) in enumerate(zip(result.clusters, golden["clusters"])):
-                rich = describe_features(cluster)
+                # Stessa unione usata da generate_golden.py per costruire
+                # "summary" (conteggi grezzi di cluster.summary + conteggi
+                # ricchi di describe_features): describe_features da solo non
+                # ha tutte le chiavi che generate_golden.py scrive nel golden
+                # (es. bending_lines_count, presente solo in cluster.summary).
+                rich = {**cluster.summary, **describe_features(cluster)}
                 for key, expected in (pg.get("summary") or {}).items():
                     actual = rich.get(key)
                     checked += 1
