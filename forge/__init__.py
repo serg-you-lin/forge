@@ -101,6 +101,12 @@ from .model.role      import normalize_role, is_structural_role
 # con register_role_style() (stesso idioma di set_schema per i metadati) e
 # applicato automaticamente a ogni render successivo senza ripassarlo.
 from .rules.palette   import RoleStyle, register_role_style
+# Stesso criterio che heal() usa internamente per escludere un edge dal grafo
+# dei contorni (branching + centroide fuori dal hull, D49) — senza dire cosa
+# sia quell'edge. Un consumatore che vuole decidere `edge.role` prima di
+# heal() con un'interpretazione propria (non "bending" come fa detect()) lo
+# chiama su doc.edges. Vedi FRAMER.md, MAP.md D55.
+from .tools.non_contour import non_contour_candidates
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -164,4 +170,5 @@ __all__ = [
     "is_structural_role",
     "RoleStyle",
     "register_role_style",
+    "non_contour_candidates",
 ]

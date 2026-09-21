@@ -77,7 +77,7 @@ forge/
 │                      che il motore usa. Nessun ruolo manifatturiero qui
 │                      (D47, "roles out of core")
 │
-├── tools/        STADI opzionali su un ForgeResult    (il caller sceglie quali e in che ordine)
+├── tools/        STADI opzionali su un ForgeDocument/ForgeResult (il caller sceglie quali e in che ordine)
 │   ├── manufacturing_role.py  hole/countersink/threaded_hole/bending/
 │   │                     engrave/marking — vocabolario di detect, MAI
 │   │                     importato da core/model (D47). `is_structural()`
@@ -88,6 +88,9 @@ forge/
 │   ├── hole_detector.py  euristiche filettato / svasatura usate da detect()
 │   ├── anchor.py         anchor_annotations()   — àncora le annotazioni ai cluster
 │   ├── inject.py         inject()                — testi del cluster → data_injector esterno
+│   ├── non_contour.py    non_contour_candidates() — stesso criterio non-contorno
+│   │                     di heal() (D49), esposto per decidere `edge.role`
+│   │                     PRIMA di heal() (D55) — lavora su ForgeDocument
 │   ├── thresholds.py     soglie di detect() (HOLE_DIAMETER_THRESHOLD...)
 │   └── model/            Hole / BendingLine / Engraving / ClassifiedEntity /
 │                         DetectedFeatures — output di detect(), non
@@ -147,12 +150,16 @@ Il passo difficile. Lavora su `doc.edges`, zero `ezdxf`. In ordine:
    `frame` / `title_block`): non entrano nel grafo — sono marcatura o arredo
    del disegno, non contorno. Il predicato è `model/role.is_structural_role`
    (D30); è il punto d'aggancio per un consumatore che marca la geometria prima
-   di `heal` (framer)
+   di `heal` (framer) — `forge.non_contour_candidates(doc)` (D55) espone lo
+   stesso criterio del passo 3 sotto, per decidere QUALI edge marcare qui
 2. **preprocess**: costruisce il grafo dei nodi, trova gli endpoint liberi entro
    `tolerance`, chiude i gap prolungando i segmenti alla loro intersezione reale
-3. **detection pieghe candidate**: gli `Edge` con entrambi gli endpoint su nodi di
-   branching (grado > 2) sono candidati piega — escono dal grafo per non rompere
-   la ricerca dei loop
+3. **detection non-contorno**: gli `Edge` con entrambi gli endpoint su nodi di
+   branching (grado > 2) e il centroide fuori dal convex hull della loro
+   componente sono candidati a non essere contorno (D49) — escono dal grafo per
+   non rompere la ricerca dei loop. `heal` non decide cosa siano: resta a
+   `detect()` (che li interpreta come piega) o a un altro consumatore che
+   preferisce decidere da sé (`non_contour_candidates`, D55)
 4. **ricerca loop**, con una scala di strategie sempre meno esatte:
    - grafo esatto (uguaglianza delle tuple arrotondate)
    - se fallisce: clustering degli endpoint entro `tolerance` per trovare gli

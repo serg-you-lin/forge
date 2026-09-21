@@ -162,6 +162,19 @@ lavoro geometrico, e restituisce a forge dei ruoli. Se serve un cambiamento in
 forge è solo per **accettare** i ruoli, mai per **decidere** cosa sia un
 cartiglio.
 
+L'altra metà dell'interfaccia, rimasta scoperta finché non è servita davvero
+(caso reale: "raggruppamento viste", una vista in pianta con una flangia in
+rilievo — `heal` la esclude dal grafo per topologia, ma solo `detect()` prova
+a dire cosa sia, indovinando sempre "piega"): **come Framer trova QUALI edge
+sono ambigui**, prima ancora di decidere il ruolo. `forge.non_contour_candidates(doc)`
+espone lo stesso identico criterio topologico che `heal()` usa internamente
+(branching + centroide fuori dal hull, D49) senza passare da `detect()` e
+senza che Framer si riscriva una sua versione del test — stessa fonte di
+verità, mai una seconda che possa divergere. Framer filtra quei candidati con
+la sua logica (es. incrocio multi-vista) e assegna `edge.role` solo a quelli
+che decide di reinterpretare; il resto arriva a `heal()` tale e quale, e lì fa
+la stessa fine di sempre (`trash_entities`, `role="unknown"`). Vedi MAP.md D55.
+
 
 ## Il verso "aggiungi" (più avanti)
 

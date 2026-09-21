@@ -212,7 +212,10 @@ con `source` + `confidence`, senza dati privati di nessun cliente.
   meno definito: a differenza di cornice/cartiglio/callout (pattern con
   soglie relativamente chiare), qui la casistica reale è più varia. Prima
   di scriverci codice vale la pena guardare un po' di disegni veri e
-  vedere quanti pattern ricorrono davvero.
+  vedere quanti pattern ricorrono davvero. Un pezzo del contratto con forge
+  che questo lavoro userà c'è già (`forge.non_contour_candidates`, MAP.md
+  D55, FRAMER.md): dice quali edge sono topologicamente ambigui, non cosa
+  siano — resta tutto da scrivere il come deciderlo incrociando le viste.
 
 > **Nota (Federico): è fattibile davvero?**
 > **Risposta:** fattibile sì, nello stesso senso in cui lo è stato il
