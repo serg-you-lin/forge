@@ -42,6 +42,7 @@ OUTDIR = r"pipeline_output"                   # scritto in <repo>/pipeline_outpu
 | 12 | `12_to_svg.py` | `to_view_model`, `to_svg`, `save_svg` | JSON per un renderer esterno + SVG del modello |
 | 14 | `14_style_classification.py` | `load_dxf(linetype_map=..., color_map=...)` | classificare dal tratteggio/colore quando il layer non basta (Cluster E) |
 | 18 | `18_outer_scan.py` | `core.healing.outer_scan.outer_candidate_edges` (sperimentale) | candidati a bordo esterno per ray casting, overlay contro il ground truth dipinto a mano |
+| 19 | `19_outer_scan_heal.py` | `outer_candidate_edges` + step di `HealStep` (prototipo) | scan → spezza i candidati → heal, due varianti (tutti gli edge / solo pezzi esterni) in DXF |
 
 `11_batch_heal.py` accetta una cartella come argomento (`python
 scripts/11_batch_heal.py path/`) e `--tol`; senza argomenti processa
