@@ -41,9 +41,8 @@ OUTDIR = r"pipeline_output"                   # scritto in <repo>/pipeline_outpu
 | 11 | `11_batch_heal.py` | `load_dxf` + `heal_and_detect` + `to_dxf` | heal di tutti i DXF di una cartella → `X_healed.dxf` + `.json` a fianco |
 | 12 | `12_to_svg.py` | `to_view_model`, `to_svg`, `save_svg` | JSON per un renderer esterno + SVG del modello |
 | 14 | `14_style_classification.py` | `load_dxf(linetype_map=..., color_map=...)` | classificare dal tratteggio/colore quando il layer non basta (Cluster E) |
-| 18 | `18_outer_scan.py` | `core.healing.outer_scan.outer_candidate_edges` (sperimentale) | candidati a bordo esterno per ray casting, overlay contro il ground truth dipinto a mano |
-| 19 | `19_outer_scan_heal.py` | `outer_candidate_edges` + ingredienti di heal (prototipo) | contorno esterno per scan + ponti, interno classificato; un layer DXF per decisione |
-| 20 | `20_outer_face.py` | `spatial_islands` + ingredienti di heal (prototipo, senza scan) | contorno esterno come faccia esterna della rete piana, su tutti i disegni di `tests/examples/islands` |
+| 18 | `18_outer_scan.py` | `core.healing.outer_scan.outer_candidate_edges` (non esportato) | candidati a bordo esterno per ray casting — idea da cui è nata la lettura per isole, oggi non usata da `island()` |
+| 20 | `20_island.py` | `island`, `read_islands` | lettura per isole su tutti i disegni di `tests/examples/islands`, un layer DXF per decisione |
 
 `11_batch_heal.py` accetta una cartella come argomento (`python
 scripts/11_batch_heal.py path/`) e `--tol`; senza argomenti processa
