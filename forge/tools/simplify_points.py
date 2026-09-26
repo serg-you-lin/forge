@@ -31,8 +31,6 @@ from __future__ import annotations
 import math
 from typing import List, Optional, Tuple, Union
 
-from ezdxf.math import BSpline
-
 from ..core.primitives.segments import ArcSeg, CircleSeg, LineSeg, SplineSeg, Point
 from ..core.geometry import (
     DEFAULT_ANGLE_THRESHOLD_DEG,
@@ -41,6 +39,7 @@ from ..core.geometry import (
     drop_duplicate_points,
     fit_circle_kasa,
     arc_angles,
+    interpolate_bspline,
 )
 
 DEFAULT_MIN_POINTS_FOR_SPLINE = 4
@@ -127,12 +126,11 @@ def _fit_spline(points: List[Point], degree: int, closed: bool = False) -> Splin
     `closed` va passato dal chiamante: solo lui sa se questo tratto è
     l'intero contorno chiuso o solo un arco fra due spigoli.
     """
-    pts_3d = [(x, y, 0.0) for x, y in points]
-    bspline = BSpline.from_fit_points(pts_3d, degree=degree)
+    control_points, knots = interpolate_bspline(points, degree)
     return SplineSeg(
-        degree=bspline.degree,
-        control_points=[(p.x, p.y) for p in bspline.control_points],
-        knots=list(bspline.knots()),
+        degree=degree,
+        control_points=control_points,
+        knots=knots,
         closed=closed,
     )
 

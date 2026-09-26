@@ -379,6 +379,65 @@ def arc_angles(points: List[Point], center: Point) -> Tuple[float, float, bool]:
     return raw[0], raw[0] + total, ccw
 
 
+def interpolate_bspline(points: List[Point], degree: int = 3) -> Tuple[List[Point], List[float]]:
+    """
+    B-spline di grado `degree` che passa per tutti i `points` (interpolazione
+    globale, Piegl & Tiller cap. 9.2.1): parametri per lunghezza di corda,
+    nodi "natural" per grado dispari e mediati per grado pari. Ritorna
+    `(control_points, knots)`, nodi normalizzati in [0, 1].
+    """
+    n = len(points) - 1
+    p = degree
+    if n < p:
+        raise ValueError(f"Servono almeno {p + 1} punti per una spline di grado {p}")
+
+    dists = [math.dist(points[i], points[i + 1]) for i in range(n)]
+    total = sum(dists)
+    if total > 0:
+        t, acc = [0.0], 0.0
+        for d in dists:
+            acc += d
+            t.append(acc / total)
+        t[-1] = 1.0
+    else:
+        t = [i / n for i in range(n + 1)]
+
+    if p % 2:
+        inner = t[2:n - p + 2]
+    else:
+        inner = [sum(t[j:j + p]) / p for j in range(1, n - p + 1)]
+    knots = [0.0] * (p + 1) + list(inner) + [1.0] * (p + 1)
+
+    basis = np.array([_bspline_basis_row(u, p, knots, n) for u in t])
+    control = np.linalg.solve(basis, np.array(points, dtype=np.float64))
+    return [(float(x), float(y)) for x, y in control], knots
+
+
+def _bspline_basis_row(u: float, p: int, knots: List[float], n: int) -> List[float]:
+    """Le n+1 funzioni di base N_i,p(u) (Cox-de Boor, Piegl & Tiller A2.2)."""
+    row = [0.0] * (n + 1)
+    if u >= knots[n + 1]:
+        row[n] = 1.0
+        return row
+    span = p
+    while span < n and knots[span + 1] <= u:
+        span += 1
+    funcs = [1.0] + [0.0] * p
+    left, right = [0.0] * (p + 1), [0.0] * (p + 1)
+    for j in range(1, p + 1):
+        left[j] = u - knots[span + 1 - j]
+        right[j] = knots[span + j] - u
+        saved = 0.0
+        for r in range(j):
+            temp = funcs[r] / (right[r + 1] + left[j - r])
+            funcs[r] = saved + right[r + 1] * temp
+            saved = left[j - r] * temp
+        funcs[j] = saved
+    for j in range(p + 1):
+        row[span - p + j] = funcs[j]
+    return row
+
+
 # ---------------------------------------------------------------------------
 # Intersezioni geometriche pure — usate da core/healing/gap_solver.py
 # ---------------------------------------------------------------------------

@@ -442,5 +442,34 @@ class TestChordAngleDeg(unittest.TestCase):
         self.assertAlmostEqual(forward, 45.0, places=9)
 
 
+class TestInterpolateBspline(unittest.TestCase):
+    """La B-spline di fit è matematica di forge, non di una libreria di formato."""
+
+    def _check_passes_through(self, pts, degree):
+        from forge.core.geometry import interpolate_bspline
+        from forge.core.primitives.segments import SplineSeg
+        ctrl, knots = interpolate_bspline(pts, degree)
+        self.assertEqual(len(ctrl), len(pts))
+        self.assertEqual(len(knots), len(pts) + degree + 1)
+        curve = SplineSeg(degree=degree, control_points=ctrl, knots=knots)
+        dense = curve.discretize(0.001)
+        for p in pts:
+            # ogni punto di fit sta sulla curva
+            self.assertLess(min(math.dist(p, q) for q in dense), 0.01)
+
+    def test_grado_dispari_passa_per_i_punti(self):
+        pts = [(10 * math.cos(i * 0.3), 6 * math.sin(i * 0.3)) for i in range(12)]
+        self._check_passes_through(pts, 3)
+
+    def test_grado_pari_passa_per_i_punti(self):
+        pts = [(i * 2.0, math.sin(i) * 3) for i in range(9)]
+        self._check_passes_through(pts, 2)
+
+    def test_troppo_pochi_punti(self):
+        from forge.core.geometry import interpolate_bspline
+        with self.assertRaises(ValueError):
+            interpolate_bspline([(0, 0), (1, 1), (2, 0)], 3)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
