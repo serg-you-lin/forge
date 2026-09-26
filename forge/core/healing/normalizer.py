@@ -30,11 +30,16 @@ weld_degenerate_linesegs — non sovrapposizione ma degenerazione: un LineSeg
                              i suoi due estremi vengono saldati in un nodo
                              (v. MAP.md D56).
 
+refit_tessellations      — una catena di tanti LineSeg corti è una curva scritta
+                             a punti: rifittata come arco/cerchio/spline
+                             (fitting.simplify_points).
+
 Funzioni pubbliche:
     find_duplicates           — dato un iterabile di (key, ref), i ref duplicati
     merge_collinear_overlaps  — dato un iterabile di Edge, i gruppi LineSeg da fondere
     merge_cocircular_overlaps — dato un iterabile di Edge, i gruppi ArcSeg da fondere
     weld_degenerate_linesegs  — dato un iterabile di Edge, i LineSeg degeneri da saldare
+    refit_tessellations       — dato un iterabile di Edge, le catene tassellate rifittate
 """
 
 from __future__ import annotations
@@ -43,6 +48,8 @@ from dataclasses import replace
 from typing import Any, Hashable, Iterable, List, Tuple
 
 from ..primitives.segments import LineSeg, ArcSeg, CircleSeg, segment_endpoints
+from ..primitives.fitting import simplify_points
+from ..topology.graph import build_node_graph
 from ..topology.edge import Edge
 from ...model.role import ContourRole
 
@@ -507,3 +514,90 @@ def weld_degenerate_linesegs(edges: Iterable[Edge]) -> List[Edge]:
             edge = replace(edge, start=new_start, end=new_end)
         result.append(edge)
     return result
+
+
+# ---------------------------------------------------------------------------
+# refit_tessellations
+# ---------------------------------------------------------------------------
+
+def refit_tessellations(
+    edges: Iterable[Edge],
+    max_segment: float = 0.1,
+    min_run: int = 10,
+    arc_fit_tolerance: float = 0.02,
+    node_decimals: int = 3,
+) -> List[Edge]:
+    """
+    Una catena di almeno `min_run` LineSeg (`role == UNKNOWN`) più corti di
+    `max_segment`, collegati uno dopo l'altro, è una curva scritta a punti:
+    diventa le primitive di `simplify_points` (arco/cerchio entro
+    `arc_fit_tolerance`, se no spline). Gli estremi della catena tengono i
+    nodi originali, così resta attaccata ai vicini. Il resto non si tocca.
+    """
+    edges = list(edges)
+    short = [e for e in edges
+             if isinstance(e.segment, LineSeg) and e.role == ContourRole.UNKNOWN
+             and e.start != e.end
+             and math.dist(e.segment.start, e.segment.end) < max_segment]
+    replaced, new_edges = set(), []
+    for path, closed in _short_runs(short):
+        if len(path) < min_run:
+            continue
+        pts = []
+        for edge, rev in path:
+            a, b = (edge.segment.end, edge.segment.start) if rev else (edge.segment.start, edge.segment.end)
+            if not pts:
+                pts.append(a)
+            pts.append(b)
+        if closed:
+            pts = pts[:-1]
+        prims = simplify_points(pts, closed=closed, arc_fit_tolerance=arc_fit_tolerance)
+        if not prims:
+            continue
+        first, last = path[0], path[-1]
+        start_node = first[0].end if first[1] else first[0].start
+        end_node = last[0].start if last[1] else last[0].end
+        for k, prim in enumerate(prims):
+            s, e = segment_endpoints(prim)
+            edge = replace(first[0], segment=prim,
+                           start=(round(s[0], node_decimals), round(s[1], node_decimals)),
+                           end=(round(e[0], node_decimals), round(e[1], node_decimals)))
+            if not closed:
+                edge = replace(edge, start=start_node if k == 0 else edge.start,
+                               end=end_node if k == len(prims) - 1 else edge.end)
+            new_edges.append(edge)
+        replaced |= {id(edge) for edge, _ in path}
+    if not replaced:
+        return edges
+    return [e for e in edges if id(e) not in replaced] + new_edges
+
+
+def _short_runs(short_edges: List[Edge]) -> list:
+    """Catene massimali: percorsi fra nodi di grado != 2, o anelli.
+    [( [(edge, percorso_al_contrario)], chiusa )]."""
+    graph = build_node_graph(short_edges)
+    used: set = set()
+    runs = []
+
+    def walk(start, first_edge, first_other):
+        path, node, edge, other = [], start, first_edge, first_other
+        while True:
+            used.add(id(edge))
+            path.append((edge, graph.canonical(edge.start) != node))
+            node = other
+            nxt = [(e, o) for e, o in graph[node] if id(e) not in used]
+            if len(graph[node]) != 2 or not nxt:
+                return path, node
+            edge, other = nxt[0]
+
+    for n in [n for n in graph if len(graph[n]) != 2]:
+        for e, o in graph[n]:
+            if id(e) not in used:
+                path, _ = walk(n, e, o)
+                runs.append((path, False))
+    for n in graph:
+        for e, o in graph[n]:
+            if id(e) not in used:
+                path, last = walk(n, e, o)
+                runs.append((path, last == n))
+    return runs
