@@ -1,5 +1,5 @@
 """
-forge/tools/simplify_points.py
+forge/core/primitives/fitting.py
 --------------------------------
 Ricostruzione di primitive pulite (linea/arco/cerchio/spline) da una sequenza
 di punti ordinata e densa — l'inverso della discretizzazione di
@@ -19,11 +19,10 @@ qui c'è solo la ricostruzione geometrica. Le soglie sono SEMPRE parametri del
 chiamante, mai hardcoded (stessa regola di core/primitives/segments.py).
 
 La matematica generica su una sequenza di punti (angolo interno, deduplica,
-fit a cerchio, `detect_corners` stesso) vive in `core/geometry.py` (D38) —
-qui restano solo l'orchestrazione (spezzare sui corner, decidere linea vs
-arco/cerchio vs spline) e il fit spline (specifico di questa ricostruzione).
-`detect_corners` resta importabile da qui per compatibilità con chi già lo
-usa da `forge.tools.simplify_points`.
+fit a cerchio, B-spline di fit, `detect_corners`) vive in `core/geometry.py`
+(D38) — qui c'è solo l'orchestrazione: spezzare sui corner, decidere linea
+vs arco/cerchio vs spline. Nata in tools/ (D33), scesa in core quando il fit
+spline ha smesso di dipendere da una libreria di formato.
 """
 
 from __future__ import annotations
@@ -31,8 +30,8 @@ from __future__ import annotations
 import math
 from typing import List, Optional, Tuple, Union
 
-from ..core.primitives.segments import ArcSeg, CircleSeg, LineSeg, SplineSeg, Point
-from ..core.geometry import (
+from .segments import ArcSeg, CircleSeg, LineSeg, SplineSeg, Point
+from ..geometry import (
     DEFAULT_ANGLE_THRESHOLD_DEG,
     DEFAULT_DUPLICATE_TOLERANCE,
     detect_corners,

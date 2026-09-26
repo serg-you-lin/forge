@@ -53,8 +53,8 @@ from .adapters.geometry.loader import load_geometry
 # + refit) — generico, zero dipendenza da immagini. Resta importabile come
 # forge.simplify_points, non è in __all__ e non è documentato finché non è
 # stato provato da un caso reale (Smoother). detect_corners/fit_primitives
-# restano accessibili da forge.tools.simplify_points per chi vuole comporli.
-from .tools.simplify_points import simplify_points
+# restano accessibili da forge.core.primitives.fitting per chi vuole comporli.
+from .core.primitives.fitting import simplify_points
 # rotate_*: SPERIMENTALE, fuori dal contratto pubblico (vedi MAP.md D46).
 # Ruotano un ForgeCluster/ForgeResult già sano (nessun heal() in più — una
 # rotazione rigida non cambia la topologia) o un ForgeDocument grezzo

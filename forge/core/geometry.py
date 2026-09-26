@@ -9,7 +9,7 @@ Solo math, numpy, shapely.
 Importato da:
     - core/healing/gap_solver.py  (intersezioni per la chiusura dei gap)
     - core/topology/               (utilità topologiche)
-    - tools/simplify_points.py     (spigoli/fit su una sequenza di punti)
+    - core/primitives/fitting.py   (spigoli/fit su una sequenza di punti)
 """
 
 import math
@@ -258,7 +258,7 @@ def circular_geometry(polygon, segments=None):
 # di primitive forge (LineSeg/ArcSeg/...) né di come il chiamante la userà.
 # Nata dentro tools/simplify_points.py (D33/D36), spostata qui perché un
 # secondo consumatore (un futuro tool linguette) ne ha bisogno senza
-# duplicarla — `tools/simplify_points.py` resta l'orchestratore che decide
+# duplicarla — `core/primitives/fitting.py` resta l'orchestratore che decide
 # quando/come usarla per ricostruire linee/archi/spline.
 
 DEFAULT_ANGLE_THRESHOLD_DEG = 50.0
