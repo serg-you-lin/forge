@@ -107,6 +107,15 @@ from .rules.palette   import RoleStyle, register_role_style
 # heal() con un'interpretazione propria (non "bending" come fa detect()) lo
 # chiama su doc.edges. Vedi FRAMER.md, MAP.md D55.
 from .tools.non_contour import non_contour_candidates
+# Seconda lettura di un documento, accanto a heal(): per isole, contorno
+# esterno come faccia esterna della rete piana (disegni di viste, 3D
+# proiettato). I mattoni restano esposti per chi compone la sua ricetta
+# (framer): isole, rete piana, faccia esterna, tassellature. Vedi MAP.md D58.
+from .core.island import island, read_islands, read_island, IslandReading
+from .core.healing.islands import spatial_islands, Island
+from .core.topology.noding import split_at_crossings, NodedEdges
+from .core.topology.outer_face import outer_face, OuterFace
+from .core.healing.normalizer import refit_tessellations
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -130,6 +139,7 @@ __all__ = [
     "validate_result",
     # Workflow
     "heal",
+    "island",
     "detect",
     "ALL_FEATURES",
     "describe_features",
@@ -150,6 +160,17 @@ __all__ = [
     "write_metadata_to_dxf",
     "read_metadata_from_dxf",
     "set_schema",
+    # Lettura per isole: i mattoni di island()
+    "read_islands",
+    "read_island",
+    "IslandReading",
+    "spatial_islands",
+    "Island",
+    "split_at_crossings",
+    "NodedEdges",
+    "outer_face",
+    "OuterFace",
+    "refit_tessellations",
     # Utilità
     # Ispezione / debug (3 livelli: DXF grezzo → ForgeDocument → ForgeResult)
     "inspect_dxf",
