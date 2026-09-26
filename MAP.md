@@ -80,8 +80,8 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `main`, version `0.6.18`. Suite: 671 passed + 62 subtests as of the
-latest decision below (D44), golden all green.
+Branch: `main`, version `0.6.25`. Suite: 756 passed + 44 subtests as of the
+latest decision below (D57), golden all green.
 
 Still genuinely open:
 - `detect_engrave` remains a no-op placeholder (D13) — deferred until
@@ -1505,6 +1505,43 @@ surface for no case that needs it yet.
 
 Suite: 750 passed (8 new). `main` → 0.6.24.
 
+### D56 — `weld_degenerate_linesegs`: a sub-0.05mm LineSeg is welded, not deleted ✅
+Real case (`SHEETCODE_3`, a dense strip view): 2980 of 3908 edges were
+LineSegs a few hundredths of a mm long — a curve finely tessellated into
+hundreds of near-coincident vertices instead of staying an arc. They carry
+no topological information, only noise: 1654 spurious micro-loops in the
+graph. Deleting them was tried and is wrong — a vertex linked to its
+neighbours only through sub-threshold segments gets detached, the chain
+breaks (tens of components became 150). Welding is right: union-find on the
+two rounded nodes, every other edge touching them is remapped to the common
+representative, the chain stays connected, only shorter. Only the node
+(`Edge.start/end`) moves; `segment` keeps the real point (same principle as
+`apply_gap_fixes`). Same exclusions as D50: LineSeg only, `role == UNKNOWN`
+only.
+
+Threshold fixed at 0.05mm, not the caller's `tolerance`: that is a
+gap-closing radius, and on a file with a wide tolerance it would weld real
+geometry. On `SHEETCODE_3` the degenerate segments were 0.01–0.031mm long,
+well below any real manufacturing feature. Runs in `heal()` right after the
+two merges (D50/D52).
+
+Measured on `SHEETCODE_3`: 2466 → 320 edges, spurious loops 1654 → 39. It
+does **not** close the part on its own: the 94 free ends remain, so the
+file still has no outer. That is the multi-view problem (see the
+isometric-view note in Federico's notes below), not a weld problem. Suite: 5 new tests.
+
+### D57 — corner repair runs whenever free ends remain, not only when no loop exists ✅
+`_find_loops` tried the clustering-based corner repair only `if not loops`.
+One trivially closed loop anywhere in the drawing (a small hole, a symbol)
+was enough to shield every real contour with a broken corner from repair.
+Reproduced synthetically: a square whose corner's real gap (0.11) is just
+above `tolerance` (0.1), so `_preprocess` skips it, while the rounded nodes
+(10.0 vs 10.1) sit within epsilon, so only the clustering repair closes it.
+Alone it heals; with a circle closed elsewhere the square was lost (1
+cluster instead of 2). The condition is now `if not loops or
+graph.open_nodes()`. No existing fixture or golden changes. Suite: 756
+passed (1 new, fails on the old condition). `main` → 0.6.25.
+
 ---
 
 ## Closed questions (history)
@@ -1542,3 +1579,38 @@ Suite: 750 passed (8 new). `main` → 0.6.24.
   (tabs/engraving/frame) out of the topology graph — this is how they don't
   break outer/inner detection. `detect()` only adds a second, geometric-
   inference lane on top of what `label_map` hasn't already decided.
+- **Contorno esterno di una vista isometrica/3D appiattita (Z=0 su tutti gli
+  edge, nessuna profondità residua — verificato su file reale): il grafo
+  topologico non basta, serve un'altra strategia.** Caso di studio: vista 3D
+  di un piegato (framer,
+  `tests/examples/complete_drawings/bend_sheet/singoli_piegati/3d_painted.dxf`
+  — Federico ha dipinto a mano il vero perimetro esterno come ground truth).
+  Il grafo esatto ha 154 nodi di branching e 20 estremi liberi su 423 edge:
+  non è un problema di gap/tolleranza (lo snapping di `heal` va bene), è che
+  più edge quasi-paralleli e quasi-coincidenti (spigoli diversi del solido
+  3D proiettati vicini) convergono sugli stessi punti, e non c'è **nessun
+  segnale** (colore, layer, direzione) per scegliere quale dei due prosegue
+  come perimetro e quale è l'edge che ha già passato il testimone e
+  continua verso l'interno. Tre strade provate e scartate perché seguono
+  tutte connettività locale, non una proprietà globale: BFS a distanza
+  minima sul grafo intero (prende scorciatoie assurde), BFS ristretto a un
+  riquadro locale (imbocca il binario sbagliato, quello senza testimone),
+  `shapely.polygonize` sull'intero arrangement noded + union delle facce
+  (si infila nel rumore di quote/leader/tangenti dei forellini vicini,
+  zigzag a caso).
+
+  **Idea di Federico, verificata e funzionante su questo file**: scanline —
+  per ogni quota y (passo fisso, es. 0.5 mm), interseca tutte le rette con
+  quella quota e tieni **solo** il punto a x minima e quello a x massima.
+  Tutto il resto (nervature, fori, i binari-fantasma quasi-paralleli) sta
+  sempre in mezzo, mai all'estremo, e sparisce da solo senza dover decidere
+  edge per edge chi ha il testimone — è una proprietà globale (min/max
+  sull'intera quota), non locale (connettività al nodo). Sul file di test il
+  profilo ricostruito combacia col perimetro dipinto a mano ovunque,
+  gradini/notch compresi, e le due rotaie-fantasma (verificato
+  numericamente: zero hit su una, 3 hit solo nell'angolo vero sull'altra)
+  non vengono mai scelte. Non ancora implementato in `core/heal.py` come
+  strategia (accanto al loop-finder sul grafo e al fallback `polygonize`) —
+  funziona perché questo pezzo è "abbastanza y-monotono" (una fascia lunga
+  senza veri sottosquadri); da capire se/come si rompe su un contorno
+  esterno che si ripiega su se stesso lungo l'asse di scan.

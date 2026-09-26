@@ -12,8 +12,8 @@ import unittest
 from forge.model.document import ForgeDocument
 from forge.model.role import ContourRole
 from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg
-from forge.core.heal import HealStep
+from forge.core.primitives.segments import LineSeg, CircleSeg
+from forge.core.heal import HealStep, heal
 
 
 def _edge(seg: LineSeg, decimals: int = 1) -> Edge:
@@ -89,6 +89,26 @@ class TestRepairMergedCorners(unittest.TestCase):
 
         self.assertEqual(n_rep, 0)
         self.assertEqual(len(skipped), 1)
+
+
+class TestRepairWithOtherLoopClosed(unittest.TestCase):
+
+    def test_loop_chiuso_altrove_non_blinda_la_riparazione(self):
+        # D57: angolo rotto con distanza reale 0.11 > tolerance 0.1 — _preprocess
+        # lo salta, lo chiude solo la riparazione via clustering (nodi 10.0 e
+        # 10.1). Un cerchio chiuso da solo altrove non deve impedirla.
+        edges = [
+            _edge(LineSeg(start=(0.0, 0.0), end=(10.03, 0.0))),
+            _edge(LineSeg(start=(10.14, 0.0), end=(10.14, 10.0))),
+            _edge(LineSeg(start=(10.14, 10.0), end=(0.0, 10.0))),
+            _edge(LineSeg(start=(0.0, 10.0), end=(0.0, 0.0))),
+            Edge(role=ContourRole.UNKNOWN, start=(52.0, 5.0), end=(52.0, 5.0),
+                 segment=CircleSeg(center=(50.0, 5.0), radius=2.0)),
+        ]
+        doc = ForgeDocument(edges=edges, annotations=[],
+                            source_meta={"tolerance": 0.1}, source_path="")
+        result = heal(doc)
+        self.assertEqual(len(result.clusters), 2)
 
 
 if __name__ == "__main__":

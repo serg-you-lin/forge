@@ -25,10 +25,16 @@ contare come due":
 merge_cocircular_overlaps — stesso principio, sugli ArcSeg co-circolari
                              invece dei LineSeg collineari (v. MAP.md D52).
 
+weld_degenerate_linesegs — non sovrapposizione ma degenerazione: un LineSeg
+                             più corto di 0.05mm è solo rumore nel grafo,
+                             i suoi due estremi vengono saldati in un nodo
+                             (v. MAP.md D56).
+
 Funzioni pubbliche:
     find_duplicates           — dato un iterabile di (key, ref), i ref duplicati
     merge_collinear_overlaps  — dato un iterabile di Edge, i gruppi LineSeg da fondere
     merge_cocircular_overlaps — dato un iterabile di Edge, i gruppi ArcSeg da fondere
+    weld_degenerate_linesegs  — dato un iterabile di Edge, i LineSeg degeneri da saldare
 """
 
 from __future__ import annotations
@@ -446,3 +452,58 @@ def _register_arc_merge(chain: List[tuple], original_index: dict, replacement: d
     for e in members:
         if e is not representative:
             drop.add(id(e))
+
+
+# ---------------------------------------------------------------------------
+# weld_degenerate_linesegs
+# ---------------------------------------------------------------------------
+
+_DEGENERATE_LENGTH_EPS = 0.05  # mm — fisso, non la tolerance del chiamante (v. MAP.md D56)
+
+
+def weld_degenerate_linesegs(edges: Iterable[Edge]) -> List[Edge]:
+    """
+    Salda (non cancella) i LineSeg `role == UNKNOWN` di lunghezza reale
+    sotto `_DEGENERATE_LENGTH_EPS`: l'Edge sparisce, i suoi due nodi
+    diventano uno e ogni altro Edge che li toccava viene rimappato lì — la
+    catena resta connessa. Solo i nodi (Edge.start/end) si spostano, il
+    `segment` conserva il punto reale. Ordine di input preservato.
+    """
+    edges = list(edges)
+    parent: dict = {}
+
+    def find(p):
+        root = p
+        while parent.get(root, root) != root:
+            root = parent[root]
+        while parent.get(p, p) != root:
+            parent[p], p = root, parent.get(p, p)
+        return root
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    degenerate_ids: set = set()
+    for edge in edges:
+        seg = edge.segment
+        if isinstance(seg, LineSeg) and edge.role == ContourRole.UNKNOWN:
+            dx = seg.end[0] - seg.start[0]
+            dy = seg.end[1] - seg.start[1]
+            if math.hypot(dx, dy) < _DEGENERATE_LENGTH_EPS:
+                union(edge.start, edge.end)
+                degenerate_ids.add(id(edge))
+
+    if not degenerate_ids:
+        return edges
+
+    result: List[Edge] = []
+    for edge in edges:
+        if id(edge) in degenerate_ids:
+            continue
+        new_start, new_end = find(edge.start), find(edge.end)
+        if new_start != edge.start or new_end != edge.end:
+            edge = replace(edge, start=new_start, end=new_end)
+        result.append(edge)
+    return result
