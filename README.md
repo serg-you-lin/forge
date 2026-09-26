@@ -63,6 +63,22 @@ result = forge.split_to_files(doc, "output/", label="batch")
 forge.save_json(result, "batch.json")
 ```
 
+## A drawing of views (several views, isometric)
+
+```python
+import forge
+
+doc    = forge.load_dxf("sheet.dxf")        # frame / title block marked by role, or removed
+result = forge.island(doc, island_gap=10.0)
+for cluster in result.clusters:              # one view (or part) per island
+    print(cluster.outer.polygon.area, len(cluster.inners))
+```
+
+`heal()` reads a cutting file from the inside (which loops close, which is
+inside which). `island()` reads a drawing of views from the outside: islands
+by proximity, then the outer contour of each as the outer face of its planar
+network. Same `ForgeResult` out — see `docs/API.md` (`island`).
+
 ## Bend / engrave layers you already know
 
 If the source file marks bend lines or engraving on named layers, tell `load_dxf`

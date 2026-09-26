@@ -60,10 +60,14 @@ forge/
 │   └── geometry/     load_geometry — sperimentale (geometria pura, non un file)
 │
 ├── core/         MOTORE geometrico puro               (zero ezdxf, zero formato)
-│   ├── primitives/   LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg + discretizzazione
-│   ├── topology/     edge.py, grafo dei nodi, ricerca loop, detection pieghe
-│   ├── healing/      chiusura gap, normalizzazione, gerarchia
-│   └── heal.py       HealStep + heal() — l'atto del motore: file → modello
+│   ├── primitives/   LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg + discretizzazione;
+│   │                 fitting.py: primitive da una sequenza di punti (simplify_points)
+│   ├── topology/     edge.py, grafo dei nodi, ricerca loop, detection pieghe;
+│   │                 noding.py (rete piana), outer_face.py (faccia esterna)
+│   ├── healing/      chiusura gap, normalizzazione (+ tassellature), gerarchia,
+│   │                 islands.py (isole per vicinanza)
+│   ├── heal.py       HealStep + heal()  — lettura dall'interno: file → modello
+│   └── island.py     island()           — lettura per isole, dall'esterno
 │
 ├── model/        IL DOMINIO forge                     (dataclass pure + shapely)
 │   ├── document.py   ForgeDocument
@@ -108,8 +112,12 @@ forge/
 ```
 
 `pipeline/` non esiste più (MAP.md D22): metteva insieme tre cose diverse —
-`heal` (l'atto del motore, ora in `core/`), gli stadi opzionali (`tools/`) e i
-renderer (`to_dxf`/`split`, ora in `io/` accanto a `to_svg`/`to_json`).
+`heal` (ora in `core/`), gli stadi opzionali (`tools/`) e i renderer
+(`to_dxf`/`split`, ora in `io/` accanto a `to_svg`/`to_json`). D22 diceva anche
+che `heal` è "l'atto unico del motore": non è più vero (D58) — il motore ha due
+letture, `heal()` e `island()`, che compongono gli stessi ingredienti del core
+in modo diverso e riempiono lo stesso modello. Il prodotto è il modello, non
+una delle due ricette.
 
 **Regola di dipendenza:** `core` e `model` non importano mai `adapters` **né
 `tools`** (D44 — stesso principio, `tools` è un pacchetto pari-grado di
@@ -176,6 +184,34 @@ Se non si forma **nessun** contorno esterno chiuso, il risultato è dichiarato
 rifiuterà di generare un file di sola spazzatura.
 
 `validate_result` viene chiamata automaticamente alla fine.
+
+### 2b. `island` → `ForgeResult` (lettura per isole)
+
+L'alternativa a `heal` per un disegno di **viste** (più viste su un foglio,
+isometriche, 3D proiettato). `heal` cerca il pezzo dall'interno, per
+connettività: su una vista proiettata più spigoli quasi coincidenti convergono
+sugli stessi nodi e non c'è nessun segnale locale per scegliere quale prosegue
+come contorno. `island` parte da un fatto globale, cosa sta fuori:
+
+1. **estrae** gli `Edge` con ruolo deciso e non strutturale, come `heal` (D30):
+   è così che un consumatore toglie cornice, cartiglio, cerchi di ingrandimento
+2. **isole** per vicinanza vera fra segmenti (`spatial_islands`): nessuna nozione
+   di chiusura, quindi nessuna ambiguità di grafo
+3. per ogni isola **normalizza** sulla griglia fine della rete: nodi dagli
+   estremi reali, catene tassellate rifittate come archi/spline, merge/weld di
+   `heal`, gap fino a `max_gap` senza mai spostare un estremo più di così
+4. **rete piana** (`split_at_crossings`): ogni incrocio diventa un nodo
+5. **faccia esterna** (`outer_face`): si parte dal punto più a sinistra della
+   geometria, a ogni nodo si gira il meno possibile in senso antiorario; un
+   edge percorso andata e ritorno è una sporgenza (asse, segno)
+6. **interno**: giri chiusi → `inners`, il resto in `trash_entities`. Un'isola
+   il cui contorno sta dentro quello di un'altra non è un cluster: diventa
+   interno della più esterna che la contiene
+
+Stesso contratto di `heal`: un `ForgeResult`, un `ForgeCluster` per isola, e
+`detect` / `to_dxf` / `split` non sanno quale lettura l'ha prodotto. Cosa sia
+un'isola (vista, pezzo, cornice) lo decide chi chiama (D21). `island` non
+chiama mai `heal`.
 
 ### 3. `detect` (semantica)
 

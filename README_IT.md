@@ -56,6 +56,20 @@ result = forge.split_to_files(doc, "output/", label="batch")   # un file per pez
 forge.save_json(result, "batch.json")
 ```
 
+## Un disegno di viste (più viste, isometrica)
+
+```python
+doc    = forge.load_dxf("tavola.dxf")       # cornice / cartiglio marcati per ruolo, o tolti
+result = forge.island(doc, island_gap=10.0)
+for cluster in result.clusters:              # una vista (o un pezzo) per isola
+    print(cluster.outer.polygon.area, len(cluster.inners))
+```
+
+`heal()` legge un file di taglio dall'interno (quali giri si chiudono, chi sta
+dentro chi). `island()` legge un disegno di viste dall'esterno: isole per
+vicinanza, poi il contorno esterno di ognuna come faccia esterna della sua rete
+piana. Stesso `ForgeResult` in uscita — vedi `docs/API.md` (`island`).
+
 ## Layer di piega / incisione che già conosci
 
 ```python

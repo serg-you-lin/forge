@@ -80,8 +80,9 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `main`, version `0.6.25`. Suite: 756 passed + 44 subtests as of the
-latest decision below (D57), golden all green.
+Branch: `refactor/outer-scan` (phase A of the HealStep/`island()` refactor,
+bump to 0.7.0 when phase B lands), version `0.6.25`. Suite: 795 passed + 44
+subtests as of the latest decision below (D61), golden all green.
 
 Still genuinely open:
 - `detect_engrave` remains a no-op placeholder (D13) — deferred until
@@ -1542,6 +1543,103 @@ cluster instead of 2). The condition is now `if not loops or
 graph.open_nodes()`. No existing fixture or golden changes. Suite: 756
 passed (1 new, fails on the old condition). `main` → 0.6.25.
 
+### D58 — reopening D22: the engine has two readings, `heal()` is one of them ✅
+D22 called `heal()` "the engine's core act, not optional — every other step
+works on its output". **We are reopening that part of D22.** A drawing of
+views (several views on a sheet, isometric / 3D-projected views) is not what
+`heal()` was built for: it finds the part from the inside, by connectivity,
+and on a projected view several near-coincident edges (different 3D edges
+projected close together) converge on the same nodes with no local signal to
+pick which one continues as the outline. Three connectivity-based attempts
+(min-distance BFS, local BFS, `polygonize` on the whole arrangement) all
+failed on the same file for the same reason.
+
+Federico: "forge sta cambiando aspetto, heal diventa meno il centro del mondo e
+più un tool — il primo, il più solido, ma un tool". The engine now has two
+readings of a `ForgeDocument` that compose the same core ingredients (graph,
+loop finder, gap solver, normalizer) differently and fill the **same model**:
+`heal()` (from the inside) and `island()` (from the outside, D59). The
+product is the model (`ForgeResult` / `ForgeCluster`), not either recipe —
+`detect()` / `to_dxf()` / `split()` don't know which reading produced it. The
+caller chooses by the drawing: flat cutting file → `heal()`; drawing of views
+→ `island()`. The rest of D22 (no `pipeline/`, `tools/` optional stages,
+renderers in `io/`) stands. `ForgeCluster` keeps its name (D21): an island may
+be a view, a part or the frame — forge doesn't know.
+
+### D59 — `island()`: islands by proximity, outer contour as the outer face of a planar network ✅
+`forge/core/island.py`, `forge.island(doc, tolerance, island_gap, max_gap,
+is_structural)` + the bricks, all exported for a consumer composing its own
+reading (framer): `read_islands` / `read_island` (→ typed `IslandReading`),
+`spatial_islands`, `split_at_crossings`, `outer_face`, `refit_tessellations`.
+
+- **Islands** (`core/healing/islands.py`): union-find on edge pairs within
+  true segment distance (STRtree `dwithin`). Not bboxes: the bbox of a long
+  isometric diagonal covers an empty rectangle touching the next view. No
+  notion of closure, so no graph ambiguity. `island_gap` is the caller's
+  (layout convention), default 10 mm.
+- **Planar network** (`core/topology/noding.py`): every LineSeg/ArcSeg/CircleSeg
+  split where another edge crosses or touches it (T within tolerance), nodes
+  recomputed from the real endpoints on one fine grid (`renode`, 3 decimals)
+  so cuts computed from both sides coincide. First/last piece keep the
+  original (welded) nodes. Splines/ellipses stay whole for now.
+- **Outer face** (`core/topology/outer_face.py`): start from the leftmost
+  *geometric* point (on the outer boundary by definition — it can lie
+  mid-arc, e.g. a magnifier circle over a view, where the leftmost *node* is
+  inside), walk down that edge, at every node take the smallest
+  counter-clockwise turn. Edges walked twice are spurs (axes, marks). Per
+  connected component, largest area wins. Directions are read up to 3 mm
+  along an edge (or half of it): a fillet tangent to a line differs from it
+  only further on, not at the first micron.
+- **Nesting**: an island whose outer lies inside another's is not a cluster
+  — it becomes interior of the outermost container. With the frame in the
+  drawing the frame is the only outer (correct: removing it by role is the
+  caller's job, D30 — `island()` honours `is_structural` exactly like `heal()`).
+- Interior: closed loops → `inners` (no hole-vs-face decision, D15), the rest
+  to `trash_entities` with its role; `IslandReading` keeps spurs / outside /
+  non-contour (D49) / unclassified queryable.
+
+How we got here (not re-decided): the first idea was ray casting — per ray,
+first and last intersection are always on the outer boundary
+(`core/healing/outer_scan.py`, kept, not exported). It classified correctly
+but stitching "seen" pieces with greedy bridges + spur pruning was a fake
+`heal()` (local topology rules again): every tweak for one file broke
+another. Once the network is planar the outer face is an exact definition and
+the scan adds nothing — dropped from the path. Sample: 23 real sheets + 15
+hand-cleaned copies without frame (`tests/examples/islands`, untracked):
+plan/side views correct almost everywhere; open cases: some sheet-metal
+isometrics (`leva_01`, `SHEET_PD#014/016`, `SHEETCODE_3`), the side view of
+`SHEETCODE` (rising flange not seen), hatch lines closing a region in
+`SHEET_PD#020` (a role question, framer's layer semantics).
+
+### D60 — view normalization: tessellations refitted, drawing gaps up to `max_gap` ✅
+Real sheets write fillets as hundreds of 0.01–0.03 mm LineSegs, sometimes
+doubled, micron-offset from the true edge. Any order of merge/weld/renode
+worked on one file and broke another — the mechanism was never solved by
+rounding. Federico had fixed one by hand, replacing the tessellation with
+arcs: `normalizer.refit_tessellations` automates that — a chain of ≥10
+LineSegs shorter than 0.1 mm (measured on the sample: nothing real lives
+between 0.05 and 0.5 mm, and short segments always come in chains of 25+) is
+refitted with `simplify_points` (arc/circle within 0.02 mm, else spline),
+chain ends on the original nodes. `island()` also closes drawing gaps up to
+`max_gap` (0.5 mm — a view is not a cutting file) with heal's gap solver,
+through `gap_solver.local_gap_fixes`: a fix never moves an endpoint further
+than the gap itself (two almost-parallel lines meet very far away).
+`heal()` uses neither.
+
+### D61 — B-spline interpolation is forge's own math; fitting moved into core ✅
+`fit_primitives` used `ezdxf.math.BSpline.from_fit_points`, and
+`core/primitives/polygon_builder.py` imported `ezdxf.math.bulge_to_arc`.
+Federico: "e se l'input arrivasse da un pdf?" — it would have worked (math
+only), but geometry math depending on a format library is the same confusion
+forge exists to avoid. `core/geometry.interpolate_bspline` (Piegl & Tiller
+9.2.1: chord-length parameters, natural knots for odd degree, averaged for
+even — ezdxf's own choices) matches ezdxf to 2e-12 on 400 random sets;
+the bulge branch in `polygon_builder` was dead code (`_BulgeSeg` no longer
+exists) and is gone. No ezdxf import is left in `core`/`model`/`tools`, so
+`tools/simplify_points.py` became `core/primitives/fitting.py` (clean break
+for internal callers; `forge.simplify_points` unchanged, smoother untouched).
+Suite: 795 passed.
+
 ---
 
 ## Closed questions (history)
@@ -1579,41 +1677,8 @@ passed (1 new, fails on the old condition). `main` → 0.6.25.
   (tabs/engraving/frame) out of the topology graph — this is how they don't
   break outer/inner detection. `detect()` only adds a second, geometric-
   inference lane on top of what `label_map` hasn't already decided.
-- **Contorno esterno di una vista isometrica/3D appiattita (Z=0 su tutti gli
-  edge, nessuna profondità residua — verificato su file reale): il grafo
-  topologico non basta, serve un'altra strategia.** Caso di studio: vista 3D
-  di un piegato (framer,
-  `tests/examples/complete_drawings/bend_sheet/singoli_piegati/3d_painted.dxf`
-  — Federico ha dipinto a mano il vero perimetro esterno come ground truth).
-  Il grafo esatto ha 154 nodi di branching e 20 estremi liberi su 423 edge:
-  non è un problema di gap/tolleranza (lo snapping di `heal` va bene), è che
-  più edge quasi-paralleli e quasi-coincidenti (spigoli diversi del solido
-  3D proiettati vicini) convergono sugli stessi punti, e non c'è **nessun
-  segnale** (colore, layer, direzione) per scegliere quale dei due prosegue
-  come perimetro e quale è l'edge che ha già passato il testimone e
-  continua verso l'interno. Tre strade provate e scartate perché seguono
-  tutte connettività locale, non una proprietà globale: BFS a distanza
-  minima sul grafo intero (prende scorciatoie assurde), BFS ristretto a un
-  riquadro locale (imbocca il binario sbagliato, quello senza testimone),
-  `shapely.polygonize` sull'intero arrangement noded + union delle facce
-  (si infila nel rumore di quote/leader/tangenti dei forellini vicini,
-  zigzag a caso).
-
-  **Idea di Federico, verificata e funzionante su questo file**: scanline —
-  per ogni quota y (passo fisso, es. 0.5 mm), interseca tutte le rette con
-  quella quota e tieni **solo** il punto a x minima e quello a x massima.
-  Tutto il resto (nervature, fori, i binari-fantasma quasi-paralleli) sta
-  sempre in mezzo, mai all'estremo, e sparisce da solo senza dover decidere
-  edge per edge chi ha il testimone — è una proprietà globale (min/max
-  sull'intera quota), non locale (connettività al nodo). Sul file di test il
-  profilo ricostruito combacia col perimetro dipinto a mano ovunque,
-  gradini/notch compresi, e le due rotaie-fantasma (verificato
-  numericamente: zero hit su una, 3 hit solo nell'angolo vero sull'altra)
-  non vengono mai scelte. Non ancora implementato in `core/heal.py` come
-  strategia (accanto al loop-finder sul grafo e al fallback `polygonize`) —
-  funziona perché questo pezzo è "abbastanza y-monotono" (una fascia lunga
-  senza veri sottosquadri); da capire se/come si rompe su un contorno
-  esterno che si ripiega su se stesso lungo l'asse di scan.
+- **Contorno esterno di una vista isometrica/3D appiattita** — diventata
+  decisione: D58 / D59 (lettura per isole, faccia esterna della rete piana).
 - **Nome del ruolo `outer` (aperto, da ragionarci — Federico).** Con la
   seconda ricetta (`forge.views()`, contorno esterno di ogni vista/isola)
   `outer` / layer `OuterContour` non convince come nome: l'idea era qualcosa
