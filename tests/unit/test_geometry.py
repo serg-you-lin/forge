@@ -452,10 +452,11 @@ class TestInterpolateBspline(unittest.TestCase):
         self.assertEqual(len(ctrl), len(pts))
         self.assertEqual(len(knots), len(pts) + degree + 1)
         curve = SplineSeg(degree=degree, control_points=ctrl, knots=knots)
-        dense = curve.discretize(0.001)
+        from shapely.geometry import Point
+        dense = LineString(curve.discretize(0.001))
         for p in pts:
             # ogni punto di fit sta sulla curva
-            self.assertLess(min(math.dist(p, q) for q in dense), 0.01)
+            self.assertLess(dense.distance(Point(p)), 0.002)
 
     def test_grado_dispari_passa_per_i_punti(self):
         pts = [(10 * math.cos(i * 0.3), 6 * math.sin(i * 0.3)) for i in range(12)]
