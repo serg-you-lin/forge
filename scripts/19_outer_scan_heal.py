@@ -37,15 +37,18 @@ import _paths  # noqa: F401  — chdir alla radice del repo
 import heapq
 import math
 import os
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
+from typing import List, Optional, Tuple
+
+from shapely.geometry import Point
 
 import forge
 from forge.core.geometry import (
-    node_decimals_for, _line_intersection, _circle_line_intersections,
+    _line_intersection, _circle_line_intersections,
     _circle_circle_intersections,
 )
 from forge.core.primitives.segments import (
-    LineSeg, ArcSeg, DEFAULT_TOLERANCE, segment_endpoints,
+    LineSeg, ArcSeg, DEFAULT_TOLERANCE, segment_endpoints, segment_is_closed,
 )
 from forge.core.primitives.polygon_builder import build_polygon
 from forge.core.healing.normalizer import (
@@ -55,6 +58,7 @@ from forge.core.healing.gap_solver import (
     free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes,
 )
 from forge.core.healing.outer_scan import outer_candidate_edges
+from forge.core.healing.islands import spatial_islands
 from forge.core.topology.graph import build_node_graph
 from forge.core.topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
 from forge.core.topology.non_contour_edges import NonContourEdgeDetector
@@ -66,12 +70,15 @@ from forge.model.role import ContourRole
 
 # --- CONFIG ----------------------------------------------------------------
 INPUTS = [
+    r"tests/examples/islands/SHEETCODE.dxf",      # foglio completo, 3 viste
+    r"tests/examples/islands/SHEETCODE.dxf",     # 4 viste, una isometrica
     r"tests/examples/islands/3d_1.dxf",
     r"tests/examples/islands/SHEETCODE_1.dxf",
     r"tests/examples/islands/SHEETCODE_2.dxf",
     r"tests/examples/islands/SHEETCODE_3.dxf",
 ]
 TOLERANCE = 0.05
+ISLAND_GAP = 10.0      # mm — distanza massima fra due edge della stessa isola (scelta sui fogli sopra)
 SEEN_GAP = 0.5         # mm — gap massimo chiuso attorno a un estremo libero di un pezzo visto dai raggi
 GRAPH_EPSILON = 0.01   # mm — due tagli dello stesso incrocio, calcolati da due edge, sono un nodo solo
 OUTDIR = r"pipeline_output/outer_scan_heal"
@@ -86,13 +93,17 @@ _MIN_PIECE = 1e-4   # mm — sotto, lo spezzone non viene creato
 # 1. Normalizzazione + gap piccoli
 # ---------------------------------------------------------------------------
 
-def _normalize(edges, tol, decimals):
+def _normalize(edges, tol):
+    """Stessi passi di heal, ma sulla griglia fine dei tagli: prima i nodi
+    dagli estremi reali, poi merge/weld/gap — così la saldatura resta valida
+    anche dopo lo spezzamento. Via gli Edge rimasti a lunghezza zero."""
+    edges = _renode(edges)
     edges = weld_degenerate_linesegs(merge_cocircular_overlaps(merge_collinear_overlaps(edges)))
     graph = build_node_graph(edges)
     fixes = compute_gap_fixes(free_endpoints_from_edges(edges, graph), tol)
     if fixes:
-        edges = apply_gap_fixes(edges, fixes, decimals)
-    return edges
+        edges = apply_gap_fixes(edges, fixes, _NODE_DECIMALS)
+    return [e for e in edges if e.start != e.end or segment_is_closed(e.segment)]
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +231,12 @@ def _split(edge, params, decimals):
             piece = ArcSeg(center=seg.center, radius=seg.radius,
                            start_angle=seg.start_angle + sign * p0,
                            end_angle=seg.start_angle + sign * p1, ccw=seg.ccw)
-        out.append(_make_edge(edge, piece, decimals))
+        cut = _make_edge(edge, piece, decimals)
+        # primo e ultimo pezzo tengono i nodi dell'edge (saldati, gap chiusi):
+        # solo i tagli interni hanno un nodo nuovo
+        cut = replace(cut, start=edge.start if p0 == 0.0 else cut.start,
+                      end=edge.end if p1 == bounds[-1] else cut.end)
+        out.append(cut)
     return out
 
 
@@ -228,7 +244,7 @@ def _renode(edges):
     """Nodi di ogni Edge ricalcolati dal punto reale a _NODE_DECIMALS: la
     griglia di heal (1 decimale a tolleranza 0.05) e quella dei tagli devono
     essere la stessa, se no un contatto a T non si riconosce."""
-    return [e if e.start == e.end else _make_edge(e, e.segment, _NODE_DECIMALS)
+    return [e if segment_is_closed(e.segment) else _make_edge(e, e.segment, _NODE_DECIMALS)
             for e in edges]
 
 
@@ -383,8 +399,17 @@ def _open(role, edges):
     return [OpenFeature(role=role, segments=[e.segment], styles=[e.style]) for e in edges]
 
 
-def analyze(doc, tol):
-    edges = _renode(_normalize(doc.edges, tol, node_decimals_for(tol)))
+@dataclass
+class IslandReading:
+    """Cosa la composizione ha deciso su un'isola."""
+    edges:    list                           # Edge dell'isola, come arrivano
+    cluster:  Optional[ForgeCluster] = None  # None: nessun contorno esterno chiuso
+    trash:    list = field(default_factory=list)
+    stats:    dict = field(default_factory=dict)
+
+
+def analyze_island(island_edges, tol) -> IslandReading:
+    edges = _normalize(island_edges, tol)
     pieces = _node_all(edges, tol, _NODE_DECIMALS)
 
     seen_ids = outer_candidate_edges(pieces).ids
@@ -396,28 +421,26 @@ def analyze(doc, tol):
     core = _prune_spurs([e for e in pieces if id(e) in certain_ids] + bridges)
     best = _outer_loop(core)
 
-    result = ForgeResult(source_file=doc.source_path, annotations=list(doc.annotations))
-    stats = {"edge": len(doc.edges), "normalizzati": len(edges), "pezzi": len(pieces),
-             "visti": len(seen_ids), "certi": len(certain_ids), "ponti": len(bridges)}
+    reading = IslandReading(edges=list(island_edges))
+    reading.stats = {"edge": len(island_edges), "normalizzati": len(edges), "pezzi": len(pieces),
+                     "visti": len(seen_ids), "certi": len(certain_ids), "ponti": len(bridges)}
     outer_ids = set()
     if best is not None:
         loop, segments, poly = best
         outer_ids = {id(e) for e, _ in loop}
-        result.clusters = [ForgeCluster(outer=ForgeContour(
+        reading.cluster = ForgeCluster(outer=ForgeContour(
             polygon=poly, role=ContourRole.OUTER, segments=segments,
-            styles=edge_styles_from_loop(loop)))]
-        stats["area esterno"] = round(poly.area)
-    else:
-        result.is_valid = False
-        result.errors.append("Nessun contorno esterno chiuso dai certi + ponti.")
+            styles=edge_styles_from_loop(loop)))
+        reading.stats["area esterno"] = round(poly.area)
 
     bridge_ids = {id(e) for e in bridges}
-    result.trash_entities += _open("contorno_certo",
-                                   [e for e in pieces if id(e) in outer_ids and id(e) in certain_ids])
-    result.trash_entities += _open("ponte",
-                                   [e for e in pieces if id(e) in outer_ids and id(e) in bridge_ids])
-    result.trash_entities += _open("certo_scartato",
-                                   [e for e in pieces if id(e) in seen_ids and id(e) not in outer_ids])
+    trash = reading.trash
+    trash += _open("contorno_certo",
+                   [e for e in pieces if id(e) in outer_ids and id(e) in certain_ids])
+    trash += _open("ponte",
+                   [e for e in pieces if id(e) in outer_ids and id(e) in bridge_ids])
+    trash += _open("certo_scartato",
+                   [e for e in pieces if id(e) in seen_ids and id(e) not in outer_ids])
 
     rest = [e for e in pieces if id(e) not in outer_ids and id(e) not in seen_ids]
     rest_graph = build_node_graph(rest, epsilon=GRAPH_EPSILON)
@@ -428,12 +451,50 @@ def analyze(doc, tol):
     inner = [e for e in rest if id(e) in loop_ids]
     non_contour = [e for e in rest if id(e) in non_contour_ids and id(e) not in loop_ids]
     unknown = [e for e in rest if id(e) not in loop_ids and id(e) not in non_contour_ids]
-    result.trash_entities += _open("giro_interno", inner)
-    result.trash_entities += _open("non_contorno", non_contour)
-    result.trash_entities += _open(ContourRole.UNKNOWN, unknown)
-    stats.update({"giro_interno": len(inner), "non_contorno": len(non_contour),
-                  "non classificati": len(unknown)})
-    return result, stats
+    trash += _open("giro_interno", inner)
+    trash += _open("non_contorno", non_contour)
+    trash += _open(ContourRole.UNKNOWN, unknown)
+    reading.stats.update({"giro_interno": len(inner), "non_contorno": len(non_contour),
+                          "non classificati": len(unknown)})
+    return reading
+
+
+def _inside(small: IslandReading, big: IslandReading) -> bool:
+    """Tutta la geometria di `small` sta dentro il contorno esterno di `big`."""
+    if big.cluster is None or small is big:
+        return False
+    poly = big.cluster.outer.polygon
+    return all(poly.contains(Point(p)) for e in small.edges
+               for p in e.segment.discretize(DEFAULT_TOLERANCE))
+
+
+def analyze(doc, tol) -> Tuple[ForgeResult, List[IslandReading]]:
+    """Isole → contorno esterno per isola → un'isola tutta dentro il contorno
+    di un'altra (un foro lontano dai lati) viene assorbita e l'isola che la
+    contiene si rilegge con dentro anche quella."""
+    readings = [analyze_island(isl.edges, tol)
+                for isl in spatial_islands(doc.edges, ISLAND_GAP)]
+
+    absorbed = True
+    while absorbed:
+        absorbed = False
+        for small in readings:
+            host = next((big for big in readings if _inside(small, big)), None)
+            if host is not None:
+                readings.remove(small)
+                readings[readings.index(host)] = analyze_island(host.edges + small.edges, tol)
+                absorbed = True
+                break
+
+    result = ForgeResult(source_file=doc.source_path, annotations=list(doc.annotations))
+    for r in readings:
+        if r.cluster is not None:
+            result.clusters.append(r.cluster)
+        result.trash_entities += r.trash
+    if not result.clusters:
+        result.is_valid = False
+        result.errors.append("Nessuna isola con un contorno esterno chiuso.")
+    return result, readings
 
 
 def main():
@@ -441,8 +502,10 @@ def main():
     for path in INPUTS:
         stem = os.path.splitext(os.path.basename(path))[0]
         doc = forge.load_dxf(path, tolerance=TOLERANCE)
-        result, stats = analyze(doc, TOLERANCE)
-        print(f"{stem}: " + ", ".join(f"{k} {v}" for k, v in stats.items()))
+        result, readings = analyze(doc, TOLERANCE)
+        print(f"{stem}: {len(readings)} isole, {len(result.clusters)} con contorno esterno")
+        for n, r in enumerate(readings, 1):
+            print(f"  isola {n}: " + ", ".join(f"{k} {v}" for k, v in r.stats.items()))
         suffix = ""
         if not result.is_valid:
             # to_dxf rifiuta un risultato invalido: qui lo si vuole vedere lo stesso
