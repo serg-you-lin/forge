@@ -76,6 +76,7 @@ class HealStep:
             return self.result
         self._merge_collinear_overlaps()
         self._merge_cocircular_overlaps()
+        self._weld_degenerate_linesegs()
         self._split_labeled()
         self._preprocess()
         self.result.all_arcs = [
@@ -188,6 +189,20 @@ class HealStep:
             )
         self.edges = merged
 
+    def _weld_degenerate_linesegs(self):
+        """
+        Salda i LineSeg sotto 0.05mm in un nodo solo —
+        `normalizer.weld_degenerate_linesegs` (MAP.md D56).
+        """
+        from .healing.normalizer import weld_degenerate_linesegs
+        welded = weld_degenerate_linesegs(self.edges)
+        n_welded = len(self.edges) - len(welded)
+        if n_welded:
+            self.result.warnings.append(
+                f"{n_welded} LineSeg degeneri (sub-tolleranza) saldati prima della ricerca loop."
+            )
+        self.edges = welded
+
     def _split_labeled(self):
         """
         Estrae dal flusso topologico gli Edge il cui ruolo è già stato deciso
@@ -276,15 +291,18 @@ class HealStep:
         graph = self._build_graph(exclude_ids=self.non_contour_edge_ids)
         loops = LoopFinder().find(graph, exclude_ids=self.non_contour_edge_ids)
 
-        if not loops:
-            # Il grafo esatto non chiude nessun contorno. Individua col
-            # clustering degli endpoint gli angoli dove due lati si toccano
-            # quasi (separati solo da un arrotondamento al confine di cella),
-            # poi CHIUDILI DAVVERO estendendo i due segmenti alla loro
-            # intersezione reale — stessa matematica di _preprocess, ma su
-            # endpoint che il filtro sul grado non vede. Dopo la riparazione
-            # si riprova sul grafo esatto: la geometria di output è cucita
-            # esatta, non solo tollerata.
+        # D57: ripara ogni volta che restano estremi liberi, non solo quando
+        # non c'è nessun loop — un loop chiuso altrove (un forellino) non
+        # deve blindare il contorno vero dalla riparazione.
+        if not loops or graph.open_nodes():
+            # Il grafo esatto non chiude (tutto o in parte) il contorno.
+            # Individua col clustering degli endpoint gli angoli dove due
+            # lati si toccano quasi (separati solo da un arrotondamento al
+            # confine di cella), poi CHIUDILI DAVVERO estendendo i due
+            # segmenti alla loro intersezione reale — stessa matematica di
+            # _preprocess, ma su endpoint che il filtro sul grado non vede.
+            # Dopo la riparazione si riprova sul grafo esatto: la geometria
+            # di output è cucita esatta, non solo tollerata.
             graph_c = self._build_graph(
                 exclude_ids=self.non_contour_edge_ids,
                 epsilon=self.tolerance,

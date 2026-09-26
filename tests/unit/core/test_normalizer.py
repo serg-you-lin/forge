@@ -2,7 +2,9 @@
 
 import math
 import unittest
-from forge.core.healing.normalizer import merge_collinear_overlaps, merge_cocircular_overlaps
+from forge.core.healing.normalizer import (
+    merge_collinear_overlaps, merge_cocircular_overlaps, weld_degenerate_linesegs,
+)
 from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
 
@@ -255,6 +257,42 @@ class TestMergeCocircularOverlaps(unittest.TestCase):
 
     def test_lista_vuota(self):
         self.assertEqual(merge_cocircular_overlaps([]), [])
+
+
+class TestWeldDegenerateLinesegs(unittest.TestCase):
+
+    def _chain(self):
+        return [
+            _line_raw((0.0, 0.0), (10.0, 0.0), (0.0, 0.0), (10.0, 0.0)),
+            _line_raw((10.0, 0.0), (10.02, 0.0), (10.0, 0.0), (10.02, 0.0)),
+            _line_raw((10.02, 0.0), (20.0, 0.0), (10.02, 0.0), (20.0, 0.0)),
+        ]
+
+    def test_catena_resta_connessa(self):
+        # D56: il LineSeg da 0.02mm sparisce, ma i due vicini devono ritrovarsi
+        # sullo stesso nodo — cancellarlo e basta staccherebbe la catena.
+        out = weld_degenerate_linesegs(self._chain())
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0].end, out[1].start)
+
+    def test_segmento_conserva_il_punto_reale(self):
+        # si sposta solo il nodo, il segment resta a piena precisione
+        out = weld_degenerate_linesegs(self._chain())
+        self.assertEqual(out[1].segment.start, (10.02, 0.0))
+
+    def test_ruolo_gia_assegnato_non_e_saldato(self):
+        edges = [_line((0.0, 0.0), (0.02, 0.0), role="engrave")]
+        self.assertEqual(weld_degenerate_linesegs(edges), edges)
+
+    def test_sopra_soglia_non_e_saldato(self):
+        edges = [_line((0.0, 0.0), (0.06, 0.0)), _line((0.06, 0.0), (5.0, 0.0))]
+        out = weld_degenerate_linesegs(edges)
+        self.assertEqual(len(out), 2)
+        self.assertIs(out[0], edges[0])
+        self.assertIs(out[1], edges[1])
+
+    def test_lista_vuota(self):
+        self.assertEqual(weld_degenerate_linesegs([]), [])
 
 
 if __name__ == "__main__":
