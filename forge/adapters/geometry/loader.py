@@ -76,7 +76,7 @@ class GeometryAdapter(ForgeAdapter):
     Lo schema di "spline" ricalca 1:1 i campi di SplineSeg (control_points,
     knots, degree, weights, fit_points, closed): chi ha in mano l'oggetto
     restituito da simplify_points() lo passa quasi senza toccarlo — vedi
-    forge.tools.simplify_points. Solo "control_points"/"knots"/"degree" sono
+    forge.core.primitives.fitting. Solo "control_points"/"knots"/"degree" sono
     obbligatori, il resto è opzionale.
 
     Lo schema di "ellipse" ricalca 1:1 i campi di EllipseSeg — stessa

@@ -61,7 +61,7 @@ from forge.core.healing.gap_solver import (
     free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes, MoveEndpoint,
 )
 from forge.core.healing.islands import spatial_islands
-from forge.tools.simplify_points import simplify_points
+from forge.core.primitives.fitting import simplify_points
 from forge.core.topology.graph import build_node_graph
 from forge.core.topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
 from forge.core.topology.non_contour_edges import NonContourEdgeDetector

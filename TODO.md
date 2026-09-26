@@ -69,7 +69,7 @@ Resta aperto, discusso ma non affrontato:
   vecchie — la guida è fare `detect()` DOPO aver ruotato, non prima.
 
 **Fitting ellisse da punti grezzi** (generalizzare `arc_fit_tolerance` in
-`tools/simplify_points.py` a un fit ellittico 5-DOF, per Smoother):
+`core/primitives/fitting.py` a un fit ellittico 5-DOF, per Smoother):
 deliberatamente rimandato dopo D45 — la primitiva `EllipseSeg` ora esiste,
 il fitting da una sequenza di punti grezzi è il "secondo passo" di cui
 parlavamo, non ancora iniziato.

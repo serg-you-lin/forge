@@ -1,7 +1,7 @@
 """
 test_simplify_points.py
 ------------------------
-Test unitari per forge.tools.simplify_points.
+Test unitari per forge.core.primitives.fitting.
 
 Semantica di `detect_corners` (ereditata da smoother_5.py::classifica_punti):
 l'angolo interno ai due lati adiacenti è VICINO A 180 gradi su un tratto
@@ -28,7 +28,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from forge.core.primitives.segments import ArcSeg, CircleSeg, LineSeg, SplineSeg
-from forge.tools.simplify_points import (
+from forge.core.primitives.fitting import (
     detect_corners,
     fit_primitives,
     simplify_points,
