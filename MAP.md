@@ -1614,3 +1614,10 @@ passed (1 new, fails on the old condition). `main` → 0.6.25.
   funziona perché questo pezzo è "abbastanza y-monotono" (una fascia lunga
   senza veri sottosquadri); da capire se/come si rompe su un contorno
   esterno che si ripiega su se stesso lungo l'asse di scan.
+- **Nome del ruolo `outer` (aperto, da ragionarci — Federico).** Con la
+  seconda ricetta (`forge.views()`, contorno esterno di ogni vista/isola)
+  `outer` / layer `OuterContour` non convince come nome: l'idea era qualcosa
+  come "external island". Per ora resta `ContourRole.OUTER` in tutti e due i
+  casi: è il contratto comune di `ForgeCluster` (D21) e rinominarlo tocca
+  `heal()`, `detect()`, golden e layer di output — un refactor a sé, da
+  decidere dopo.
