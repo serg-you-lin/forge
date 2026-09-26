@@ -112,3 +112,5 @@ chiacchierata_con_ai.*
 *.bak
 *.orig
 *~
+# Private design notes
+HEALSTEP_REFACTOR.md
