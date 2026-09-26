@@ -16,8 +16,10 @@ Prototipo, senza scan. Per ogni file:
   5. il resto dell'isola: giri chiusi, non-contorno, non classificati, e
      fuori_contorno (pezzi di una parte della rete staccata e rimasta fuori).
 
-Un'isola dentro il contorno di un'altra resta un cluster suo (foro, vista
-dentro una cornice, ...): cosa sia lo decide il chiamante.
+Un'isola il cui contorno sta dentro quello di un'altra non è un cluster: fa
+parte dell'interno dell'isola più esterna che la contiene (un foro, una
+finestra, una vista dentro la cornice). Con la cornice nel disegno l'unico
+contorno esterno è la cornice: toglierla prima è compito del chiamante.
 
 Output: pipeline_output/outer_face/<file>.dxf
     OuterContour     il contorno esterno trovato, uno per isola
@@ -499,19 +501,33 @@ def analyze_island(island_edges, tol) -> IslandReading:
 
 
 def analyze(doc, tol):
+    """Isole → contorno esterno per isola. Un'isola il cui contorno sta dentro
+    quello di un'altra non è un cluster: il suo contorno diventa un
+    giro_interno dell'isola più esterna che la contiene, e tutto il resto
+    della sua lettura la segue."""
     readings = [analyze_island(isl.edges, tol)
                 for isl in spatial_islands(doc.edges, ISLAND_GAP)]
-    # un'isola dentro il contorno di un'altra resta sua: lo si segnala e basta
-    for i, r in enumerate(readings):
-        if r.cluster is None:
+
+    def host_of(i):
+        """L'isola più esterna il cui contorno contiene quello di i."""
+        small = readings[i].cluster.outer.polygon
+        hosts = [j for j, big in enumerate(readings)
+                 if j != i and big.cluster is not None
+                 and big.cluster.outer.polygon.area > small.area
+                 and big.cluster.outer.polygon.buffer(tol).contains(small)]
+        return max(hosts, key=lambda j: readings[j].cluster.outer.polygon.area) if hosts else None
+
+    hosts = {i: host_of(i) for i, r in enumerate(readings) if r.cluster is not None}
+    for i, j in hosts.items():
+        if j is None:
             continue
-        probe = r.cluster.outer.polygon.representative_point()
-        for j, big in enumerate(readings):
-            if (j != i and big.cluster is not None
-                    and big.cluster.outer.polygon.area > r.cluster.outer.polygon.area
-                    and big.cluster.outer.polygon.contains(probe)):
-                r.stats["dentro isola"] = j + 1
-                break
+        r = readings[i]
+        readings[j].trash.append(OpenFeature(role="giro_interno", segments=r.cluster.outer.segments,
+                                             styles=r.cluster.outer.styles))
+        readings[j].trash += r.trash
+        r.trash = []
+        r.cluster = None
+        r.stats["dentro isola"] = j + 1
 
     result = ForgeResult(source_file=doc.source_path, annotations=list(doc.annotations))
     for r in readings:
@@ -544,8 +560,8 @@ def main():
             print(f"{stem}: ERRORE {type(exc).__name__}: {exc}")
             traceback.print_exc(limit=3)
             continue
-        closed = sum(1 for r in readings if r.cluster is not None)
-        print(f"{stem}: {len(doc.edges)} edge, {len(readings)} isole, {closed} con contorno esterno, "
+        closed = len(result.clusters) if result.is_valid else 0
+        print(f"{stem}: {len(doc.edges)} edge, {len(readings)} isole, {closed} contorni esterni, "
               f"{time.time() - t0:.1f}s")
         for n, r in enumerate(readings, 1):
             if r.stats["edge"] > 1:
@@ -556,8 +572,11 @@ def main():
             result.is_valid, result.errors = True, []
             suffix = "_INVALIDO"
         out = os.path.abspath(os.path.join(OUTDIR, f"{stem}{suffix}.dxf"))
-        forge.to_dxf(result, doc, include_trash=True).saveas(out)
-        print(f"  -> {out}")
+        try:
+            forge.to_dxf(result, doc, include_trash=True).saveas(out)
+            print(f"  -> {out}")
+        except PermissionError:
+            print(f"  !! {out} è aperto in un altro programma: non sovrascritto")
 
 
 if __name__ == "__main__":
