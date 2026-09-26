@@ -59,6 +59,7 @@ from forge.core.healing.gap_solver import (
 )
 from forge.core.healing.outer_scan import outer_candidate_edges
 from forge.core.healing.islands import spatial_islands
+from forge.tools.simplify_points import simplify_points
 from forge.core.topology.graph import build_node_graph
 from forge.core.topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
 from forge.core.topology.non_contour_edges import NonContourEdgeDetector
@@ -78,6 +79,9 @@ INPUTS = [
     r"tests/examples/islands/SHEETCODE_3.dxf",
 ]
 TOLERANCE = 0.05
+TESSELLATION_SEGMENT = 0.1   # mm — un LineSeg più corto è un candidato punto di tassellatura
+TESSELLATION_MIN_RUN = 10    # segmenti corti di fila perché una catena sia una tassellatura
+ARC_FIT_TOLERANCE = 0.02     # mm — scostamento massimo per rifittare la catena come arco/cerchio
 ISLAND_GAP = 10.0      # mm — distanza massima fra due edge della stessa isola (scelta sui fogli sopra)
 SEEN_GAP = 0.5         # mm — gap massimo chiuso attorno a un estremo libero di un pezzo visto dai raggi
 GRAPH_EPSILON = 0.01   # mm — due tagli dello stesso incrocio, calcolati da due edge, sono un nodo solo
@@ -95,15 +99,89 @@ _MIN_PIECE = 1e-4   # mm — sotto, lo spezzone non viene creato
 
 def _normalize(edges, tol):
     """Stessi passi di heal, ma sulla griglia fine dei tagli: prima i nodi
-    dagli estremi reali, poi merge/weld/gap — così la saldatura resta valida
-    anche dopo lo spezzamento. Via gli Edge rimasti a lunghezza zero."""
-    edges = _renode(edges)
+    dagli estremi reali, poi le tassellature rifittate, poi merge/weld/gap —
+    così la saldatura resta valida anche dopo lo spezzamento. Via gli Edge
+    rimasti a lunghezza zero."""
+    edges = _refit_tessellations(_renode(edges))
     edges = weld_degenerate_linesegs(merge_cocircular_overlaps(merge_collinear_overlaps(edges)))
     graph = build_node_graph(edges)
     fixes = compute_gap_fixes(free_endpoints_from_edges(edges, graph), tol)
     if fixes:
         edges = apply_gap_fixes(edges, fixes, _NODE_DECIMALS)
     return [e for e in edges if e.start != e.end or segment_is_closed(e.segment)]
+
+
+def _is_short(edge):
+    seg = edge.segment
+    return (isinstance(seg, LineSeg) and edge.role == ContourRole.UNKNOWN
+            and math.dist(seg.start, seg.end) < TESSELLATION_SEGMENT)
+
+
+def _short_runs(short_edges):
+    """Catene massimali di segmenti corti: percorsi fra nodi di grado != 2,
+    o anelli. Ritorna [(edge orientati [(edge, reversed)], chiusa)]."""
+    graph = build_node_graph(short_edges)
+    used, runs = set(), []
+
+    def walk(start, first_edge, first_other):
+        path, node, edge, other = [], start, first_edge, first_other
+        while True:
+            used.add(id(edge))
+            path.append((edge, graph.canonical(edge.start) != node))
+            node = other
+            nxt = [(e, o) for e, o in graph[node] if id(e) not in used]
+            if len(graph[node]) != 2 or not nxt:
+                return path, node
+            edge, other = nxt[0]
+
+    ends = [n for n in graph if len(graph[n]) != 2]
+    for n in ends:
+        for e, o in graph[n]:
+            if id(e) not in used:
+                path, _ = walk(n, e, o)
+                runs.append((path, False))
+    for n in graph:                      # anelli: tutti i nodi di grado 2
+        for e, o in graph[n]:
+            if id(e) not in used:
+                path, last = walk(n, e, o)
+                runs.append((path, last == n))
+    return runs
+
+
+def _refit_tessellations(edges):
+    """Una catena di almeno TESSELLATION_MIN_RUN LineSeg corti è una curva
+    scritta a punti: rifittata con fit_primitives (arco/cerchio se sta entro
+    ARC_FIT_TOLERANCE, se no spline). Gli estremi della catena tengono i nodi
+    originali, così resta attaccata ai vicini."""
+    short = [e for e in edges if _is_short(e) and e.start != e.end]
+    replaced, new_edges = set(), []
+    for path, closed in _short_runs(short):
+        if len(path) < TESSELLATION_MIN_RUN:
+            continue
+        pts = []
+        for edge, rev in path:
+            a, b = (edge.segment.end, edge.segment.start) if rev else (edge.segment.start, edge.segment.end)
+            if not pts:
+                pts.append(a)
+            pts.append(b)
+        if closed:
+            pts = pts[:-1]
+        prims = simplify_points(pts, closed=closed, arc_fit_tolerance=ARC_FIT_TOLERANCE)
+        if not prims:
+            continue
+        first, last = path[0], path[-1]
+        start_node = first[0].end if first[1] else first[0].start
+        end_node = last[0].start if last[1] else last[0].end
+        for k, prim in enumerate(prims):
+            e = _make_edge(first[0], prim, _NODE_DECIMALS)
+            if not closed:
+                e = replace(e, start=start_node if k == 0 else e.start,
+                            end=end_node if k == len(prims) - 1 else e.end)
+            new_edges.append(e)
+        replaced |= {id(edge) for edge, _ in path}
+    if not replaced:
+        return edges
+    return [e for e in edges if id(e) not in replaced] + new_edges
 
 
 # ---------------------------------------------------------------------------
