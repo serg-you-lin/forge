@@ -7,8 +7,8 @@ Prototipo, senza scan. Per ogni file:
   1. isole per vicinanza vera fra segmenti (spatial_islands, ISLAND_GAP);
   2. per isola: nodi dagli estremi reali, tassellature rifittate come
      primitive (fit_primitives), merge/weld/gap di heal;
-  3. spezza ogni LineSeg/ArcSeg dove incrocia o tocca a T un altro edge: la
-     rete diventa piana (SplineSeg/EllipseSeg restano interi);
+  3. spezza ogni LineSeg/ArcSeg/CircleSeg dove incrocia o tocca a T un altro
+     edge: la rete diventa piana (SplineSeg/EllipseSeg restano interi);
   4. contorno esterno = bordo della faccia esterna: si parte dal nodo più a
      sinistra e a ogni nodo si prende l'edge più in senso antiorario rispetto
      a quello da cui si arriva. Un edge percorso andata e ritorno è una
@@ -51,7 +51,7 @@ from forge.core.geometry import (
     _circle_circle_intersections,
 )
 from forge.core.primitives.segments import (
-    LineSeg, ArcSeg, DEFAULT_TOLERANCE, segment_endpoints, segment_is_closed,
+    LineSeg, ArcSeg, CircleSeg, DEFAULT_TOLERANCE, segment_endpoints, segment_is_closed,
 )
 from forge.core.primitives.polygon_builder import build_polygon
 from forge.core.healing.normalizer import (
@@ -242,8 +242,17 @@ def _cutters(edge):
         return [("line", seg.start, seg.end)]
     if isinstance(seg, ArcSeg):
         return [("arc", seg)]
+    if isinstance(seg, CircleSeg):
+        return [("arc", _circle_as_arc(seg))]
     pts = seg.discretize(DEFAULT_TOLERANCE)
     return [("line", pts[i], pts[i + 1]) for i in range(len(pts) - 1)]
+
+
+def _circle_as_arc(circle, start_angle=0.0):
+    """Un cerchio come arco di 360° che parte da `start_angle`: stessa
+    matematica di intersezione e spezzamento degli archi."""
+    return ArcSeg(center=circle.center, radius=circle.radius,
+                  start_angle=start_angle, end_angle=start_angle + 2 * math.pi, ccw=True)
 
 
 def _crossings(seg, cutter):
@@ -339,12 +348,28 @@ def _node_all(edges, tol, decimals):
     tree = STRtree(geoms)
     pieces = []
     for i, e in enumerate(edges):
+        near = [edges[j] for j in tree.query(geoms[i], predicate="dwithin", distance=tol)]
         if isinstance(e.segment, (LineSeg, ArcSeg)) and e.start != e.end:
-            near = [edges[j] for j in tree.query(geoms[i], predicate="dwithin", distance=tol)]
             pieces.extend(_split(e, _split_params(e, near, tol), decimals))
+        elif isinstance(e.segment, CircleSeg):
+            pieces.extend(_split_circle(e, near, tol, decimals))
         else:
             pieces.append(e)
     return pieces
+
+
+def _split_circle(edge, near, tol, decimals):
+    """Un cerchio incrociato da altri edge diventa archi fra un taglio e
+    l'altro, come ogni altro pezzo della rete. Con meno di due tagli resta
+    un cerchio intero."""
+    circle = edge.segment
+    params = _split_params(replace(edge, segment=_circle_as_arc(circle)), near, tol)
+    if len(params) < 2:
+        return [edge]
+    arc = _circle_as_arc(circle, start_angle=params[0])
+    start = _make_edge(edge, arc, decimals)
+    start = replace(start, end=start.start)
+    return _split(start, [p - params[0] for p in params[1:]], decimals)
 
 
 # ---------------------------------------------------------------------------
@@ -374,11 +399,12 @@ def _leaving_angle(edge, node, graph):
 
 def _outer_face_walk(graph, component, n_edges):
     """Bordo della faccia esterna di un componente connesso: [(edge, dal
-    nodo, al nodo)]. Si parte dal suo nodo più a sinistra (arrivando
-    idealmente da ovest) e a ogni nodo si prende l'edge che gira meno in
-    senso antiorario rispetto alla direzione da cui si è arrivati; tornare
-    indietro solo se non c'è altro."""
-    start = min(component, key=lambda n: (n[0], n[1]))
+    nodo, al nodo)]. Si parte dal punto più a sinistra della geometria — sul
+    bordo esterno per forza, anche quando cade a metà di un edge (un arco,
+    un cerchio spezzato) — percorrendo quell'edge verso il basso, così
+    l'esterno sta a destra. Poi a ogni nodo si prende l'edge che gira meno
+    in senso antiorario rispetto alla direzione da cui si è arrivati;
+    tornare indietro solo se non c'è altro."""
     angles = {}
 
     def angle(edge, node):
@@ -387,7 +413,9 @@ def _outer_face_walk(graph, component, n_edges):
             angles[key] = _leaving_angle(edge, node, graph)
         return angles[key]
 
-    walk, node, back_edge, back_angle, first = [], start, None, math.pi, None
+    first = _first_step(graph, component)
+    walk, node = [first], first[2]
+    back_edge, back_angle = first[0], angle(first[0], node)
     for _ in range(4 * n_edges + 10):
         best, best_turn = None, None
         for edge, other in graph[node]:
@@ -397,14 +425,35 @@ def _outer_face_walk(graph, component, n_edges):
             if best_turn is None or turn < best_turn:
                 best, best_turn = (edge, other), turn
         edge, other = best
-        if first is not None and node == start and edge is first[0] and other == first[2]:
+        if node == first[1] and edge is first[0] and other == first[2]:
             break
-        step = (edge, node, other)
-        first = first or step
-        walk.append(step)
+        walk.append((edge, node, other))
         back_edge, back_angle = edge, angle(edge, other)
         node = other
     return walk
+
+
+def _first_step(graph, component):
+    """(edge, dal nodo, al nodo) che contiene il punto più a sinistra del
+    componente, percorso verso il basso. Se quel punto è un nodo, si parte
+    dal nodo come arrivando da ovest."""
+    best = None   # (punto più a sinistra, edge, suoi punti, indice)
+    for node in component:
+        for edge, _ in graph[node]:
+            pts = edge.segment.discretize(DEFAULT_TOLERANCE)
+            i = min(range(len(pts)), key=lambda k: (pts[k][0], pts[k][1]))
+            if best is None or (pts[i][0], pts[i][1]) < best[0]:
+                best = ((pts[i][0], pts[i][1]), edge, pts, i)
+    _, edge, pts, i = best
+    a, b = graph.canonical(edge.start), graph.canonical(edge.end)
+    if 0 < i < len(pts) - 1:
+        going_down = pts[i + 1][1] - pts[i - 1][1] < 0
+        return (edge, a, b) if going_down else (edge, b, a)
+    # il punto più a sinistra è un nodo: fra i suoi edge, il primo in senso
+    # antiorario a partire da ovest
+    start = a if i == 0 else b
+    choice = min(graph[start], key=lambda eo: (_leaving_angle(eo[0], start, graph) - math.pi) % (2 * math.pi))
+    return (choice[0], start, choice[1])
 
 
 def _outer_loop(edges):
