@@ -21,6 +21,7 @@ render-oriented view-model dict. Everything unclassified survives in
 ```
 load_dxf / document_from_msp / load_geometry   →  ForgeDocument   (edges + annotations, zero topology)
 heal(doc)                                       →  ForgeResult     (topology only: closed contours, outer/inner tree — NO hole/bend classification)
+island(doc)                                     →  ForgeResult     (alternative to heal for drawings of VIEWS: one cluster per island, outer = outer face of its planar network)
 detect(result, features=...)                    →  ForgeResult     (mutates in place; opt-in feature classification)
 to_dxf / split / to_json / save_json / to_svg / to_view_model  →  render from the model (never re-reads source)
 ```
@@ -52,6 +53,13 @@ forge.save_json(result, "out.json")
 | `validate` | `(doc: ForgeDocument) -> ForgeResult` | input validation, no mutation. `is_valid=False` = unworkable (no geometry / NaN / all-degenerate). Warnings = workable but flagged. |
 | `validate_result` | `(result: ForgeResult) -> ForgeResult` | output validation, **mutates** `result`. Called automatically by `heal()` — call manually only if you build a `ForgeResult` another way. |
 | `heal` | `(doc, tolerance=None, label="", source_file="", is_structural=None) -> ForgeResult` | topology reconstruction: gap-closing, non-contour edge exclusion (candidates for "something else" — `non_contour_candidates()` exposes the same criterion, see below), loop search, outer/inner containment tree. Does **not** classify holes (D15). `tolerance=None` → reuses `doc.source_meta["tolerance"]`. If no closed outer forms, `result.is_valid=False`. `is_structural(role)->bool` decides which already-labeled edges stay in the graph — `heal()` alone knows only outer/inner; without it a labeled `"hole"` is treated as non-structural (excluded, warned). `heal_and_detect`/`split_to_files` inject `tools.manufacturing_role.is_structural` automatically. |
+| `island` | `(doc, tolerance=None, island_gap=10.0, max_gap=0.5, is_structural=None) -> ForgeResult` | the other way to read a document (see "Reading drawings of views" below). Same output contract as `heal()`: one `ForgeCluster` per island (`outer` + `inners` = closed loops inside); an island whose outer lies inside another's becomes interior of the outermost one. Edges with a decided non-structural role (`frame`, `title_block`...) are left out and go to `trash_entities` with their role — same D30 contract as `heal`. No closed outer anywhere → `is_valid=False`. |
+| `read_islands` | `(edges, tolerance, island_gap=10.0, max_gap=0.5) -> list[IslandReading]` | `island()` before it becomes a `ForgeResult`: per island what was decided, edge by edge. `IslandReading`: `edges`, `outer: OuterFace\|None`, `inner_loops`, `spurs`, `outside`, `non_contour`, `unclassified`, `nested_in: int\|None`. |
+| `read_island` | `(edges, tolerance, max_gap=0.5) -> IslandReading` | one island: normalize (renode, `refit_tessellations`, heal's merge/weld, gaps up to `max_gap`), `split_at_crossings`, `outer_face`, classify the rest. |
+| `spatial_islands` | `(edges, gap_tolerance) -> list[Island]` | union-find on edge pairs within true segment distance `gap_tolerance` (STRtree). No notion of closure. `Island`: `edges`, `bbox`, `.width`, `.height`. |
+| `split_at_crossings` | `(edges, tolerance, decimals=3) -> NodedEdges` | planar network: `LineSeg`/`ArcSeg`/`CircleSeg` split wherever another edge crosses or touches them (T within `tolerance`). `NodedEdges.pieces`, `.parent_of(piece) -> Edge`. Splines/ellipses stay whole. |
+| `outer_face` | `(edges, epsilon=0.0) -> OuterFace\|None` | outer contour of a planar network: walk of its outer face starting from the leftmost geometric point, per connected component, largest area wins. `OuterFace`: `polygon`, `segments`, `styles`, `loop`, `.edges`, `spurs` (walked there and back — axes, marks). |
+| `refit_tessellations` | `(edges, max_segment=0.1, min_run=10, arc_fit_tolerance=0.02, node_decimals=3) -> list[Edge]` | a chain of ≥`min_run` short `LineSeg`s (a curve written as points) is refitted as arc/circle/spline; chain ends keep their original nodes. |
 | `detect` | `(result, features=None, *, max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | classifies features. Bare call = only the `label_map`/`linetype_map`/`color_map` lane + topology cleanup, **no** geometric inference. `features`: `None`/`()` / `"all"` / subset of `{"holes","bending","engrave"}` (= `ALL_FEATURES`). Holes: circular inner contour Ø < `max_drill_diameter` → `Hole` (`plain`/`countersink`/`threaded`); above threshold stays a plain inner contour. **Mutates in place, also returns.** |
 | `ALL_FEATURES` | `frozenset({"holes","engrave","bending"})` | the `"all"` set. |
 | `describe_features` | `(cluster: ForgeCluster) -> dict` | rich per-type feature counts (`plain_holes_count`, `countersink_count`, `threaded_holes_count`, grouped bend lines, `total_engrave_length`...). `cluster.summary` is the raw always-available count; this is the detailed version for forge's known types. |
@@ -188,6 +196,55 @@ instead of the generic gray "consumer role" fallback. To attach richer
 per-feature data (not just a color), use the `cluster.detected` overlay
 instead — see `ForgeCluster` above.
 
+## Reading drawings of views: `island()`
+
+`heal()` reads from the inside (who touches whom, which loops close, which is
+inside which). On a drawing of views — several views on a sheet, isometric/3D
+projections, near-coincident silhouette lines — that graph is ambiguous.
+`island()` reads from the outside: islands by proximity → planar network →
+outer face → interior. Choose by the drawing:
+
+| drawing | call |
+|---|---|
+| flat cutting file, one or more separate parts, exact geometry to stitch | `heal()` / `heal_and_detect()` |
+| technical drawing with views (plan, side, isometric) on a sheet | `island()` |
+
+What `island()` does **not** know: which island is a view, a part, the frame,
+the title block, a magnifier circle over a view, a break line. Those are
+roles — the caller's job (D21, D30). With the frame still in the drawing, the
+frame is the only outer and every view becomes its interior.
+
+### Consumer recipe (framer / a drawing reader)
+
+```python
+import forge
+
+doc = forge.load_dxf("sheet.dxf")
+
+# 1. your own semantics: mark what is not part geometry, by role
+for edge in doc.edges:
+    if my_tool.is_frame_or_title_block(edge) or my_tool.is_magnifier_circle(edge):
+        edge.role = forge.normalize_role("frame")     # any non-structural slug
+
+# 2. read the rest by islands — marked edges are left out (trash, with their role)
+result = forge.island(doc, island_gap=10.0)
+for cluster in result.clusters:                     # one view (or part) each
+    cluster.outer.polygon, cluster.inners
+
+# 3. need the details per edge (what was a spur, what stayed outside)?
+edges = [e for e in doc.edges if e.role == "unknown"]
+for reading in forge.read_islands(edges, tolerance=0.05, island_gap=10.0):
+    reading.outer, reading.spurs, reading.outside, reading.non_contour, reading.nested_in
+```
+
+Composing your own reading from the bricks (same pieces `island()` uses, no
+duplicated criteria): `spatial_islands` → `refit_tessellations` →
+`split_at_crossings` → `outer_face`. `island()` never calls `heal()`.
+
+Parameters to tune per client/drawing convention, never guessed by forge:
+`island_gap` (layout spacing between views), `max_gap` (drawing gaps closed on
+a view, default 0.5 mm — a view is not a cutting file).
+
 ## Hard rules (violate these = broken output)
 
 - `heal()` never classifies holes/bends — that's `detect(features=...)`, opt-in.
@@ -198,6 +255,8 @@ instead — see `ForgeCluster` above.
 - `to_dxf`/`split` never re-read the source file — they render from the model only.
 - Splines are re-emitted as native `SPLINE`, engraving as native per-primitive entities — **never** discretized to `LWPOLYLINE` in DXF output. `to_svg`/`to_view_model` **do** discretize everything (visualization only, not cutting-fidelity).
 - Nothing is silently dropped: unclassified geometry → `trash_entities`/`Trash` layer, unmodeled DXF types (`HATCH`,`IMAGE`,`TABLE`,`3DFACE`,`XLINE`...) → warning in `doc.warnings`.
+- `island()` and `heal()` are two readings, not two steps: never chain them on the same document. Both return a `ForgeResult`; `detect()`/`to_dxf()`/`split()` work on either.
+- `island()` puts closed loops inside an outer in `inners` without saying hole or face — same as `heal()` (D15).
 - `inject()` needs `texts` as `list[ForgeText]` (`extract_forge_texts`), not `list[str]` (`extract_texts_from_msp` — different function, wrong shape for `inject`).
 
 ## Experimental — importable, not in `__all__`, no stability guarantee
@@ -210,7 +269,7 @@ Not documented in `API.md` until proven by a real caller. Import path shown sinc
 | `rotate_cluster` | `forge.rotate_cluster` | `(cluster, angle_rad, origin=(0,0)) -> ForgeCluster` | same, one cluster. |
 | `rotate_document` | `forge.rotate_document` | `(doc, angle_rad, origin=(0,0), tolerance=0.05) -> ForgeDocument` | rotates a raw pre-heal `ForgeDocument`. |
 | `rotate_to_longest` | `forge.rotate_to_longest` | `(result, include_inners=False, target_angle_deg=0.0, origin=None) -> (ForgeResult, float)` | finds the longest structural segment, rotates the result so it lands at `target_angle_deg`; returns result + angle applied. |
-| `simplify_points` | `forge.simplify_points` | `(points: list[Point], closed=True, angle_threshold_deg=50.0, min_points_for_spline=4, spline_degree=3, duplicate_tolerance=1e-6, arc_fit_tolerance=None) -> list[LineSeg\|ArcSeg\|CircleSeg\|SplineSeg]` | reconstructs primitives from a dense ordered point sequence (corner detection + refit). Feeds `load_geometry`'s `"spline"` entity type. |
+| `simplify_points` | `forge.simplify_points` (module: `forge.core.primitives.fitting`) | `(points: list[Point], closed=True, angle_threshold_deg=50.0, min_points_for_spline=4, spline_degree=3, duplicate_tolerance=1e-6, arc_fit_tolerance=None) -> list[LineSeg\|ArcSeg\|CircleSeg\|SplineSeg]` | reconstructs primitives from a dense ordered point sequence (corner detection + refit). Feeds `load_geometry`'s `"spline"` entity type. |
 | `bridge_tabs` | `forge.tools.tabs.bridge_tabs` | `(parent_points, child_points, anchor_parent, anchor_child, tab_width) -> BridgeTab` | one positioning tab between a nested island and its direct parent contour — geometric construction, returns 2 flank segments + 4 cut points. |
 | `bridge_nested_tabs` | `forge.tools.tabs.bridge_nested_tabs` | `(cluster, tab_width, tab_count=4, discretize_tolerance=0.05) -> list[NestedBridgeResult]` | walks `cluster.inners`, places `tab_count` tabs on every even-depth (≥2) island against its direct parent, in one pass. Scope: line/arc/polyline/circle contours, not spline yet. |
 
@@ -220,9 +279,10 @@ Also recent but stable/documented already: `EllipseSeg` (5th primitive, `"ellips
 
 ```
 forge/adapters/   format → primitive translation (dxf, pdf[frozen], geometry)
-forge/core/       pure geometry engine: primitives, topology, healing, heal()
+forge/core/       pure geometry engine: primitives (+ fitting: simplify_points), topology (+ noding, outer_face),
+                  healing (+ islands), heal(), island()
 forge/model/      the domain: ForgeDocument, ForgeResult, ForgeCluster, Annotation, role.py
-forge/tools/      optional ForgeResult stages: detect, anchor, inject, rotate, simplify_points, tabs
+forge/tools/      optional ForgeResult stages: detect, anchor, inject, rotate, tabs
                   manufacturing_role.py: hole/countersink/threaded_hole/bending/engrave/marking
                   vocabulary — never imported by core/model (MAP.md D47)
 forge/io/         renderers: dxf.py, svg.py, view_model.py, exporter.py (json/xml/xdata)
