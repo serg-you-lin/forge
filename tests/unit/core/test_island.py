@@ -52,6 +52,17 @@ class TestIsland(unittest.TestCase):
         self.assertEqual(len(cluster.inners), 1)
         self.assertAlmostEqual(cluster.inners[0].polygon.area, math.pi * 9, delta=0.5)
 
+    def test_cornice_marcata_resta_fuori(self):
+        # D30: framer marca la cornice → island() non la legge, resta in trash col suo ruolo
+        frame = _poly((0, 0), (100, 0), (100, 100), (0, 100))
+        for e in frame:
+            e.role = "frame"
+        view = _poly((40, 40), (60, 40), (60, 60), (40, 60))
+        result = forge.island(_doc(frame + view))
+        self.assertEqual(len(result.clusters), 1)
+        self.assertAlmostEqual(result.clusters[0].outer.polygon.area, 400.0)
+        self.assertEqual(sum(1 for t in result.trash_entities if t.role == "frame"), 4)
+
     def test_niente_di_chiuso_invalido(self):
         result = forge.island(_doc([_line((0, 0), (5, 0))]))
         self.assertFalse(result.is_valid)

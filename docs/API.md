@@ -20,7 +20,7 @@ in fondo.
 
 1. [Apertura file](#1-apertura-file) — `load_dxf`, `document_from_msp`, `load_geometry`
 2. [Validazione](#2-validazione) — `validate`, `validate_result`
-3. [Elaborazione e render](#3-elaborazione-e-render) — `heal` (core), `detect` / `anchor_annotations` / `inject` (tools), `to_dxf` / `split` (io), `heal_and_detect` / `split_to_files` (recipes)
+3. [Elaborazione e render](#3-elaborazione-e-render) — `heal` / `island` e i suoi mattoni (core), `detect` / `anchor_annotations` / `inject` (tools), `to_dxf` / `split` (io), `heal_and_detect` / `split_to_files` (recipes)
 4. [Export](#4-export) — `save_json`, `to_json`, `save_xml`, `to_view_model`, `to_svg`, `save_svg`
 5. [Metadati XDATA](#5-metadati-xdata) — `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema`
 6. [Ispezione / debug](#6-ispezione--debug) — `inspect_dxf`, `inspect_document`, `inspect_result`, `inspect_file`
@@ -262,7 +262,9 @@ costruisci un `ForgeResult` per altre vie.
 
 ## 3. Elaborazione e render
 
-`heal` è l'atto del motore (`forge/core/`); `detect` / `anchor_annotations` /
+`heal` e `island` sono le due letture del motore (`forge/core/`), una
+dall'interno e una dall'esterno — il chiamante sceglie quella adatta al
+disegno; `detect` / `anchor_annotations` /
 `inject` sono stadi opzionali su un `ForgeResult` (`forge/tools/`, il caller
 sceglie quali e in che ordine); `to_dxf` / `split` sono renderer del modello
 (`forge/io/`); `heal_and_detect` / `split_to_files` sono le scorciatoie della
@@ -305,6 +307,101 @@ result = forge.heal(doc, tolerance=0.5, label="P-1024")
 ```
 
 ---
+
+### `island`
+
+```python
+forge.island(doc: ForgeDocument, tolerance=None, island_gap=10.0,
+             max_gap=0.5, is_structural=None) -> ForgeResult
+```
+
+La seconda lettura di un documento, accanto a `heal()`: **per isole**.
+`heal()` ricostruisce la topologia dall'interno (chi tocca chi, quali giri si
+chiudono, chi sta dentro chi) e trova il pezzo per contenimento. `island()`
+legge il disegno dall'esterno:
+
+1. separa le **isole** per vicinanza vera fra segmenti (`spatial_islands`);
+2. per ogni isola normalizza (tassellature rifittate come archi/spline,
+   merge/weld di `heal`, gap fino a `max_gap`) e rende la rete **piana**
+   (`split_at_crossings`);
+3. il **contorno esterno** è il bordo della faccia esterna della rete
+   (`outer_face`) — gli edge percorsi andata e ritorno (assi, segni che
+   sporgono) non sono contorno;
+4. dentro: i giri chiusi diventano `inners`, il resto va in `trash_entities`
+   col ruolo che aveva (`unknown` se nessuno l'ha deciso).
+
+**Quando usarla invece di `heal()`**: disegni di viste — più viste su un
+foglio, viste isometriche/3D proiettate, sagome con linee quasi coincidenti
+dove il grafo di `heal()` è ambiguo. Per un disegno di taglio piano (uno o più
+pezzi separati, geometria esatta da cucire) resta `heal()`.
+
+Un'isola il cui contorno sta **dentro** quello di un'altra non è un cluster:
+diventa interno (`inners`) dell'isola più esterna che la contiene. Con la
+cornice nel disegno, quindi, l'unico cluster è la cornice: toglierla (o dare un
+ruolo a cornice, cartiglio, cerchi di ingrandimento) è compito del chiamante.
+Cosa sia un cluster — vista, pezzo — lo decide chi lo usa (D21).
+
+| parametro | significato |
+|---|---|
+| `tolerance` | se `None`, ripresa da `doc.source_meta["tolerance"]` — come `heal()`. |
+| `island_gap` | distanza massima (mm) fra due edge della stessa isola. Dipende da come è impaginato il disegno, non dalla geometria. |
+| `max_gap` | gap (mm) chiusi fra estremi liberi, mai spostando un estremo più di così. |
+| `is_structural` | come in `heal()` (D30): un `Edge` con un ruolo già deciso e non strutturale (`frame`, `title_block`, ...) resta **fuori** dalla lettura e va in `trash_entities` col suo ruolo. È così che un consumatore toglie cornice e cartiglio prima di leggere le viste. Senza, solo `outer`/`inner` sono strutturali. |
+
+**Ritorna** un `ForgeResult` con un `ForgeCluster` per isola non annidata,
+ordinati per area del contorno esterno. Nessun giro chiuso in nessuna isola →
+`is_valid=False`, `errors` popolato.
+
+**Solleva** `TypeError` se non gli passi un `ForgeDocument`.
+
+```python
+doc = forge.load_dxf("tavola.dxf")
+result = forge.island(doc, island_gap=10.0)
+for cluster in result.clusters:          # una vista / un pezzo per cluster
+    print(cluster.outer.polygon.area, len(cluster.inners))
+```
+
+#### I mattoni di `island()`
+
+Esposti per chi compone la sua ricetta (framer: togliere cornice e cartiglio
+per ruolo, poi leggere le viste) — stessi pezzi, nessun criterio duplicato.
+
+```python
+forge.read_islands(edges, tolerance, island_gap=10.0, max_gap=0.5) -> list[IslandReading]
+forge.read_island(edges, tolerance, max_gap=0.5) -> IslandReading
+forge.spatial_islands(edges, gap_tolerance) -> list[Island]
+forge.split_at_crossings(edges, tolerance, decimals=3) -> NodedEdges
+forge.outer_face(edges, epsilon=0.0) -> OuterFace | None
+forge.refit_tessellations(edges, max_segment=0.1, min_run=10,
+                          arc_fit_tolerance=0.02, node_decimals=3) -> list[Edge]
+```
+
+| funzione | prende → ritorna | cosa fa |
+|---|---|---|
+| `read_islands` | `list[Edge]` → `list[IslandReading]` | isole + `read_island` per ognuna + annidamento (`nested_in`). È `island()` prima di diventare `ForgeResult`. |
+| `read_island` | `list[Edge]` → `IslandReading` | un'isola: normalizza, rete piana, faccia esterna, classificazione dell'interno. |
+| `spatial_islands` | `list[Edge]` → `list[Island]` | union-find sulle coppie di edge a distanza vera `<= gap_tolerance` (STRtree). Nessuna nozione di chiusura. |
+| `split_at_crossings` | `list[Edge]` → `NodedEdges` | spezza `LineSeg`/`ArcSeg`/`CircleSeg` dove incrociano o toccano a T un altro edge; `NodedEdges.parent_of(pezzo)` dà l'`Edge` originale. `SplineSeg`/`EllipseSeg` restano interi. |
+| `outer_face` | `list[Edge]` (rete piana) → `OuterFace \| None` | bordo della faccia esterna, per componente, quella di area massima; `spurs` = edge percorsi andata e ritorno. |
+| `refit_tessellations` | `list[Edge]` → `list[Edge]` | catene di `LineSeg` corti (curva scritta a punti) rifittate come arco/cerchio/spline; estremi della catena sui nodi originali. |
+
+Nessuna **muta** l'input: ritornano liste/oggetti nuovi.
+
+`IslandReading` — cosa è stato deciso su un'isola, pezzo per pezzo:
+
+| campo | tipo | significato |
+|---|---|---|
+| `edges` | `list[Edge]` | gli edge dell'isola, come arrivano |
+| `outer` | `OuterFace \| None` | contorno esterno (`polygon`, `segments`, `edges`, `spurs`) |
+| `inner_loops` | `list[loop]` | giri chiusi dentro, come dal `LoopFinder` |
+| `spurs` | `list[Edge]` | percorsi andata e ritorno dal contorno |
+| `outside` | `list[Edge]` | pezzi dell'isola rimasti fuori dal contorno (rete staccata) |
+| `non_contour` | `list[Edge]` | candidati non-contorno, stesso criterio di `heal()` (D49) |
+| `unclassified` | `list[Edge]` | il resto |
+| `nested_in` | `int \| None` | indice dell'isola più esterna che la contiene |
+
+---
+
 
 ### `detect`
 

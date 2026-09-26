@@ -19,7 +19,7 @@ Puro: solo Edge, primitive e modello, nessun formato.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from shapely.geometry import LineString, Point
 
@@ -28,7 +28,7 @@ from ..model.contour import ForgeContour
 from ..model.document import ForgeDocument
 from ..model.feature import OpenFeature
 from ..model.result import ForgeResult
-from ..model.role import ContourRole
+from ..model.role import ContourRole, is_structural_role
 from .primitives.polygon_builder import build_polygon
 from .primitives.segments import DEFAULT_TOLERANCE, segment_is_closed
 from .topology.edge import Edge
@@ -67,7 +67,8 @@ class IslandReading:
 # ---------------------------------------------------------------------------
 
 def island(doc: ForgeDocument, tolerance: Optional[float] = None,
-           island_gap: float = 10.0, max_gap: float = 0.5) -> ForgeResult:
+           island_gap: float = 10.0, max_gap: float = 0.5,
+           is_structural: Optional[Callable[[str], bool]] = None) -> ForgeResult:
     """
     Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno
     esterno, `inners` i giri chiusi dentro. Un'isola il cui contorno sta
@@ -79,6 +80,10 @@ def island(doc: ForgeDocument, tolerance: Optional[float] = None,
     island_gap: distanza massima fra due edge della stessa isola (mm).
     max_gap:    gap chiusi fra estremi liberi, mai spostando un estremo più
                 di così (mm).
+    is_structural: come heal() (D30): un Edge con un ruolo già deciso e non
+                strutturale (cornice, cartiglio, ...) resta fuori dalla
+                lettura e va in trash col suo ruolo. Senza, solo outer/inner
+                sono strutturali.
     """
     if not isinstance(doc, ForgeDocument):
         raise TypeError(
@@ -86,9 +91,14 @@ def island(doc: ForgeDocument, tolerance: Optional[float] = None,
             f"ricevuto {type(doc).__name__}"
         )
     tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
-    readings = read_islands(doc.edges, tol, island_gap=island_gap, max_gap=max_gap)
+    structural = is_structural or is_structural_role
+    labeled = [e for e in doc.edges if e.role != ContourRole.UNKNOWN and not structural(e.role)]
+    labeled_ids = {id(e) for e in labeled}
+    edges = [e for e in doc.edges if id(e) not in labeled_ids]
+    readings = read_islands(edges, tol, island_gap=island_gap, max_gap=max_gap)
 
     result = ForgeResult(source_file=doc.source_path, annotations=list(doc.annotations))
+    result.trash_entities += _open(labeled)
     label_map = doc.source_meta.get("label_map") or {}
     if label_map:
         result.label_map = label_map
