@@ -33,6 +33,14 @@ INPUTS = [
 ]
 GROUND_TRUTH_COLOR = 134
 OUTDIR = r"pipeline_output/outer_scan"
+# finestre di zoom per file (xmin, xmax, ymin, ymax) — un PNG in più per ognuna
+ZOOMS = {
+    "SHEETCODE_3": [
+        (-510, -380, -25, 40),    # estremo sinistro + prima linguetta
+        (-215, -135, -25, 40),    # una linguetta in mezzo
+        (590, 680, -25, 40),      # estremo destro
+    ],
+}
 # ---------------------------------------------------------------------------
 
 
@@ -57,17 +65,25 @@ def main():
                      f" mancati {len(truth_ids - oc.ids)}, in più {len(oc.ids - truth_ids)}")
         print(line)
 
-        fig, ax = plt.subplots(figsize=(14, 10))
-        if truth:
-            _plot_edges(ax, truth, color="cyan", linewidth=5, alpha=0.6)
-        _plot_edges(ax, doc.edges, color="0.7", linewidth=0.4)
-        _plot_edges(ax, oc.edges, color="red", linewidth=1.2)
-        ax.set_aspect("equal")
-        ax.set_title(f"{stem} — rosso: candidati, ciano: ground truth")
-        out = os.path.join(OUTDIR, f"{stem}.png")
-        fig.savefig(out, dpi=150, bbox_inches="tight")
-        plt.close(fig)
-        print(f"  -> {out}")
+        windows = [(None, "")] + [(w, f"_zoom{i + 1}") for i, w in enumerate(ZOOMS.get(stem, []))]
+        for window, suffix in windows:
+            fig, ax = plt.subplots(figsize=(14, 10))
+            if truth:
+                _plot_edges(ax, truth, color="cyan", linewidth=5, alpha=0.6)
+            _plot_edges(ax, doc.edges, color="0.6", linewidth=0.5)
+            _plot_edges(ax, oc.edges, color="red", linewidth=1.2)
+            # dove i raggi hanno toccato: è lì che si vede quale tratto di un edge è esterno
+            pts = [h.point for e in oc.edges for h in oc.hits_of(e)]
+            ax.plot([p[0] for p in pts], [p[1] for p in pts], "b.", markersize=2)
+            if window:
+                ax.set_xlim(window[0], window[1])
+                ax.set_ylim(window[2], window[3])
+            ax.set_aspect("equal")
+            ax.set_title(f"{stem}{suffix} — rosso: candidati, blu: punti colpiti, ciano: ground truth")
+            out = os.path.abspath(os.path.join(OUTDIR, f"{stem}{suffix}.png"))
+            fig.savefig(out, dpi=150, bbox_inches="tight")
+            plt.close(fig)
+            print(f"  -> {out}")
 
 
 if __name__ == "__main__":
