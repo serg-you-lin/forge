@@ -306,6 +306,76 @@ resta piena per la diagnostica).
 result = forge.heal(doc, tolerance=0.5, label="P-1024")
 ```
 
+#### I passi di `heal()`
+
+`heal()` è una ricetta: compone questi passi, nell'ordine sotto, e scrive i
+warning che li raccontano. Esposti per chi compone la sua (framer: per esempio
+fermarsi prima di `build_hierarchy`, finché non ha deciso da sé cosa significa
+un contorno dentro un altro — D62). Stessi pezzi di `heal()`, nessun criterio
+duplicato.
+
+```python
+forge.merge_collinear_overlaps(edges) -> list[Edge]
+forge.merge_cocircular_overlaps(edges) -> list[Edge]
+forge.weld_degenerate_linesegs(edges) -> list[Edge]
+forge.split_labeled(edges, is_structural=None) -> tuple[list[Edge], list[Edge]]
+forge.close_free_gaps(edges, tolerance) -> list[Edge]
+forge.dangling_splines(edges) -> list[Edge]
+forge.find_non_contour_edges(edges, tolerance) -> set[int]
+forge.find_loops(edges, non_contour_ids, tolerance) -> LoopSearch
+forge.repair_merged_corners(edges, tolerance, exclude_ids=frozenset()) -> tuple[list[Edge], int, list]
+forge.structural_loops(loops, is_structural=None) -> list[loop]
+forge.loops_to_features(loops) -> list[ClosedFeature]
+forge.polygonize_edges(edges, tolerance) -> list[Polygon]
+forge.polygons_to_features(polygons) -> list[ClosedFeature]
+forge.edges_to_open_features(edges, exclude_ids, label_map) -> list[OpenFeature | ClosedFeature]
+forge.labeled_features(edges) -> list[OpenFeature | ClosedFeature]
+forge.build_hierarchy(features, label="", source_file="", is_structural=None)
+    -> tuple[list[ForgeCluster], list]
+```
+
+| passo | prende → ritorna | cosa fa |
+|---|---|---|
+| `merge_collinear_overlaps` | `list[Edge]` → `list[Edge]` | fonde le rette tracciate a spezzoni sovrapposti (D50). |
+| `merge_cocircular_overlaps` | `list[Edge]` → `list[Edge]` | lo stesso sugli archi co-circolari (D52). |
+| `weld_degenerate_linesegs` | `list[Edge]` → `list[Edge]` | salda i `LineSeg` sotto 0.05 mm in un nodo solo (D56). |
+| `split_labeled` | `list[Edge]` → `(restano, etichettati)` | mette da parte gli edge con un ruolo già deciso e non strutturale (D30). Senza `is_structural`, solo `outer`/`inner` sono strutturali. |
+| `close_free_gaps` | `list[Edge]` → `list[Edge]` | chiude i gap fra estremi liberi entro `tolerance` (estensione all'intersezione reale o linea di congiunzione). |
+| `dangling_splines` | `list[Edge]` → `list[Edge]` | le `SplineSeg` aperte con un estremo non collegato — solo diagnostica. |
+| `find_non_contour_edges` | `list[Edge]` → `set[id(Edge)]` | edge che non chiudono un contorno (D49), da tenere fuori dal grafo. `non_contour_candidates(doc)` è la stessa cosa su un documento. |
+| `find_loops` | `list[Edge]` → `LoopSearch` | la scala: grafo esatto → riparazione angoli se restano estremi liberi (D57) → grafo tollerante. |
+| `repair_merged_corners` | `list[Edge]` → `(edge, n_riparati, cluster_saltati)` | il secondo gradino da solo: angoli fusi dal clustering portati all'intersezione reale; cluster di 3+ estremi saltati. |
+| `structural_loops` | loop → loop | tiene i loop senza edge di ruolo non strutturale. |
+| `loops_to_features` | loop → `list[ClosedFeature]` | un `ClosedFeature` per loop, geometria nativa. |
+| `polygonize_edges` | `list[Edge]` → `list[Polygon]` | ultima spiaggia quando `find_loops` non chiude: le facce dell'intero disegno discretizzato. |
+| `polygons_to_features` | `list[Polygon]` → `list[ClosedFeature]` | OUTER dal bordo, INNER dai buchi, a `LineSeg` (la geometria nativa è persa). |
+| `edges_to_open_features` | `list[Edge]` → feature | gli edge non assorbiti da un loop (`exclude_ids`) come feature aperte. |
+| `labeled_features` | `list[Edge]` → feature | gli etichettati di `split_labeled`, col ruolo intatto. |
+| `build_hierarchy` | feature → `(cluster, trash)` | albero di contenimento: ogni radice un `ForgeCluster`, i discendenti `inners` con `depth`/`parent`. |
+
+Nessuno **muta** l'input: ritornano liste/oggetti nuovi.
+
+`LoopSearch` — come `find_loops` ha chiuso (o non chiuso) i giri:
+
+| campo | tipo | significato |
+|---|---|---|
+| `edges` | `list[Edge]` | gli edge dopo l'eventuale riparazione degli angoli — da usare a valle al posto di quelli in ingresso |
+| `loops` | `list[loop]` | loop `[(Edge, reversed)]`, vuota se nessun gradino chiude |
+| `method` | `str` | `"exact"`, `"corner_repair"`, `"tolerant"` o `"none"` |
+| `repaired` | `int` | angoli chiusi all'intersezione reale |
+| `skipped_corners` | `list` | cluster non riparati (3+ estremi) |
+| `unrepaired_corners` | `list` | con `"tolerant"`: angoli fusi solo nel grafo, la discrepanza resta nell'output |
+| `open_nodes` | `list` | con `"none"`: gli estremi liberi |
+
+```python
+# la ricetta di heal() fino ai contorni chiusi, senza gerarchia
+edges, labeled = forge.split_labeled(doc.edges, is_structural)
+edges = forge.close_free_gaps(edges, 0.1)
+search = forge.find_loops(edges, forge.find_non_contour_edges(edges, 0.1), 0.1)
+print(search.method, len(search.loops))
+closed = forge.loops_to_features(forge.structural_loops(search.loops, is_structural))
+```
+
 ---
 
 ### `island`

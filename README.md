@@ -79,6 +79,10 @@ inside which). `island()` reads a drawing of views from the outside: islands
 by proximity, then the outer contour of each as the outer face of its planar
 network. Same `ForgeResult` out — see `docs/API.md` (`island`).
 
+Both are recipes over public steps. `heal()`'s steps (`split_labeled`,
+`close_free_gaps`, `find_loops`, `build_hierarchy`, ...) are exported one by one,
+so a consumer can compose its own order — see `docs/API.md` (the steps of `heal()`).
+
 ## Bend / engrave layers you already know
 
 If the source file marks bend lines or engraving on named layers, tell `load_dxf`

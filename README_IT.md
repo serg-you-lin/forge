@@ -70,6 +70,11 @@ dentro chi). `island()` legge un disegno di viste dall'esterno: isole per
 vicinanza, poi il contorno esterno di ognuna come faccia esterna della sua rete
 piana. Stesso `ForgeResult` in uscita — vedi `docs/API.md` (`island`).
 
+Tutte e due sono ricette su passi pubblici. I passi di `heal()` (`split_labeled`,
+`close_free_gaps`, `find_loops`, `build_hierarchy`, ...) sono esportati uno per
+uno, così un consumatore compone il suo ordine — vedi `docs/API.md` (i passi di
+`heal()`).
+
 ## Layer di piega / incisione che già conosci
 
 ```python

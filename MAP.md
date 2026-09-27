@@ -80,9 +80,9 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `refactor/outer-scan` (phase A of the HealStep/`island()` refactor,
-bump to 0.7.0 when phase B lands), version `0.6.25`. Suite: 795 passed + 44
-subtests as of the latest decision below (D61), golden all green.
+Branch: `refactor/outer-scan` (phases A and B of the `island()` / heal-steps
+refactor done — D58–D62; bump to 0.7.0 on merge), version `0.6.25`. Suite: 812
+passed + 47 subtests as of the latest decision below (D62), golden all green.
 
 Still genuinely open:
 - `detect_engrave` remains a no-op placeholder (D13) — deferred until
@@ -1639,6 +1639,56 @@ exists) and is gone. No ezdxf import is left in `core`/`model`/`tools`, so
 `tools/simplify_points.py` became `core/primitives/fitting.py` (clean break
 for internal callers; `forge.simplify_points` unchanged, smoother untouched).
 Suite: 795 passed.
+
+### D62 — `HealStep` is gone: heal's steps are public functions, `heal()` is a recipe ✅
+Follows from D58: if `heal()` is one reading among two, its steps are
+ingredients like `island()`'s, not the private methods of a stateful class.
+`HealStep` accumulated state between methods (`loop_edge_ids`,
+`closed_shapes`, `labeled_edges`, `all_arcs` rewritten mid-way), so a consumer
+could only take the whole pipeline or nothing — D55 had already pulled one
+step out by hand (`non_contour_candidates`) because framer needed it
+*before* `heal()`. This generalizes that move to every step.
+
+- **`core/healing/steps.py`** holds the steps, each edges in → edges or a
+  partial result out: `split_labeled`, `close_free_gaps`, `dangling_splines`,
+  `find_non_contour_edges`, `find_loops` → `LoopSearch`,
+  `repair_merged_corners`, `structural_loops`, `loops_to_features`,
+  `polygonize_edges`, `polygons_to_features`, `labeled_features`,
+  `build_hierarchy`. The three normalizer merges and `edges_to_open_features`
+  were already functions. All in `forge.__all__` (framer composes them next).
+- **`core/heal.py`** holds only `heal()`, same shape as `core/island.py`:
+  neither recipe sits "above" the other; the model is the product (D58).
+  `heal()` composes the steps in the old order and writes the old warnings,
+  text and order unchanged.
+- **Typed only where a step answers more than one question.** `find_loops`
+  returns `LoopSearch` (`edges` after corner repair, `loops`, `method` =
+  `exact`/`corner_repair`/`tolerant`/`none`, `repaired`, `skipped_corners`,
+  `unrepaired_corners`, `open_nodes`): "which rung of the ladder closed the
+  contour?" used to be readable only from warning strings. Steps that are
+  edges → edges return a list.
+- **Where polygonize sits** (a doubt in the refactor notes): it was never a
+  step after the hierarchy. It is the last rung of the loop search, taken only
+  when `find_loops` ends with `method == "none"`; it produces `ClosedFeature`s
+  directly (OUTER from the exterior, INNER from the holes), which then go
+  through `build_hierarchy` like any others. In `heal()` this is now an
+  explicit `if search.loops / elif edges` instead of a method bolted onto the
+  class from outside.
+- **No shared `normalize()`**: `heal()` calls the three merges; `island()`
+  normalizes differently (`renode`, `refit_tessellations`, fine grid). One
+  name for both would suggest the two readings prepare edges the same way.
+- `HierarchyBuilder` lost `label_map` and `entities_in_loops`: both were
+  stored and never read.
+
+Zero regressions checked beyond the suite: a fingerprint of `heal()` (clusters
+as WKT + segments, trash, warnings and errors in order, `all_arcs`), with and
+without the manufacturing predicate, on all 358 drawings under
+`tests/examples` (islands and complete sheets included) plus 12 synthetic
+documents (6 cases × 2 tolerances) covering every rung of the ladder —
+identical before and after each of the four commits. Kept as-is, noted in ARCHITECTURE's "not clean yet": when
+every edge is labeled non-structural, `heal()` returns the "no closed geometry"
+error with an empty `trash_entities` (the labeled edges don't reach it).
+Suite: 812 passed (17 new in `test_heal_steps.py`, including a composition
+test: the steps chained by hand give `heal()`'s clusters).
 
 ---
 
