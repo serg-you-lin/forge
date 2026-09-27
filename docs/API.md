@@ -93,7 +93,7 @@ step, su un file reale in `tests/examples/`).
 ### `RoleRule`
 
 ```python
-forge.RoleRule(role, name=None, name_contains=None, dashed=None, color=None)
+forge.RoleRule(role, name=None, name_contains=None, dashed=None, dash=None, color=None)
 ```
 
 Una regola: se **tutte** le condizioni date sono vere, la linea prende `role`.
@@ -105,14 +105,22 @@ ruolo) lo scrive il chiamante (MAP.md D63).
 | `role` | ruolo assegnato, ripulito da `normalize_role`. Vocabolario aperto: `outer`, `inner`, `hole`, `bending`, `countersink`, `threaded_hole`, `engrave`, `marking` sono noti a forge/`detect`; qualunque altro slug (`frame`, `title_block`, …) è conservato, trattato come non strutturale e scritto in output su un layer col suo nome (MAP.md D27 / D31). |
 | `name` | nome del gruppo sorgente, uguale (maiuscole ignorate). |
 | `name_contains` | sottostringa del nome del gruppo (maiuscole ignorate). |
-| `dashed` | `True` solo tratteggiate, `False` solo continue. Tratteggiata = il pattern del linetype ha almeno un vuoto (`EdgeStyle.is_dashed`), non il nome del linetype. |
+| `dashed` | `True` solo tratteggiate, `False` solo continue. Tratteggiata = il pattern del linetype ha almeno un vuoto (`EdgeStyle.is_dashed`), non il nome del linetype. Vale anche per le catene. |
+| `dash` | forma del tratto (`EdgeStyle.dash_kind`), letta dai segni del pattern: `"continuous"` nessun vuoto; `"uniform"` un solo segno ripetuto (tratti tutti uguali, o solo punti); `"chain"` segni diversi alternati (tratto lungo + tratto corto o punto). Due segni sono diversi se differiscono più del 5% della lunghezza del pattern. Valore sconosciuto → `ValueError`. |
 | `color` | colore ACI: intero, stringa numerica (`"4"`) o nome standard (`red`, `yellow`, `green`, `cyan`, `blue`, `magenta`, `white`/`black`, `gray`/`grey`, `lightgray`/`lightgrey`, `pink`). |
 
 Metodo `matches(name, style) -> bool`. Condizioni lasciate a `None` non
 contano.
 
-**Solleva** `ValueError` se non c'è nessuna condizione (matcherebbe tutto) o se
-il nome del colore non è riconosciuto.
+**Solleva** `ValueError` se non c'è nessuna condizione (matcherebbe tutto), se
+il nome del colore non è riconosciuto o se `dash` non è una delle tre forme.
+
+```python
+rules = [
+    forge.RoleRule("bending", name="Piega"),         # una piega a catena resta piega
+    forge.RoleRule("construction", dash="chain"),    # assi e linee di costruzione
+]
+```
 
 ### `name_rules`
 
