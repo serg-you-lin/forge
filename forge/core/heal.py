@@ -221,14 +221,9 @@ class HealStep:
         È il punto d'aggancio per un consumatore che marca la geometria PRIMA
         di heal (Framer: cornice / cartiglio) — vedi D30.
         """
-        from ..model.role import ContourRole
-
-        def _is_split(edge):
-            return edge.role != ContourRole.UNKNOWN and not self._structural(edge.role)
-
-        self.labeled_edges = [e for e in self.edges if _is_split(e)]
+        from .healing.steps import split_labeled
+        self.edges, self.labeled_edges = split_labeled(self.edges, self._is_structural_fn)
         if self.labeled_edges:
-            self.edges = [e for e in self.edges if not _is_split(e)]
             if self._is_structural_fn is None:
                 self.result.warnings.append(
                     f"{len(self.labeled_edges)} edge con un ruolo diverso da "
@@ -241,37 +236,19 @@ class HealStep:
                 )
 
     def _preprocess(self):
-        graph_pre = self._build_graph()
-        endpoints = free_endpoints_from_edges(self.edges, graph_pre)
-
-        if endpoints:
-            fixes = compute_gap_fixes(endpoints, self.tolerance)
-            if fixes:
-                self.edges = apply_gap_fixes(self.edges, fixes, self.node_decimals)
-                graph_pre  = None
-
-        open_spline_edges = [
-            e for e in self.edges
-            if isinstance(e.segment, SplineSeg) and e.start != e.end
-        ]
-        if open_spline_edges:
-            if graph_pre is None:
-                graph_pre = self._build_graph()
-            for edge in open_spline_edges:
-                if graph_pre.degree(edge.start) < 2 or graph_pre.degree(edge.end) < 2:
-                    self.result.warnings.append(
-                        "SPLINE con endpoint non connesso trovata — "
-                        "gap tra SPLINE e altre entità gestito con una linea di congiunzione. "
-                        "Verificare manualmente la correttezza del file."
-                    )
-                    break
+        from .healing.steps import close_free_gaps, dangling_splines
+        self.edges = close_free_gaps(self.edges, self.tolerance)
+        if dangling_splines(self.edges):
+            self.result.warnings.append(
+                "SPLINE con endpoint non connesso trovata — "
+                "gap tra SPLINE e altre entità gestito con una linea di congiunzione. "
+                "Verificare manualmente la correttezza del file."
+            )
 
 
     def _find_non_contour_edges(self):
-        from .topology.non_contour_edges import NonContourEdgeDetector
-        graph_full = self._build_graph()
-
-        self.non_contour_edge_ids = NonContourEdgeDetector(self.tolerance).detect(graph_full, self.edges)
+        from .healing.steps import find_non_contour_edges
+        self.non_contour_edge_ids = find_non_contour_edges(self.edges, self.tolerance)
 
         if self.non_contour_edge_ids:
             self.result.warnings.append(
