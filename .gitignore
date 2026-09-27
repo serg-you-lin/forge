@@ -114,3 +114,6 @@ chiacchierata_con_ai.*
 *~
 # Private design notes
 HEALSTEP_REFACTOR.md
+# Prototipi e archivio: solo locali
+dev_tools/
+_archive/

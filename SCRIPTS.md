@@ -58,8 +58,8 @@ I tipi di dominio (`ForgeResult`, `ForgeCluster`, `ForgeContour`, `ForgeDocument
   Da portare alla nuova API in una sessione dedicata e collaudare con
   l'overlay-check in SigmaNest. Non versionato.
 - `_archive/old_scripts/` — la vecchia serie numerata (API morte), tenuta come
-  riferimento storico.
+  riferimento storico. Solo locale, non versionato.
 - `dev_tools/` — prototipi (grafo, dashboard, split verify). Base di partenza per
-  la futura repo dashboard (MAP.md D16).
+  la futura repo dashboard (MAP.md D16). Solo locale, non versionato.
 - `scripts/_paths.py` — `import _paths` come prima riga di ogni script della
   serie: `chdir` alla radice del repo. Non fa parte del package.
