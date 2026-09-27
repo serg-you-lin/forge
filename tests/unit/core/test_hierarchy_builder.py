@@ -55,8 +55,6 @@ def _make_builder():
     return HierarchyBuilder(
         label="",
         source_file="",
-        label_map={},
-        entities_in_loops=set(),
     )
 
 
