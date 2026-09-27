@@ -114,7 +114,7 @@ class RoleStyle:
 
     Il chiamante ne assembla un dizionario ``{ruolo: RoleStyle}`` una volta
     sola e lo passa a qualunque renderer lo supporti (oggi ``to_dxf``, domani
-    ``to_svg``) — stesso idioma di ``label_map``/``linetype_map``: dizionario
+    ``to_svg``) — stesso idioma di ``role_rules``: dato
     esplicito del chiamante, nessuno stato globale mutabile.
 
     Pensato per crescere per aggiunta, non per modifica: un futuro campo

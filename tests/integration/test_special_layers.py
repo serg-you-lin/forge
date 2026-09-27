@@ -41,7 +41,7 @@ def _run_pipeline(
     tolerance=0.05,
     inject=False,
 ):
-    doc = forge.document_from_msp(msp, label_map=special_layers)
+    doc = forge.document_from_msp(msp, role_rules=forge.name_rules(special_layers))
 
     result = forge.heal(
         doc,

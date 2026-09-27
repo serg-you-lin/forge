@@ -23,7 +23,7 @@ import forge
 # --- CONFIG ----------------------------------------------------------------
 DEFAULT_DIR = r"tests/examples"
 TOLERANCE   = 0.2
-LABEL_MAP = {
+NAME_ROLES = {
     "MARK":      "engrave",
     "Signature": "engrave",
     "Filettati": "threaded_hole",
@@ -69,7 +69,7 @@ def main(argv):
                 str(src),
                 explode_inserts=True,
                 flatten_z_flag=True,
-                label_map=LABEL_MAP,
+                role_rules=forge.name_rules(NAME_ROLES),
                 tolerance=tol,
                 verbose=False,
             )

@@ -75,11 +75,19 @@ Tutte e due sono ricette su passi pubblici. I passi di `heal()` (`split_labeled`
 uno, così un consumatore compone il suo ordine — vedi `docs/API.md` (i passi di
 `heal()`).
 
-## Layer di piega / incisione che già conosci
+## Linee di piega / incisione che sai già riconoscere
+
+Se sai come la sorgente segna pieghe o incisioni — per nome, per tratteggio,
+per colore o una combinazione — dillo a `load_dxf` con delle regole, così
+assegna il ruolo subito invece di indovinarlo. Le regole si valutano in
+ordine, vince la prima che matcha:
 
 ```python
-doc = forge.load_dxf("pezzo.dxf",
-                     label_map={"Piega": "bending", "MARK": "engrave"})
+doc = forge.load_dxf("pezzo.dxf", role_rules=[
+    *forge.name_rules({"Piega": "bending", "MARK": "engrave"}),
+    forge.RoleRule("construction", name_contains="constr", dashed=True),
+    forge.RoleRule("bending", dashed=True),
+])
 ```
 
 ---
@@ -87,7 +95,7 @@ doc = forge.load_dxf("pezzo.dxf",
 ## Ispezionare un file reale
 
 ```python
-forge.inspect_file("pezzo.dxf", label_map={"Piega": "bending"})
+forge.inspect_file("pezzo.dxf", role_rules=forge.name_rules({"Piega": "bending"}))
 ```
 
 Stampa tre livelli in fila: entità DXF grezze → cosa ha capito l'adapter → il

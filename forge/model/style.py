@@ -29,3 +29,10 @@ class EdgeStyle:
     linetype_pattern: Optional[Tuple[float, ...]]   = None
     color:            int                           = 256   # ACI, 256 = BYLAYER
     true_color:       Optional[int]                 = None  # 24-bit RGB, None = non impostato
+
+    @property
+    def is_dashed(self) -> bool:
+        """True se il pattern ha almeno un vuoto (elemento negativo, D63)."""
+        if not self.linetype_pattern:
+            return False
+        return any(element < 0 for element in self.linetype_pattern[1:])

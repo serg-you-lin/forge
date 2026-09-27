@@ -21,14 +21,14 @@ import forge
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/examples/Linee_piegatura.dxf"
 TOLERANCE = 0.5
-LABEL_MAP = {"Piega": "bending", "MARK": "engrave"}   # {layer: work_type}, case-insensitive
+NAME_ROLES = {"Piega": "bending", "MARK": "engrave"}   # {nome: ruolo}, maiuscole ignorate
 # -------------------------------------------------------------------------
 
 # 1. load_dxf --------------------------------------------------------------
 doc = forge.load_dxf(
     INPUT,
     tolerance=TOLERANCE,        # salvata in source_meta, riusata da heal()
-    label_map=LABEL_MAP,        # assegna il ruolo agli Edge già in fase di traduzione
+    role_rules=forge.name_rules(NAME_ROLES),        # assegna il ruolo agli Edge già in fase di traduzione
     explode_inserts=True,
     flatten_z_flag=True,
     verbose=False,

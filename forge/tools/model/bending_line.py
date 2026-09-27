@@ -25,7 +25,7 @@ class BendingLine(OpenFeature):
     angle_deg:  float         = 0.0
     cluster_label: str           = ""
     # Doppio binario di provenienza, come Hole ed Engraving (MAP.md D5):
-    #   source="labeled"   → ruolo da label_map        (confidence 1.0)
+    #   source="labeled"   → ruolo da role_rules       (confidence 1.0)
     #   source="geometric" → inferenza in detect()     (confidence < 1.0)
     confidence: float         = 1.0
     source:     str           = ""

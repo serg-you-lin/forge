@@ -45,7 +45,7 @@ def _run_pipeline(dxf_path: Path) -> tuple:
     """
     from forge.tools.manufacturing_role import is_structural
     source_doc = forge.load_dxf(
-        dxf_path, explode_inserts=True, label_map=SPECIAL_LAYERS,
+        dxf_path, explode_inserts=True, role_rules=forge.name_rules(SPECIAL_LAYERS),
     )
     result = forge.heal(
         source_doc,

@@ -67,7 +67,7 @@ def run_pipeline(
         path,
         explode_inserts=True,
         tolerance=tolerance,
-        label_map=special_layers or {},
+        role_rules=forge.name_rules(special_layers or {}),
     )
 
     result = forge.heal(

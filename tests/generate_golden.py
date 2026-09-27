@@ -14,7 +14,7 @@ Per ogni DXF è possibile affiancare un file di configurazione opzionale:
 
 Formato config (tutti i campi sono opzionali):
     {
-        "label_map": {"MARK": "engrave", "Bend": "bending"},
+        "name_roles": {"MARK": "engrave", "Bend": "bending"},
         "tolerance": 0.5
     }
 
@@ -42,7 +42,7 @@ GOLDEN_DXF_DIR    = EXAMPLES_DIR / "golden"
 GOLDEN_JSON_DIR   = EXAMPLES_DIR / "golden" / "json"
 DEFAULT_TOLERANCE = 0.5
 
-GLOBAL_LABEL_MAP = {
+GLOBAL_NAME_ROLES = {
     "MARK":      "engrave",
     "Signature": "engrave",
 }
@@ -88,12 +88,12 @@ def generate(force: bool = False, only: str = None):
         try:
             config    = _load_config(dxf_path)
             tolerance = config.get("tolerance", DEFAULT_TOLERANCE)
-            label_map = {**GLOBAL_LABEL_MAP, **config.get("label_map", {})}
+            name_roles = {**GLOBAL_NAME_ROLES, **config.get("name_roles", {})}
 
 
             doc = forge.load_dxf(
                 dxf_path, explode_inserts=True, flatten_z_flag=True,
-                verbose=False, label_map=label_map,
+                verbose=False, role_rules=forge.name_rules(name_roles),
             )
 
             result = forge.heal(

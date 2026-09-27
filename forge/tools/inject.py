@@ -23,7 +23,7 @@ Contratto:
 
 Flusso tipico:
 
-    doc    = forge.load_dxf("pezzo.dxf", label_map={"Bend": "bending"})
+    doc    = forge.load_dxf("pezzo.dxf", role_rules=forge.name_rules({"Bend": "bending"}))
     result = forge.heal_and_detect(doc)
     forge.inject(result, data_injector=leggi_cartiglio)
     forge.save_json(result, ...)   # i conteggi vengono da cluster.summary

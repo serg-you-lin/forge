@@ -13,7 +13,7 @@ I tre livelli, in ordine di pipeline:
 
 E un orchestratore che li stampa in fila su un file:
 
-    forge.inspect_file("pezzo.dxf", label_map={"Piega": "bending"})
+    forge.inspect_file("pezzo.dxf", role_rules=forge.name_rules({"Piega": "bending"}))
 
 Tutto stampa su stdout con `print`. Nessun logger da configurare.
 """
@@ -22,9 +22,10 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from typing import Optional
+from typing import Optional, Sequence
 
 from forge.core.geometry import track_points, track_shape_type
+from forge.model.role_rule import RoleRule
 
 __all__ = [
     "inspect_dxf",
@@ -318,30 +319,25 @@ def _sub_part(i: int, cluster, coords: bool) -> None:
 def inspect_file(
     path: str,
     tolerance: float = 0.05,
-    label_map: Optional[dict] = None,
+    role_rules: Sequence[RoleRule] = (),
     run_heal: bool = True,
     run_detect: bool = True,
     entities: bool = True,
     coords: bool = False,
-    linetype_map: Optional[dict] = None,
-    color_map: Optional[dict] = None,
 ) -> None:
     """
     Apre un file e stampa i tre livelli in fila:
     DXF grezzo → ForgeDocument → ForgeResult.
 
     run_heal / run_detect : disattivali per fermarti a un livello precedente.
-    linetype_map / color_map : come in load_dxf() — seconda lane di
-    classificazione sull'aspetto grezzo, usata solo dove label_map non ha
-    già deciso il ruolo dal layer.
+    role_rules            : come in load_dxf().
     """
     from .adapters.dxf.loader import load_dxf
 
     inspect_dxf(path, entities=entities)
 
     doc = load_dxf(
-        path, tolerance=tolerance, label_map=label_map or {},
-        linetype_map=linetype_map, color_map=color_map,
+        path, tolerance=tolerance, role_rules=role_rules,
     )
     inspect_document(doc)
 

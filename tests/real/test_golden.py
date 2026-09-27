@@ -44,14 +44,14 @@ TOL_AREA_ROUNDTRIP = 20.0
 TOL_SHAPE_ROUNDTRIP = 30.0
 
 
-GLOBAL_LABEL_MAP = {
+GLOBAL_NAME_ROLES = {
     "MARK": "engrave",
     "Signature": "engrave",
 }
 
 # Rimappa i layer prodotti da forge in output sui rispettivi work_type, così
 # il round-trip (to_dxf → reload → heal) ricostruisce gli stessi ruoli.
-ROUNDTRIP_LABEL_MAP = {
+ROUNDTRIP_NAME_ROLES = {
     LAYER_BENDING:       "bending",
     LAYER_ENGRAVE:       "engrave",
     LAYER_MARKING:       "marking",
@@ -115,9 +115,9 @@ def _make_test(path):
             self.skipTest(str(dxf_path))
 
         config = _load_config(dxf_path)
-        label_map = {
-            **GLOBAL_LABEL_MAP,
-            **config.get("label_map", {})
+        name_roles = {
+            **GLOBAL_NAME_ROLES,
+            **config.get("name_roles", {})
         }
 
         from forge.tools.manufacturing_role import is_structural
@@ -128,7 +128,7 @@ def _make_test(path):
                 explode_inserts=True,
                 flatten_z_flag=True,
                 tolerance=config.get("tolerance", DEFAULT_TOLERANCE),
-                label_map=label_map,
+                role_rules=forge.name_rules(name_roles),
             ),
             tolerance=config.get("tolerance", DEFAULT_TOLERANCE),
             is_structural=is_structural,
@@ -447,7 +447,7 @@ def _make_roundtrip_test(path):
 
         config = _load_config(dxf_path)
         tol = config.get("tolerance", DEFAULT_TOLERANCE)
-        label_map = {**GLOBAL_LABEL_MAP, **config.get("label_map", {})}
+        name_roles = {**GLOBAL_NAME_ROLES, **config.get("name_roles", {})}
 
         from forge.tools.manufacturing_role import is_structural
 
@@ -459,17 +459,17 @@ def _make_roundtrip_test(path):
         result = _pipeline(
             forge.load_dxf(
                 str(dxf_path), upgrade=True, explode_inserts=True,
-                flatten_z_flag=True, tolerance=tol, label_map=label_map,
+                flatten_z_flag=True, tolerance=tol, role_rules=forge.name_rules(name_roles),
             )
         )
         source_doc = forge.load_dxf(
             str(dxf_path), upgrade=True, explode_inserts=True,
-            flatten_z_flag=True, tolerance=tol, label_map=label_map,
+            flatten_z_flag=True, tolerance=tol, role_rules=forge.name_rules(name_roles),
         )
         doc_out = forge.to_dxf(result, source_doc)
         rt_result = _pipeline(
             forge.document_from_msp(
-                doc_out.modelspace(), tolerance=tol, label_map=ROUNDTRIP_LABEL_MAP,
+                doc_out.modelspace(), tolerance=tol, role_rules=forge.name_rules(ROUNDTRIP_NAME_ROLES),
             )
         )
 

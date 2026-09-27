@@ -22,7 +22,7 @@ import forge
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/lab/3d_1.dxf"
 TOLERANCE = 0.05
-LABEL_MAP = {
+NAME_ROLES = {
     "Filettati": "threaded_hole",
     "Svasati":   "countersink",
     "Piega":     "bending",
@@ -34,7 +34,7 @@ OUTDIR = "pipeline_output"
 os.makedirs(OUTDIR, exist_ok=True)
 base = os.path.splitext(os.path.basename(INPUT))[0]
 
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
+doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 result = forge.heal_and_detect(doc, label=base, features="all")
 
 if not result.is_valid:

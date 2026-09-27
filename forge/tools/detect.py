@@ -59,7 +59,7 @@ _DETECT_KNOWN_ROLES = frozenset({
 
 
 # Lane geometriche attivabili da detect(). `detect(result)` nudo non ne esegue
-# nessuna: fa solo la lane label_map (autoritativa) + la pulizia topologia.
+# nessuna: fa solo la lane dei ruoli assegnati al load (role_rules) + la pulizia topologia.
 ALL_FEATURES = frozenset({"holes", "bending", "engrave"})
 
 
@@ -105,7 +105,7 @@ def detect(
     """
     Classifica le feature dentro le parti già trovate da heal().
 
-    `detect(result)` nudo esegue solo la lane `label_map` (autoritativa) e la
+    `detect(result)` nudo esegue solo la lane dei ruoli assegnati al load (`role_rules`) e la
     pulizia della topologia: i contorni circolari restano `inners`, nessun
     `Hole`. È il default per il taglio laser (`laser-cutting-default`).
 
@@ -248,8 +248,8 @@ def _detect_labeled(result: ForgeResult) -> None:
     for cluster in result.clusters:
         remaining = []
         for inner in cluster.inners:
-            # Lane label_map (autoritativa): un contorno con ruolo foro
-            # assegnato da label_map diventa un Hole a prescindere dai
+            # Lane dei ruoli assegnati al load: un contorno con ruolo foro
+            # assegnato da role_rules diventa un Hole a prescindere dai
             # `features` richiesti (D15).
             if inner.role in _LABELED_HOLE_ROLES:
                 _ensure_detected(cluster).add("holes", _labeled_hole_from_contour(inner))
@@ -445,7 +445,7 @@ def _hole_from_contour(contour, diameter, center, *, hole_type, confidence,
 
 
 def _labeled_hole_from_contour(contour):
-    """`ForgeContour` con ruolo foro da label_map → `Hole(source="labeled")`."""
+    """`ForgeContour` con ruolo foro da role_rules → `Hole(source="labeled")`."""
     from .model import Hole
 
     dia, ctr = circular_geometry(contour.polygon, getattr(contour, "segments", []))
@@ -472,7 +472,7 @@ def _detect_engrave(result: ForgeResult, engrave_tolerance: float = 1.0) -> None
     Inferenza geometrica delle incisioni — NON ANCORA IMPLEMENTATA.
 
     Stesso pattern di `_detect_holes` / `_detect_bending`: le incisioni con
-    ruolo esplicito (label_map) sono già state promosse da `_detect_labeled`
+    ruolo esplicito (role_rules) sono già state promosse da `_detect_labeled`
     con `source="labeled"`. Qui si guarda ciò che è rimasto non etichettato —
     `cluster.inners` con role UNKNOWN e `result.trash_entities` — e si promuove a
     `Engraving(source="geometric")` quello che geometricamente È un'incisione,

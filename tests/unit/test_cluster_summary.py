@@ -121,7 +121,7 @@ class TestSummaryMatchesGoldenFixtures(unittest.TestCase):
         if not gdir.exists():
             self.skipTest("golden fixtures assenti")
 
-        GLOBAL_LABEL_MAP = {"MARK": "engrave", "Signature": "engrave"}
+        GLOBAL_NAME_ROLES = {"MARK": "engrave", "Signature": "engrave"}
         checked = 0
         for jf in sorted(gdir.glob("*.json")):
             golden = json.loads(jf.read_text(encoding="utf-8"))
@@ -131,11 +131,11 @@ class TestSummaryMatchesGoldenFixtures(unittest.TestCase):
             cfg_p = ex / "config" / f"{dxf.stem}.json"
             cfg = json.loads(cfg_p.read_text(encoding="utf-8")) if cfg_p.exists() else {}
             tol = cfg.get("tolerance", 0.5)
-            lm = {**GLOBAL_LABEL_MAP, **cfg.get("label_map", {})}
+            lm = {**GLOBAL_NAME_ROLES, **cfg.get("name_roles", {})}
             try:
                 result = forge.heal_and_detect(
                     forge.load_dxf(str(dxf), explode_inserts=True,
-                                   flatten_z_flag=True, label_map=lm),
+                                   flatten_z_flag=True, role_rules=forge.name_rules(lm)),
                     tolerance=tol,
                 )
             except Exception:

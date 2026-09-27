@@ -37,7 +37,7 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
         if result.is_valid and result.clusters:
             forge.detect(result, features="all", ...)
 
-    A differenza di `detect()` nudo (che fa solo la lane label_map + pulizia
+    A differenza di `detect()` nudo (che fa solo la lane dei ruoli assegnati al load + pulizia
     topologia), qui `features` è `"all"` di default: fori, pieghe e incisioni
     vengono classificati. Passare `features=None` per la sola topologia pulita.
 

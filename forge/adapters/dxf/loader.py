@@ -15,6 +15,8 @@ ForgeDocument restituito.
 import os
 import sys
 import shutil
+from typing import Sequence
+
 import ezdxf
 from ezdxf.addons import odafc
 
@@ -22,6 +24,7 @@ from .sanitize import sanitize, _explode_inserts, deduplicate
 from .adapter import DxfAdapter
 from .annotation_extractor import DxfAnnotationExtractor
 from ...model.document import ForgeDocument
+from ...model.role_rule import RoleRule
 
 # Percorso dell'eseguibile ODA File Converter. `forge` NON legge i DWG da solo:
 # il supporto DWG di ezdxf È l'addon `odafc`, che è un wrapper attorno a ODA
@@ -220,10 +223,8 @@ def load_dxf(
     flatten_z_flag: bool = True,
     verbose: bool = False,
     tolerance: float = 0.05,
-    label_map: dict = None,
+    role_rules: Sequence[RoleRule] = (),
     ignore_layers=None,
-    linetype_map: dict = None,
-    color_map: dict = None,
 ) -> ForgeDocument:
     """
     Apre un documento DXF o DWG e lo traduce in un ForgeDocument.
@@ -248,15 +249,10 @@ def load_dxf(
         verbose:         se True, stampa dettaglio entità in sanitize
         tolerance:       tolleranza di arrotondamento dei nodi topologici;
                          viene ripresa da heal() se non specificata lì
-        label_map:       {nome_layer: work_type} — assegna il ruolo semantico
-                         agli Edge in fase di traduzione
+        role_rules:      regole del chiamante che assegnano il ruolo agli
+                         Edge in fase di traduzione (RoleRule, D63); il nome
+                         valutato da `name`/`name_contains` è il layer
         ignore_layers:   layer da escludere dalla geometria
-        linetype_map:    {nome_linetype: work_type} (es. {"DASHED": "bending"})
-                         — seconda lane di classificazione, usata solo dove
-                         label_map non ha già deciso il ruolo dal layer.
-        color_map:       {colore: work_type} — come linetype_map ma sul
-                         colore ACI dell'entità: nome standard ("cyan"),
-                         intero o stringa numerica ("4").
 
     Returns:
         ForgeDocument (edges + annotations + source_meta + warnings) — pronto
@@ -312,16 +308,13 @@ def load_dxf(
     if flattened:
         _emit(warnings, f"{flattened} entità con Z != 0 riportate sul piano", verbose)
 
-    label_map = label_map or {}
     ignore = {s.lower() for s in (ignore_layers or [])}
 
     edges = DxfAdapter(
         msp,
         tolerance=tolerance,
         ignore_layers=ignore,
-        label_map=label_map,
-        linetype_map=linetype_map,
-        color_map=color_map,
+        role_rules=role_rules,
     ).to_edges()
 
     # Dopo explode possono affiorare TEXT/MTEXT che stavano dentro i blocchi:
@@ -335,10 +328,7 @@ def load_dxf(
         "$INSUNITS":     doc.header.get("$INSUNITS", 4),
         "$MEASUREMENT":  doc.header.get("$MEASUREMENT", 1),
         "tolerance":     tolerance,
-        "label_map":     label_map,
         "ignore_layers": sorted(ignore),
-        "linetype_map":  linetype_map or {},
-        "color_map":     color_map or {},
     }
 
     return ForgeDocument(
@@ -353,11 +343,9 @@ def load_dxf(
 def document_from_msp(
     msp,
     tolerance: float = 0.05,
-    label_map: dict = None,
+    role_rules: Sequence[RoleRule] = (),
     ignore_layers=None,
     source_path: str = "",
-    linetype_map: dict = None,
-    color_map: dict = None,
 ) -> ForgeDocument:
     """
     Costruisce un ForgeDocument da un modelspace ezdxf già aperto.
@@ -366,16 +354,12 @@ def document_from_msp(
     o è già stato preparato altrove. Non fa audit/upgrade/sanitize: si assume
     che il msp sia già pronto.
 
-    `linetype_map` / `color_map`: vedi `load_dxf()` — seconda lane di
-    classificazione sull'aspetto grezzo, usata solo dove label_map non ha già
-    deciso il ruolo dal layer.
+    `role_rules`: vedi `load_dxf()`.
     """
-    label_map = label_map or {}
     ignore = {s.lower() for s in (ignore_layers or [])}
 
     edges = DxfAdapter(
-        msp, tolerance=tolerance, ignore_layers=ignore, label_map=label_map,
-        linetype_map=linetype_map, color_map=color_map,
+        msp, tolerance=tolerance, ignore_layers=ignore, role_rules=role_rules,
     ).to_edges()
     annotations = DxfAnnotationExtractor(msp).extract()
 
@@ -384,10 +368,7 @@ def document_from_msp(
         "$INSUNITS":     header.get("$INSUNITS", 4) if header else 4,
         "$MEASUREMENT":  header.get("$MEASUREMENT", 1) if header else 1,
         "tolerance":     tolerance,
-        "label_map":     label_map,
         "ignore_layers": sorted(ignore),
-        "linetype_map":  linetype_map or {},
-        "color_map":     color_map or {},
     }
     return ForgeDocument(
         edges=edges, annotations=annotations,

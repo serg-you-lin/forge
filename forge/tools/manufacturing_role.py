@@ -45,11 +45,11 @@ MARKING       = "marking"
 STRUCTURAL_MANUFACTURING_ROLES = frozenset({HOLE, COUNTERSINK, THREADED_HOLE})
 
 # I ruoli che detect() sa collocare come feature di un cluster (usato da
-# detect.py per distinguere "proxy già classificato da label_map" da "proxy
+# detect.py per distinguere "proxy già classificato da role_rules" da "proxy
 # ancora da inferire").
 ALL_MANUFACTURING_ROLES = frozenset({HOLE, COUNTERSINK, THREADED_HOLE, BEND, ENGRAVE, MARKING})
 
-# work_type stringa (label_map/linetype_map/color_map) → ruolo. Estende
+# work_type stringa (RoleRule.role) → ruolo. Estende
 # model.role.WORK_TYPE_TO_ROLE (che qui non tocchiamo) con i nomi
 # manifatturieri — usata da detect/adapter quando serve il nome canonico.
 WORK_TYPE_TO_ROLE: Dict[str, str] = {

@@ -6,8 +6,8 @@ API forge usate:
     detect         classifica le feature dentro le parti già trovate da heal()
     ALL_FEATURES   la costante iterabile {"holes", "bending", "engrave"}
 
-detect(result) NUDO fa solo il minimo: la lane label_map (autoritativa) +
-pulizia topologia. I fori arrivano SOLO dai layer mappati in label_map; nessun
+detect(result) NUDO fa solo il minimo: i ruoli assegnati al load (role_rules) +
+pulizia topologia. I fori arrivano SOLO dalle regole in NAME_ROLES; nessun
 foro dedotto dalla geometria — è il default per il taglio laser.
 Le lane geometriche sono OPT-IN via `features`:
 
@@ -28,7 +28,7 @@ import forge
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/examples/Multifeature.dxf"   # ha Filettati/Svasati/Piega/MARK
 TOLERANCE = 0.5
-LABEL_MAP = {
+NAME_ROLES = {
     "Filettati": "threaded_hole",
     "Svasati":   "countersink",
     "Piega":     "bending",
@@ -46,20 +46,20 @@ def show(tag, result):
           f"bending={len(p.features("bending_lines")):<3} engrave={len(p.features("engrave_lines")):<3}")
 
 
-# 1. detect nudo — solo label_map + topologia
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
+# 1. detect nudo — solo role_rules + topologia
+doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 r = forge.heal(doc, tolerance=TOLERANCE)
 forge.detect(r)
 show("detect(result)", r)
 
 # 2. solo fori
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
+doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 r = forge.heal(doc, tolerance=TOLERANCE)
 forge.detect(r, "holes", max_drill_diameter=MAX_DRILL_DIAMETER)
 show("detect(result, 'holes')", r)
 
 # 3. tutto
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
+doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 r = forge.heal(doc, tolerance=TOLERANCE)
 forge.detect(r, "all", max_drill_diameter=MAX_DRILL_DIAMETER, bending_tolerance=1.0)
 show("detect(result, 'all')", r)

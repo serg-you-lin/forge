@@ -14,7 +14,7 @@ riassemblato in un loop unico — resta N segmenti separati (scelta di progetto)
 `closed` non è uno stato a sé: è `polygon is not None`, esposto come property.
 
 Doppio binario di provenienza, identico a Hole:
-    source="labeled"   → ruolo assegnato da label_map al load   (confidence 1.0)
+    source="labeled"   → ruolo assegnato da role_rules al load   (confidence 1.0)
     source="geometric" → inferenza geometrica in detect()        (confidence < 1.0)
 """
 

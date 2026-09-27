@@ -12,7 +12,7 @@ Non fa parte di `forge`: `forge` resta neutro e deterministico e non decide cosa
 sia un cartiglio (memoria `forge-neutral-substrate-agent-layer-above`). Framer
 usa le primitive di forge per fare il riconoscimento, assegna i ruoli
 (`frame`, `title_block`) e li riporta giù a forge come input — esattamente il
-pattern di `label_map` e di `detect`.
+pattern di `role_rules` e di `detect`.
 
 Nel disegno d'insieme, Framer è un **modulo dell'interprete** (`INTERPRETER.md`),
 sorella di `views.py` e dell'unfolder. È scorporato in un documento suo perché il

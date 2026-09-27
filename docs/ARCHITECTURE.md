@@ -160,7 +160,7 @@ consumatore (framer) compone gli stessi passi come gli serve.
    `weld_degenerate_linesegs`): rette e archi tracciati a spezzoni fusi,
    `LineSeg` sotto 0.05 mm saldati in un nodo (D50, D52, D56)
 2. **estrae** (`split_labeled`) gli `Edge` con ruolo deciso e non strutturale
-   (`engrave`, `marking`, `bending` da `label_map`, o uno slug di un
+   (`engrave`, `marking`, `bending` da `role_rules`, o uno slug di un
    consumatore come `frame` / `title_block`): non entrano nel grafo — sono
    marcatura o arredo del disegno, non contorno. Il predicato è
    `model/role.is_structural_role` (D30); è il punto d'aggancio per un
@@ -234,7 +234,7 @@ Classifica le feature dentro le parti. **Muta il `result` in-place e lo ritorna.
 restano separati perché un renderer o un nesting tool possono volere la sola
 topologia.
 
-`detect(result)` nudo fa solo la lane `label_map` + pulizia topologia. Le lane
+`detect(result)` nudo fa solo la lane dei ruoli assegnati al load + pulizia topologia. Le lane
 geometriche sono opt-in: `detect(result, "holes" | "bending" | "engrave" | "all")`.
 
 - **fori** (`features="holes"`) → un contorno interno circolare con Ø `<
@@ -299,11 +299,12 @@ Un gap 4× la tolleranza **non** viene chiuso — è una scelta, non un bug: se 
 file ha buchi grossi, o sono voluti o l'unità di misura è sbagliata. Workaround:
 alza `tolerance`.
 
-### Il doppio binario delle feature (label_map / inferenza)
+### Il doppio binario delle feature (role_rules / inferenza)
 
 Ogni feature manifatturiera è raggiungibile per **due strade**:
 
-- **`label_map`**: l'utente dice "il layer `Piega` sono pieghe". Il ruolo è
+- **`role_rules`**: il chiamante dice "le linee chiamate `Piega` sono pieghe",
+  o "le tratteggiate con `constr` nel nome sono costruzione". Il ruolo è
   assegnato al load, è **autoritativo**, a valle non si rimette in discussione
   (`source="labeled"`, `confidence=1.0`). Il vocabolario dei ruoli è aperto —
   passa per `normalize_role` e non è un errore che forge (cioè il motore)
@@ -316,15 +317,14 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
   consumatore restano fuori. In entrambi i casi `detect` non tocca ciò che
   non conosce, l'output lo scrive su un layer DXF col nome dello slug (non
   `Trash` — non è spazzatura), geometria intatta (D27, D30, D31, D47).
-  Stessa autorità, stesso load, per
-  `linetype_map`/`color_map` (`{"DASHED": "bending"}`, `{"cyan": "engrave"}`,
-  Cluster E): quando il disegno porta l'intenzione nello stile della linea
-  invece che nel layer, sono la stessa lane con un altro segnale in ingresso —
-  si applicano solo dove `label_map` non ha già deciso dal layer. Il linetype
-  e il colore confrontati sono quelli **effettivi**: un'entità `ByLayer`
-  eredita lo stile dal layer che la contiene, e `DxfAdapter` lo risolve prima
-  del confronto — altrimenti ogni entità che eredita lo stile dal layer (il
-  caso comune) sfuggirebbe silenziosamente a entrambe le lane.
+  Una regola combina segnali neutri — nome del gruppo sorgente, tratteggio,
+  colore — tutti veri insieme; le regole sono in ordine e vince la prima
+  (D63). forge dà il meccanismo, il contenuto lo scrive il chiamante: nessun
+  vocabolario di nomi vive in forge. Il nome resta nell'adapter, l'`Edge`
+  riceve solo il ruolo. Tratteggio e colore sono quelli **effettivi**: un'entità
+  `ByLayer` eredita lo stile dal layer che la contiene, e `DxfAdapter` lo
+  risolve prima del confronto. "Tratteggiata" vuol dire che il pattern ha
+  almeno un vuoto — un fatto del pattern, non del nome del linetype.
 - **inferenza geometrica**: `forge` riconosce la feature dalla forma
   (`source="geometric"`, `confidence < 1.0`).
 

@@ -99,9 +99,6 @@ def island(doc: ForgeDocument, tolerance: Optional[float] = None,
 
     result = ForgeResult(source_file=doc.source_path, annotations=list(doc.annotations))
     result.trash_entities += _open(labeled)
-    label_map = doc.source_meta.get("label_map") or {}
-    if label_map:
-        result.label_map = label_map
     clusters = {}
     for i, r in enumerate(readings):
         if r.outer is not None and r.nested_in is None:

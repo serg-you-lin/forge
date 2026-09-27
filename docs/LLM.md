@@ -34,7 +34,7 @@ to_dxf / split / to_json / save_json / to_svg / to_view_model  →  render from 
 ```python
 import forge
 
-doc = forge.load_dxf("part.dxf", tolerance=0.5, label_map={"Bend": "bending"})
+doc = forge.load_dxf("part.dxf", tolerance=0.5, role_rules=forge.name_rules({"Bend": "bending"}))
 check = forge.validate(doc)                      # input validation, optional
 result = forge.heal_and_detect(doc, label="P-1024")
 if not result.is_valid:                           # ALWAYS check before rendering
@@ -47,9 +47,11 @@ forge.save_json(result, "out.json")
 
 | name | signature (defaults trimmed) | does |
 |---|---|---|
-| `load_dxf` | `(path, upgrade=False, explode_inserts=True, flatten_z_flag=True, tolerance=0.05, label_map=None, ignore_layers=None, linetype_map=None, color_map=None) -> ForgeDocument` | reads DXF/DWG via ezdxf (once), audits, upgrades legacy, explodes INSERTs, translates to pure `Edge`/`Annotation`. `label_map`/`linetype_map`/`color_map` assign `Edge.role` at load — authoritative, unknown values become consumer role slugs, not errors. DWG needs ODA File Converter (`ODA_PATH` env var). |
-| `document_from_msp` | `(msp, tolerance=0.05, label_map=None, ignore_layers=None, source_path="", linetype_map=None, color_map=None) -> ForgeDocument` | same as `load_dxf` but from an already-open ezdxf `modelspace`; no audit/upgrade/sanitize. |
-| `load_geometry` | `(entities: list[dict], tolerance=0.05, source_path="") -> ForgeDocument` | builds a `ForgeDocument` from pure geometry, no file. Entity `type`: `line`(start,end) / `arc`(center,radius,start_angle,end_angle deg,ccw) / `circle`(center,radius) / `polyline`(points,closed) / `spline`(control_points,knots,degree,weights?,fit_points?,closed?) / `ellipse`(center,major_axis vector,ratio?,start_param?,end_param?,ccw?). Optional `role` per entity, same open vocabulary as `label_map`. |
+| `load_dxf` | `(path, upgrade=False, explode_inserts=True, flatten_z_flag=True, verbose=False, tolerance=0.05, role_rules=(), ignore_layers=None) -> ForgeDocument` | reads DXF/DWG via ezdxf (once), audits, upgrades legacy, explodes INSERTs, translates to pure `Edge`/`Annotation`. `role_rules` assign `Edge.role` at load — in order, first match wins, none → `unknown`; unknown roles become consumer role slugs, not errors. DWG needs ODA File Converter (`ODA_PATH` env var). |
+| `RoleRule` | `(role, name=None, name_contains=None, dashed=None, color=None)` | a rule: all given conditions true → `role`. `name`/`name_contains` = source group name (the DXF layer, case-insensitive); `dashed` = linetype pattern has a gap (`EdgeStyle.is_dashed`), not the linetype name; `color` = ACI int, `"4"` or standard name. No condition, or unknown colour name → `ValueError`. forge ships no vocabulary: the caller writes the rules (D63). |
+| `name_rules` | `(mapping: dict[str, str]) -> list[RoleRule]` | `{name: role}` → one `RoleRule(role, name=...)` per entry. |
+| `document_from_msp` | `(msp, tolerance=0.05, role_rules=(), ignore_layers=None, source_path="") -> ForgeDocument` | same as `load_dxf` but from an already-open ezdxf `modelspace`; no audit/upgrade/sanitize. |
+| `load_geometry` | `(entities: list[dict], tolerance=0.05, source_path="") -> ForgeDocument` | builds a `ForgeDocument` from pure geometry, no file. Entity `type`: `line`(start,end) / `arc`(center,radius,start_angle,end_angle deg,ccw) / `circle`(center,radius) / `polyline`(points,closed) / `spline`(control_points,knots,degree,weights?,fit_points?,closed?) / `ellipse`(center,major_axis vector,ratio?,start_param?,end_param?,ccw?). Optional `role` per entity, same open vocabulary as `RoleRule.role`. |
 | `validate` | `(doc: ForgeDocument) -> ForgeResult` | input validation, no mutation. `is_valid=False` = unworkable (no geometry / NaN / all-degenerate). Warnings = workable but flagged. |
 | `validate_result` | `(result: ForgeResult) -> ForgeResult` | output validation, **mutates** `result`. Called automatically by `heal()` — call manually only if you build a `ForgeResult` another way. |
 | `heal` | `(doc, tolerance=None, label="", source_file="", is_structural=None) -> ForgeResult` | topology reconstruction: gap-closing, non-contour edge exclusion (candidates for "something else" — `non_contour_candidates()` exposes the same criterion, see below), loop search, outer/inner containment tree. Does **not** classify holes (D15). `tolerance=None` → reuses `doc.source_meta["tolerance"]`. If no closed outer forms, `result.is_valid=False`. `is_structural(role)->bool` decides which already-labeled edges stay in the graph — `heal()` alone knows only outer/inner; without it a labeled `"hole"` is treated as non-structural (excluded, warned). `heal_and_detect`/`split_to_files` inject `tools.manufacturing_role.is_structural` automatically. |
@@ -60,8 +62,8 @@ forge.save_json(result, "out.json")
 | `split_at_crossings` | `(edges, tolerance, decimals=3) -> NodedEdges` | planar network: `LineSeg`/`ArcSeg`/`CircleSeg` split wherever another edge crosses or touches them (T within `tolerance`). `NodedEdges.pieces`, `.parent_of(piece) -> Edge`. Splines/ellipses stay whole. |
 | `outer_face` | `(edges, epsilon=0.0) -> OuterFace\|None` | outer contour of a planar network: walk of its outer face starting from the leftmost geometric point, per connected component, largest area wins. `OuterFace`: `polygon`, `segments`, `styles`, `loop`, `.edges`, `spurs` (walked there and back — axes, marks). |
 | `refit_tessellations` | `(edges, max_segment=0.1, min_run=10, arc_fit_tolerance=0.02, node_decimals=3) -> list[Edge]` | a chain of ≥`min_run` short `LineSeg`s (a curve written as points) is refitted as arc/circle/spline; chain ends keep their original nodes. |
-| heal steps | `merge_collinear_overlaps`, `merge_cocircular_overlaps`, `weld_degenerate_linesegs`, `split_labeled(edges, is_structural=None) -> (kept, labeled)`, `close_free_gaps(edges, tolerance)`, `dangling_splines(edges)`, `find_non_contour_edges(edges, tolerance) -> set[id]`, `find_loops(edges, non_contour_ids, tolerance) -> LoopSearch`, `repair_merged_corners(edges, tolerance, exclude_ids) -> (edges, n, skipped)`, `structural_loops(loops, is_structural=None)`, `loops_to_features(loops)`, `polygonize_edges(edges, tolerance) -> list[Polygon]`, `polygons_to_features(polygons)`, `edges_to_open_features(edges, exclude_ids, label_map)`, `labeled_features(edges)`, `build_hierarchy(features, label="", source_file="", is_structural=None) -> (clusters, trash)` | `heal()` is a recipe composing these, in this order (D62); compose your own (e.g. stop before `build_hierarchy`). None mutates its input. `LoopSearch`: `edges` (after corner repair — use these downstream), `loops`, `method` (`"exact"`/`"corner_repair"`/`"tolerant"`/`"none"`), `repaired`, `skipped_corners`, `unrepaired_corners`, `open_nodes`. When `method == "none"`, `heal()` falls back to `polygonize_edges` + `polygons_to_features`. |
-| `detect` | `(result, features=None, *, max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | classifies features. Bare call = only the `label_map`/`linetype_map`/`color_map` lane + topology cleanup, **no** geometric inference. `features`: `None`/`()` / `"all"` / subset of `{"holes","bending","engrave"}` (= `ALL_FEATURES`). Holes: circular inner contour Ø < `max_drill_diameter` → `Hole` (`plain`/`countersink`/`threaded`); above threshold stays a plain inner contour. **Mutates in place, also returns.** |
+| heal steps | `merge_collinear_overlaps`, `merge_cocircular_overlaps`, `weld_degenerate_linesegs`, `split_labeled(edges, is_structural=None) -> (kept, labeled)`, `close_free_gaps(edges, tolerance)`, `dangling_splines(edges)`, `find_non_contour_edges(edges, tolerance) -> set[id]`, `find_loops(edges, non_contour_ids, tolerance) -> LoopSearch`, `repair_merged_corners(edges, tolerance, exclude_ids) -> (edges, n, skipped)`, `structural_loops(loops, is_structural=None)`, `loops_to_features(loops)`, `polygonize_edges(edges, tolerance) -> list[Polygon]`, `polygons_to_features(polygons)`, `edges_to_open_features(edges, exclude_ids)`, `labeled_features(edges)`, `build_hierarchy(features, label="", source_file="", is_structural=None) -> (clusters, trash)` | `heal()` is a recipe composing these, in this order (D62); compose your own (e.g. stop before `build_hierarchy`). None mutates its input. `LoopSearch`: `edges` (after corner repair — use these downstream), `loops`, `method` (`"exact"`/`"corner_repair"`/`"tolerant"`/`"none"`), `repaired`, `skipped_corners`, `unrepaired_corners`, `open_nodes`. When `method == "none"`, `heal()` falls back to `polygonize_edges` + `polygons_to_features`. |
+| `detect` | `(result, features=None, *, max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | classifies features. Bare call = only the roles assigned at load (`role_rules`) + topology cleanup, **no** geometric inference. `features`: `None`/`()` / `"all"` / subset of `{"holes","bending","engrave"}` (= `ALL_FEATURES`). Holes: circular inner contour Ø < `max_drill_diameter` → `Hole` (`plain`/`countersink`/`threaded`); above threshold stays a plain inner contour. **Mutates in place, also returns.** |
 | `ALL_FEATURES` | `frozenset({"holes","engrave","bending"})` | the `"all"` set. |
 | `describe_features` | `(cluster: ForgeCluster) -> dict` | rich per-type feature counts (`plain_holes_count`, `countersink_count`, `threaded_holes_count`, grouped bend lines, `total_engrave_length`...). `cluster.summary` is the raw always-available count; this is the detailed version for forge's known types. |
 | `heal_and_detect` | `(doc, tolerance=None, label="", source_file="", features="all", max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | `heal` + `detect`, `features="all"` by default (unlike bare `detect`). Skips `detect` if `heal` produced no valid parts. |
@@ -90,7 +92,7 @@ forge.save_json(result, "out.json")
 forge.inspect_dxf(path, entities=True, limit=40)          # L1: raw DXF entities, no forge
 forge.inspect_document(doc, graph=True, limit=60)         # L2: ForgeDocument — what the adapter understood
 forge.inspect_result(result, coords=False)                # L3: ForgeResult — what forge produced
-forge.inspect_file(path, tolerance=0.05, label_map=None,
+forge.inspect_file(path, tolerance=0.05, role_rules=(),
                     run_heal=True, run_detect=True, ...)  # orchestrates all three
 ```
 
@@ -121,7 +123,7 @@ cluster.features("flange_view_hint")   # reads it back
 
 **Any role string is legal** — a consumer can assign anything (`"frame"`, `"title_block"`, `"hole"`, `"section"`...); it passes through `normalize_role()` (slugified `[a-z0-9_-]`, ≤64 chars), forge keeps it without raising, writes it to its own DXF layer on output (`unknown` → `Trash`). Whether `heal()` keeps a labeled edge **inside the topology graph** (structural) or excludes it (decoration) depends entirely on the `is_structural` predicate you pass it:
 
-- No predicate (bare `heal(doc)`): only `outer`/`inner` count as structural. A `label_map`-tagged `"hole"` edge is excluded from the graph, ends up in `trash_entities`, and `heal()` appends a warning.
+- No predicate (bare `heal(doc)`): only `outer`/`inner` count as structural. A `role_rules`-tagged `"hole"` edge is excluded from the graph, ends up in `trash_entities`, and `heal()` appends a warning.
 - `heal(doc, is_structural=forge.tools.manufacturing_role.is_structural)`: also recognizes `hole`/`countersink`/`threaded_hole` as structural (they're real part contours, not decoration) — `bending`/`engrave`/`marking` and any unknown consumer role still get excluded. `heal_and_detect()`/`split_to_files()` pass this automatically — no action needed on the 90% path.
 
 To mark geometry before `heal` excludes it from the graph: set `edge.role = forge.normalize_role("frame")` on `doc.edges` entries.
@@ -163,18 +165,18 @@ Then, in your pipeline:
 import forge
 import your_tool.roles as roles
 
-doc = forge.load_dxf("part.dxf", label_map={"FlangeMarks": roles.FLANGE_UP})
+doc = forge.load_dxf("part.dxf", role_rules=forge.name_rules({"FlangeMarks": roles.FLANGE_UP}))
 result = forge.heal(doc, is_structural=roles.is_structural)   # only if FLANGE_UP is structural
 result = forge.detect(result, "all")
 forge.to_dxf(result, doc)   # FlangeUp layer, orange — registered once, applies automatically
 ```
 
-That assumes the CAD source already puts flange edges on their own layer
-(`label_map={"FlangeMarks": ...}`). When it doesn't — you only know
+That assumes the source already groups flange edges under their own name
+(`forge.name_rules({"FlangeMarks": ...})`). When it doesn't — you only know
 geometrically that an edge sits where a bend line *would* sit (both endpoints
 on a branching node, interior to its shape's hull) and have to decide for
 yourself whether it's really a bend or a raised-feature edge — use
-`non_contour_candidates(doc)` instead of a `label_map` layer:
+`non_contour_candidates(doc)` instead of a name rule:
 
 ```python
 for edge in forge.non_contour_candidates(doc):
@@ -249,10 +251,10 @@ a view, default 0.5 mm — a view is not a cutting file).
 ## Hard rules (violate these = broken output)
 
 - `heal()` never classifies holes/bends — that's `detect(features=...)`, opt-in.
-- Bare `detect(result)` does **only** the label/linetype/color lane + cleanup — no geometric inference without `features=`.
+- Bare `detect(result)` does **only** the load-time roles (`role_rules`) + cleanup — no geometric inference without `features=`.
 - **Always check `result.is_valid` before `to_dxf`/`split`** — they raise `ValueError` otherwise.
 - `tolerance` default `0.05`; a gap ≥ 4× tolerance is **not** auto-closed (deliberate — raise `tolerance` or fix the source).
-- `label_map`/`linetype_map`/`color_map` are `load_dxf`/`document_from_msp` params, **not** `heal`/`detect` params.
+- `role_rules` is a `load_dxf`/`document_from_msp` param, **not** a `heal`/`detect` param.
 - `to_dxf`/`split` never re-read the source file — they render from the model only.
 - Splines are re-emitted as native `SPLINE`, engraving as native per-primitive entities — **never** discretized to `LWPOLYLINE` in DXF output. `to_svg`/`to_view_model` **do** discretize everything (visualization only, not cutting-fidelity).
 - Nothing is silently dropped: unclassified geometry → `trash_entities`/`Trash` layer, unmodeled DXF types (`HATCH`,`IMAGE`,`TABLE`,`3DFACE`,`XLINE`...) → warning in `doc.warnings`.
