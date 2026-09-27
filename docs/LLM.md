@@ -255,6 +255,7 @@ a view, default 0.5 mm — a view is not a cutting file).
 - **Always check `result.is_valid` before `to_dxf`/`split`** — they raise `ValueError` otherwise.
 - `tolerance` default `0.05`; a gap ≥ 4× tolerance is **not** auto-closed (deliberate — raise `tolerance` or fix the source).
 - `role_rules` is a `load_dxf`/`document_from_msp` param, **not** a `heal`/`detect` param.
+- `label_map`/`linetype_map`/`color_map` **no longer exist** (D63, clean break). Migration: `label_map=m` → `role_rules=forge.name_rules(m)`; `linetype_map={"DASHED": r}` → `forge.RoleRule(r, dashed=True)` (dash is read from the pattern, not the linetype name); `color_map={"cyan": r}` → `forge.RoleRule(r, color="cyan")`. The old fixed priority (name, then linetype, then colour) is gone: put the rules in the order you want, first match wins. `ForgeResult.label_map` and `doc.source_meta["label_map"]` are gone too.
 - `to_dxf`/`split` never re-read the source file — they render from the model only.
 - Splines are re-emitted as native `SPLINE`, engraving as native per-primitive entities — **never** discretized to `LWPOLYLINE` in DXF output. `to_svg`/`to_view_model` **do** discretize everything (visualization only, not cutting-fidelity).
 - Nothing is silently dropped: unclassified geometry → `trash_entities`/`Trash` layer, unmodeled DXF types (`HATCH`,`IMAGE`,`TABLE`,`3DFACE`,`XLINE`...) → warning in `doc.warnings`.
