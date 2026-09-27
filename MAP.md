@@ -80,7 +80,7 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `refactor/role-rules` — `role_rules` (D63) on top of `0.7.0`.
+Branch: `main` — `role_rules` (D63) merged, version `0.7.1`.
 Suite: 824 passed + 47 subtests as of the latest decision below (D63),
 golden all green.
 
@@ -1731,7 +1731,7 @@ themselves: forge provides the mechanism, the caller writes the content.
 Not touched, same family, still layer-named: `ignore_layers` and the
 hardcoded `_NON_STRUCTURAL_LAYERS` (`trash`/`annotation`, forge's own output
 layers read back) in the DXF adapter. Suite: 824 passed (14 new in
-`test_role_rule.py`, 2 `label_to_role` tests removed), golden unchanged.
+`test_role_rule.py`, 2 `label_to_role` tests removed), golden unchanged. `main` → 0.7.1.
 
 ---
 
