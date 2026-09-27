@@ -164,7 +164,7 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
       - segmenti non LineSeg (ARC/SPLINE non sono "collineari")
       - edge con `role` già diverso da UNKNOWN — un ruolo assegnato da
         label_map (bending/engrave/hole/...) è dato di dominio: quegli edge
-        non entrano mai nel graph-building (`HealStep._split_labeled` li leva
+        non entrano mai nel graph-building (`steps.split_labeled` li leva
         prima), quindi fonderli non aiuta a chiudere niente e rischia di
         alterare geometria intenzionale — trovato su un golden reale
         (`la_104`): due tratti di un'incisione/testo si sovrappongono per

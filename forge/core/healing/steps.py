@@ -16,7 +16,7 @@ from typing import Callable, FrozenSet, List, Optional, Set, Tuple
 from shapely.geometry import LineString, Polygon
 from shapely.ops import polygonize, snap, unary_union
 
-from ..geometry import node_decimals_for
+from ..geometry import node_decimals_for, track_points
 from ..primitives import LineSeg
 from ..primitives.polygon_builder import build_polygon
 from ..primitives.segments import DEFAULT_TOLERANCE, SplineSeg
@@ -24,12 +24,13 @@ from ..topology.edge import Edge
 from ..topology.graph import build_node_graph
 from ..topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
 from ..topology.non_contour_edges import NonContourEdgeDetector
-from ...model.feature import ClosedFeature
+from ...model.cluster import ForgeCluster
+from ...model.feature import ClosedFeature, OpenFeature
 from ...model.role import ContourRole, is_structural_role
 from .gap_solver import (
     free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes, gap_endpoints_at_nodes,
 )
-from .hierarchy import loop_to_closed_feature
+from .hierarchy import HierarchyBuilder, loop_to_closed_feature
 
 
 @dataclass
@@ -222,6 +223,41 @@ def polygons_to_features(polygons: List[Polygon]) -> List[ClosedFeature]:
             if inner is not None:
                 features.append(inner)
     return features
+
+
+def labeled_features(edges: List[Edge]) -> list:
+    """
+    Gli Edge messi da parte da split_labeled() come feature col loro ruolo
+    intatto: ClosedFeature se l'edge è già chiuso da solo (cerchio, spline
+    chiusa), OpenFeature altrimenti. Tracce degeneri escluse.
+    """
+    features = []
+    for edge in edges:
+        seg = edge.segment
+        if seg is None:
+            continue
+        if edge.start == edge.end:
+            polygon = build_polygon([seg], DEFAULT_TOLERANCE)
+            if polygon is not None:
+                features.append(ClosedFeature(role=edge.role, polygon=polygon,
+                                              segments=[seg], styles=[edge.style]))
+            continue
+        if len(track_points([seg])) >= 2:
+            features.append(OpenFeature(role=edge.role, segments=[seg], styles=[edge.style]))
+    return features
+
+
+def build_hierarchy(features: list, label: str = "", source_file: str = "",
+                    is_structural: Optional[Callable[[str], bool]] = None
+                    ) -> Tuple[List[ForgeCluster], list]:
+    """
+    Albero di contenimento sui ClosedFeature: ogni radice è un ForgeCluster
+    (outer), i discendenti i suoi inners con `depth`/`parent`. Ritorna
+    (cluster, trash): trash è ciò che non è finito in un cluster e non è
+    strutturale.
+    """
+    builder = HierarchyBuilder(label=label, source_file=source_file, is_structural=is_structural)
+    return builder.build(features)
 
 
 # ---------------------------------------------------------------------------
