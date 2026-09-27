@@ -80,7 +80,7 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `main` — `RoleRule(dash=...)` (D64) on top of `role_rules` (D63).
+Branch: `main` — `RoleRule(dash=...)` (D64) merged, version `0.7.2`.
 Suite: 833 passed + 47 subtests as of the latest decision below (D64),
 golden all green.
 
@@ -1758,7 +1758,7 @@ gaps.
   forge's (D63). A bend drawn as a chain stays `bending` if a rule for it
   comes first — ordering already covers it, nothing new needed.
 
-Suite: 833 passed (9 new in `test_role_rule.py`), golden unchanged.
+Suite: 833 passed (9 new in `test_role_rule.py`), golden unchanged. `main` → 0.7.2.
 
 ---
 
