@@ -1,7 +1,7 @@
 """
 test_corner_repair.py
 ---------------------
-HealStep._repair_merged_corners: gli angoli individuati dal clustering degli
+repair_merged_corners: gli angoli individuati dal clustering degli
 endpoint vengono chiusi *davvero*, portando i due segmenti alla loro
 intersezione reale — non solo tollerati nel grafo.
 """
@@ -13,7 +13,10 @@ from forge.model.document import ForgeDocument
 from forge.model.role import ContourRole
 from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg, CircleSeg
-from forge.core.heal import HealStep, heal
+from forge.core.heal import heal
+from forge.core.healing.steps import repair_merged_corners
+from forge.core.topology.graph import build_node_graph
+from forge.core.topology.loop_finder import LoopFinder
 
 
 def _edge(seg: LineSeg, decimals: int = 1) -> Edge:
@@ -28,31 +31,27 @@ def _dist(a, b) -> float:
 
 class TestRepairMergedCorners(unittest.TestCase):
 
-    def _step_with_broken_corner(self):
+    TOL = 0.1
+
+    def _broken_corner(self):
         # Angolo retto quasi chiuso: la linea orizzontale finisce a x=10.03,
         # la verticale parte da x=10.07. Arrotondati a 1 decimale danno nodi
         # diversi (10.0 vs 10.1) → il grafo esatto non chiude.
         horiz = LineSeg(start=(0.0, 0.0), end=(10.03, 0.0))
         vert = LineSeg(start=(10.07, 0.0), end=(10.07, 10.0))
-        doc = ForgeDocument(
-            edges=[_edge(horiz), _edge(vert)],
-            annotations=[],
-            source_meta={},
-            source_path="",
-        )
-        return HealStep(doc, tolerance=0.1)
+        return [_edge(horiz), _edge(vert)]
 
     def test_corner_pulled_to_true_intersection(self):
-        step = self._step_with_broken_corner()
-        graph_c = step._build_graph(epsilon=step.tolerance)
+        edges = self._broken_corner()
+        graph_c = build_node_graph(edges, epsilon=self.TOL)
         self.assertEqual(len(graph_c.merged_clusters()), 1)
 
-        n_rep, skipped = step._repair_merged_corners(graph_c)
+        edges, n_rep, skipped = repair_merged_corners(edges, self.TOL)
 
         self.assertEqual(n_rep, 1)
         self.assertEqual(skipped, [])
 
-        segs = [e.segment for e in step.edges]
+        segs = [e.segment for e in edges]
         horiz = next(s for s in segs if s.start == (0.0, 0.0))
         vert = next(s for s in segs if s.end == (10.07, 10.0))
 
@@ -65,27 +64,23 @@ class TestRepairMergedCorners(unittest.TestCase):
     def test_exact_graph_closes_after_repair(self):
         # aggiunge i due lati mancanti: ora è un quadrilatero con un solo
         # angolo rotto, che dopo la riparazione deve chiudersi sul grafo esatto
-        step = self._step_with_broken_corner()
-        step.edges.append(_edge(LineSeg(start=(10.07, 10.0), end=(0.0, 10.0))))
-        step.edges.append(_edge(LineSeg(start=(0.0, 10.0), end=(0.0, 0.0))))
+        edges = self._broken_corner()
+        edges.append(_edge(LineSeg(start=(10.07, 10.0), end=(0.0, 10.0))))
+        edges.append(_edge(LineSeg(start=(0.0, 10.0), end=(0.0, 0.0))))
 
-        graph_c = step._build_graph(epsilon=step.tolerance)
-        step._repair_merged_corners(graph_c)
+        edges, _, _ = repair_merged_corners(edges, self.TOL)
 
-        from forge.core.topology.loop_finder import LoopFinder
-        graph = step._build_graph()
-        loops = LoopFinder().find(graph)
+        loops = LoopFinder().find(build_node_graph(edges))
         self.assertEqual(len(loops), 1)
         self.assertEqual(len(loops[0]), 4)
 
     def test_branching_cluster_is_skipped_not_welded(self):
         # tre estremi nello stesso cluster: intersezione a due non definita,
         # il cluster va saltato senza saldare nulla
-        step = self._step_with_broken_corner()
-        step.edges.append(_edge(LineSeg(start=(10.04, 0.0), end=(10.04, -5.0))))
+        edges = self._broken_corner()
+        edges.append(_edge(LineSeg(start=(10.04, 0.0), end=(10.04, -5.0))))
 
-        graph_c = step._build_graph(epsilon=step.tolerance)
-        n_rep, skipped = step._repair_merged_corners(graph_c)
+        _, n_rep, skipped = repair_merged_corners(edges, self.TOL)
 
         self.assertEqual(n_rep, 0)
         self.assertEqual(len(skipped), 1)
