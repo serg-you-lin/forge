@@ -116,6 +116,20 @@ from .core.healing.islands import spatial_islands, Island
 from .core.topology.noding import split_at_crossings, NodedEdges
 from .core.topology.outer_face import outer_face, OuterFace
 from .core.healing.normalizer import refit_tessellations
+# I passi di heal(), uno per funzione: heal() è la loro composizione di
+# default, un consumatore (framer) li compone nell'ordine che gli serve —
+# per esempio senza build_hierarchy, finché non ha deciso da sé cosa
+# significa un contorno dentro un altro. Vedi MAP.md D62.
+from .core.healing.normalizer import (
+    merge_collinear_overlaps, merge_cocircular_overlaps, weld_degenerate_linesegs,
+)
+from .core.healing.steps import (
+    split_labeled, close_free_gaps, dangling_splines, find_non_contour_edges,
+    repair_merged_corners, find_loops, LoopSearch, structural_loops,
+    loops_to_features, polygonize_edges, polygons_to_features,
+    labeled_features, build_hierarchy,
+)
+from .core.topology.loop_finder import edges_to_open_features
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -171,6 +185,24 @@ __all__ = [
     "outer_face",
     "OuterFace",
     "refit_tessellations",
+    # I passi di heal()
+    "merge_collinear_overlaps",
+    "merge_cocircular_overlaps",
+    "weld_degenerate_linesegs",
+    "split_labeled",
+    "close_free_gaps",
+    "dangling_splines",
+    "find_non_contour_edges",
+    "repair_merged_corners",
+    "find_loops",
+    "LoopSearch",
+    "structural_loops",
+    "loops_to_features",
+    "polygonize_edges",
+    "polygons_to_features",
+    "edges_to_open_features",
+    "labeled_features",
+    "build_hierarchy",
     # Utilità
     # Ispezione / debug (3 livelli: DXF grezzo → ForgeDocument → ForgeResult)
     "inspect_dxf",
