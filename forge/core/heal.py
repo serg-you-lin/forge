@@ -94,47 +94,6 @@ class HealStep:
         return build_node_graph(edges, epsilon=epsilon)
 
 
-    def _repair_merged_corners(self, graph_c):
-        """
-        Chiude gli angoli individuati dal clustering degli endpoint.
-
-        Per ogni cluster in cui il clustering ha fuso endpoint distinti
-        (`graph_c.merged_clusters()`) — cioè ogni angolo dove il grafo esatto
-        vedeva un buco — raccoglie i due estremi in gioco e li porta alla loro
-        intersezione reale col solver dei gap (`MoveEndpoint`). Muta
-        `self.edges`.
-
-        Ripara solo i cluster con esattamente due estremi (un angolo semplice
-        line/line, line/arc, arc/arc). I cluster con tre o più estremi
-        (diramazioni) restano intatti: là l'intersezione a due non è definita.
-
-        Ritorna: (n_angoli_riparati, [coordinate_cluster_saltati]).
-        """
-        merged = graph_c.merged_clusters()
-        if not merged:
-            return 0, []
-
-        all_fixes = []
-        repaired = 0
-        skipped = []
-        for canon, members in merged:
-            eps = gap_endpoints_at_nodes(self.edges, set(members))
-            if len(eps) != 2:
-                skipped.append(canon)
-                continue
-            fixes = compute_gap_fixes(eps, tolerance=float("inf"))
-            if fixes:
-                all_fixes.extend(fixes)
-                repaired += 1
-            else:
-                skipped.append(canon)
-
-        if all_fixes:
-            self.edges = apply_gap_fixes(
-                self.edges, all_fixes, self.node_decimals
-            )
-        return repaired, skipped
-
     def _load(self):
         if not self.edges:
             self.result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
@@ -258,102 +217,52 @@ class HealStep:
 
 
     def _find_loops(self):
-        if not self.edges:
+        from .healing.steps import (
+            find_loops, structural_loops, loops_to_features,
+            polygonize_edges, polygons_to_features,
+        )
+        search = find_loops(self.edges, self.non_contour_edge_ids, self.tolerance)
+        self.edges = search.edges
+        if search.repaired:
+            self.result.all_arcs = [
+                e.segment for e in self.edges if isinstance(e.segment, ArcSeg)
+            ]
+            self.result.warnings.append(
+                f"{search.repaired} angoli chiusi all'intersezione reale dopo "
+                f"detection via clustering (epsilon={self.tolerance})."
+            )
+        if search.method == "tolerant":
+            self.result.warnings.append(
+                "Loop trovati solo dopo clustering tollerante "
+                f"(epsilon={self.tolerance}); angoli non riparati: "
+                f"{search.unrepaired_corners[:8]}. La discrepanza sopravvive nell'output."
+            )
+        if not search.loops:
+            if not self.edges:
+                return
+            if search.open_nodes:
+                self.result.warnings.append(
+                    f"Grafo con {len(search.open_nodes)} estremi liberi dopo "
+                    f"clustering (prime coordinate: {search.open_nodes[:8]})."
+                )
+            self.result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
+            polygons = polygonize_edges(self.edges, self.tolerance)
+            if polygons:
+                self.result.warnings.append(
+                    f"Geometria ricostruita via fallback polygonize "
+                    f"({len(polygons)} poligoni). Verificare il risultato."
+                )
+                self.closed_shapes.extend(polygons_to_features(polygons))
+            else:
+                self.result.warnings.append(
+                    "LINE/ARC non formano loop chiusi — "
+                    "potrebbero essere marcature o geometria aperta."
+                )
             return
 
-        from .topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
-        from .healing.hierarchy import loop_to_closed_feature
-        from ..model.role import ContourRole
-
-        graph = self._build_graph(exclude_ids=self.non_contour_edge_ids)
-        loops = LoopFinder().find(graph, exclude_ids=self.non_contour_edge_ids)
-
-        # D57: ripara ogni volta che restano estremi liberi, non solo quando
-        # non c'è nessun loop — un loop chiuso altrove (un forellino) non
-        # deve blindare il contorno vero dalla riparazione.
-        if not loops or graph.open_nodes():
-            # Il grafo esatto non chiude (tutto o in parte) il contorno.
-            # Individua col clustering degli endpoint gli angoli dove due
-            # lati si toccano quasi (separati solo da un arrotondamento al
-            # confine di cella), poi CHIUDILI DAVVERO estendendo i due
-            # segmenti alla loro intersezione reale — stessa matematica di
-            # _preprocess, ma su endpoint che il filtro sul grado non vede.
-            # Dopo la riparazione si riprova sul grafo esatto: la geometria
-            # di output è cucita esatta, non solo tollerata.
-            graph_c = self._build_graph(
-                exclude_ids=self.non_contour_edge_ids,
-                epsilon=self.tolerance,
-            )
-            n_rep, skipped = self._repair_merged_corners(graph_c)
-            if n_rep:
-                self.result.all_arcs = [
-                    e.segment for e in self.edges if isinstance(e.segment, ArcSeg)
-                ]
-                graph = self._build_graph(exclude_ids=self.non_contour_edge_ids)
-                loops = LoopFinder().find(graph, exclude_ids=self.non_contour_edge_ids)
-                self.result.warnings.append(
-                    f"{n_rep} angoli chiusi all'intersezione reale dopo "
-                    f"detection via clustering (epsilon={self.tolerance})."
-                )
-
-            if not loops:
-                # Ultima spiaggia prima di polygonize: loop sul grafo
-                # clusterizzato "tollerante" (segmenti nativi, ruoli
-                # preservati; discrepanza residua agli angoli non fusi).
-                graph_c = self._build_graph(
-                    exclude_ids=self.non_contour_edge_ids,
-                    epsilon=self.tolerance,
-                )
-                loops = LoopFinder().find(
-                    graph_c, exclude_ids=self.non_contour_edge_ids
-                )
-                if loops:
-                    corners = [c for c, _ in graph_c.merged_clusters()]
-                    self.result.warnings.append(
-                        "Loop trovati solo dopo clustering tollerante "
-                        f"(epsilon={self.tolerance}); angoli non riparati: "
-                        f"{corners[:8]}. La discrepanza sopravvive nell'output."
-                    )
-                else:
-                    open_pts = graph_c.open_nodes()
-                    if open_pts:
-                        self.result.warnings.append(
-                            f"Grafo con {len(open_pts)} estremi liberi dopo "
-                            f"clustering (prime coordinate: {open_pts[:8]})."
-                        )
-                    self._fallback_polygonize()
-                    return
-
-        structural_loops = [
-            loop for loop in loops if _loop_is_structural(loop, self._structural)
-        ]
-        self.loop_edge_ids = {
-            id(edge)
-            for loop in structural_loops
-            for edge, _ in loop
-        }
-
-        for loop in structural_loops:
-            role = loop[0][0].role if loop else ContourRole.UNKNOWN
-
-            segments = segments_from_loop(loop)
-            styles = edge_styles_from_loop(loop)
-
-            from .primitives.polygon_builder import build_polygon
-            from .primitives.segments import DEFAULT_TOLERANCE
-            polygon = build_polygon(segments, DEFAULT_TOLERANCE)
-            if polygon is None:
-                continue
-
-            shape = loop_to_closed_feature(
-                loop,
-                role=role,
-                polygon=polygon,
-                segments=segments,
-                styles=styles,
-            )
-            if shape is not None:
-                self.closed_shapes.append(shape)
+        kept = structural_loops(search.loops, self._structural)
+        self.loop_edge_ids = {id(edge) for loop in kept for edge, _ in loop}
+        self.closed_shapes.extend(loops_to_features(kept))
 
     def _build_hierarchy(self):
         from .topology.loop_finder import edges_to_open_features
@@ -441,94 +350,6 @@ class HealStep:
 # Funzioni module-level
 # ---------------------------------------------------------------------------
 
-def _fallback_polygonize(self):
-    import math
-    from shapely.ops import unary_union, snap, polygonize
-    from shapely.geometry import LineString, Polygon
-    from .primitives.segments import ArcSeg, DEFAULT_TOLERANCE
-    from .healing.hierarchy import loop_to_closed_feature
-    from ..model.role import ContourRole
-
-    self.result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
-    segments = []
-
-    for edge in self.edges:
-        if edge.segment is None:
-            continue
-        pts = edge.segment.discretize(DEFAULT_TOLERANCE)
-        if len(pts) >= 2:
-            segments.append(LineString(pts))
-
-    merged   = unary_union(segments)
-    snapped  = snap(merged, merged, self.tolerance)
-    polygons = list(polygonize(snapped))
-
-    if polygons:
-        self.result.warnings.append(
-            f"Geometria ricostruita via fallback polygonize "
-            f"({len(polygons)} poligoni). Verificare il risultato."
-        )
-
-        for poly in polygons:
-            if not poly.is_valid:
-                poly = poly.buffer(0)
-            pts = [(x, y) for x, y in poly.exterior.coords]
-
-            from .primitives import LineSeg
-            fallback_segments = [
-                LineSeg(start=pts[i], end=pts[i + 1])
-                for i in range(len(pts) - 1)
-            ]
-            shape = loop_to_closed_feature(
-                [],
-                role=ContourRole.OUTER,
-                polygon=poly,
-                segments=fallback_segments,
-            )
-            if shape is not None:
-                self.closed_shapes.append(shape)
-
-            for interior in poly.interiors:
-                pts_i = [(x, y) for x, y in interior.coords]
-                inner_segments = [
-                    LineSeg(start=pts_i[i], end=pts_i[i + 1])
-                    for i in range(len(pts_i) - 1)
-                ]
-                inner_poly = Polygon(interior)
-                shape_i = loop_to_closed_feature(
-                    [],
-                    role=ContourRole.INNER,
-                    polygon=inner_poly,
-                    segments=inner_segments,
-                )
-                if shape_i is not None:
-                    self.closed_shapes.append(shape_i)
-    else:
-        self.result.warnings.append(
-            "LINE/ARC non formano loop chiusi — "
-            "potrebbero essere marcature o geometria aperta."
-        )
-
-def _loop_is_structural(loop, is_structural) -> bool:
-    """
-    Un loop è strutturale se ogni suo edge con ruolo deciso è strutturale per
-    `is_structural` (lo stesso predicato di `HealStep._structural` — iniettato
-    dal chiamante o, di default, solo outer/inner). Un solo edge non
-    strutturale — engrave, frame, title_block, un manifatturiero non
-    riconosciuto senza predicato iniettato — declassa l'intero loop: non
-    diventa un ClosedFeature, non entra nell'albero di contenimento.
-    """
-    from ..model.role import ContourRole
-
-    for edge, _ in loop:
-        if edge.role == ContourRole.UNKNOWN:
-            continue
-        if not is_structural(edge.role):
-            return False
-    return True
-
-
-HealStep._fallback_polygonize = _fallback_polygonize
 
 
 # ---------------------------------------------------------------------------
