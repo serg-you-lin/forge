@@ -7,8 +7,6 @@ Copre:
   - normalize_role : ruolo noto → costante, ignoto → slug conservato,
                      input sporco → slug sicuro (niente payload di injection)
   - role_str       : valore stringa che il ruolo sia enum o str
-  - label_to_role  : un work_type sconosciuto nel label_map non viene
-                     schiacciato a UNKNOWN
   - integrazione   : un ruolo custom sopravvive a load_geometry → heal
 """
 
@@ -16,7 +14,7 @@ import unittest
 
 import forge
 from forge.model.role import (
-    ContourRole, normalize_role, role_str, label_to_role,
+    ContourRole, normalize_role, role_str,
     is_structural_role, STRUCTURAL_ROLES,
 )
 
@@ -60,16 +58,6 @@ class TestRoleStr(unittest.TestCase):
     def test_da_enum_e_da_stringa(self):
         self.assertEqual(role_str(ContourRole.OUTER), "outer")
         self.assertEqual(role_str("title_block"), "title_block")
-
-
-class TestLabelToRole(unittest.TestCase):
-
-    def test_work_type_ignoto_non_schiacciato(self):
-        self.assertEqual(label_to_role("Cartiglio", {"cartiglio": "title_block"}),
-                         "title_block")
-
-    def test_etichetta_non_mappata_e_unknown(self):
-        self.assertEqual(label_to_role("Boh", {"altro": "outer"}), "unknown")
 
 
 class TestIsStructuralRole(unittest.TestCase):

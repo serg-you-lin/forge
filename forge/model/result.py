@@ -16,10 +16,6 @@ class ForgeResult:
     È quello che forge.heal() restituisce al chiamante.
 
     Campi:
-        label_map : dict {nome_layer: tipo_lavorazione} passato a detect().
-                    Salvato qui da detect() — inject() e write()
-                    lo leggono senza che il chiamante lo ripassi.
-                    Non serializzato in to_dict(): è configurazione di sessione.
         annotations : testi e quote della sorgente (list[Annotation]), copiati
                     qui da heal() dal ForgeDocument. Sono dati di dominio
                     indipendenti dal formato: ogni renderer (to_dxf, un
@@ -34,7 +30,6 @@ class ForgeResult:
     trash_entities:      List[Any]              = field(default_factory=list)
     annotations:         List[Annotation]       = field(default_factory=list)
     classified_entities: List[ClassifiedEntity] = field(default_factory=list)
-    label_map:           dict                   = field(default_factory=dict)
     all_arcs:            List[Any]              = field(default_factory=list)
     _open_shapes:        List[Any]              = field(default_factory=list)
 

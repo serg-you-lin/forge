@@ -29,11 +29,11 @@ import forge
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/examples/Multifeature.dxf"
 TOLERANCE = 0.5
-LABEL_MAP = {"Filettati": "threaded_hole", "Svasati": "countersink",
+NAME_ROLES = {"Filettati": "threaded_hole", "Svasati": "countersink",
              "Piega": "bending", "MARK": "engrave"}
 # -------------------------------------------------------------------------
 
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
+doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 result = forge.heal_and_detect(doc, label="P-1024", features="all")
 
 # Le annotazioni sono già nel modello, tipate e con posizione. `display_text` è

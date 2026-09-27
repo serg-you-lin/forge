@@ -42,10 +42,8 @@ forge.load_dxf(
     flatten_z_flag=True,
     verbose=False,
     tolerance=0.05,
-    label_map=None,
+    role_rules=(),
     ignore_layers=None,
-    linetype_map=None,
-    color_map=None,
 ) -> ForgeDocument
 ```
 
@@ -61,10 +59,8 @@ funzione il documento `ezdxf` sorgente sparisce.
 | `explode_inserts` | `True` (default): esplode i blocchi in primitive. **Metti `False` solo se vuoi ignorare i blocchi di proposito** — un `INSERT` non esploso viene scartato e la sua geometria sparisce. |
 | `flatten_z_flag` | riporta sul piano le entità con Z ≠ 0. |
 | `tolerance` | tolleranza di arrotondamento dei nodi topologici. Viene salvata in `source_meta` e riletta da `heal()` se non gliela ripassi. |
-| `label_map` | `{nome_layer: work_type}` — assegna il **ruolo** agli `Edge` già in fase di traduzione. Chiavi case-insensitive. `work_type` che forge conosce: `outer`, `hole`, `bending`, `inner`, `countersink`, `threaded_hole`, `engrave`, `marking`. Un valore diverso (`frame`, `title_block`, `section`, …) **non è un errore**: viene ripulito in uno slug e conservato sul ruolo, forge lo tratta come non strutturale e in output lo scrive su un layer col nome dello slug (`unknown` → `Trash`) — vocabolario aperto, MAP.md D27 / D31. **Lane autoritativa** — se decide lei, `linetype_map`/`color_map` non intervengono più su quell'entità. |
+| `role_rules` | lista di `RoleRule` — assegnano il **ruolo** agli `Edge` già in fase di traduzione. Valutate in ordine, vince la prima che matcha, nessuna → `unknown`. Il nome valutato da `name`/`name_contains` è il layer; `dashed` e `color` guardano l'aspetto **effettivo** (un'entità `ByLayer` viene risolta al linetype/colore del suo layer). Il layer non esce dall'adapter: l'`Edge` porta solo il ruolo (MAP.md D63). Vedi **`RoleRule`** sotto. |
 | `ignore_layers` | lista di layer da escludere dalla geometria. |
-| `linetype_map` | `{nome_linetype: work_type}` (es. `{"DASHED": "bending"}`) — seconda lane di classificazione, sullo **stile della linea** invece che sul layer. Si applica solo alle entità che `label_map` non ha già classificato. Stesso vocabolario `work_type` di `label_map`. Il linetype confrontato è quello **effettivo**: se l'entità è `ByLayer`, viene risolto al linetype del layer che la contiene, non lasciato `"ByLayer"`. |
-| `color_map` | `{colore: work_type}` (es. `{"cyan": "engrave"}`) — come `linetype_map` ma sul **colore ACI** dell'entità. Chiavi: nome standard (`red`, `yellow`, `green`, `cyan`, `blue`, `magenta`, `white`/`black`, `gray`/`grey`, `lightgray`/`lightgrey`, `pink`), intero ACI, o stringa numerica (`"4"`). Anche qui il colore confrontato è quello effettivo — un'entità `color=256` (BYLAYER) viene risolta al colore del layer, non lasciata BYLAYER. |
 
 **Ritorna** un `ForgeDocument`. La diagnostica sul file grezzo (audit, INSERT non
 esplosi, Z≠0, duplicati rimossi, tipi non ri-materializzabili in output) finisce
@@ -75,24 +71,62 @@ in `doc.warnings`; `forge.validate(doc)` la rilancia.
 
 ```python
 doc = forge.load_dxf("pezzo.dxf", tolerance=0.5,
-                     label_map={"Piega": "bending", "MARK": "engrave"})
+                     role_rules=forge.name_rules({"Piega": "bending", "MARK": "engrave"}))
 for w in doc.warnings:
     print("loader:", w)
 ```
 
-Quando il disegno non usa layer dedicati ma porta l'intenzione nello stile
-della linea (pieghe tratteggiate, marcature colorate su un layer qualsiasi):
+Quando l'intenzione sta nello stile della linea, o in una combinazione di
+nome e stile:
 
 ```python
-doc = forge.load_dxf(
-    "pezzo.dxf",
-    linetype_map={"DOT": "bending", "DASHED": "bending"},
-    color_map={"cyan": "engrave"},
-)
+doc = forge.load_dxf("pezzo.dxf", role_rules=[
+    forge.RoleRule("construction", name_contains="constr", dashed=True),
+    forge.RoleRule("bending", dashed=True),
+    forge.RoleRule("engrave", color="cyan"),
+])
 ```
 
-Vedi `14_style_classification.py` per un esempio completo (i tre classificatori
-isolati uno per uno, su un file reale in `tests/examples/`).
+Vedi `14_style_classification.py` per un esempio completo (una regola per
+step, su un file reale in `tests/examples/`).
+
+### `RoleRule`
+
+```python
+forge.RoleRule(role, name=None, name_contains=None, dashed=None, color=None)
+```
+
+Una regola: se **tutte** le condizioni date sono vere, la linea prende `role`.
+forge fornisce il meccanismo; il contenuto (quali nomi, quali stili, quale
+ruolo) lo scrive il chiamante (MAP.md D63).
+
+| campo | significato |
+|---|---|
+| `role` | ruolo assegnato, ripulito da `normalize_role`. Vocabolario aperto: `outer`, `inner`, `hole`, `bending`, `countersink`, `threaded_hole`, `engrave`, `marking` sono noti a forge/`detect`; qualunque altro slug (`frame`, `title_block`, …) è conservato, trattato come non strutturale e scritto in output su un layer col suo nome (MAP.md D27 / D31). |
+| `name` | nome del gruppo sorgente, uguale (maiuscole ignorate). |
+| `name_contains` | sottostringa del nome del gruppo (maiuscole ignorate). |
+| `dashed` | `True` solo tratteggiate, `False` solo continue. Tratteggiata = il pattern del linetype ha almeno un vuoto (`EdgeStyle.is_dashed`), non il nome del linetype. |
+| `color` | colore ACI: intero, stringa numerica (`"4"`) o nome standard (`red`, `yellow`, `green`, `cyan`, `blue`, `magenta`, `white`/`black`, `gray`/`grey`, `lightgray`/`lightgrey`, `pink`). |
+
+Metodo `matches(name, style) -> bool`. Condizioni lasciate a `None` non
+contano.
+
+**Solleva** `ValueError` se non c'è nessuna condizione (matcherebbe tutto) o se
+il nome del colore non è riconosciuto.
+
+### `name_rules`
+
+```python
+forge.name_rules(mapping: dict[str, str]) -> list[RoleRule]
+```
+
+Scorciatoia: `{nome: ruolo}` → una `RoleRule(role, name=nome)` per voce, nello
+stesso ordine.
+
+```python
+rules = forge.name_rules({"Piega": "bending", "MARK": "engrave"})
+rules.append(forge.RoleRule("bending", dashed=True))   # dopo i nomi
+```
 
 #### DWG
 
@@ -136,18 +170,16 @@ questa stessa guida nel messaggio.
 forge.document_from_msp(
     msp,
     tolerance=0.05,
-    label_map=None,
+    role_rules=(),
     ignore_layers=None,
     source_path="",
-    linetype_map=None,
-    color_map=None,
 ) -> ForgeDocument
 ```
 
 Costruisce un `ForgeDocument` da un `modelspace` `ezdxf` **già aperto**. Utile per
 i test o per geometria generata a mano. **Non** fa audit / upgrade / sanitize: si
-assume che il `msp` sia già pronto. `linetype_map`/`color_map` funzionano come in
-`load_dxf()` — vedi sopra.
+assume che il `msp` sia già pronto. `role_rules` funziona come in `load_dxf()`
+— vedi sopra.
 
 ```python
 import ezdxf
@@ -175,7 +207,7 @@ computer vision). Chi chiama non importa nessun tipo interno di forge.
 
 | parametro | significato |
 |---|---|
-| `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polyline` (`points`, `closed`), `spline` (`control_points`, `knots`, `degree`, più `weights`/`fit_points`/`closed` opzionali — stessi campi di `SplineSeg`), `ellipse` (`center`, `major_axis` come **vettore** dal centro, più `ratio`/`start_param`/`end_param`/`ccw` opzionali — stessi campi di `EllipseSeg`, stessa parametrizzazione del gruppo DXF ELLIPSE; default = ellisse piena). `role` è opzionale su ogni entità — stesso vocabolario di `label_map` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
+| `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polyline` (`points`, `closed`), `spline` (`control_points`, `knots`, `degree`, più `weights`/`fit_points`/`closed` opzionali — stessi campi di `SplineSeg`), `ellipse` (`center`, `major_axis` come **vettore** dal centro, più `ratio`/`start_param`/`end_param`/`ccw` opzionali — stessi campi di `EllipseSeg`, stessa parametrizzazione del gruppo DXF ELLIPSE; default = ellisse piena). `role` è opzionale su ogni entità — stesso vocabolario di `RoleRule.role` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
 | `tolerance` | tolleranza di arrotondamento dei nodi topologici — stesso significato di `load_dxf(tolerance=...)`. |
 | `source_path` | etichetta libera per `ForgeDocument.source_path`; non è un file, serve solo per diagnostica. |
 
@@ -291,10 +323,10 @@ inners=[ForgeContour...])`. La promozione a `Hole` è di `detect(features="holes
 | `tolerance` | se `None`, ripresa da `doc.source_meta["tolerance"]` (quella passata a `load_dxf`). |
 | `label` | etichetta del pezzo, finisce in `cluster.label` e nei metadati. |
 | `source_file` | nome file sorgente, finisce nei metadati. |
-| `is_structural` | `Callable[[str], bool] \| None` — "questo ruolo è topologia di contorno di pezzo?", usato per decidere quali `Edge` già etichettati (da `label_map`) restano nel grafo prima della ricerca loop. `heal()` da solo conosce solo `outer`/`inner`; senza questo parametro un ruolo manifatturiero (`"hole"`, ...) è trattato come non strutturale ed **esce** dal grafo (heal lo segnala con un warning). Passa `forge.tools.manufacturing_role.is_structural` per farlo riconoscere — `heal_and_detect()`/`split_to_files()` lo fanno già in automatico. |
+| `is_structural` | `Callable[[str], bool] \| None` — "questo ruolo è topologia di contorno di pezzo?", usato per decidere quali `Edge` già etichettati (da `role_rules`) restano nel grafo prima della ricerca loop. `heal()` da solo conosce solo `outer`/`inner`; senza questo parametro un ruolo manifatturiero (`"hole"`, ...) è trattato come non strutturale ed **esce** dal grafo (heal lo segnala con un warning). Passa `forge.tools.manufacturing_role.is_structural` per farlo riconoscere — `heal_and_detect()`/`split_to_files()` lo fanno già in automatico. |
 
-`label_map`/`linetype_map`/`color_map` **non sono parametri di `heal`** — vanno
-passati a `load_dxf()`, che assegna i ruoli agli `Edge`.
+`role_rules` **non è un parametro di `heal`** — va passato a `load_dxf()`, che
+assegna i ruoli agli `Edge`.
 
 **Ritorna** un `ForgeResult`. Se non si forma nessun contorno esterno chiuso,
 `result.is_valid` è `False` e `result.errors` è popolato (la `trash_entities`
@@ -328,7 +360,7 @@ forge.structural_loops(loops, is_structural=None) -> list[loop]
 forge.loops_to_features(loops) -> list[ClosedFeature]
 forge.polygonize_edges(edges, tolerance) -> list[Polygon]
 forge.polygons_to_features(polygons) -> list[ClosedFeature]
-forge.edges_to_open_features(edges, exclude_ids, label_map) -> list[OpenFeature | ClosedFeature]
+forge.edges_to_open_features(edges, exclude_ids) -> list[OpenFeature | ClosedFeature]
 forge.labeled_features(edges) -> list[OpenFeature | ClosedFeature]
 forge.build_hierarchy(features, label="", source_file="", is_structural=None)
     -> tuple[list[ForgeCluster], list]
@@ -488,8 +520,8 @@ forge.detect(
 
 Il passo semantico: classifica le feature dentro le parti già trovate da `heal()`.
 
-`detect(result)` **nudo** fa solo il minimo: la lane `label_map`/`linetype_map`/
-`color_map` (autoritativa, decisa in `load_dxf()`) e la pulizia della topologia.
+`detect(result)` **nudo** fa solo il minimo: la lane dei ruoli assegnati al load
+(`role_rules`, decisi in `load_dxf()`) e la pulizia della topologia.
 I contorni circolari restano `inners`, nessun `Hole` — è il default per il
 taglio laser.
 
@@ -547,7 +579,7 @@ popolati). I primi parametri sono quelli di `heal()`, gli altri quelli di
 possono volere la sola topologia, senza classificazione feature.
 
 ```python
-doc    = forge.load_dxf("pezzo.dxf", label_map={"Piega": "bending"})
+doc    = forge.load_dxf("pezzo.dxf", role_rules=forge.name_rules({"Piega": "bending"}))
 result = forge.heal_and_detect(doc, label="P-1024")
 if not result.is_valid:
     raise SystemExit(result.errors)
@@ -651,7 +683,7 @@ altro, `detect()` incluso (`"hole"`, ...) o un consumatore esterno
 (`"frame"`, `"title_block"`, ...) — nessuno dei due è privilegiato. Ogni
 campo lasciato `None` resta il default di forge per quel ruolo. Passato a
 `to_dxf`/`split` come `role_styles={ruolo: RoleStyle(...)}` — dizionario
-esplicito del chiamante, stesso idioma di `label_map`, riusabile su più
+esplicito del chiamante, stesso idioma di `role_rules`, riusabile su più
 chiamate/formati; vince sempre su un eventuale stile registrato (sotto).
 
 Pensato per crescere per aggiunta: un futuro campo si aggiunge alla
@@ -956,17 +988,16 @@ outer/inner/holes (tipati)/bending/engrave/custom, più `trash_entities`,
 `classified_entities`, annotazioni. "Cosa ha prodotto forge."
 
 ```python
-forge.inspect_file(path, tolerance=0.05, label_map=None,
-                   run_heal=True, run_detect=True, entities=True, coords=False,
-                   linetype_map=None, color_map=None) -> None
+forge.inspect_file(path, tolerance=0.05, role_rules=(),
+                   run_heal=True, run_detect=True, entities=True, coords=False) -> None
 ```
 Orchestratore: apre il file e stampa i tre livelli in fila. `run_heal=False` /
-`run_detect=False` per fermarti a un livello precedente. `linetype_map` /
-`color_map` come in `load_dxf()`.
+`run_detect=False` per fermarti a un livello precedente. `role_rules` come in
+`load_dxf()`.
 
 ```python
-forge.inspect_file("pezzo.dxf", label_map={"Piega": "bending"})
-forge.inspect_file("pezzo.dxf", linetype_map={"DOT": "bending"}, color_map={"cyan": "engrave"})
+forge.inspect_file("pezzo.dxf", role_rules=forge.name_rules({"Piega": "bending"}))
+forge.inspect_file("pezzo.dxf", role_rules=[forge.RoleRule("bending", dashed=True)])
 ```
 
 ---
@@ -1006,7 +1037,7 @@ core: dopo di lui, `ezdxf` non si tocca più.
 |---|---|---|
 | `edges` | `list[Edge]` | geometria tradotta in primitive pure — input di `heal()` |
 | `annotations` | `list[Annotation]` | testi e quote della sorgente |
-| `source_meta` | `dict` | `$INSUNITS`, `$MEASUREMENT`, `tolerance`, `label_map`, `ignore_layers`, `linetype_map`, `color_map` |
+| `source_meta` | `dict` | `$INSUNITS`, `$MEASUREMENT`, `tolerance`, `ignore_layers` |
 | `source_path` | `str` | percorso del file |
 | `warnings` | `list[str]` | diagnostica del loader sul file grezzo |
 
@@ -1034,7 +1065,6 @@ Prodotto da `heal()`, arricchito da `detect()` / `inject()`.
 | `annotations` | `list[Annotation]` | copiate da `heal()` dal `ForgeDocument` |
 | `classified_entities` | `list[ClassifiedEntity]` | feature senza classe dedicata (marking, work_type custom) |
 | `all_arcs` | `list[ArcSeg]` | tutti gli archi — usato dal detector fori filettati |
-| `label_map` | `dict` | configurazione di sessione, non serializzata |
 | `cluster_count` | property | `len(clusters)` |
 
 Metodo `to_dict()` → dizionario JSON-ready (usato internamente dagli export).
@@ -1154,7 +1184,7 @@ import forge, ezdxf
 
 # 1. apri — unico punto che legge ezdxf
 doc = forge.load_dxf("pezzo.dxf", tolerance=0.5,
-                     label_map={"Piega": "bending"})
+                     role_rules=forge.name_rules({"Piega": "bending"}))
 
 # 2. valida l'input (opzionale ma consigliato)
 check = forge.validate(doc)

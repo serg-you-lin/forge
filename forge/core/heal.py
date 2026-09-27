@@ -44,8 +44,7 @@ def heal(doc: ForgeDocument, tolerance: Optional[float] = None, label: str = "",
 
     tolerance: se None viene ripresa da doc.source_meta['tolerance']
                (quella usata per arrotondare i nodi in load_dxf).
-    label_map: NON è un parametro — va passato a load_dxf(), che assegna
-               i ruoli agli Edge in fase di traduzione.
+    I ruoli arrivano già sugli Edge: li assegna il loader (role_rules, D63).
     is_structural: predicato `Callable[[str], bool]` — "questo ruolo è
                topologia di contorno di pezzo?" — usato per decidere quali
                Edge già etichettati restano nel grafo prima della ricerca
@@ -65,9 +64,6 @@ def heal(doc: ForgeDocument, tolerance: Optional[float] = None, label: str = "",
     structural = is_structural or is_structural_role
 
     result = ForgeResult(source_file=source_file)
-    label_map = doc.source_meta.get("label_map") or {}
-    if label_map:
-        result.label_map = label_map
     result.annotations = list(doc.annotations)
     if not doc.edges:
         result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
@@ -130,8 +126,7 @@ def heal(doc: ForgeDocument, tolerance: Optional[float] = None, label: str = "",
                 "potrebbero essere marcature o geometria aperta."
             )
 
-    features = closed + edges_to_open_features(edges, exclude_ids=loop_edge_ids,
-                                               label_map=result.label_map)
+    features = closed + edges_to_open_features(edges, exclude_ids=loop_edge_ids)
     if not features:
         result.errors.append("Nessuna geometria chiusa trovata dopo healing.")
         result.is_valid = False

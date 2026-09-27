@@ -27,10 +27,8 @@ chiamante entra nel modello: la ripulisce una volta sola in uno slug sicuro,
 così tutto il codice a valle (nomi layer DXF, chiavi/valori serializzati,
 attributi SVG) se ne può fidare senza ri-validarla.
 
-``label_to_role()`` è la mappatura pura etichetta → ruolo via ``label_map`` —
-nessuna dipendenza da ezdxf o dal formato (l'etichetta è un layer per un
-adapter DXF, qualunque altra cosa per un adapter diverso), usata dagli
-adapter per tradurre ``label_map`` senza mai toccare l'entità sorgente.
+Le regole con cui il chiamante assegna un ruolo al load vivono in
+``model/role_rule.py`` (D63).
 """
 
 from __future__ import annotations
@@ -74,7 +72,7 @@ class ContourRole(str, Enum):
 # Unico punto di verità per la domanda "questo edge/loop/proxy è OUTER o INNER
 # per come l'ha costruito heal(), a prescindere da qualunque significato
 # manifatturiero?". Chi vuole che heal() tratti come strutturale anche un
-# ruolo che core non conosce (un foro etichettato da label_map, per esempio)
+# ruolo che core non conosce (un foro assegnato da role_rules, per esempio)
 # passa il proprio predicato a `heal(doc, is_structural=...)` — vedi
 # `tools.manufacturing_role.is_structural`. Senza quel predicato, heal()
 # tratta qualunque ruolo fuori da qui come non strutturale di default (esce
@@ -108,8 +106,8 @@ WORK_TYPE_TO_ROLE: Dict[str, ContourRole] = {
 
 def normalize_role(value) -> str:
     """
-    Ripulisce una stringa-ruolo che arriva dal chiamante (``label_map``,
-    ``linetype_map``, ``load_geometry``) e la restituisce come slug sicuro.
+    Ripulisce una stringa-ruolo che arriva dal chiamante (``RoleRule``,
+    ``load_geometry``) e la restituisce come slug sicuro.
 
     È l'unico punto d'ingresso: da qui in poi ``feature.role`` è sempre o una
     costante di ``ContourRole`` o uno slug ``[a-z0-9_-]`` corto, di cui il
@@ -144,20 +142,3 @@ def role_str(role) -> str:
     """
     return role.value if isinstance(role, ContourRole) else str(role)
 
-
-def label_to_role(label: str, label_map: Dict[str, str]) -> str:
-    """
-    Traduce un'etichetta grezza nel ruolo corrispondente via ``label_map``.
-
-    Pura — non tocca mai un'entità sorgente, non sa da dove arrivi
-    ``label`` (un layer per un adapter DXF, qualunque altra cosa per un
-    adapter diverso: nessun formato è privilegiato qui). ``label_map`` è
-    ``{etichetta: work_type}``, chiavi case-insensitive. Un ``work_type`` che
-    forge non conosce viene conservato (passa per ``normalize_role``), non
-    schiacciato a ``UNKNOWN``.
-    """
-    label = label or ""
-    work_type = label_map.get(label, label_map.get(label.lower(), ""))
-    if not work_type:
-        return ContourRole.UNKNOWN.value
-    return normalize_role(work_type)

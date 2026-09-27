@@ -99,7 +99,7 @@ class TestMergeCollinearOverlaps(unittest.TestCase):
         self.assertEqual(len(out), 2)
 
     def test_ruolo_gia_assegnato_non_e_candidato(self):
-        # Un ruolo diverso da UNKNOWN (assegnato da label_map) non entra mai
+        # Un ruolo diverso da UNKNOWN (assegnato da role_rules) non entra mai
         # nel graph-building: fonderlo non aiuta e può alterare geometria di
         # dominio intenzionale (v. golden la_104: tratti di un'incisione che
         # si sovrappongono per disegno, non per errore).

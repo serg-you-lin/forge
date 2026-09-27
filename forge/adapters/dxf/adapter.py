@@ -9,7 +9,7 @@ UNICO punto di conversione DXF → primitive.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 from shapely.geometry import Polygon
 
@@ -21,7 +21,7 @@ from ...core.primitives.polygon_builder import build_polygon
 from ...core.adapter_base import ForgeAdapter
 from ...core.geometry import round_point
 from ...core.topology.edge import Edge, Segment
-from ...model.role import ContourRole, label_to_role, normalize_role
+from ...model.role_rule import RoleRule, resolve_role
 from ...model.style import EdgeStyle
 
 from .parser import DxfEntityDispatcher
@@ -82,7 +82,7 @@ def _entity_style(entity) -> EdgeStyle:
     nella entry del layer (`doc.layers.get(layer).dxf.linetype`), l'attributo
     dell'entità da solo non lo dice. Senza risolvere BYLAYER al valore del
     layer, ogni entità che eredita lo stile (il caso tipico) sfuggirebbe sia a
-    `linetype_map`/`color_map` sia al ripristino fedele in output (Cluster E):
+    `role_rules` sia al ripristino fedele in output (Cluster E):
     scritta su un layer forge diverso (Trash/Bending/...), che di default è
     continuo, perderebbe silenziosamente il tratteggio.
 
@@ -147,69 +147,6 @@ def _entity_style(entity) -> EdgeStyle:
         color=color,
         true_color=true_color,
     )
-
-
-# ---------------------------------------------------------------------------
-# Classificazione da aspetto — linetype_map / color_map (seconda lane)
-# ---------------------------------------------------------------------------
-# Stesso principio di label_map (nome_layer → work_type), ma quando il layer
-# non dice nulla: linetype_map matcha sul nome del linetype (case-insensitive),
-# color_map sul colore ACI dell'entità (nome standard, es. "cyan", o intero).
-# Il layer resta la lane autoritativa — questa lane si applica solo se
-# label_to_role() non ha già deciso (D5, doppio binario di provenienza).
-
-# Nomi colore ACI standard (1-9 + il rosa "pink" usato da rules/palette.py),
-# stesso vocabolario di ACI_TO_HEX letto al contrario — qui serve solo per
-# risolvere le chiavi di color_map, non per scrivere output.
-_ACI_NAME_TO_INT = {
-    "red": 1, "yellow": 2, "green": 3, "cyan": 4, "blue": 5,
-    "magenta": 6, "white": 7, "black": 7,
-    "gray": 8, "grey": 8, "darkgray": 8, "darkgrey": 8,
-    "lightgray": 9, "lightgrey": 9,
-    "pink": 11,
-}
-
-
-def _normalize_linetype_map(linetype_map: Optional[Dict[str, str]]) -> Dict[str, str]:
-    return {str(k).upper(): v for k, v in (linetype_map or {}).items()}
-
-
-def _normalize_color_map(color_map) -> Dict[int, str]:
-    """
-    Traduce le chiavi di `color_map` in interi ACI: nome standard ("cyan"),
-    intero o stringa numerica ("4"). Chiavi non risolvibili sono ignorate.
-    """
-    out: Dict[int, str] = {}
-    for key, work_type in (color_map or {}).items():
-        if isinstance(key, int):
-            out[key] = work_type
-            continue
-        k = str(key).strip().lower()
-        if k.lstrip("-").isdigit():
-            out[int(k)] = work_type
-        elif k in _ACI_NAME_TO_INT:
-            out[_ACI_NAME_TO_INT[k]] = work_type
-    return out
-
-
-def _style_role(style: EdgeStyle, linetype_map: Dict[str, str], color_map: Dict[int, str]) -> str:
-    """
-    Ruolo dedotto dall'aspetto grezzo di un'entità (linetype poi colore),
-    chiamata solo quando label_to_role() non ha già assegnato un ruolo. Un
-    work_type sconosciuto viene conservato (via normalize_role), non
-    schiacciato a UNKNOWN.
-    """
-    if linetype_map:
-        work_type = linetype_map.get((style.linetype or "").upper())
-        if work_type:
-            return normalize_role(work_type)
-
-    if color_map:
-        work_type = color_map.get(style.color)
-        if work_type:
-            return normalize_role(work_type)
-
-    return ContourRole.UNKNOWN.value
 
 
 # ---------------------------------------------------------------------------
@@ -292,13 +229,9 @@ class DxfAdapter(ForgeAdapter):
     """
     Adapter DXF che traduce entità DXF in Edge del dominio Forge.
 
-    Il ruolo di ogni Edge viene deciso in due lane, in ordine:
-      1. `label_map`    — {nome_layer: work_type}, autoritativa (D5)
-      2. `linetype_map` / `color_map` — {linetype o colore: work_type},
-         usata solo se il layer non ha già deciso. Stesso vocabolario di
-         work_type (WORK_TYPE_TO_ROLE), stessa semantica: un modo di
-         classificare quando il disegno usa lo stile della linea invece del
-         layer per portare intenzione ("le tratteggiate sono pieghe").
+    Il ruolo di ogni Edge viene da `role_rules` (D63), valutate sul nome del
+    layer e sull'aspetto effettivo dell'entità: la prima che matcha vince,
+    nessuna → `unknown`. Il layer non esce dall'adapter.
     """
 
     def __init__(
@@ -307,20 +240,13 @@ class DxfAdapter(ForgeAdapter):
         tolerance: float = 0.05,
         exclude_ids: Optional[set] = None,
         ignore_layers: Optional[set] = None,
-        label_map: Optional[Dict[str, str]] = None,
-        linetype_map: Optional[Dict[str, str]] = None,
-        color_map: Optional[Dict] = None,
+        role_rules: Sequence[RoleRule] = (),
     ):
         super().__init__(tolerance)
         self.msp = msp
         self.exclude_ids = exclude_ids or set()
         self.ignore_layers = ignore_layers or set()
-        self._label_map = {
-            k.lower(): v
-            for k, v in (label_map or {}).items()
-        }
-        self._linetype_map = _normalize_linetype_map(linetype_map)
-        self._color_map = _normalize_color_map(color_map)
+        self.role_rules = list(role_rules)
 
     # ------------------------------------------------------------------
     # ForgeAdapter contract
@@ -375,10 +301,8 @@ class DxfAdapter(ForgeAdapter):
                 if entity.dxf.hasattr("layer")
                 else ""
             )
-            role = label_to_role(label, self._label_map)
             style = _entity_style(entity)
-            if role == ContourRole.UNKNOWN and (self._linetype_map or self._color_map):
-                role = _style_role(style, self._linetype_map, self._color_map)
+            role = resolve_role(self.role_rules, label, style)
 
             # CIRCLE → CircleSeg (preservato!)
             if dtype == "CIRCLE":

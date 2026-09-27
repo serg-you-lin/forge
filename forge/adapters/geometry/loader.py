@@ -38,7 +38,7 @@ _SUPPORTED_TYPES = frozenset({"line", "arc", "circle", "polyline", "spline", "el
 
 def _role_from(entity: Dict[str, Any]) -> str:
     """
-    work_type stringa (stesso vocabolario di label_map) → ruolo. Un work_type
+    work_type stringa (stesso vocabolario di RoleRule.role) → ruolo. Un work_type
     sconosciuto viene conservato (via normalize_role), non schiacciato a UNKNOWN.
     """
     return normalize_role(entity.get("role"))
@@ -63,7 +63,7 @@ class GeometryAdapter(ForgeAdapter):
                    "ratio": 0.5, "start_param": 0.0, "end_param": 2*pi,
                    "ccw": True, "role": "outer"}
 
-    "role" è opzionale — stesso vocabolario di label_map (work_type stringa:
+    "role" è opzionale — stesso vocabolario di RoleRule.role (work_type stringa:
     "outer", "hole", "inner", "bending", "engrave", ...). Se omesso resta
     "unknown": non è un problema per il contorno più esterno di una
     parte, a cui HierarchyBuilder assegna comunque OUTER per posizione
@@ -245,5 +245,5 @@ def load_geometry(
     return ForgeDocument(
         edges=edges,
         source_path=source_path or "<load_geometry>",
-        source_meta={"tolerance": tolerance, "label_map": {}},
+        source_meta={"tolerance": tolerance},
     )

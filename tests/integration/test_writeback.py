@@ -37,9 +37,9 @@ from forge.tools.manufacturing_role import (
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
 
-def _pipeline(name, *, detect=False, label_map=None):
+def _pipeline(name, *, detect=False, name_roles=None):
     """heal (+ detect) → to_dxf. Ritorna (result, msp_out)."""
-    doc = forge.load_dxf(EXAMPLES_DIR / name, label_map=label_map or {})
+    doc = forge.load_dxf(EXAMPLES_DIR / name, role_rules=forge.name_rules(name_roles or {}))
     result = forge.heal(doc)
     if detect:
         forge.detect(result, features="all")
@@ -147,7 +147,7 @@ class TestWritebackSpecialLayers(unittest.TestCase):
         self.result, self.msp = _pipeline(
             "rect_with_special_layers.dxf",
             detect=True,
-            label_map={"BEND": "bending", "MARK": "engrave"},
+            name_roles={"BEND": "bending", "MARK": "engrave"},
         )
 
     def test_001_no_source_layer_survives(self):
@@ -230,7 +230,7 @@ class TestWritebackTrash(unittest.TestCase):
         self.assertEqual(len(trash), len(result.trash_entities))
 
     def test_003_include_trash_false_omits_trash(self):
-        doc = forge.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf", label_map={})
+        doc = forge.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf")
         result = forge.heal(doc)
         msp = forge.to_dxf(result, doc, include_trash=False).modelspace()
         trash = [e for e in msp
@@ -253,7 +253,7 @@ class TestWritebackTrash(unittest.TestCase):
         # Nessun contorno esterno chiuso (arc_open a tolleranza default: gap
         # arco/arco di ~0.26 mm > 0.05) → heal() invalida il risultato e
         # to_dxf() si rifiuta di materializzare un file di sola trash.
-        doc = forge.load_dxf(EXAMPLES_DIR / "arc_open.dxf", label_map={})
+        doc = forge.load_dxf(EXAMPLES_DIR / "arc_open.dxf")
         result = forge.heal(doc)
         self.assertFalse(result.is_valid)
         self.assertEqual(result.cluster_count, 0)
@@ -275,7 +275,7 @@ class TestWritebackStyle(unittest.TestCase):
         name = "Multifeature.dxf"
         if not (EXAMPLES_DIR / name).exists():
             self.skipTest(name)
-        return _pipeline(name, detect=True, label_map={"MARK": "engrave"})
+        return _pipeline(name, detect=True, name_roles={"MARK": "engrave"})
 
     def test_001_trash_linetype_preserved(self):
         # 64+ LINE su "02___PRT_ALL_AXES" (assi dei fori) sono CENTER nella

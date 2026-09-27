@@ -50,10 +50,10 @@ def load(name):
 # ---------------------------------------------------------------------------
 
 
-def _heal_and_inject(dxf_name, label_map=None, data_injector=None, interpreter=None):
+def _heal_and_inject(dxf_name, name_roles=None, data_injector=None, interpreter=None):
     from forge.tools.manufacturing_role import is_structural
     doc = forge.document_from_msp(
-        load(dxf_name).modelspace(), label_map=label_map or {}
+        load(dxf_name).modelspace(), role_rules=forge.name_rules(name_roles or {})
     )
     result = forge.heal(doc, is_structural=is_structural)
     forge.detect(
@@ -86,7 +86,7 @@ class TestInjectBendingLines(unittest.TestCase):
     def setUp(self):
         _, self.result = _heal_and_inject(
             "rect_with_special_layers.dxf",
-            label_map={"BEND": "bending", "MARK": "engrave"},
+            name_roles={"BEND": "bending", "MARK": "engrave"},
         )
 
     def test_001_part_exists(self):
@@ -113,7 +113,7 @@ class TestInjectEngraveLength(unittest.TestCase):
     def setUp(self):
         _, self.result = _heal_and_inject(
             "rect_with_special_layers.dxf",
-            label_map={"BEND": "bending", "MARK": "engrave"},
+            name_roles={"BEND": "bending", "MARK": "engrave"},
         )
 
     def test_001_engrave_metric_is_optional(self):
@@ -170,7 +170,7 @@ class TestInjectThreadedHoles(unittest.TestCase):
     def setUp(self):
         _, self.result = _heal_and_inject(
             "rect_with_threaded_holes.dxf",
-            label_map={"THREADED": "threaded_hole"},
+            name_roles={"THREADED": "threaded_hole"},
         )
 
     def test_001_threaded_holes_count_present(self):
@@ -194,7 +194,7 @@ class TestInjectDataInjector(unittest.TestCase):
     def setUp(self):
         self.doc = forge.document_from_msp(
             load("rect_with_special_layers.dxf").modelspace(),
-            label_map={"BEND": "bending", "MARK": "engrave"},
+            role_rules=forge.name_rules({"BEND": "bending", "MARK": "engrave"}),
         )
         self.result = forge.heal(self.doc)
         forge.detect(self.result, features="all")
@@ -260,7 +260,7 @@ class TestInjectMultiPart(unittest.TestCase):
     def setUp(self):
         _, self.result = _heal_and_inject(
             "two_rects_with_bend.dxf",
-            label_map={"BEND": "bending"},
+            name_roles={"BEND": "bending"},
         )
 
     def test_001_two_parts_found(self):

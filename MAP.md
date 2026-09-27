@@ -80,9 +80,9 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `main` — the `island()` / heal-steps refactor (D58–D62) is merged,
-version `0.7.0`. Suite: 812
-passed + 47 subtests as of the latest decision below (D62), golden all green.
+Branch: `refactor/role-rules` — `role_rules` (D63) on top of `0.7.0`.
+Suite: 824 passed + 47 subtests as of the latest decision below (D63),
+golden all green.
 
 Still genuinely open:
 - `detect_engrave` remains a no-op placeholder (D13) — deferred until
@@ -1690,6 +1690,49 @@ error with an empty `trash_entities` (the labeled edges don't reach it).
 Suite: 812 passed (17 new in `test_heal_steps.py`, including a composition
 test: the steps chained by hand give `heal()`'s clusters). `main` → 0.7.0.
 
+### D63 — `role_rules` replace `label_map`/`linetype_map`/`color_map`; "dashed" is a fact of the pattern ✅
+Framer asked whether forge should expose the layer name on edges so it could
+discover the drawing's semantics by itself. No: the source's grouping name
+is a fact about how one file was authored, and nothing in forge past the
+adapter may carry it (D53). What framer (or anyone calling `heal`/`split`)
+needs is a way to say *which* signals mean *which* role — and to say it
+themselves: forge provides the mechanism, the caller writes the content.
+
+- **`RoleRule`** (`model/role_rule.py`): `role` + conditions on neutral
+  signals — `name` (equal), `name_contains`, `dashed`, `color`. All the
+  given conditions must hold; a rule with none raises. `load_dxf` /
+  `document_from_msp` / `inspect_file` take `role_rules`, evaluated in order,
+  first match wins, none → `unknown`. The old three maps could not express
+  a combination ("dashed **and** named construction") — each decided alone,
+  in a fixed cascade (name first, then linetype, then colour). The cascade
+  is gone: the order is the caller's. `name_rules({name: role})` is the
+  shortcut for plain name rules.
+- **The name never leaves the adapter.** The DXF adapter passes the layer
+  as the `name` signal to `resolve_role`; the `Edge` gets only the role.
+  `source_meta` no longer stores the maps. `heal()`/`island()` copied
+  `label_map` into `ForgeResult.label_map`, and `edges_to_open_features`
+  took it as a parameter — all three were never read, and are removed
+  (clean break).
+- **"Dashed" = the pattern has a gap** (`EdgeStyle.is_dashed`: an element
+  < 0 in `linetype_pattern`). Not the linetype's name: the same dash can be
+  called anything, and a format without named linetypes still has dash
+  patterns. The line stays one continuous segment; the dash is how it's
+  drawn, so nothing is reconstructed. A dash already exploded into many
+  short segments is a different problem (reassembling collinear pieces with
+  regular gaps) and is out of scope until a real file needs it.
+- `color` stays the ACI index already in `EdgeStyle` (name, int or numeric
+  string); an unknown colour name now raises instead of being ignored.
+- Heuristic vocabularies ("construction", "hidden", ...) are **not** in
+  forge: they are content, and belong to whoever calls. Whether a caller's
+  firm convention and a caller's guess need to be told apart downstream
+  (a `certain` flag on the rule?) is left open — Federico is thinking
+  about it.
+
+Not touched, same family, still layer-named: `ignore_layers` and the
+hardcoded `_NON_STRUCTURAL_LAYERS` (`trash`/`annotation`, forge's own output
+layers read back) in the DXF adapter. Suite: 824 passed (14 new in
+`test_role_rule.py`, 2 `label_to_role` tests removed), golden unchanged.
+
 ---
 
 ## Closed questions (history)
@@ -1719,9 +1762,9 @@ test: the steps chained by hand give `heal()`'s clusters). `main` → 0.7.0.
   ...) instead of today's all-or-nothing `entities=` switch. Small, clean
   addition (a `types: Optional[set[str]] = None` parameter), not done yet —
   queued.
-- Does layer tagging (`label_map` etc.) matter if `detect(features="all")` is
+- Does role tagging at load matter if `detect(features="all")` is
   never called? **Yes — verified in code, not an impression.**
-  `label_map`/`linetype_map`/`color_map` set `edge.role` at load time, before
+  `role_rules` (D63; `label_map`/`linetype_map`/`color_map` at the time) set `edge.role` at load time, before
   `heal()` is even called. `heal()` itself (not `detect()`) already uses
   those roles in `_split_labeled()` to keep non-structural edges
   (tabs/engraving/frame) out of the topology graph — this is how they don't

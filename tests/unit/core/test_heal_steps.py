@@ -200,7 +200,7 @@ class TestComposition(unittest.TestCase):
         kept = forge.structural_loops(search.loops)
         in_loops = {id(e) for loop in kept for e, _ in loop}
         features = forge.loops_to_features(kept) + forge.edges_to_open_features(
-            search.edges, exclude_ids=in_loops, label_map={})
+            search.edges, exclude_ids=in_loops)
         clusters, _ = forge.build_hierarchy(features)
         return clusters
 

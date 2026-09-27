@@ -201,7 +201,7 @@ def edge_styles_from_loop(loop) -> list:
 # Edge → OpenFeature — tracce non consumate da loop strutturali
 # ---------------------------------------------------------------------------
 
-def edges_to_open_features(edges: list, exclude_ids: set, label_map: dict) -> list:
+def edges_to_open_features(edges: list, exclude_ids: set) -> list:
     """
     Converte gli Edge non assorbiti da un loop strutturale in OpenFeature.
 
@@ -216,7 +216,6 @@ def edges_to_open_features(edges: list, exclude_ids: set, label_map: dict) -> li
     Args:
         edges:       lista di Edge prodotta da adapter.to_edges()
         exclude_ids: id(Edge) già assorbiti in loop strutturali
-        label_map:   {nome_layer: work_type} — tradotto in ContourRole
     """
     from ...model.feature import OpenFeature
     from ...core.primitives.segments import LineSeg

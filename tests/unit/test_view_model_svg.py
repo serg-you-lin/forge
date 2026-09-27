@@ -23,8 +23,8 @@ SPECIAL_LM = {"Piega": "bending", "bend": "bending", "MARK": "engrave",
               "special": "engrave", "Filettati": "threaded_hole", "Svasati": "countersink"}
 
 
-def _result(path, label_map=None):
-    doc = forge.load_dxf(str(path), tolerance=0.5, label_map=label_map)
+def _result(path, name_roles=None):
+    doc = forge.load_dxf(str(path), tolerance=0.5, role_rules=forge.name_rules(name_roles or {}))
     return forge.heal_and_detect(doc, features="all")
 
 

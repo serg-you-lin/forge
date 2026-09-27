@@ -83,13 +83,19 @@ Both are recipes over public steps. `heal()`'s steps (`split_labeled`,
 `close_free_gaps`, `find_loops`, `build_hierarchy`, ...) are exported one by one,
 so a consumer can compose its own order — see `docs/API.md` (the steps of `heal()`).
 
-## Bend / engrave layers you already know
+## Bend / engrave lines you already know how to recognize
 
-If the source file marks bend lines or engraving on named layers, tell `load_dxf`
-so it assigns the role up front instead of guessing:
+If you know how the source marks bend lines or engraving — by name, by dash,
+by colour, or a combination — tell `load_dxf` with rules, so it assigns the
+role up front instead of guessing. Rules are checked in order, the first
+match wins:
 
 ```python
-doc = forge.load_dxf("part.dxf", label_map={"Piega": "bending", "MARK": "engrave"})
+doc = forge.load_dxf("part.dxf", role_rules=[
+    *forge.name_rules({"Piega": "bending", "MARK": "engrave"}),
+    forge.RoleRule("construction", name_contains="constr", dashed=True),
+    forge.RoleRule("bending", dashed=True),
+])
 ```
 
 ---
@@ -152,7 +158,7 @@ forge.inspect_dxf("part.dxf")        # 1 — raw DXF entities: what's in the fil
 forge.inspect_document(doc)          # 2 — edges, primitives, node graph: what the adapter understood
 forge.inspect_result(result)         # 3 — the model: clusters, typed holes, bends, engraving, trash
 
-forge.inspect_file("part.dxf", label_map={"Piega": "bending"})   # all three, in order
+forge.inspect_file("part.dxf", role_rules=forge.name_rules({"Piega": "bending"}))   # all three, in order
 ```
 
 Everything prints to stdout. Use it when something on a real file doesn't come out
@@ -182,7 +188,7 @@ right and you need to see where in the chain it breaks.
 - **`load_pdf`** exists but is experimental — it returns raw edges, not a
   `ForgeDocument`, so it does not plug into `heal()` yet. Not in the public API.
 - **Geometric engraving inference** (`detect` finding engraving without a
-  `label_map`) is a planned no-op placeholder.
+  `role_rules`) is a planned no-op placeholder.
 - **`arc/arc` gaps beyond tolerance** are not auto-closed — raise `tolerance`.
 - If no closed outer contour can be formed, `result.is_valid` is `False` and
   `to_dxf` / `split` raise `ValueError` rather than emit a file of only trash.

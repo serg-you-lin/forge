@@ -21,7 +21,7 @@ import forge
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/examples/Multifeature.dxf"   # non tracciato: usa un tuo file se manca
 TOLERANCE = 0.5
-LABEL_MAP = {
+NAME_ROLES = {
     "Filettati": "threaded_hole",
     "Svasati":   "countersink",
     "Piega":     "bending",
@@ -35,7 +35,7 @@ print("#" * 70)
 forge.inspect_file(
     INPUT,
     tolerance=TOLERANCE,
-    label_map=LABEL_MAP,
+    role_rules=forge.name_rules(NAME_ROLES),
     run_heal=True,
     run_detect=True,
     entities=True,   # dettaglio entità nel livello 1
@@ -46,7 +46,7 @@ forge.inspect_file(
 #
 #   forge.inspect_dxf(INPUT, entities=True, limit=40)
 #
-#   doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
+#   doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 #   forge.inspect_document(doc, graph=True, limit=60)
 #
 #   result = forge.heal_and_detect(doc, features="all")

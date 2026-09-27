@@ -9,14 +9,17 @@ Non devi importare i moduli interni direttamente.
 Workflow consigliato (file singolo):
     import forge
 
-    doc = forge.load_dxf("pezzo.dxf", label_map={"Piega": "bending"})
-    # se il layer non basta: linetype_map={"DASHED": "bending"},
-    # color_map={"cyan": "engrave"} — seconda lane, sull'aspetto grezzo,
-    # usata solo dove label_map non ha già deciso dal layer
+    rules = [
+        forge.RoleRule("bending", name="Piega"),
+        forge.RoleRule("construction", name_contains="constr", dashed=True),
+    ]
+    doc = forge.load_dxf("pezzo.dxf", role_rules=rules)
+    # regole in ordine, vince la prima che matcha (D63);
+    # forge.name_rules({"Piega": "bending"}) per le sole regole sul nome
 
     result = forge.heal_and_detect(doc, label="pezzo", source_file="pezzo.dxf")
     # equivale a: result = forge.heal(doc, ...); forge.detect(result, "all")
-    # forge.detect(result) nudo classifica solo i ruoli da label_map/linetype_map/color_map
+    # forge.detect(result) nudo classifica solo i ruoli assegnati al load
 
     doc_out = forge.to_dxf(result, doc)
     forge.inject(result)
@@ -95,6 +98,8 @@ from .model         import (
 # da normalize_role, e is_structural_role dice se quel ruolo è contorno di
 # pezzo o arredo che heal terrà fuori dal grafo. Vedi INTERPRETER.md / D30.
 from .model.role      import normalize_role, is_structural_role
+# Regole del chiamante che assegnano il ruolo al load (D63).
+from .model.role_rule import RoleRule, name_rules
 # RoleStyle (D37): override esplicito colore/linetype/lineweight per ruolo,
 # indipendente dal formato — vedi rules/palette.py. Passato a to_dxf()/split()
 # via role_styles={ruolo: RoleStyle(...)}, oppure registrato una volta sola
@@ -221,6 +226,8 @@ __all__ = [
     # Ruoli — aggancio per un consumatore che marca la geometria pre-heal
     "normalize_role",
     "is_structural_role",
+    "RoleRule",
+    "name_rules",
     "RoleStyle",
     "register_role_style",
     "non_contour_candidates",

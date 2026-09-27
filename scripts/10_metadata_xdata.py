@@ -22,7 +22,7 @@ import forge
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/examples/Multifeature.dxf"
 TOLERANCE = 0.5
-LABEL_MAP = {"Filettati": "threaded_hole", "Svasati": "countersink",
+NAME_ROLES = {"Filettati": "threaded_hole", "Svasati": "countersink",
              "Piega": "bending", "MARK": "engrave"}
 OUTDIR = "pipeline_output"
 # -------------------------------------------------------------------------
@@ -42,7 +42,7 @@ forge.set_schema({
     "bbox":         ("ingombro",      None,     "calculated"),
 })
 
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, label_map=LABEL_MAP)
+doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 result = forge.heal_and_detect(doc, label=base, features="all")
 forge.inject(result, data_injector=lambda cluster, txt: {"material": "AISI304", "thickness": 3.0})
 

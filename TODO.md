@@ -150,7 +150,7 @@ committato — la storia sta nel git log e in `MAP.md`).
   o si sovrappongono sulla stessa retta esatta, mai fra edge con un ruolo
   già assegnato — quel filtro sul ruolo resta l'unica vera protezione,
   perché decide qualcosa che la geometria da sola non può decidere (un
-  ruolo da label_map è dato di dominio, D30). Il dettaglio di due giri di
+  ruolo da role_rules è dato di dominio, D30). Il dettaglio di due giri di
   falsi positivi prima di arrivare qui (e del bug di arrotondamento che
   in realtà li causava, non il contatto o il numero di frammenti) è in
   MAP.md D50, non ripetuto qui.
@@ -289,7 +289,7 @@ eventualmente ML/vision.
 ## Regola da ricordare per tutta questa roba
 
 Mai parlare di layer DXF quando si parla di `role`/estensibilità di forge —
-`label_map` è solo una comodità dell'adapter DXF (mappa layer→ruolo), il
+`role_rules` sono solo il modo di assegnarlo al load (D63), il
 meccanismo vero è `edge.role`, assegnabile per qualunque criterio
 (raggio, posizione, geometria...), senza nessuna dipendenza da layer o
 formato. In questa conversazione è già capitato di spiegare una cosa così a

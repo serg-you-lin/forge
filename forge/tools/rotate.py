@@ -62,7 +62,7 @@ Point = Tuple[float, float]
 # esplicito (`hierarchy._make_inner`, verificato leggendo il codice): un
 # outer etichettato "outer" produce fori interni anch'essi "outer" se non
 # hanno un ruolo loro. Filtrare per stringa sarebbe quindi ambiguo proprio
-# nel caso comune (input senza label_map dedicato ai fori).
+# nel caso comune (input senza role_rules dedicate ai fori).
 #
 # Per un criterio più fine di "outer" / "outer+inner" (es. solo certi ruoli
 # dopo un detect(), o qualunque altra logica) componi la lista da solo:

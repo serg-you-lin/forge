@@ -131,7 +131,7 @@ def save_json(
 
     `extra_metadata(cluster) -> dict`, se passato, aggiunge campi extra del
     chiamante nell'output di ogni cluster — stesso idioma di
-    `data_injector`/`label_map`: callback esplicita, mai auto-discovery. Serve
+    `data_injector`: callback esplicita, mai auto-discovery. Serve
     a un consumatore con una detection propria (es. una `FlangeViewHint` sua)
     che forge non può conoscere (MAP.md D44).
     """

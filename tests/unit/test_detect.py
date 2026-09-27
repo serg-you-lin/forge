@@ -109,16 +109,16 @@ class TestDetectLabelMap(unittest.TestCase):
         doc = load("rect_special_countersink.dxf")
         self.msp = doc.modelspace()
 
-        label_map = {
+        name_roles = {
             "Svasati": "countersink"
         }
 
         from forge.tools.manufacturing_role import is_structural
-        self.result = forge.heal(forge.document_from_msp(self.msp, label_map=label_map),
+        self.result = forge.heal(forge.document_from_msp(self.msp, role_rules=forge.name_rules(name_roles)),
                                   is_structural=is_structural)
         forge.detect(self.result, features="all")
 
-    def test_001_label_map_override(self):
+    def test_001_name_rule_override(self):
         hole = self.result.clusters[0].features("holes")[0]
 
         self.assertEqual(hole.source, "labeled")
@@ -188,7 +188,7 @@ class TestDetectParametric(unittest.TestCase):
         return forge.heal(forge.document_from_msp(doc.modelspace()))
 
     def test_bare_detect_promotes_no_holes(self):
-        # detect(result) nudo = solo topologia pulita + lane label_map.
+        # detect(result) nudo = solo topologia pulita + ruoli assegnati al load.
         result = self._healed()
         forge.detect(result)
         self.assertEqual(sum(len(p.features("holes")) for p in result.clusters), 0)
@@ -224,8 +224,7 @@ class TestDetectParametric(unittest.TestCase):
 
 
 # -------------------------------------------------------------------
-# LINETYPE_MAP / COLOR_MAP — seconda lane di classificazione, sull'aspetto
-# grezzo invece che sul nome layer (usata solo dove label_map non decide).
+# ROLE_RULES sull'aspetto — tratteggio e colore invece del nome (D63).
 # -------------------------------------------------------------------
 
 class TestDetectStyleMap(unittest.TestCase):
@@ -244,7 +243,7 @@ class TestDetectStyleMap(unittest.TestCase):
         msp = self._rect_with_internal_lines(
             {"linetype": "DASHED"}, {},
         )
-        doc = forge.document_from_msp(msp, linetype_map={"DASHED": "bending"})
+        doc = forge.document_from_msp(msp, role_rules=[forge.RoleRule("bending", dashed=True)])
         result = forge.heal(doc)
         forge.detect(result)
 
@@ -256,7 +255,7 @@ class TestDetectStyleMap(unittest.TestCase):
         msp = self._rect_with_internal_lines(
             {}, {"color": 4},  # 4 = cyan ACI
         )
-        doc = forge.document_from_msp(msp, color_map={"cyan": "engrave"})
+        doc = forge.document_from_msp(msp, role_rules=[forge.RoleRule("engrave", color="cyan")])
         result = forge.heal(doc)
         forge.detect(result)
 
@@ -264,17 +263,17 @@ class TestDetectStyleMap(unittest.TestCase):
         self.assertEqual(len(cluster.features("engrave_lines")), 1)
         self.assertEqual(cluster.features("engrave_lines")[0].role, "engrave")
 
-    def test_003_color_map_accepts_aci_int_and_numeric_string(self):
+    def test_003_color_accepts_aci_int_and_numeric_string(self):
         for key in (4, "4"):
             msp = self._rect_with_internal_lines({}, {"color": 4})
-            doc = forge.document_from_msp(msp, color_map={key: "engrave"})
+            doc = forge.document_from_msp(msp, role_rules=[forge.RoleRule("engrave", color=key)])
             result = forge.heal(doc)
             forge.detect(result)
             self.assertEqual(len(result.clusters[0].features("engrave_lines")), 1, msg=f"key={key!r}")
 
-    def test_004_label_map_wins_over_color_map(self):
-        # label_map resta la lane autoritativa (D5): se il layer già assegna
-        # un ruolo, linetype_map/color_map non intervengono più.
+    def test_004_first_matching_rule_wins(self):
+        # D63: le regole sono in ordine, vince la prima che matcha — qui il
+        # nome viene prima del colore.
         doc = ezdxf.new("R2010")
         msp = doc.modelspace()
         msp.add_lwpolyline([(0, 0), (100, 0), (100, 100), (0, 100)], close=True)
@@ -282,8 +281,10 @@ class TestDetectStyleMap(unittest.TestCase):
 
         forge_doc = forge.document_from_msp(
             msp,
-            label_map={"Piega": "bending"},
-            color_map={"cyan": "engrave"},
+            role_rules=[
+                forge.RoleRule("bending", name="Piega"),
+                forge.RoleRule("engrave", color="cyan"),
+            ],
         )
         result = forge.heal(forge_doc)
         forge.detect(result)

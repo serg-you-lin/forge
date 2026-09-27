@@ -3,7 +3,7 @@ test_role_style.py
 -------------------
 Test per RoleStyle (MAP.md D37): override esplicito di colore/linetype/
 lineweight per ruolo in to_dxf()/split(), noto a forge o assegnato da un
-consumatore (label_map). L'override agisce sul layer, non sull'entità —
+consumatore (role_rules). L'override agisce sul layer, non sull'entità —
 tutto ciò che forge scrive è BYLAYER.
 """
 
@@ -39,7 +39,7 @@ def _rect_with_hole_and_frame():
 
     msp.add_line((200, 200), (220, 200), dxfattribs={'layer': 'FRAME'})
 
-    doc_in = forge.document_from_msp(msp, label_map={'FRAME': 'frame'})
+    doc_in = forge.document_from_msp(msp, role_rules=forge.name_rules({'FRAME': 'frame'}))
     result = forge.heal(doc_in, tolerance=0.05)
     forge.detect(result, features="all")
     return result, doc_in
