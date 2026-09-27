@@ -65,8 +65,8 @@ forge/
 │   ├── topology/     edge.py, grafo dei nodi, ricerca loop, detection pieghe;
 │   │                 noding.py (rete piana), outer_face.py (faccia esterna)
 │   ├── healing/      chiusura gap, normalizzazione (+ tassellature), gerarchia,
-│   │                 islands.py (isole per vicinanza)
-│   ├── heal.py       HealStep + heal()  — lettura dall'interno: file → modello
+│   │                 islands.py (isole per vicinanza), steps.py (i passi di heal)
+│   ├── heal.py       heal()             — lettura dall'interno: file → modello
 │   └── island.py     island()           — lettura per isole, dall'esterno
 │
 ├── model/        IL DOMINIO forge                     (dataclass pure + shapely)
@@ -151,33 +151,47 @@ lavora sul `ForgeDocument`.
 
 ### 2. `heal` → `ForgeResult` (topologia)
 
-Il passo difficile. Lavora su `doc.edges`, zero `ezdxf`. In ordine:
+Il passo difficile. Lavora su `doc.edges`, zero `ezdxf`. `heal()` è una
+ricetta: ogni passo è una funzione pubblica in `core/healing/steps.py` (D62),
+`heal()` le compone in quest'ordine e scrive i warning che le raccontano. Un
+consumatore (framer) compone gli stessi passi come gli serve.
 
-1. **estrae** gli `Edge` con ruolo deciso e non strutturale (`engrave`,
-   `marking`, `bending` da `label_map`, o uno slug di un consumatore come
-   `frame` / `title_block`): non entrano nel grafo — sono marcatura o arredo
-   del disegno, non contorno. Il predicato è `model/role.is_structural_role`
-   (D30); è il punto d'aggancio per un consumatore che marca la geometria prima
-   di `heal` (framer) — `forge.non_contour_candidates(doc)` (D55) espone lo
-   stesso criterio del passo 3 sotto, per decidere QUALI edge marcare qui
-2. **preprocess**: costruisce il grafo dei nodi, trova gli endpoint liberi entro
-   `tolerance`, chiude i gap prolungando i segmenti alla loro intersezione reale
-3. **detection non-contorno**: gli `Edge` con entrambi gli endpoint su nodi di
-   branching (grado > 2) e il centroide fuori dal convex hull della loro
-   componente sono candidati a non essere contorno (D49) — escono dal grafo per
-   non rompere la ricerca dei loop. `heal` non decide cosa siano: resta a
-   `detect()` (che li interpreta come piega) o a un altro consumatore che
-   preferisce decidere da sé (`non_contour_candidates`, D55)
-4. **ricerca loop**, con una scala di strategie sempre meno esatte:
+1. **normalizza** (`merge_collinear_overlaps`, `merge_cocircular_overlaps`,
+   `weld_degenerate_linesegs`): rette e archi tracciati a spezzoni fusi,
+   `LineSeg` sotto 0.05 mm saldati in un nodo (D50, D52, D56)
+2. **estrae** (`split_labeled`) gli `Edge` con ruolo deciso e non strutturale
+   (`engrave`, `marking`, `bending` da `label_map`, o uno slug di un
+   consumatore come `frame` / `title_block`): non entrano nel grafo — sono
+   marcatura o arredo del disegno, non contorno. Il predicato è
+   `model/role.is_structural_role` (D30); è il punto d'aggancio per un
+   consumatore che marca la geometria prima di `heal` (framer) —
+   `forge.non_contour_candidates(doc)` (D55) espone lo stesso criterio del
+   passo 4 sotto, per decidere QUALI edge marcare qui
+3. **chiude i gap** (`close_free_gaps`): estremi liberi entro `tolerance`
+   portati alla loro intersezione reale
+4. **detection non-contorno** (`find_non_contour_edges`): gli `Edge` con
+   entrambi gli endpoint su nodi di branching (grado > 2) e il centroide fuori
+   dal convex hull della loro componente sono candidati a non essere contorno
+   (D49) — escono dal grafo per non rompere la ricerca dei loop. `heal` non
+   decide cosa siano: resta a `detect()` (che li interpreta come piega) o a un
+   altro consumatore che preferisce decidere da sé
+5. **ricerca loop** (`find_loops` → `LoopSearch`, che dice quale gradino ha
+   chiuso), con una scala di strategie sempre meno esatte:
    - grafo esatto (uguaglianza delle tuple arrotondate)
-   - se fallisce: clustering degli endpoint entro `tolerance` per trovare gli
-     angoli "quasi chiusi", poi chiusura vera all'intersezione
-   - se fallisce: loop sul grafo clusterizzato tollerante (con warning: la
-     discrepanza sopravvive nell'output)
-   - ultima spiaggia: `shapely.polygonize` sui segmenti discretizzati
-5. **costruzione gerarchia**: quale loop contiene quale → albero di contenimento
-   `outer` / `inner`. `heal` si ferma qui: **non** decide hole vs inner (D15) —
-   ogni loop contenuto è un `ForgeContour` in `cluster.inners`.
+   - se restano estremi liberi (D57): clustering degli endpoint entro
+     `tolerance` per trovare gli angoli "quasi chiusi", poi chiusura vera
+     all'intersezione (`repair_merged_corners`)
+   - se non chiude ancora: loop sul grafo clusterizzato tollerante (con
+     warning: la discrepanza sopravvive nell'output)
+   - se nessun gradino chiude, `heal()` passa all'ultima spiaggia:
+     `polygonize_edges` sui segmenti discretizzati, che dà già i contorni
+     (`polygons_to_features`, geometria nativa persa)
+6. **loop → feature** (`structural_loops`, `loops_to_features`): un loop con un
+   edge di ruolo non strutturale non è contorno
+7. **costruzione gerarchia** (`build_hierarchy`): quale loop contiene quale →
+   albero di contenimento `outer` / `inner`. `heal` si ferma qui: **non** decide
+   hole vs inner (D15) — ogni loop contenuto è un `ForgeContour` in
+   `cluster.inners`.
 
 Se non si forma **nessun** contorno esterno chiuso, il risultato è dichiarato
 **non valido** (`is_valid = False`) — come il modelspace vuoto. `to_dxf` si
@@ -330,6 +344,10 @@ Onestà sullo stato — dettagli e motivazioni sono in `MAP.md` (sezione
 - **`load_pdf`** ritorna `list[Edge]` invece di un `ForgeDocument` → non si
   aggancia a `heal()`. Congelato (MAP.md D10).
 - **`detect._detect_engrave`** è ancora un placeholder no-op (MAP.md D13).
+- **`heal()` con solo edge etichettati** (tutti con ruolo non strutturale):
+  errore "Nessuna geometria chiusa trovata" e `trash_entities` **vuota** — gli
+  etichettati non ci arrivano, a differenza di ogni altro caso invalido.
+  Comportamento di sempre, conservato tale e quale nella fase B (D62).
 
 Tutta la storia dei refactor già chiusi (bridge/shape eliminato, dispatcher
 entità→primitiva unificato, `Edge` spostato da `adapters/` a
