@@ -80,8 +80,8 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `refactor/outer-scan` (phases A and B of the `island()` / heal-steps
-refactor done — D58–D62; bump to 0.7.0 on merge), version `0.6.25`. Suite: 812
+Branch: `main` — the `island()` / heal-steps refactor (D58–D62) is merged,
+version `0.7.0`. Suite: 812
 passed + 47 subtests as of the latest decision below (D62), golden all green.
 
 Still genuinely open:
@@ -1688,7 +1688,7 @@ identical before and after each of the four commits. Kept as-is, noted in ARCHIT
 every edge is labeled non-structural, `heal()` returns the "no closed geometry"
 error with an empty `trash_entities` (the labeled edges don't reach it).
 Suite: 812 passed (17 new in `test_heal_steps.py`, including a composition
-test: the steps chained by hand give `heal()`'s clusters).
+test: the steps chained by hand give `heal()`'s clusters). `main` → 0.7.0.
 
 ---
 
