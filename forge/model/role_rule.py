@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Union
 
 from .role import ContourRole, normalize_role
-from .style import EdgeStyle
+from .style import VALID_DASH_KINDS, EdgeStyle
 
 # Nomi colore ACI standard (1-9 + "pink" di rules/palette.py) → indice.
 _ACI_NAME_TO_INT = {
@@ -42,23 +42,30 @@ class RoleRule:
         name          : nome del gruppo sorgente, uguale (maiuscole ignorate)
         name_contains : sottostringa del nome del gruppo (maiuscole ignorate)
         dashed        : True = solo tratteggiate, False = solo continue
+        dash          : forma del tratto, "continuous" / "uniform" / "chain"
         color         : colore ACI, intero o nome standard ("cyan")
     """
     role:          str
     name:          Optional[str]              = None
     name_contains: Optional[str]              = None
     dashed:        Optional[bool]             = None
+    dash:          Optional[str]              = None
     color:         Optional[Union[int, str]]  = None
 
     def __post_init__(self):
         if (self.name is None and self.name_contains is None
-                and self.dashed is None and self.color is None):
+                and self.dashed is None and self.dash is None and self.color is None):
             raise ValueError(f"RoleRule({self.role!r}) senza condizioni: matcherebbe tutto")
         self.role = normalize_role(self.role)
         if self.name is not None:
             self.name = self.name.lower()
         if self.name_contains is not None:
             self.name_contains = self.name_contains.lower()
+        if self.dash is not None:
+            self.dash = self.dash.lower()
+            if self.dash not in VALID_DASH_KINDS:
+                raise ValueError(f"RoleRule({self.role!r}): dash {self.dash!r} non valido, "
+                                 f"attesi {sorted(VALID_DASH_KINDS)}")
         if self.color is not None:
             self.color = _color_index(self.color)
 
@@ -70,6 +77,8 @@ class RoleRule:
         if self.name_contains is not None and self.name_contains not in name:
             return False
         if self.dashed is not None and style.is_dashed != self.dashed:
+            return False
+        if self.dash is not None and style.dash_kind != self.dash:
             return False
         if self.color is not None and style.color != self.color:
             return False

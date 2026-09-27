@@ -80,8 +80,8 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `main` — `role_rules` (D63) merged, version `0.7.1`.
-Suite: 824 passed + 47 subtests as of the latest decision below (D63),
+Branch: `main` — `RoleRule(dash=...)` (D64) on top of `role_rules` (D63).
+Suite: 833 passed + 47 subtests as of the latest decision below (D64),
 golden all green.
 
 Still genuinely open:
@@ -1732,6 +1732,33 @@ Not touched, same family, still layer-named: `ignore_layers` and the
 hardcoded `_NON_STRUCTURAL_LAYERS` (`trash`/`annotation`, forge's own output
 layers read back) in the DXF adapter. Suite: 824 passed (14 new in
 `test_role_rule.py`, 2 `label_to_role` tests removed), golden unchanged. `main` → 0.7.1.
+
+### D64 — the shape of the dash: `EdgeStyle.dash_kind`, `RoleRule(dash=...)` ✅
+Framer needed to tell two families of dashed lines apart: chain lines (axes,
+construction) become `construction` and leave the islands; uniform dashes
+(hidden edges, bends drawn hidden) stay. "Every dashed line is
+construction" was tried and failed: the side views of bent sheets
+(`SHEETCODE`, `SHEETCODE_1`) lost half their outline, because there the bend
+is drawn hidden. `dashed=True` (D63) cannot express it — both families have
+gaps.
+
+- **Extends D63, does not reopen it.** The signal was already in forge
+  (`linetype_pattern`); what was missing was the classification. Doing it in
+  the caller would mean re-reading raw patterns outside the model.
+- **`EdgeStyle.dash_kind`**: `continuous` (no gap), `uniform` (one mark
+  repeated — equal dashes, or dots only), `chain` (marks of different
+  lengths alternate — long dash + short dash or dot). Only the marks (≥ 0)
+  count, not the gaps. Two marks differ if they differ by more than 5% of
+  the pattern's total length: relative, so the scale doesn't matter, and a
+  rounding difference doesn't turn a dash into a chain. Checked on every
+  styled edge in `tests/examples`: all chain patterns → `chain`, all dash
+  patterns → `uniform`.
+- **`RoleRule.dash`** matches on it; `dashed` stays as "has a gap" (both
+  families). The mapping chain → construction is framer's content, not
+  forge's (D63). A bend drawn as a chain stays `bending` if a rule for it
+  comes first — ordering already covers it, nothing new needed.
+
+Suite: 833 passed (9 new in `test_role_rule.py`), golden unchanged.
 
 ---
 
