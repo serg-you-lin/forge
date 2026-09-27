@@ -34,8 +34,7 @@ from typing import List, Optional
 
 from ..model.document import ForgeDocument
 from ..core.topology.edge import Edge
-from ..core.topology.graph import build_node_graph
-from ..core.topology.non_contour_edges import NonContourEdgeDetector
+from ..core.healing.steps import find_non_contour_edges
 
 
 def non_contour_candidates(doc: ForgeDocument, tolerance: Optional[float] = None) -> List[Edge]:
@@ -49,7 +48,5 @@ def non_contour_candidates(doc: ForgeDocument, tolerance: Optional[float] = None
     edges = list(doc.edges)
     tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
 
-    graph = build_node_graph(edges, epsilon=0.0)
-    excluded_ids = NonContourEdgeDetector(tol).detect(graph, edges)
-
+    excluded_ids = find_non_contour_edges(edges, tol)
     return [e for e in edges if id(e) in excluded_ids]
