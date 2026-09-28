@@ -1765,7 +1765,7 @@ In `island()` every hole crossed by its axes came out as 2–4 ArcSegs:
 `split_at_crossings` cuts the circle where the axes cross it (the outer face
 needs those nodes, D59), and the loops are built from the pieces.
 `circular_geometry` only recognizes a single primitive, so `detect` saw no
-holes (`leva_01`: 3 holes drawn, 0 detected).
+holes (on one sample sheet: 3 holes drawn, 0 detected).
 
 - **Two merges, two jobs.** The merge in `_normalize` (before the cut) stays:
   it removes the same line/arc traced twice in overlapping pieces, which
@@ -1781,8 +1781,8 @@ holes (`leva_01`: 3 holes drawn, 0 detected).
 - **The polygon is untouched**: it is still built from the pieces, so which
   contours are found does not change — only how they are described. Checked
   on the 36 sheets of `tests/examples/islands`: outer areas identical on all,
-  holes +3 on each `leva_01`, +2 `SHEETCODE`, +1 `SHEETCODE`, +1
-  `SHEETCODE` (the 2 holes of the bottom view; the 8 small inners of the main
+  holes +3 on each of two sheets (same part), +2, +1 and +1 on three
+  others (on `anch_04`: the 2 holes of the bottom view; the 8 small inners of the main
   view are slots, correctly not holes); contour segments −10…−70%; time
   unchanged.
 - Ray casting to choose what to cut was considered and not taken: rays see
@@ -1817,7 +1817,7 @@ the text is not forge's job.
 - Not done: `Dimension.references` (which circle a diameter dimension
   measures). On the same sample, hole callouts live in diameter dimensions
   (`M<>`, `%%c<>`), not in leaders — next candidate. Comparing a callout with
-  the measured geometry (scale, `leva_01` drawn at 1.25:1) is framer's.
+  the measured geometry (scale: one sample sheet is drawn at 1.25:1) is framer's.
 
 Suite: 841 passed (6 new in `test_anchor_annotations.py`), golden unchanged.
 
@@ -1865,7 +1865,7 @@ takes the process (snapbend).
   golden are built on it; it goes with the detection when that moves out.
 - On `tests/examples/islands` (36 files, inner contours): 224 circles, 33
   stadiums, 43 rectangles, 52 polygons, 652 other — the "other" are mostly the
-  faces between a view's lines. `SHEETCODE`: the 6 slots of the main view
+  faces between a view's lines. `anch_04`: the 6 slots of the main view
   come out as stadiums. DXF with one layer per shape in
   `output/esperimento_agente/shape/`.
 - Seen along the way, not changed: `to_dxf` writes an inner contour with a
@@ -1903,7 +1903,7 @@ circle a callout belongs to. Federico: do forge's part first, then snapdraw.
   contour (a thread drawn as an open ¾ arc, diameters measured on a side
   view). An `M5` whose thread arc is open lands on the core circle (Ø4.13)
   within 0.5 — near, not exact; snapdraw decides.
-- `measured_value` is in drawing units: `leva_01` measures 6.625 where
+- `measured_value` is in drawing units: a sheet drawn at 1.25:1 measures 6.625 where
   `∅5,3` is written. The scale check is snapdraw's.
 
 - **Anchoring golden** (`tests/real/test_golden_anchoring.py`): 8 sheets of
@@ -1916,7 +1916,7 @@ circle a callout belongs to. Federico: do forge's part first, then snapdraw.
 - **These copies were saved again, and lost dimension text.** Anchors are
   identical to the originals on all 8, but the author's text is not:
   tolerances dropped (`93±0.1` → `93`), and the linear scale factor is gone
-  (`anch_07` = `leva_01`: `∅5,3` → `6.63`, `12` → `15`; `anch_02`: `Ø11` →
+  (on `anch_07`: `∅5,3` → `6.63`, `12` → `15`; on `anch_02`: `Ø11` →
   `Ø22`). Fine for anchoring; not usable for snapdraw's scale check — that
   needs the originals. Found on the way: an override may carry `\U+00B0`
   escapes (`n\U+00b016 fori`); the adapter now decodes them (`n°16 fori`).
@@ -1943,6 +1943,19 @@ golden), geometry golden unchanged.
 
 ## Federico's notes (open questions, kept until they become decisions)
 
+- **Git audit before 1.0.0 (Federico: mandatory).** Decide what may live in
+  git and what may not. Rule already fixed: nothing that identifies a client
+  goes to GitHub — no client names, no original drawing names or part codes,
+  no title-block content; a drawing enters git only after Federico renames
+  and cleans it (as `tests/examples/golden_anchoring/anch_NN`). Known to
+  check: older MAP entries still name `islands` sheets (the D5x–D6x
+  entries on healing and the outer face); `scripts/18_outer_scan.py` lists
+  their paths; the git history holds them too (earlier MAP versions, the
+  first version of `test_golden_anchoring.py`) — cleaning history means
+  rewriting it and force-pushing, a decision of its own; fixture and golden
+  names under `tests/examples/golden*` (part numbers); `.gitignore` of
+  `tests/examples` with force-added exceptions — make it explicit which
+  folders are in and why.
 - **Process detection → snapbend (direction, not a decision — Federico).**
   Holes (the 32.1 mm drill threshold, countersink/threaded), bends and
   engraving in `detect_flat` are manufacturing knowledge, not geometry: they
