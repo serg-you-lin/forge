@@ -7,8 +7,9 @@ quota e freccia, l'elemento a cui `anchor_annotations` la lega
 forma (`contour_shape`) e non col suo indice — un riordino degli `inners`
 non è una regressione, un aggancio a un altro cerchio sì.
 
-Disegni e golden sono locali (`tests/examples/islands/`, fuori da git: disegni
-di clienti). Senza i disegni il test si salta.
+Disegni in `tests/examples/golden_anchoring/` (`anch_NN.dxf`, fogli del campione
+`islands` rinominati), golden in `json/` accanto. Senza i disegni il test si
+salta.
 
 Golden da rigenerare solo dopo aver verificato a mano che gli agganci sono
 giusti, mai per far passare un test:
@@ -27,22 +28,10 @@ sys.path.insert(0, str(project_root))
 import forge
 from forge.model.annotation import Dimension, Leader
 
-ISLANDS_DIR = project_root / "tests" / "examples" / "islands"
-GOLDEN_DIR = ISLANDS_DIR / "golden_anchoring"
+SOURCE_DIR = project_root / "tests" / "examples" / "golden_anchoring"
+GOLDEN_DIR = SOURCE_DIR / "json"
 
-# Gli originali, non le varianti _nf: lì il testo delle quote è già perso
-# (∅5,3 diventa 6.63). Scelti fra quelli con quote; SHEETCODE escluso per il
-# tempo (~5 s).
-FILES = [
-    "PARTCODE.dxf",
-    "SHEETCODE.dxf",
-    "SHEETCODE.dxf",
-    "SHEETCODE.dxf",
-    "SHEETCODE.dxf",
-    "SHEETCODE.dxf",
-    "leva_01.dxf",
-    "SHEET_PD.dxf",
-]
+FILES = [f"anch_{i:02d}.dxf" for i in range(1, 9)]
 
 
 def _element(result, path):
@@ -84,7 +73,7 @@ class TestGoldenAnchoring(unittest.TestCase):
 
 def _make_test(name: str):
     def test(self):
-        dxf_path, golden_path = ISLANDS_DIR / name, _golden_path(name)
+        dxf_path, golden_path = SOURCE_DIR / name, _golden_path(name)
         if not dxf_path.exists() or not golden_path.exists():
             self.skipTest(name)
         expected = json.loads(golden_path.read_text(encoding="utf-8"))["annotations"]
@@ -102,7 +91,7 @@ for _name in FILES:
 def generate():
     GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
     for name in FILES:
-        dxf_path = ISLANDS_DIR / name
+        dxf_path = SOURCE_DIR / name
         if not dxf_path.exists():
             print(f"  manca: {name}")
             continue
