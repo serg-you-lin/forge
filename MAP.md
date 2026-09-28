@@ -1859,6 +1859,18 @@ Suite: 841 passed, golden unchanged. `main` → 0.8.0.
 
 ## Federico's notes (open questions, kept until they become decisions)
 
+- **Process detection → snapbend (direction, not a decision — Federico).**
+  Holes (the 32.1 mm drill threshold, countersink/threaded), bends and
+  engraving in `detect_flat` are manufacturing knowledge, not geometry: they
+  belong to snapbend (ex bendly), which already consumes forge through
+  `heal_and_detect`. forge would keep the geometric predicates
+  (`circular_geometry`, `NonContourEdgeDetector`, diameter, orientation) and
+  the open overlay `cluster.detected` (D44), where snapbend writes its
+  features like any external tool. Still to settle: the bare `detect_flat`
+  lane (load-time `role_rules` + topology cleanup) is not sheet-metal and may
+  stay in forge under another name. Cost: `heal_and_detect`,
+  `split_to_files`, writeback, the hole/bending output layers of `to_dxf` and
+  the golden suite (`features="all"`) all assume forge finds holes and bends.
 - `inspect_file`/`inspect_dxf` (level 1) are hardcoded to DXF. Fine for now —
   it's already the only real format adapter forge has. `inspect_document`
   (level 2) already works on any `ForgeDocument`, including geometry from
