@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 
 from .core.heal import heal
-from .tools.detect import detect
+from .tools.detect import detect_flat
 from .tools.manufacturing_role import is_structural as _manufacturing_is_structural
 from .io.dxf import split, cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
 from .tools.thresholds import HOLE_DIAMETER_THRESHOLD
@@ -30,29 +30,29 @@ def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file=""
                     bending_tolerance: float = 1.0,
                     engrave_tolerance: float = 1.0) -> ForgeResult:
     """
-    heal() + detect() in un colpo solo — la via del 90% dei chiamanti.
+    heal() + detect_flat() in un colpo solo — la via del 90% dei chiamanti.
 
     Equivale a:
         result = forge.heal(doc, tolerance=..., label=..., source_file=...)
         if result.is_valid and result.clusters:
-            forge.detect(result, features="all", ...)
+            forge.detect_flat(result, features="all", ...)
 
-    A differenza di `detect()` nudo (che fa solo la lane dei ruoli assegnati al load + pulizia
+    A differenza di `detect_flat()` nudo (che fa solo la lane dei ruoli assegnati al load + pulizia
     topologia), qui `features` è `"all"` di default: fori, pieghe e incisioni
     vengono classificati. Passare `features=None` per la sola topologia pulita.
 
-    `detect()` viene saltato se `heal()` non produce cluster validi (il result
+    `detect_flat()` viene saltato se `heal()` non produce cluster validi (il result
     torna comunque, con `is_valid=False` e gli errori popolati). I parametri
-    `features` / `max_drill_diameter` / `*_tolerance` sono quelli di `detect()`.
+    `features` / `max_drill_diameter` / `*_tolerance` sono quelli di `detect_flat()`.
 
-    Restano disponibili `heal()` e `detect()` separati: un renderer o un
+    Restano disponibili `heal()` e `detect_flat()` separati: un renderer o un
     nesting tool possono volere la sola topologia.
     """
     result = heal(doc, tolerance=tolerance, label=label, source_file=source_file,
                   is_structural=_manufacturing_is_structural)
 
     if result.is_valid and result.clusters:
-        detect(result,
+        detect_flat(result,
                features=features,
                max_drill_diameter=max_drill_diameter,
                bending_tolerance=bending_tolerance,
@@ -80,7 +80,7 @@ def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
     if not result.is_valid or not result.clusters:
         return result
 
-    detect(result, features="all")
+    detect_flat(result, features="all")
     drawings = split(result, doc, namer=namer,
                      include_annotations=include_annotations,
                      min_area=min_area, exclude_types=exclude_types,

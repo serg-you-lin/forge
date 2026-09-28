@@ -68,7 +68,7 @@ class GeometryAdapter(ForgeAdapter):
     "unknown": non è un problema per il contorno più esterno di una
     parte, a cui HierarchyBuilder assegna comunque OUTER per posizione
     nell'albero di contenimento — serve solo per far riconoscere fori/inner
-    espliciti prima che detect() li riclassifichi.
+    espliciti prima che detect_flat() li riclassifichi.
 
     Gli angoli di "arc" sono in GRADI (convenzione DXF/CAD, non i radianti di
     ArcSeg) — più naturale per chi consegna numeri calcolati a mano.

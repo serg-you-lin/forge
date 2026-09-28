@@ -78,7 +78,7 @@ def run_pipeline(
     )
 
     if do_detect:
-        forge.detect(
+        forge.detect_flat(
             result, features="all"
         )
 

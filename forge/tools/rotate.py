@@ -10,7 +10,7 @@ contiene chi, quali loop esistono restano identici — solo le coordinate
 cambiano), quindi non c'è bisogno di ricostruire l'albero di contenimento
 dopo aver ruotato. `rotate_result`/`rotate_cluster` trasformano DIRETTAMENTE
 le strutture che `heal()` ha già prodotto (poligoni, segmenti, gli `all_arcs`
-grezzi che `detect()` userà) — non tornano alla geometria grezza pre-heal e
+grezzi che `detect_flat()` userà) — non tornano alla geometria grezza pre-heal e
 non richiamano `heal()`. Per lo stesso motivo `rotate_cluster` è economico e
 ripetibile: un futuro nester può chiamarlo in un ciclo per provare molti
 angoli su una singola parte, senza pagare il costo di un `heal()` ad ogni
@@ -18,9 +18,9 @@ tentativo.
 
 Cosa NON viene ruotato, di proposito, non per svista:
 - `cluster.detected`/`cluster.custom` — overlay a schema libero (D44), forge
-  non sa cosa contengono; se hai già fatto `detect()`, quei dati (bending
+  non sa cosa contengono; se hai già fatto `detect_flat()`, quei dati (bending
   line, fori tipizzati, ...) restano nelle coordinate vecchie dopo una
-  rotazione. Fai `detect()` DOPO aver ruotato, non prima.
+  rotazione. Fai `detect_flat()` DOPO aver ruotato, non prima.
 - `result.annotations` — stesso limite di `rotate_document`: nessun caso
   reale le ha ancora richieste. Se presenti, viene aggiunto un warning
   invece di lasciarle silenziosamente nel posto sbagliato.
@@ -65,7 +65,7 @@ Point = Tuple[float, float]
 # nel caso comune (input senza role_rules dedicate ai fori).
 #
 # Per un criterio più fine di "outer" / "outer+inner" (es. solo certi ruoli
-# dopo un detect(), o qualunque altra logica) componi la lista da solo:
+# dopo un detect_flat(), o qualunque altra logica) componi la lista da solo:
 # `cluster.outer.segments`/`cluster.inners[i].segments` sono già pubblici, e
 # `longest_segment()`/`chord_angle_deg()` (core/geometry.py) sono già
 # generici — non serve altra API qui, forge dà i mattoncini.
@@ -74,7 +74,7 @@ def structural_segments(result: ForgeResult, include_inners: bool = False) -> li
     """
     Segmenti nativi dei contorni strutturali di ogni cluster: sempre
     `cluster.outer`; anche `cluster.inners` (fori/loop interni non ancora
-    tipizzati — la tipizzazione hole/countersink/... vive in `detect()`,
+    tipizzati — la tipizzazione hole/countersink/... vive in `detect_flat()`,
     un overlay separato, vedi il modulo) se `include_inners=True`.
     """
     segments = []
@@ -147,15 +147,15 @@ def rotate_cluster(cluster: ForgeCluster, angle_rad: float, origin: Point = (0.0
 def rotate_result(result: ForgeResult, angle_rad: float, origin: Point = (0.0, 0.0)) -> ForgeResult:
     """
     Nuovo `ForgeResult` con ogni cluster (`rotate_cluster`), `trash_entities`
-    e `all_arcs` (usati da `detect()` per i fori filettati — vanno ruotati
-    anche loro o un `detect()` successivo leggerebbe coordinate vecchie)
+    e `all_arcs` (usati da `detect_flat()` per i fori filettati — vanno ruotati
+    anche loro o un `detect_flat()` successivo leggerebbe coordinate vecchie)
     ruotati di `angle_rad` attorno a `origin`. Nessun `heal()` richiamato: una
     rotazione rigida non cambia la topologia, solo le coordinate.
 
     `result.annotations` non sono ruotate (vedi il modulo) — se presenti,
     aggiunge un warning invece di lasciarle ferme senza avvisare.
     `cluster.detected` non è toccato — se presente su qualche cluster, un
-    warning ricorda di rifare `detect()` dopo la rotazione.
+    warning ricorda di rifare `detect_flat()` dopo la rotazione.
     """
     new_clusters = [rotate_cluster(c, angle_rad, origin) for c in result.clusters]
     new_trash = [
@@ -172,7 +172,7 @@ def rotate_result(result: ForgeResult, angle_rad: float, origin: Point = (0.0, 0
         )
     if any(c.detected is not None for c in result.clusters):
         new_warnings.append(
-            "rotate_result(): detected features non ruotate — richiama detect() DOPO la rotazione"
+            "rotate_result(): detected features non ruotate — richiama detect_flat() DOPO la rotazione"
         )
 
     return replace(

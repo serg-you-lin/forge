@@ -12,7 +12,7 @@ Non fa parte di `forge`: `forge` resta neutro e deterministico e non decide cosa
 sia un cartiglio (memoria `forge-neutral-substrate-agent-layer-above`). Framer
 usa le primitive di forge per fare il riconoscimento, assegna i ruoli
 (`frame`, `title_block`) e li riporta giù a forge come input — esattamente il
-pattern di `role_rules` e di `detect`.
+pattern di `role_rules` e di `detect_flat`.
 
 Nel disegno d'insieme, Framer è un **modulo dell'interprete** (`INTERPRETER.md`),
 sorella di `views.py` e dell'unfolder. È scorporato in un documento suo perché il
@@ -64,7 +64,7 @@ file CAD
 [3]  forge.heal(doc)                 → cluster puliti: frame e title_block fuori
    │                                   dal grafo → in trash_entities, non cluster
    ▼
-[4]  forge.detect(result)            → feature dentro i cluster (forge)
+[4]  forge.detect_flat(result)            → feature dentro i cluster (forge)
    │
    ▼
 [5]  Framer.read_titleblock(doc)     → legge le celle del cartiglio → metadati
@@ -164,11 +164,11 @@ cartiglio.
 
 L'altra metà dell'interfaccia, rimasta scoperta finché non è servita davvero
 (caso reale: "raggruppamento viste", una vista in pianta con una flangia in
-rilievo — `heal` la esclude dal grafo per topologia, ma solo `detect()` prova
+rilievo — `heal` la esclude dal grafo per topologia, ma solo `detect_flat()` prova
 a dire cosa sia, indovinando sempre "piega"): **come Framer trova QUALI edge
 sono ambigui**, prima ancora di decidere il ruolo. `forge.non_contour_candidates(doc)`
 espone lo stesso identico criterio topologico che `heal()` usa internamente
-(branching + centroide fuori dal hull, D49) senza passare da `detect()` e
+(branching + centroide fuori dal hull, D49) senza passare da `detect_flat()` e
 senza che Framer si riscriva una sua versione del test — stessa fonte di
 verità, mai una seconda che possa divergere. Framer filtra quei candidati con
 la sua logica (es. incrocio multi-vista) e assegna `edge.role` solo a quelli
@@ -219,7 +219,7 @@ step `titleblock.py` dell'interprete (`INTERPRETER.md` passo [8]) — o lo è.
 - [ ] recuperare `frame_detector.py` da `ccbb34f^` e riscriverlo sulle primitive
       di forge (`Edge` / `LineSeg`), niente `RawSegment`, niente `print("DEBUG")`
 - [x] decidere l'interfaccia con `heal` — **B**, chiusa in forge D30
-      (`is_structural_role` unico, `_split_labeled` generalizzato, `detect()`
+      (`is_structural_role` unico, `_split_labeled` generalizzato, `detect_flat()`
       non tocca i ruoli sconosciuti, `forge.normalize_role` pubblica)
 - [ ] rilevamento cartiglio (i segnali combinati, incrocio con `doc.annotations`)
 - [ ] `read_titleblock` — lettura delle celle

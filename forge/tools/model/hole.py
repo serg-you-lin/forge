@@ -2,7 +2,7 @@
 tools/model/hole.py
 
 Spostato da model/hole.py (branch refactor/detect-overlay): è output di
-detect(), non geometria di heal() (`hole-classification-belongs-in-detect`).
+detect_flat(), non geometria di heal() (`hole-classification-belongs-in-detect`).
 """
 from dataclasses import dataclass, field
 from typing import Optional, Tuple, Any, List

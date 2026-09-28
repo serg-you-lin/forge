@@ -18,10 +18,10 @@ class ForgeCluster:
     label:         str                                     = ""
     source_file:   str                                     = ""
     custom:        dict                                    = field(default_factory=dict)
-    # Overlay di detect() — o di QUALUNQUE altro tool, `detect()` non è
+    # Overlay di detect_flat() — o di QUALUNQUE altro tool, `detect_flat()` non è
     # privilegiato (D44). Tipizzato `Any` di proposito, non
     # `tools.model.DetectedFeatures`: model/ non nomina tools/ nemmeno sotto
-    # TYPE_CHECKING — `detect()` è solo il primo dei possibili consumatori,
+    # TYPE_CHECKING — `detect_flat()` è solo il primo dei possibili consumatori,
     # vive dentro forge perché sviluppato insieme, non perché model debba
     # sapere che esiste. `None` finché nessuno ci ha scritto: distingue "non
     # ho ancora fatto detect" da "ho fatto detect e non c'è nessuna

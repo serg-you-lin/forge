@@ -11,7 +11,7 @@ un foro, sa solo distinguere un contorno da un altro (MAP.md, "roles out of
 core").
 
 ``ContourRole`` NON è un universo chiuso: un consumatore (un layer sopra
-forge, l'interprete, un agente, o lo stesso ``detect()`` di forge — nessuno
+forge, l'interprete, un agente, o lo stesso ``detect_flat()`` di forge — nessuno
 dei due è privilegiato) può assegnare un ruolo che core non conosce —
 ``"hole"``, ``"frame"``, ``"title_block"``, qualunque slug — e forge lo
 conserva, lo tratta come non strutturale di default e in output lo scrive su
@@ -59,7 +59,7 @@ class ContourRole(str, Enum):
     INNER   = "inner"     # loop interno, trovato da heal()
     # Non c'è altro qui. `hole`/`countersink`/`threaded_hole`/`bending`/
     # `engrave`/`marking` sono vocabolario manifatturiero — vive in
-    # `tools/manufacturing_role.py`, a fianco di `detect()`, che è l'unico a
+    # `tools/manufacturing_role.py`, a fianco di `detect_flat()`, che è l'unico a
     # saperne il significato. `frame`/`title_block`/... sono slug di un
     # consumatore esterno (framer, ...) — stesso trattamento, nessuna
     # eccezione: core non distingue "il ruolo di detect" da "il ruolo di un

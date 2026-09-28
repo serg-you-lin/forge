@@ -43,7 +43,7 @@ def _run_heal_on_dxf(dxf_path: Path, tolerance: float, label_map: dict):
             flatten_z_flag=True,
         )
         result = forge.heal(msp, tolerance=tolerance, label_map=label_map)
-        forge.detect(result)
+        forge.detect_flat(result)
         forge.inject(result)
     return result
 
@@ -103,7 +103,7 @@ def _run_split_parent(parent_path: Path, tolerance: float):
             _, msp = forge.load_dxf(str(parent_path), explode_inserts=True)
             result = forge.heal(msp, tolerance=tolerance)
             if result.is_valid and result.parts:
-                forge.detect(result)
+                forge.detect_flat(result)
                 forge.write(msp, result)
                 forge.split(
                     msp,

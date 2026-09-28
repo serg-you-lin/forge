@@ -5,7 +5,7 @@ Test per HierarchyBuilder.
 
 D15: HierarchyBuilder costruisce SOLO l'albero di contenimento —
 `ForgeCluster(outer, inners=[ForgeContour...])`, zero `Hole`. La classificazione
-hole / countersink è di `detect()` (vedi tests/unit/test_detect.py).
+hole / countersink è di `detect_flat()` (vedi tests/unit/test_detect.py).
 
 I proxy ClosedFeature/OpenFeature vengono costruiti direttamente con Polygon
 shapely e primitive native — nessun adapter DXF, nessun file reale.
@@ -110,7 +110,7 @@ class TestNestingFlattened(unittest.TestCase):
     - piccolo : cerchio d=8  dentro medio
 
     heal() non riconosce più il countersink dal nesting (D15): consegna
-    entrambi i cerchi come inners piatti. Il riconoscimento è di detect().
+    entrambi i cerchi come inners piatti. Il riconoscimento è di detect_flat().
     """
 
     def setUp(self):

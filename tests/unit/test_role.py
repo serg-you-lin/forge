@@ -29,7 +29,7 @@ class TestNormalizeRole(unittest.TestCase):
 
     def test_ruolo_manifatturiero_e_uno_slug_qualunque_qui(self):
         # "hole"/"bending" non sono più costanti di model.role: sono
-        # vocabolario di tools.manufacturing_role, a fianco di detect().
+        # vocabolario di tools.manufacturing_role, a fianco di detect_flat().
         # Qui passano come uno slug qualunque, non come un ContourRole.
         self.assertEqual(normalize_role("hole"), "hole")
         self.assertNotIsInstance(normalize_role("hole"), ContourRole)
@@ -93,7 +93,7 @@ class TestManufacturingIsStructural(unittest.TestCase):
     """
     Predicato ESTESO — outer/inner (motore) + hole/countersink/threaded_hole
     (manifatturiero) — quello che `heal_and_detect()` inietta in
-    `heal(is_structural=...)`. Vive a fianco di detect(), non nel motore.
+    `heal(is_structural=...)`. Vive a fianco di detect_flat(), non nel motore.
     """
 
     def test_ruoli_manifatturieri_strutturali(self):
@@ -133,7 +133,7 @@ class TestConsumerRolesSurviveDetect(unittest.TestCase):
     """
     D30: un ruolo che forge non classifica (cornice, cartiglio, slug di un
     consumatore) sopravvive TUTTA la pipeline — load → heal → detect — con
-    geometria e ruolo intatti. Prima detect() ne faceva un ClassifiedEntity
+    geometria e ruolo intatti. Prima detect_flat() ne faceva un ClassifiedEntity
     scollegato che l'exporter non riscriveva → geometria persa.
     """
 
@@ -162,7 +162,7 @@ class TestConsumerRolesSurviveDetect(unittest.TestCase):
                           if role_str(getattr(t, "role", "")) == "frame")
         self.assertGreater(frame_prima, 0)
 
-        forge.detect(result, features="all")
+        forge.detect_flat(result, features="all")
 
         frame_dopo = sum(1 for t in result.trash_entities
                          if role_str(getattr(t, "role", "")) == "frame")

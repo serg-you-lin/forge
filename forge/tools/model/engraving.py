@@ -2,9 +2,9 @@
 tools/model/engraving.py
 
 Spostato da model/engraving.py (branch refactor/detect-overlay): è output di
-detect(), non geometria di heal().
+detect_flat(), non geometria di heal().
 
-Incisione rilevata da detect().
+Incisione rilevata da detect_flat().
 
 Un solo tipo: `Engraving`. Un'incisione è concettualmente una traccia aperta
 (N segmenti su layer engrave). Un contorno chiuso su layer engrave NON viene
@@ -15,7 +15,7 @@ riassemblato in un loop unico — resta N segmenti separati (scelta di progetto)
 
 Doppio binario di provenienza, identico a Hole:
     source="labeled"   → ruolo assegnato da role_rules al load   (confidence 1.0)
-    source="geometric" → inferenza geometrica in detect()        (confidence < 1.0)
+    source="geometric" → inferenza geometrica in detect_flat()        (confidence < 1.0)
 """
 
 from __future__ import annotations

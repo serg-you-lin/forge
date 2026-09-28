@@ -36,8 +36,8 @@ import forge
 
 doc    = forge.load_dxf("part.dxf", tolerance=0.5)   # -> ForgeDocument
 result = forge.heal_and_detect(doc)                  # topology + holes/bends/engraving
-#   == forge.heal(doc) then forge.detect(result, "all"); call them separately if
-#      you only need the topology. Bare forge.detect(result) does not classify
+#   == forge.heal(doc) then forge.detect_flat(result, "all"); call them separately if
+#      you only need the topology. Bare forge.detect_flat(result) does not classify
 #      holes — pass features ("holes" / "bending" / "engrave" / "all").
 
 if not result.is_valid:
@@ -109,7 +109,7 @@ load_dxf(path)  ──►  ForgeDocument   (edges + annotations + source_meta)
      heal(doc)  ──►  ForgeResult      topology: gaps closed, loops found,
                           │            outer / inner containment tree (no holes yet)
                           ▼
-  detect(result, "all")               semantics: hole type, bend lines, engraving
+  detect_flat(result, "all")               semantics: hole type, bend lines, engraving
                           │            (mutates result in place, returns it)
                           │            heal + detect together: heal_and_detect(doc)
                           ▼
@@ -187,7 +187,7 @@ right and you need to see where in the chain it breaks.
   **discretized** in `to_svg` / `to_view_model` (which are for viewing, not cutting).
 - **`load_pdf`** exists but is experimental — it returns raw edges, not a
   `ForgeDocument`, so it does not plug into `heal()` yet. Not in the public API.
-- **Geometric engraving inference** (`detect` finding engraving without a
+- **Geometric engraving inference** (`detect_flat` finding engraving without a
   `role_rules`) is a planned no-op placeholder.
 - **`arc/arc` gaps beyond tolerance** are not auto-closed — raise `tolerance`.
 - If no closed outer contour can be formed, `result.is_valid` is `False` and

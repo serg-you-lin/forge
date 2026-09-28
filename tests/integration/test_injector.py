@@ -56,7 +56,7 @@ def _heal_and_inject(dxf_name, name_roles=None, data_injector=None, interpreter=
         load(dxf_name).modelspace(), role_rules=forge.name_rules(name_roles or {})
     )
     result = forge.heal(doc, is_structural=is_structural)
-    forge.detect(
+    forge.detect_flat(
         result, features="all"
     )
     forge.inject(result, data_injector=data_injector)
@@ -197,7 +197,7 @@ class TestInjectDataInjector(unittest.TestCase):
             role_rules=forge.name_rules({"BEND": "bending", "MARK": "engrave"}),
         )
         self.result = forge.heal(self.doc)
-        forge.detect(self.result, features="all")
+        forge.detect_flat(self.result, features="all")
 
     def test_001_data_injector_viene_chiamato(self):
         """Il data_injector deve essere chiamato e il risultato finire in custom."""

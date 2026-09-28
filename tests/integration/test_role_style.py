@@ -41,7 +41,7 @@ def _rect_with_hole_and_frame():
 
     doc_in = forge.document_from_msp(msp, role_rules=forge.name_rules({'FRAME': 'frame'}))
     result = forge.heal(doc_in, tolerance=0.05)
-    forge.detect(result, features="all")
+    forge.detect_flat(result, features="all")
     return result, doc_in
 
 

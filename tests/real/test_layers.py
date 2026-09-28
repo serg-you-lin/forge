@@ -54,7 +54,7 @@ def _run_pipeline(dxf_path: Path) -> tuple:
         source_file=dxf_path.name,
         is_structural=is_structural,
     )
-    forge.detect(result, features="all", bending_tolerance=0.2)
+    forge.detect_flat(result, features="all", bending_tolerance=0.2)
     doc_out = forge.to_dxf(result, source_doc)
 
     return source_doc, doc_out, result
@@ -235,7 +235,7 @@ class TestLineetteBastarde(unittest.TestCase):
             label=cls.dxf_path.stem,
             source_file=cls.dxf_path.name,
         )
-        forge.detect(cls.result, features="all")
+        forge.detect_flat(cls.result, features="all")
         cls.msp = forge.to_dxf(cls.result, src_doc).modelspace()
 
     def test_un_solo_part(self):

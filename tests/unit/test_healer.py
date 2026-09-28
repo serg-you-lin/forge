@@ -139,10 +139,10 @@ class TestHealerCircleHole(unittest.TestCase):
         doc = forge.load_dxf(load("rect_with_circle_hole.dxf"))
         self.result = forge.heal(doc)
         # heal() consegna solo il contorno interno; la promozione a foro è di
-        # detect(features="holes").
+        # detect_flat(features="holes").
         self.assertEqual(len(self.result.clusters[0].features("holes")), 0)
         self.assertEqual(len(self.result.clusters[0].inners), 1)
-        forge.detect(self.result, features="all")
+        forge.detect_flat(self.result, features="all")
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.cluster_count, 1)
@@ -179,7 +179,7 @@ class TestHealerCircleInner(unittest.TestCase):
 
 # ---------------------------------------------------------------------------
 # Coppia concentrica → countersink
-# heal() vede entrambi i CIRCLE come inners; detect(features="holes") li
+# heal() vede entrambi i CIRCLE come inners; detect_flat(features="holes") li
 # riconosce come countersink (piccolo → Hole, anello grande assorbito).
 # ---------------------------------------------------------------------------
 

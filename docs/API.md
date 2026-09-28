@@ -20,7 +20,7 @@ in fondo.
 
 1. [Apertura file](#1-apertura-file) — `load_dxf`, `document_from_msp`, `load_geometry`
 2. [Validazione](#2-validazione) — `validate`, `validate_result`
-3. [Elaborazione e render](#3-elaborazione-e-render) — `heal` / `island` e i suoi mattoni (core), `detect` / `anchor_annotations` / `inject` (tools), `to_dxf` / `split` (io), `heal_and_detect` / `split_to_files` (recipes)
+3. [Elaborazione e render](#3-elaborazione-e-render) — `heal` / `island` e i suoi mattoni (core), `detect_flat` / `anchor_annotations` / `inject` (tools), `to_dxf` / `split` (io), `heal_and_detect` / `split_to_files` (recipes)
 4. [Export](#4-export) — `save_json`, `to_json`, `save_xml`, `to_view_model`, `to_svg`, `save_svg`
 5. [Metadati XDATA](#5-metadati-xdata) — `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema`
 6. [Ispezione / debug](#6-ispezione--debug) — `inspect_dxf`, `inspect_document`, `inspect_result`, `inspect_file`
@@ -102,7 +102,7 @@ ruolo) lo scrive il chiamante (MAP.md D63).
 
 | campo | significato |
 |---|---|
-| `role` | ruolo assegnato, ripulito da `normalize_role`. Vocabolario aperto: `outer`, `inner`, `hole`, `bending`, `countersink`, `threaded_hole`, `engrave`, `marking` sono noti a forge/`detect`; qualunque altro slug (`frame`, `title_block`, …) è conservato, trattato come non strutturale e scritto in output su un layer col suo nome (MAP.md D27 / D31). |
+| `role` | ruolo assegnato, ripulito da `normalize_role`. Vocabolario aperto: `outer`, `inner`, `hole`, `bending`, `countersink`, `threaded_hole`, `engrave`, `marking` sono noti a forge/`detect_flat`; qualunque altro slug (`frame`, `title_block`, …) è conservato, trattato come non strutturale e scritto in output su un layer col suo nome (MAP.md D27 / D31). |
 | `name` | nome del gruppo sorgente, uguale (maiuscole ignorate). |
 | `name_contains` | sottostringa del nome del gruppo (maiuscole ignorate). |
 | `dashed` | `True` solo tratteggiate, `False` solo continue. Tratteggiata = il pattern del linetype ha almeno un vuoto (`EdgeStyle.is_dashed`), non il nome del linetype. Vale anche per le catene. |
@@ -304,7 +304,7 @@ costruisci un `ForgeResult` per altre vie.
 
 `heal` e `island` sono le due letture del motore (`forge/core/`), una
 dall'interno e una dall'esterno — il chiamante sceglie quella adatta al
-disegno; `detect` / `anchor_annotations` /
+disegno; `detect_flat` / `anchor_annotations` /
 `inject` sono stadi opzionali su un `ForgeResult` (`forge/tools/`, il caller
 sceglie quali e in che ordine); `to_dxf` / `split` sono renderer del modello
 (`forge/io/`); `heal_and_detect` / `split_to_files` sono le scorciatoie della
@@ -324,7 +324,7 @@ criterio a un consumatore, vedi sezione 8), trova i loop chiusi, costruisce
 l'albero di contenimento outer / inner.
 
 `heal()` **non classifica i fori** (D15): consegna solo `ForgeCluster(outer,
-inners=[ForgeContour...])`. La promozione a `Hole` è di `detect(features="holes")`.
+inners=[ForgeContour...])`. La promozione a `Hole` è di `detect_flat(features="holes")`.
 
 | parametro | significato |
 |---|---|
@@ -513,10 +513,10 @@ Nessuna **muta** l'input: ritornano liste/oggetti nuovi.
 ---
 
 
-### `detect`
+### `detect_flat`
 
 ```python
-forge.detect(
+forge.detect_flat(
     result: ForgeResult,
     features=None,                      # None/() | "all" | {"holes","bending","engrave"}
     *,
@@ -527,8 +527,10 @@ forge.detect(
 ```
 
 Il passo semantico: classifica le feature dentro le parti già trovate da `heal()`.
+Presuppone un pezzo piano visto dalla faccia (file da taglio, sviluppo): non va
+usata sulle viste di `island()` (MAP.md D67).
 
-`detect(result)` **nudo** fa solo il minimo: la lane dei ruoli assegnati al load
+`detect_flat(result)` **nudo** fa solo il minimo: la lane dei ruoli assegnati al load
 (`role_rules`, decisi in `load_dxf()`) e la pulizia della topologia.
 I contorni circolari restano `inners`, nessun `Hole` — è il default per il
 taglio laser.
@@ -537,16 +539,16 @@ Le lane geometriche sono **opt-in** via `features`:
 
 | chiamata | cosa fa in più |
 |---|---|
-| `detect(result, "holes")` | promuove a `Hole` i contorni circolari con Ø `< max_drill_diameter` (`plain` / `countersink` / `threaded`); i Ø maggiori restano contorni interni |
-| `detect(result, "bending")` | linee di piega geometriche (segmenti da bordo a bordo) |
-| `detect(result, "engrave")` | inferenza incisioni (oggi no-op, D13) |
-| `detect(result, "all")` | tutte e tre |
+| `detect_flat(result, "holes")` | promuove a `Hole` i contorni circolari con Ø `< max_drill_diameter` (`plain` / `countersink` / `threaded`); i Ø maggiori restano contorni interni |
+| `detect_flat(result, "bending")` | linee di piega geometriche (segmenti da bordo a bordo) |
+| `detect_flat(result, "engrave")` | inferenza incisioni (oggi no-op, D13) |
+| `detect_flat(result, "all")` | tutte e tre |
 
 **Muta** `result` in-place (parti, `trash_entities`, `classified_entities`) **e lo
-ritorna** — la catena resta esplicita: `result = forge.detect(result, "all")`.
+ritorna** — la catena resta esplicita: `result = forge.detect_flat(result, "all")`.
 Ogni feature trovata si attacca a `cluster.detected` (D44), leggibile con
 `cluster.features("holes"|"bending_lines"|"engrave_lines")` — `[]` se
-`detect()` non è mai girato. `forge.describe_features(cluster)` dà il
+`detect_flat()` non è mai girato. `forge.describe_features(cluster)` dà il
 conteggio ricco per tipo (fori per tipo, pieghe raggruppate, lunghezza
 incisioni).
 
@@ -559,7 +561,7 @@ incisioni).
 
 ```python
 result = forge.heal(doc)
-result = forge.detect(result, "all", max_drill_diameter=25.0)
+result = forge.detect_flat(result, "all", max_drill_diameter=25.0)
 ```
 
 ---
@@ -576,14 +578,14 @@ forge.heal_and_detect(
 ) -> ForgeResult
 ```
 
-`heal()` + `detect()` in un colpo solo — la via del 90% dei chiamanti. A
-differenza di `detect()` nudo, qui `features="all"` è il default: fori, pieghe e
-incisioni vengono classificati. `detect()` viene saltato se `heal()` non produce
+`heal()` + `detect_flat()` in un colpo solo — la via del 90% dei chiamanti. A
+differenza di `detect_flat()` nudo, qui `features="all"` è il default: fori, pieghe e
+incisioni vengono classificati. `detect_flat()` viene saltato se `heal()` non produce
 parti valide (il `result` torna comunque, con `is_valid=False` e gli errori
 popolati). I primi parametri sono quelli di `heal()`, gli altri quelli di
-`detect()`.
+`detect_flat()`.
 
-`heal()` e `detect()` separati restano disponibili: un renderer o un nesting tool
+`heal()` e `detect_flat()` separati restano disponibili: un renderer o un nesting tool
 possono volere la sola topologia, senza classificazione feature.
 
 ```python
@@ -687,7 +689,7 @@ class RoleStyle:
 
 Override, indipendente dal formato, dell'aspetto visivo di un ruolo in
 output — noto al motore (`"outer"`, `"inner"`) o assegnato da chiunque
-altro, `detect()` incluso (`"hole"`, ...) o un consumatore esterno
+altro, `detect_flat()` incluso (`"hole"`, ...) o un consumatore esterno
 (`"frame"`, `"title_block"`, ...) — nessuno dei due è privilegiato. Ogni
 campo lasciato `None` resta il default di forge per quel ruolo. Passato a
 `to_dxf`/`split` come `role_styles={ruolo: RoleStyle(...)}` — dizionario
@@ -718,7 +720,7 @@ lo chiama una volta al proprio setup invece di ricostruire `role_styles=`
 a ogni chiamata; `forge.tools.manufacturing_role` lo usa per registrare i
 propri colori di default (`hole` magenta, `bending` rosa, ...) — stesso
 meccanismo pubblico, nessun trattamento privilegiato per i ruoli di
-`detect()`. `role_styles=` passato a una singola chiamata resta possibile e
+`detect_flat()`. `role_styles=` passato a una singola chiamata resta possibile e
 vince comunque su quanto registrato qui.
 
 ```python
@@ -784,7 +786,7 @@ forge.leader_target(result: ForgeResult, leader: Leader,
 L'elemento su cui cade la punta (`vertices[0]`) di `leader`, come percorso in
 `result`: `"clusters[0].outer"`, `"clusters[0].inners[3]"`,
 `"clusters[1].holes[2]"` — qualunque collezione di `cluster.detected`, quindi
-vale dopo `heal` + `detect` come dopo `island`.
+vale dopo `heal` + `detect_flat` come dopo `island`.
 
 Regola: il bordo più vicino alla punta, se entro `distance` (a parità, vince
 l'elemento più piccolo); altrimenti il più piccolo elemento chiuso, non il
@@ -800,7 +802,7 @@ forge.resolve_target(result: ForgeResult, target: str | None) -> Any
 ```
 
 Il passo inverso: il contorno o la feature a cui punta un `target`, o `None`
-se il percorso non esiste più in `result` (per esempio dopo un `detect` che ha
+se il percorso non esiste più in `result` (per esempio dopo un `detect_flat` che ha
 spostato i fori da `inners` a `holes`: ancorare dopo aver scelto le feature).
 
 ---
@@ -1107,7 +1109,7 @@ già ripulito) + `position` (shapely `Point`, per il containment check per parte
 
 ### `ForgeResult`
 
-Prodotto da `heal()`, arricchito da `detect()` / `inject()`.
+Prodotto da `heal()`, arricchito da `detect_flat()` / `inject()`.
 
 | campo | tipo | contenuto |
 |---|---|---|
@@ -1130,14 +1132,14 @@ Metodo `to_dict()` → dizionario JSON-ready (usato internamente dagli export).
 | `inners` | `list[ForgeContour]` | aperture interne non classificate come foro |
 | `label` | `str` | etichetta, base del nome file |
 | `custom` | `dict` | dati aggiunti da un `data_injector` esterno (materiale, spessore, codice) |
-| `detected` | `Optional[DetectedFeatures]` | overlay di `detect()` — `None` finché nessuno ci ha scritto (D44) |
+| `detected` | `Optional[DetectedFeatures]` | overlay di `detect_flat()` — `None` finché nessuno ci ha scritto (D44) |
 | `features(name)` | metodo | collezione `name` da `detected` — `[]` se `detected` è `None` o `name` non è stato scritto. Legge `"holes"` (`list[Hole]`), `"bending_lines"` (`list[BendingLine]`), `"engrave_lines"` (`list[Engraving]`), o un nome custom attaccato da un tool esterno |
 | `summary` | property | conteggio **grezzo**, sempre disponibile: `{nome}_count: len(items)` per ogni collezione in `detected` — `{}` se `detected` è `None`. Vedi `tools.detect.describe_features(cluster)` per il conteggio ricco per tipo (`plain_holes_count`, `countersink_count`, `threaded_holes_count`, `bending_lines` gruppi, `total_engrave_length`, `total_marking_length`) |
 | `area` | property | outer − fori − inner |
 | `bbox` | property | `(minx, miny, maxx, maxy)` |
 
 Un consumatore esterno attacca la sua detection con lo stesso meccanismo di
-`detect()`: `cluster.detected = cluster.detected or DetectedFeatures();
+`detect_flat()`: `cluster.detected = cluster.detected or DetectedFeatures();
 cluster.detected.attach("flange_view_hint", [...])`, poi la legge con
 `cluster.features("flange_view_hint")`. Nessuno dei due è privilegiato nello
 schema (D44) — `DetectedFeature` (`typing.Protocol`, `source`/`confidence`)
@@ -1153,7 +1155,7 @@ proprietà `area` e `bbox`.
 Il motore conosce solo tre ruoli: `unknown`, `outer`, `inner` (MAP.md D47,
 "roles out of core" — prima l'enum includeva anche i sei ruoli
 manifatturieri, spostati in `tools/manufacturing_role.py`: vedi sotto).
-**Non è un universo chiuso**: chiunque — `detect()` incluso, non è
+**Non è un universo chiuso**: chiunque — `detect_flat()` incluso, non è
 privilegiato — può assegnare un ruolo che il motore non conosce (`hole`,
 `frame`, `title_block`, `section`, …). Passa per `normalize_role()` — ripulito
 in uno slug `[a-z0-9_-]` ≤ 64 char — e forge lo conserva senza sollevare; in
@@ -1175,7 +1177,7 @@ finisce in `trash_entities` col ruolo intatto e l'output la scrive sul layer
 `frame`. È l'aggancio usato da `framer` per cornice e cartiglio
 (`FRAMER.md`).
 
-### `tools.manufacturing_role` (vocabolario di `detect()`, non del motore)
+### `tools.manufacturing_role` (vocabolario di `detect_flat()`, non del motore)
 
 `forge.tools.manufacturing_role` (non in `__all__`, importa esplicitamente)
 tiene `HOLE`/`COUNTERSINK`/`THREADED_HOLE`/`BEND`/`ENGRAVE`/`MARKING`
@@ -1197,11 +1199,11 @@ Edge di `doc.edges` che il criterio topologico di `heal()` escluderebbe dal
 grafo dei contorni (branching + centroide fuori dal convex hull della sua
 componente connessa, MAP.md D49) — **senza dire cosa siano**. `heal()` da solo
 non assegna un significato a questi edge: li esclude e basta, restano in
-`trash_entities` col ruolo che avevano. È `detect()` a interpretarli
+`trash_entities` col ruolo che avevano. È `detect_flat()` a interpretarli
 (`_detect_bending`: dritto, estremi sul contorno esterno → `"bending"`,
 confidence 0.9) — un'interpretazione a valle come un'altra, non privilegiata.
 
-Un consumatore che non chiama `detect()` (framer, l'interprete) e vuole
+Un consumatore che non chiama `detect_flat()` (framer, l'interprete) e vuole
 un'interpretazione propria (un bordo di feature in rilievo vista in pianta non
 è una piega) chiama `non_contour_candidates(doc)` per ottenere la stessa lista
 di candidati che `heal()` userebbe, senza duplicare il criterio, e decide da
@@ -1248,7 +1250,7 @@ if not check.is_valid:
 result = forge.heal_and_detect(doc, label="P-1024")
 # separati, se ti serve la sola topologia:
 #   result = forge.heal(doc, label="P-1024")
-#   result = forge.detect(result, "all")   # detect(result) nudo non classifica i fori
+#   result = forge.detect_flat(result, "all")   # detect_flat(result) nudo non classifica i fori
 
 # 5. controlla SEMPRE prima di renderizzare
 if not result.is_valid:

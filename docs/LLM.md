@@ -22,11 +22,11 @@ render-oriented view-model dict. Everything unclassified survives in
 load_dxf / document_from_msp / load_geometry   →  ForgeDocument   (edges + annotations, zero topology)
 heal(doc)                                       →  ForgeResult     (topology only: closed contours, outer/inner tree — NO hole/bend classification)
 island(doc)                                     →  ForgeResult     (alternative to heal for drawings of VIEWS: one cluster per island, outer = outer face of its planar network)
-detect(result, features=...)                    →  ForgeResult     (mutates in place; opt-in feature classification)
+detect_flat(result, features=...)                    →  ForgeResult     (mutates in place; opt-in feature classification)
 to_dxf / split / to_json / save_json / to_svg / to_view_model  →  render from the model (never re-reads source)
 ```
 
-`heal_and_detect(doc)` = `heal` + `detect(features="all")`, the 90% path.
+`heal_and_detect(doc)` = `heal` + `detect_flat(features="all")`, the 90% path.
 `split_to_files(doc, folder)` = `heal_and_detect` + `split` + `.saveas()` per part — the only function that writes to disk on its own.
 
 ## Golden path
@@ -63,14 +63,14 @@ forge.save_json(result, "out.json")
 | `outer_face` | `(edges, epsilon=0.0) -> OuterFace\|None` | outer contour of a planar network: walk of its outer face starting from the leftmost geometric point, per connected component, largest area wins. `OuterFace`: `polygon`, `segments`, `styles`, `loop`, `.edges`, `spurs` (walked there and back — axes, marks). |
 | `refit_tessellations` | `(edges, max_segment=0.1, min_run=10, arc_fit_tolerance=0.02, node_decimals=3) -> list[Edge]` | a chain of ≥`min_run` short `LineSeg`s (a curve written as points) is refitted as arc/circle/spline; chain ends keep their original nodes. |
 | heal steps | `merge_collinear_overlaps`, `merge_cocircular_overlaps`, `weld_degenerate_linesegs`, `split_labeled(edges, is_structural=None) -> (kept, labeled)`, `close_free_gaps(edges, tolerance)`, `dangling_splines(edges)`, `find_non_contour_edges(edges, tolerance) -> set[id]`, `find_loops(edges, non_contour_ids, tolerance) -> LoopSearch`, `repair_merged_corners(edges, tolerance, exclude_ids) -> (edges, n, skipped)`, `structural_loops(loops, is_structural=None)`, `loops_to_features(loops)`, `polygonize_edges(edges, tolerance) -> list[Polygon]`, `polygons_to_features(polygons)`, `edges_to_open_features(edges, exclude_ids)`, `labeled_features(edges)`, `build_hierarchy(features, label="", source_file="", is_structural=None) -> (clusters, trash)` | `heal()` is a recipe composing these, in this order (D62); compose your own (e.g. stop before `build_hierarchy`). None mutates its input. `LoopSearch`: `edges` (after corner repair — use these downstream), `loops`, `method` (`"exact"`/`"corner_repair"`/`"tolerant"`/`"none"`), `repaired`, `skipped_corners`, `unrepaired_corners`, `open_nodes`. When `method == "none"`, `heal()` falls back to `polygonize_edges` + `polygons_to_features`. |
-| `detect` | `(result, features=None, *, max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | classifies features. Bare call = only the roles assigned at load (`role_rules`) + topology cleanup, **no** geometric inference. `features`: `None`/`()` / `"all"` / subset of `{"holes","bending","engrave"}` (= `ALL_FEATURES`). Holes: circular inner contour Ø < `max_drill_diameter` → `Hole` (`plain`/`countersink`/`threaded`); above threshold stays a plain inner contour. **Mutates in place, also returns.** |
+| `detect_flat` | `(result, features=None, *, max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | classifies features. Bare call = only the roles assigned at load (`role_rules`) + topology cleanup, **no** geometric inference. `features`: `None`/`()` / `"all"` / subset of `{"holes","bending","engrave"}` (= `ALL_FEATURES`). Holes: circular inner contour Ø < `max_drill_diameter` → `Hole` (`plain`/`countersink`/`threaded`); above threshold stays a plain inner contour. **Mutates in place, also returns.** |
 | `ALL_FEATURES` | `frozenset({"holes","engrave","bending"})` | the `"all"` set. |
 | `describe_features` | `(cluster: ForgeCluster) -> dict` | rich per-type feature counts (`plain_holes_count`, `countersink_count`, `threaded_holes_count`, grouped bend lines, `total_engrave_length`...). `cluster.summary` is the raw always-available count; this is the detailed version for forge's known types. |
-| `heal_and_detect` | `(doc, tolerance=None, label="", source_file="", features="all", max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | `heal` + `detect`, `features="all"` by default (unlike bare `detect`). Skips `detect` if `heal` produced no valid parts. |
+| `heal_and_detect` | `(doc, tolerance=None, label="", source_file="", features="all", max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | `heal` + `detect_flat`, `features="all"` by default (unlike bare `detect_flat`). Skips `detect_flat` if `heal` produced no valid parts. |
 | `to_dxf` | `(result, source_doc=None, filter_cluster=None, include_annotations=True, include_trash=True, annotation_layer="Annotation", role_styles=None) -> ezdxf.Drawing` | renders the model to a **new** DXF (R2010), never rereads source. `source_doc` only for header vars (`$INSUNITS`...). Raises `ValueError` if `result.is_valid` is `False`. |
 | `split` | `(result, source_doc=None, namer=None, include_annotations=True, min_area=50.0, exclude_types=None, on_cluster=None, annotation_layer="Annotation", role_styles=None) -> list[ezdxf.Drawing]` | like `to_dxf` but one `Drawing` per part; pure, doesn't touch disk. Parts under `min_area` mm² dropped (warning). Raises `ValueError` if invalid. |
 | `inject` | `(result, data_injector=None, texts=None) -> ForgeResult` | optional CAM enrichment. **Mutates** `cluster.custom`. `data_injector(cluster, list[str]) -> dict`; `texts` must be `list[ForgeText]` from `extract_forge_texts(msp)` (positions needed for per-part geometric filtering). No-op without `data_injector`. |
-| `anchor_annotations` | `(result, snap_distance=0.0, leader_distance=0.5) -> ForgeResult` | assigns `Annotation.cluster_ref` — which cluster an annotation belongs to, by containment (+ optional snap distance for annotations just outside) — and `Leader.target` via `leader_target`. **Mutates** annotations in place, also returns. Run it after choosing the features (`detect` moves holes from `inners` to `holes`: targets computed before go stale). |
+| `anchor_annotations` | `(result, snap_distance=0.0, leader_distance=0.5) -> ForgeResult` | assigns `Annotation.cluster_ref` — which cluster an annotation belongs to, by containment (+ optional snap distance for annotations just outside) — and `Leader.target` via `leader_target`. **Mutates** annotations in place, also returns. Run it after choosing the features (`detect_flat` moves holes from `inners` to `holes`: targets computed before go stale). |
 | `leader_target` | `(result, leader, distance=0.5) -> str\|None` | element the arrow tip (`leader.vertices[0]`) lands on, as a path in `result`: `"clusters[0].outer"`, `"clusters[0].inners[3]"`, `"clusters[1].holes[2]"` (any `cluster.detected` collection). Nearest boundary within `distance` (tie → smaller element); else smallest closed non-outer element covering the tip; else `None` (e.g. section arrows outside the view). Geometry only, never reads the text (D66). |
 | `resolve_target` | `(result, target) -> Any` | inverse of `leader_target`: the contour/feature object, or `None` if the path no longer exists. |
 | `split_to_files` | `(doc, output_folder, label="", source_file="", tolerance=None, namer=None, include_annotations=True, min_area=50.0, exclude_types=None, annotation_layer="Annotation") -> ForgeResult` | full multi-part flow + disk write: `heal → detect → split → .saveas()`. Filename `f"{cluster.label}.dxf"`. **Only** forge function that writes to disk. |
@@ -86,7 +86,7 @@ forge.save_json(result, "out.json")
 | `normalize_role` / `is_structural_role` | `(value) -> str` / `(role) -> bool` | role-vocabulary primitives (see below). `is_structural_role` is the engine's own minimal predicate (outer/inner only) — the *extended* one detect uses is `tools.manufacturing_role.is_structural`. |
 | `RoleStyle` | `dataclass(color: tuple[int,int,int]|None, linetype: str|None, lineweight: float|None, layer_name: str|None)` | per-role visual override for `to_dxf`/`split` via `role_styles={role: RoleStyle(...)}`. `None` fields keep forge's default. Wins over anything `register_role_style` registered for the same role. |
 | `register_role_style` | `(role, style: RoleStyle) -> None` | registers a `RoleStyle` **once**, applied to every later `to_dxf`/`split` automatically — same idiom as `set_schema`. `tools.manufacturing_role` uses this exact call (no special privilege) to register its own default colors/layer names at import time. |
-| `non_contour_candidates` | `(doc, tolerance=None) -> list[Edge]` | same topological criterion `heal()` uses internally to exclude an edge from the contour graph (branching + centroid outside its connected component's convex hull, D49) — asserts **no** meaning (not "bending", not anything). `detect()`'s `_detect_bending` is just one interpretation of these candidates, not privileged. A consumer that never calls `detect()` (framer, the interpreter) and wants a different interpretation (a raised-feature edge in a plan view is not a bend line) calls this to get the same candidate set without re-deriving the criterion, then sets `edge.role` on the returned `Edge`s (references into `doc.edges` — mutation is reflected there) **before** `heal()`. Runs on `doc.edges` as-is, before `heal()`'s own merge/gap-closing preprocessing — meant to decide roles pre-`heal()`, not to predict its exact excluded set to the edge case. |
+| `non_contour_candidates` | `(doc, tolerance=None) -> list[Edge]` | same topological criterion `heal()` uses internally to exclude an edge from the contour graph (branching + centroid outside its connected component's convex hull, D49) — asserts **no** meaning (not "bending", not anything). `detect_flat()`'s `_detect_bending` is just one interpretation of these candidates, not privileged. A consumer that never calls `detect_flat()` (framer, the interpreter) and wants a different interpretation (a raised-feature edge in a plan view is not a bend line) calls this to get the same candidate set without re-deriving the criterion, then sets `edge.role` on the returned `Edge`s (references into `doc.edges` — mutation is reflected there) **before** `heal()`. Runs on `doc.edges` as-is, before `heal()`'s own merge/gap-closing preprocessing — meant to decide roles pre-`heal()`, not to predict its exact excluded set to the edge case. |
 
 ### Debug/inspect (stdout only, 3 levels in order)
 
@@ -102,11 +102,11 @@ forge.inspect_file(path, tolerance=0.05, role_rules=(),
 
 **`ForgeDocument`** (from `load_dxf`/`document_from_msp`/`load_geometry`): `edges: list[Edge]`, `annotations: list[Annotation]`, `source_meta: dict`, `source_path: str`, `warnings: list[str]`.
 
-**`ForgeResult`** (from `heal`, enriched by `detect`/`inject`): `clusters: list[ForgeCluster]`, `is_valid: bool` (**check before render**), `warnings`/`errors: list[str]`, `trash_entities: list`, `annotations: list[Annotation]`, `classified_entities: list`, `all_arcs: list[ArcSeg]`, `cluster_count` (property). `.to_dict()` for JSON.
+**`ForgeResult`** (from `heal`, enriched by `detect_flat`/`inject`): `clusters: list[ForgeCluster]`, `is_valid: bool` (**check before render**), `warnings`/`errors: list[str]`, `trash_entities: list`, `annotations: list[Annotation]`, `classified_entities: list`, `all_arcs: list[ArcSeg]`, `cluster_count` (property). `.to_dict()` for JSON.
 
 **`ForgeCluster`**: `outer: ForgeContour`, `inners: list[ForgeContour]`, `label: str`, `custom: dict` (from `data_injector`), `detected: DetectedFeatures|None` (open-by-name overlay, `None` until something writes to it — D44), `.features(name)` → collection or `[]` (`"holes"` → `list[Hole]`, `"bending_lines"` → `list[BendingLine]`, `"engrave_lines"` → `list[Engraving]`, or a custom name a third party attached), `.summary` property (raw `{name}_count` for every `detected` collection, `{}` if `detected is None`), `.area`, `.bbox`. `ForgeContour` also has `.depth`/`.parent` (D34) — position in the containment tree, needed e.g. by `bridge_tabs`.
 
-A third party attaches its own detection the same way `detect()` does:
+A third party attaches its own detection the same way `detect_flat()` does:
 ```python
 cluster.detected = cluster.detected or DetectedFeatures()
 cluster.detected.attach("flange_view_hint", [...])
@@ -121,7 +121,7 @@ cluster.features("flange_view_hint")   # reads it back
 
 ## Roles — open vocabulary
 
-**The engine (`core`/`model`) knows exactly three roles**: `unknown`, `outer`, `inner` — nothing else, by design (MAP.md D47, "roles out of core"). Everything else — `hole`/`countersink`/`threaded_hole`/`bending`/`engrave`/`marking` included — is vocabulary owned by `tools.manufacturing_role`, imported by `detect()` and nothing under `core`/`model`. `detect()` gets **no special privilege**: it registers/uses roles through the exact same public mechanisms (`register_role_style`, `heal(is_structural=...)`) a third-party consumer would.
+**The engine (`core`/`model`) knows exactly three roles**: `unknown`, `outer`, `inner` — nothing else, by design (MAP.md D47, "roles out of core"). Everything else — `hole`/`countersink`/`threaded_hole`/`bending`/`engrave`/`marking` included — is vocabulary owned by `tools.manufacturing_role`, imported by `detect_flat()` and nothing under `core`/`model`. `detect_flat()` gets **no special privilege**: it registers/uses roles through the exact same public mechanisms (`register_role_style`, `heal(is_structural=...)`) a third-party consumer would.
 
 **Any role string is legal** — a consumer can assign anything (`"frame"`, `"title_block"`, `"hole"`, `"section"`...); it passes through `normalize_role()` (slugified `[a-z0-9_-]`, ≤64 chars), forge keeps it without raising, writes it to its own DXF layer on output (`unknown` → `Trash`). Whether `heal()` keeps a labeled edge **inside the topology graph** (structural) or excludes it (decoration) depends entirely on the `is_structural` predicate you pass it:
 
@@ -134,7 +134,7 @@ To mark geometry before `heal` excludes it from the graph: set `edge.role = forg
 
 A tool built on top of forge (framer, bendly, the interpreter, or your own)
 defines its own roles the same way `tools.manufacturing_role` does for
-forge's own `detect()` — **no privileged path exists**, this is the only
+forge's own `detect_flat()` — **no privileged path exists**, this is the only
 mechanism. Minimal pattern, one module in your own project:
 
 ```python
@@ -169,7 +169,7 @@ import your_tool.roles as roles
 
 doc = forge.load_dxf("part.dxf", role_rules=forge.name_rules({"FlangeMarks": roles.FLANGE_UP}))
 result = forge.heal(doc, is_structural=roles.is_structural)   # only if FLANGE_UP is structural
-result = forge.detect(result, "all")
+result = forge.detect_flat(result, "all")
 forge.to_dxf(result, doc)   # FlangeUp layer, orange — registered once, applies automatically
 ```
 
@@ -190,8 +190,8 @@ result = forge.heal(doc, is_structural=roles.is_structural)
 
 Same candidates `heal()` would have excluded and left as `role="unknown"` in
 `trash_entities` anyway — this just lets you label them with your own meaning
-before `heal()` runs, instead of after, and instead of `detect()`'s default
-guess (`"bending"`, confidence 0.9) if you were calling `detect()` at all.
+before `heal()` runs, instead of after, and instead of `detect_flat()`'s default
+guess (`"bending"`, confidence 0.9) if you were calling `detect_flat()` at all.
 
 If your role is purely decorative (never part-contour geometry), skip
 `is_structural` entirely and skip passing anything to `heal()` — the default
@@ -252,17 +252,17 @@ a view, default 0.5 mm — a view is not a cutting file).
 
 ## Hard rules (violate these = broken output)
 
-- `heal()` never classifies holes/bends — that's `detect(features=...)`, opt-in.
-- Bare `detect(result)` does **only** the load-time roles (`role_rules`) + cleanup — no geometric inference without `features=`.
+- `heal()` never classifies holes/bends — that's `detect_flat(features=...)`, opt-in.
+- Bare `detect_flat(result)` does **only** the load-time roles (`role_rules`) + cleanup — no geometric inference without `features=`.
 - **Always check `result.is_valid` before `to_dxf`/`split`** — they raise `ValueError` otherwise.
 - `tolerance` default `0.05`; a gap ≥ 4× tolerance is **not** auto-closed (deliberate — raise `tolerance` or fix the source).
-- `role_rules` is a `load_dxf`/`document_from_msp` param, **not** a `heal`/`detect` param.
+- `role_rules` is a `load_dxf`/`document_from_msp` param, **not** a `heal`/`detect_flat` param.
 - `label_map`/`linetype_map`/`color_map` **no longer exist** (D63, clean break). Migration: `label_map=m` → `role_rules=forge.name_rules(m)`; `linetype_map={"DASHED": r}` → `forge.RoleRule(r, dashed=True)` (dash is read from the pattern, not the linetype name); `color_map={"cyan": r}` → `forge.RoleRule(r, color="cyan")`. The old fixed priority (name, then linetype, then colour) is gone: put the rules in the order you want, first match wins. `ForgeResult.label_map` and `doc.source_meta["label_map"]` are gone too.
 - `to_dxf`/`split` never re-read the source file — they render from the model only.
 - Splines are re-emitted as native `SPLINE`, engraving as native per-primitive entities — **never** discretized to `LWPOLYLINE` in DXF output. `to_svg`/`to_view_model` **do** discretize everything (visualization only, not cutting-fidelity).
 - Nothing is silently dropped: unclassified geometry → `trash_entities`/`Trash` layer, unmodeled DXF types (`HATCH`,`IMAGE`,`TABLE`,`3DFACE`,`XLINE`...) → warning in `doc.warnings`.
 - `island()` and `heal()` are two readings, not two steps: never chain them on the same document. Both return a `ForgeResult`; `to_dxf()`/`split()` work on either.
-- `detect()` assumes a **flat part seen from its face** (cutting file, sheet development). **Never run it on `island()` views**: it finds "bends" in isometrics and assembly views and "holes" in logo letters — meaningless by construction. Feature reading on views is not built yet: use the geometry (`inners`, `core.geometry.circular_geometry`) and say so. A rename to express the precondition (`detect_flat`) is planned.
+- `detect_flat()` assumes a **flat part seen from its face** (cutting file, sheet development). **Never run it on `island()` views**: it finds "bends" in isometrics and assembly views and "holes" in logo letters — meaningless by construction. Feature reading on views is not built yet: use the geometry (`inners`, `core.geometry.circular_geometry`) and say so. The name states the precondition (renamed from `detect`, D67).
 - `island()` puts closed loops inside an outer in `inners` without saying hole or face — same as `heal()` (D15).
 - `inject()` needs `texts` as `list[ForgeText]` (`extract_forge_texts`), not `list[str]` (`extract_texts_from_msp` — different function, wrong shape for `inject`).
 

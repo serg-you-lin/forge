@@ -12,7 +12,7 @@ load (`Edge.style`), sopravvive nel modello come `styles` — lista parallela a
 sempre il linetype (Cluster E). Il colore NON viene mai riapplicato in
 output: resta quello del layer forge di destinazione, una decisione di
 dominio per ruolo (`rules/palette.py`) — trash compreso. `color`/`true_color`
-restano comunque catturati qui perché `detect()` potrà usarli in futuro come
+restano comunque catturati qui perché `detect_flat()` potrà usarli in futuro come
 segnale addizionale per dedurre il ruolo, insieme al linetype.
 """
 

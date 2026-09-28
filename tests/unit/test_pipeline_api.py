@@ -3,7 +3,7 @@ tests/unit/test_pipeline_api.py
 -------------------------------
 Copre la superficie API introdotta in Fase 3 (MAP.md D2, D3):
   - forge.heal_and_detect(doc) -> ForgeResult
-  - forge.detect(result) e forge.inject(result) ritornano il ForgeResult
+  - forge.detect_flat(result) e forge.inject(result) ritornano il ForgeResult
 """
 
 import unittest
@@ -32,7 +32,7 @@ class TestPipelineApi(unittest.TestCase):
     def test_heal_and_detect_equivalent_to_separate_calls(self):
         doc_a, doc_b = _square_doc(), _square_doc()
         combined = forge.heal_and_detect(doc_a)
-        step = forge.detect(forge.heal(doc_b), features="all")
+        step = forge.detect_flat(forge.heal(doc_b), features="all")
         self.assertEqual(combined.cluster_count, step.cluster_count)
         self.assertEqual(
             [h.hole_type for p in combined.clusters for h in p.features("holes")],
@@ -41,10 +41,10 @@ class TestPipelineApi(unittest.TestCase):
 
     def test_detect_returns_same_result_object(self):
         result = forge.heal(_square_doc())
-        self.assertIs(forge.detect(result), result)
+        self.assertIs(forge.detect_flat(result), result)
 
     def test_inject_returns_same_result_object(self):
-        result = forge.detect(forge.heal(_square_doc()))
+        result = forge.detect_flat(forge.heal(_square_doc()))
         self.assertIs(forge.inject(result), result)
 
     def test_heal_and_detect_invalid_still_returns_result(self):
