@@ -1871,6 +1871,16 @@ Suite: 841 passed, golden unchanged. `main` → 0.8.0.
   stay in forge under another name. Cost: `heal_and_detect`,
   `split_to_files`, writeback, the hole/bending output layers of `to_dxf` and
   the golden suite (`features="all"`) all assume forge finds holes and bends.
+  Golden plan (not a redo): a script transforms the 48 existing JSON instead
+  of regenerating them — forge's golden keeps geometry (`cluster_count`,
+  areas, perimeters, `outer_wkt`, holes + inners merged as inner contours;
+  `inner_perimeter_mm` already sums both), snapbend's golden takes holes,
+  bends, engraving and `summary`. Same approved values, only moved: forge
+  matching the transformed golden after the move proves nothing broke. The
+  `to_dxf` round-trip test stays in forge (without detection holes come out
+  as inner contours, bends as non-structural edges); it imports
+  `is_structural` from `manufacturing_role`, which must become a neutral,
+  caller-supplied criterion.
 - `inspect_file`/`inspect_dxf` (level 1) are hardcoded to DXF. Fine for now —
   it's already the only real format adapter forge has. `inspect_document`
   (level 2) already works on any `ForgeDocument`, including geometry from
