@@ -70,7 +70,7 @@ from .tools.rotate import rotate_result, rotate_cluster, rotate_document, rotate
 from .core.heal          import heal
 from .recipes            import heal_and_detect, split_to_files
 from .tools.inject       import inject
-from .tools.anchor       import anchor_annotations
+from .tools.anchor       import anchor_annotations, leader_target, resolve_target
 from .tools.detect       import detect, ALL_FEATURES, describe_features
 from .io.dxf             import to_dxf, split
 from .rules.validator     import validate, validate_result
@@ -167,6 +167,8 @@ __all__ = [
     "split",
     "inject",
     "anchor_annotations",
+    "leader_target",
+    "resolve_target",
     "split_to_files",
     # Export
     "to_json",
