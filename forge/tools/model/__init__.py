@@ -1,6 +1,6 @@
 # tools/model/__init__.py
 #
-# Tipi prodotti da detect() — non geometria di heal(), quindi non in
+# Tipi prodotti da detect_flat() — non geometria di heal(), quindi non in
 # forge/model/ (branch refactor/detect-overlay, MAP.md D44).
 from .hole import (
     Hole,

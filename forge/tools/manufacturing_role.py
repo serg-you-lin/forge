@@ -6,7 +6,7 @@ incisione, marcatura. Prima viveva in ``model/role.py`` (motore); non è
 topologia, è detect che gli dà significato — quindi sta qui, a fianco di
 ``detect.py``, non nel motore (MAP.md, "roles out of core").
 
-``core``/``model`` non importano mai questo modulo. È ``detect()`` che lo usa
+``core``/``model`` non importano mai questo modulo. È ``detect_flat()`` che lo usa
 per classificare, ed è ``heal(doc, is_structural=...)`` che riceve
 ``is_structural`` da chi lo chiama (tipicamente ``heal_and_detect()``, che
 passa proprio questa funzione) — mai il contrario: il motore non sa cosa sia
@@ -44,7 +44,7 @@ MARKING       = "marking"
 # estesa al vocabolario che il motore non conosce.
 STRUCTURAL_MANUFACTURING_ROLES = frozenset({HOLE, COUNTERSINK, THREADED_HOLE})
 
-# I ruoli che detect() sa collocare come feature di un cluster (usato da
+# I ruoli che detect_flat() sa collocare come feature di un cluster (usato da
 # detect.py per distinguere "proxy già classificato da role_rules" da "proxy
 # ancora da inferire").
 ALL_MANUFACTURING_ROLES = frozenset({HOLE, COUNTERSINK, THREADED_HOLE, BEND, ENGRAVE, MARKING})

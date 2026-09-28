@@ -47,7 +47,7 @@ def build_metadata(cluster: ForgeCluster, schema: dict = None, extra: dict = Non
     # Tre livelli, non uno (MAP.md D44):
     #   - cluster.summary       — conteggio grezzo, sempre disponibile, generico
     #   - describe_features()   — dettaglio ricco per i tipi NOTI di forge
-    #   - cluster.custom        — ciò che inject()/detect() ci ha scritto sopra
+    #   - cluster.custom        — ciò che inject()/detect_flat() ci ha scritto sopra
     # Ordine di merge = priorità: il più specifico vince sul più generico.
     custom = {
         **cluster.summary,
@@ -67,7 +67,7 @@ def build_metadata(cluster: ForgeCluster, schema: dict = None, extra: dict = Non
 
     calculated = {
         "area"            : d.get("area"),
-        # Non più in to_dict() (non garantito senza detect()) — contato qui
+        # Non più in to_dict() (non garantito senza detect_flat()) — contato qui
         # direttamente su cluster.detected.
         "holes_count"     : len(cluster.features("holes")),
         "inner_contours_count" : d.get("inner_contours_count"),

@@ -54,7 +54,7 @@ def show(tag, result):
 for i, (tag, rules) in enumerate(STEPS, start=1):
     doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=rules)
     result = forge.heal(doc, tolerance=TOLERANCE)
-    forge.detect(result)
+    forge.detect_flat(result)
     show(tag, result)
     out = os.path.join(OUTDIR, f"14_style_classification_{i}.dxf")
     forge.to_dxf(result, doc, include_trash=True).saveas(out)

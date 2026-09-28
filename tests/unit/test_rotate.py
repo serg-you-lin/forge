@@ -121,7 +121,7 @@ class TestRotateResult(unittest.TestCase):
         result = forge.heal(_tall_rect_with_diagonal())
         result.clusters[0].detected = {"bending_lines": []}
         rotated = rotate_result(result, 0.1)
-        self.assertTrue(any("detect()" in w for w in rotated.warnings))
+        self.assertTrue(any("detect_flat()" in w for w in rotated.warnings))
 
 
 class TestRotateDocument(unittest.TestCase):

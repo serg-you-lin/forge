@@ -18,8 +18,8 @@ Workflow consigliato (file singolo):
     # forge.name_rules({"Piega": "bending"}) per le sole regole sul nome
 
     result = forge.heal_and_detect(doc, label="pezzo", source_file="pezzo.dxf")
-    # equivale a: result = forge.heal(doc, ...); forge.detect(result, "all")
-    # forge.detect(result) nudo classifica solo i ruoli assegnati al load
+    # equivale a: result = forge.heal(doc, ...); forge.detect_flat(result, "all")
+    # forge.detect_flat(result) nudo classifica solo i ruoli assegnati al load
 
     doc_out = forge.to_dxf(result, doc)
     forge.inject(result)
@@ -71,7 +71,7 @@ from .core.heal          import heal
 from .recipes            import heal_and_detect, split_to_files
 from .tools.inject       import inject
 from .tools.anchor       import anchor_annotations, leader_target, resolve_target
-from .tools.detect       import detect, ALL_FEATURES, describe_features
+from .tools.detect       import detect_flat, ALL_FEATURES, describe_features
 from .io.dxf             import to_dxf, split
 from .rules.validator     import validate, validate_result
 from .io.exporter         import (
@@ -109,7 +109,7 @@ from .rules.palette   import RoleStyle, register_role_style
 # Stesso criterio che heal() usa internamente per escludere un edge dal grafo
 # dei contorni (branching + centroide fuori dal hull, D49) — senza dire cosa
 # sia quell'edge. Un consumatore che vuole decidere `edge.role` prima di
-# heal() con un'interpretazione propria (non "bending" come fa detect()) lo
+# heal() con un'interpretazione propria (non "bending" come fa detect_flat()) lo
 # chiama su doc.edges. Vedi FRAMER.md, MAP.md D55.
 from .tools.non_contour import non_contour_candidates
 # Seconda lettura di un documento, accanto a heal(): per isole, contorno
@@ -159,7 +159,7 @@ __all__ = [
     # Workflow
     "heal",
     "island",
-    "detect",
+    "detect_flat",
     "ALL_FEATURES",
     "describe_features",
     "heal_and_detect",

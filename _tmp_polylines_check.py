@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as td:
     with redirect_stdout(io.StringIO()):
         _, msp = forge.load_dxf(str(parent), explode_inserts=True)
         r = forge.heal(msp, tolerance=tol)
-        forge.detect(r)
+        forge.detect_flat(r)
         forge.write(msp, r)
         forge.split(
             msp,

@@ -136,7 +136,7 @@ la geometria misurata" sia possibile.
 | `to_dxf` / `to_svg` / `save_json` | export fedele dal modello — il risultato consegnato, sia per preventivo che per produzione |
 
 Un consumatore può fermarsi a `heal` e fare tutto il resto a modo suo. Questo
-non è solo teoria: `heal()`/`detect()` sono separati e pubblici apposta
+non è solo teoria: `heal()`/`detect_flat()` sono separati e pubblici apposta
 (MAP.md D2) — forge stesso è già una cassetta degli attrezzi, non una
 pipeline forzata. Un disegno vero non dice in anticipo se va splittato, se ha
 più viste, se ha una cornice: un agente lo scopre passo passo e sceglie lui

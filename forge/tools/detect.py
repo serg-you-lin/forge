@@ -43,10 +43,10 @@ def _ensure_detected(cluster: ForgeCluster) -> DetectedFeatures:
     return cluster.detected
 
 
-# Ruoli che detect() sa collocare come feature di un cluster. Un proxy con un
+# Ruoli che detect_flat() sa collocare come feature di un cluster. Un proxy con un
 # ruolo deciso ma fuori da qui — frame, title_block, o uno slug di un
-# consumatore — è arredo del disegno: heal() l'ha messo in trash e detect() ce
-# lo lascia, geometria e ruolo intatti (D27, D30). Prima detect() ne faceva un
+# consumatore — è arredo del disegno: heal() l'ha messo in trash e detect_flat() ce
+# lo lascia, geometria e ruolo intatti (D27, D30). Prima detect_flat() ne faceva un
 # ClassifiedEntity scollegato che l'exporter non riscriveva → geometria persa.
 _DETECT_KNOWN_ROLES = frozenset({
     HOLE,
@@ -58,14 +58,14 @@ _DETECT_KNOWN_ROLES = frozenset({
 })
 
 
-# Lane geometriche attivabili da detect(). `detect(result)` nudo non ne esegue
+# Lane geometriche attivabili da detect_flat(). `detect_flat(result)` nudo non ne esegue
 # nessuna: fa solo la lane dei ruoli assegnati al load (role_rules) + la pulizia topologia.
 ALL_FEATURES = frozenset({"holes", "bending", "engrave"})
 
 
 def _normalize_features(features) -> frozenset:
     """
-    Normalizza l'argomento `features` di detect() in un set di stringhe.
+    Normalizza l'argomento `features` di detect_flat() in un set di stringhe.
 
     Accetta: None/() → nessuna lane; True o "all"/"*" → tutte;
     una stringa singola ("holes"); un iterabile di stringhe.
@@ -94,7 +94,7 @@ _ROLE_TO_HOLE_TYPE = {
 # API pubblica
 # ---------------------------------------------------------------------------
 
-def detect(
+def detect_flat(
     result:            ForgeResult,
     features=None,
     *,
@@ -105,21 +105,21 @@ def detect(
     """
     Classifica le feature dentro le parti già trovate da heal().
 
-    `detect(result)` nudo esegue solo la lane dei ruoli assegnati al load (`role_rules`) e la
+    `detect_flat(result)` nudo esegue solo la lane dei ruoli assegnati al load (`role_rules`) e la
     pulizia della topologia: i contorni circolari restano `inners`, nessun
     `Hole`. È il default per il taglio laser (`laser-cutting-default`).
 
     Le lane geometriche sono opt-in via `features`:
-        detect(result, "holes")           → promozione fori (Ø < max_drill_diameter)
-        detect(result, "all")             → fori + pieghe + incisioni
-        detect(result, {"holes", "bending"})
+        detect_flat(result, "holes")           → promozione fori (Ø < max_drill_diameter)
+        detect_flat(result, "all")             → fori + pieghe + incisioni
+        detect_flat(result, {"holes", "bending"})
 
     `max_drill_diameter` (default `HOLE_DIAMETER_THRESHOLD`, 32.1 mm) è un
     parametro di processo: sotto soglia il contorno circolare è un foro da
     punta, sopra resta un contorno interno.
 
     Muta `result` in-place (parti, trash_entities, classified_entities) e lo
-    ritorna, così la catena resta esplicita: `result = forge.detect(result)`.
+    ritorna, così la catena resta esplicita: `result = forge.detect_flat(result)`.
     """
     feats = _normalize_features(features)
 
@@ -616,7 +616,7 @@ def _assign_to_part(ce: ClassifiedEntity, result: ForgeResult) -> None:
         return
 
     result.warnings.append(
-        f"detect(): forma {ce.work_type} non contenuta in nessun cluster "
+        f"detect_flat(): forma {ce.work_type} non contenuta in nessun cluster "
         f"(source={ce.source}). Registrata in classified_entities."
     )
 

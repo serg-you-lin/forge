@@ -35,7 +35,7 @@ class ForgeDocument:
     """
     Documento di dominio prodotto da load_dxf() / load_svg() / load_pdf().
 
-    Contratto: heal(), detect() e write() lavorano solo su questo oggetto e sul
+    Contratto: heal(), detect_flat() e write() lavorano solo su questo oggetto e sul
     ForgeResult che ne deriva — mai su entità ezdxf.
     """
     edges:       List["Edge"]        = field(default_factory=list)

@@ -227,7 +227,7 @@ def _describe_segment(seg) -> str:
 
 def inspect_result(result, coords: bool = False) -> None:
     """
-    Stampa un ForgeResult dopo heal() (+ detect()): il prodotto vero di forge.
+    Stampa un ForgeResult dopo heal() (+ detect_flat()): il prodotto vero di forge.
 
     coords : se True stampa anche le coordinate dei contorni
     """
@@ -348,7 +348,7 @@ def inspect_file(
     result = _heal(doc, tolerance=tolerance)
 
     if run_detect and result.is_valid and result.clusters:
-        from .tools.detect import detect as _detect
+        from .tools.detect import detect_flat as _detect
         _detect(result)
 
     inspect_result(result, coords=coords)

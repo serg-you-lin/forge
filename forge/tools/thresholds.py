@@ -1,7 +1,7 @@
 """
 tools/thresholds.py
 -------------------
-Costanti e regole di detect() — zero dipendenze da formato.
+Costanti e regole di detect_flat() — zero dipendenze da formato.
 
 Spostate da rules/thresholds.py (branch refactor/detect-overlay): verificato
 che i due usi (`detect.py`, `hole_detector.py`) sono entrambi già in tools/ —
@@ -11,7 +11,7 @@ detect).
 
 Chi le usa:
     detect.py         — HOLE_DIAMETER_THRESHOLD come default di
-                        `detect(max_drill_diameter=...)`
+                        `detect_flat(max_drill_diameter=...)`
     hole_detector.py  — THREADED_ARC_MAX_RADIUS_RATIO
 
 La tassonomia dei ruoli (`STRUCTURAL_ROLES`, `is_structural_role`) sta in
@@ -19,11 +19,11 @@ La tassonomia dei ruoli (`STRUCTURAL_ROLES`, `is_structural_role`) sta in
 """
 
 # ---------------------------------------------------------------------------
-# Soglia diametro fori — default di detect(max_drill_diameter=...)
+# Soglia diametro fori — default di detect_flat(max_drill_diameter=...)
 # ---------------------------------------------------------------------------
 # È un parametro di PROCESSO (capacità di foratura di macchina/utensile), non
 # una costante di topologia: per questo la classificazione hole/inner vive in
-# detect() e non in heal()/hierarchy (MAP.md D15).
+# detect_flat() e non in heal()/hierarchy (MAP.md D15).
 # contorno circolare con Ø < soglia  → Hole (foro da punta)
 # contorno circolare con Ø >= soglia → ForgeContour (inner, tagliato a contorno)
 HOLE_DIAMETER_THRESHOLD: float = 32.1   # mm

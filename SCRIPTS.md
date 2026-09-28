@@ -30,7 +30,7 @@ OUTDIR = r"pipeline_output"                   # scritto in <repo>/pipeline_outpu
 | 00 | `00_inspect.py` | `inspect_file`, `inspect_dxf`, `inspect_document`, `inspect_result` | l'ispettore a 3 livelli — il primo strumento su un file che non torna |
 | 01 | `01_load_and_validate.py` | `load_dxf`, `document_from_msp`, `validate` | aprire un file → `ForgeDocument`; validare l'input |
 | 02 | `02_heal.py` | `heal`, `validate_result` | ricostruzione topologia → parti, albero outer/inner (niente fori) |
-| 03 | `03_detect.py` | `detect`, `ALL_FEATURES` | classificazione feature: nudo vs `"holes"`/`"bending"`/`"all"`, `max_drill_diameter` |
+| 03 | `03_detect.py` | `detect_flat`, `ALL_FEATURES` | classificazione feature: nudo vs `"holes"`/`"bending"`/`"all"`, `max_drill_diameter` |
 | 04 | `04_heal_and_detect.py` | `heal_and_detect` | la via del 90% — heal + detect in un colpo |
 | 05 | `05_to_dxf.py` | `to_dxf` | render del modello in un DXF nuovo; `filter_cluster`, `include_trash` |
 | 06 | `06_split.py` | `split` | un `Drawing` per parte (puro); `namer`, `on_part`, `exclude_types` |

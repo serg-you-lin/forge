@@ -48,7 +48,7 @@ def _run_pipeline(
         tolerance=tolerance,
     )
 
-    forge.detect(
+    forge.detect_flat(
         result, features="all",
     )
 

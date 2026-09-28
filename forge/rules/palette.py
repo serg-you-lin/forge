@@ -19,7 +19,7 @@ qui — sono gli unici ruoli che il motore conosce. Il colore di un ruolo
 manifatturiero (hole, bending, ...) o di un altro consumatore si ottiene con
 ``register_role_style`` qui sotto, non aggiungendo voci a questo file (MAP.md,
 "roles out of core"): ``tools/manufacturing_role.py`` lo fa per i ruoli di
-``detect()`` allo stesso modo in cui lo farebbe un consumatore esterno.
+``detect_flat()`` allo stesso modo in cui lo farebbe un consumatore esterno.
 
 ``RoleStyle`` (D37) è l'override esplicito di questa palette: un ruolo — noto
 al motore o assegnato da chiunque altro — non è più per forza grigio/fisso.

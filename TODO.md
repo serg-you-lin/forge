@@ -65,8 +65,8 @@ Resta aperto, discusso ma non affrontato:
   ha campi diversi da ruotare, non è un'estensione da un rigo.
 - `cluster.detected`/`cluster.custom` non sono ruotati da `rotate_result` —
   overlay a schema libero (D44), forge non sa cosa contengono. Se hai già
-  fatto `detect()` prima di ruotare, quei dati restano nelle coordinate
-  vecchie — la guida è fare `detect()` DOPO aver ruotato, non prima.
+  fatto `detect_flat()` prima di ruotare, quei dati restano nelle coordinate
+  vecchie — la guida è fare `detect_flat()` DOPO aver ruotato, non prima.
 
 **Fitting ellisse da punti grezzi** (generalizzare `arc_fit_tolerance` in
 `core/primitives/fitting.py` a un fit ellittico 5-DOF, per Smoother):
@@ -212,7 +212,7 @@ creare una fingerprint geometrica per validare na forge part.
 ## PRIORITÀ BASSA — futuro
 
 ### Feature di tracciatura.
-Simil_arcardini_segni_tracciati_stretto_healed --> questo file ha una serie di dentelli che partono da una linea orizzontele, che sono considerati parte del grafo giustamnete. vorrei aggiungere un parametro che sotto una certa distanza queste linee siano considerate solo dei segni di marcatura, completando il grafo solo con la linea orizzontale. Anche se ho degli inner che hanno distanza inferiore alla tolleranza di cui sopra, devono essere detectati come segni di incisione e posti sul layer 'Engrave'. probabilmente questa cosa va implementata nel modulo detect e può essere individuato il tutto solo passando detect() come facciamo con le bl che hanno la loro tolleranza.
+Simil_arcardini_segni_tracciati_stretto_healed --> questo file ha una serie di dentelli che partono da una linea orizzontele, che sono considerati parte del grafo giustamnete. vorrei aggiungere un parametro che sotto una certa distanza queste linee siano considerate solo dei segni di marcatura, completando il grafo solo con la linea orizzontale. Anche se ho degli inner che hanno distanza inferiore alla tolleranza di cui sopra, devono essere detectati come segni di incisione e posti sul layer 'Engrave'. probabilmente questa cosa va implementata nel modulo detect e può essere individuato il tutto solo passando detect_flat() come facciamo con le bl che hanno la loro tolleranza.
 
 
 ### Implementazione nuovo formato:
@@ -273,7 +273,7 @@ eventualmente ML/vision.
   da `core/heal.py`/`hierarchy.py` che leggono `STRUCTURAL_ROLES` per la
   topologia. Servirebbe un flag `structural: bool` invece di un elenco
   fisso, ma nessuno l'ha ancora disegnato.
-- **Idea "detect dovrebbe usare il suo stesso contratto"**: `detect()` ha
+- **Idea "detect dovrebbe usare il suo stesso contratto"**: `detect_flat()` ha
   accesso diretto/privilegiato alla tassonomia dei ruoli invece di passare
   dagli stessi ganci (`role`) di un consumatore esterno come framer. Appena
   nata, non ancora messa a fuoco nemmeno da Federico. Collegata al problema

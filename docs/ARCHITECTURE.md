@@ -73,7 +73,7 @@ forge/
 │   ├── document.py   ForgeDocument
 │   ├── result.py     ForgeResult
 │   ├── cluster.py    ForgeCluster — il contenitore, `detected` è l'overlay
-│   │                 di detect() (vocabolario aperto per nome — D44)
+│   │                 di detect_flat() (vocabolario aperto per nome — D44)
 │   ├── feature.py    Feature → ClosedFeature / OpenFeature
 │   ├── contour.py
 │   ├── annotation.py Annotation → Note / Dimension / Leader
@@ -87,17 +87,17 @@ forge/
 │   │                     importato da core/model (D47). `is_structural()`
 │   │                     è quello che heal_and_detect() inietta in
 │   │                     `heal(is_structural=...)`
-│   ├── detect.py         detect() / describe_features() — classifica le
+│   ├── detect.py         detect_flat() / describe_features() — classifica le
 │   │                     feature nei cluster (`cluster.detected`)
-│   ├── hole_detector.py  euristiche filettato / svasatura usate da detect()
+│   ├── hole_detector.py  euristiche filettato / svasatura usate da detect_flat()
 │   ├── anchor.py         anchor_annotations()   — àncora le annotazioni ai cluster
 │   ├── inject.py         inject()                — testi del cluster → data_injector esterno
 │   ├── non_contour.py    non_contour_candidates() — stesso criterio non-contorno
 │   │                     di heal() (D49), esposto per decidere `edge.role`
 │   │                     PRIMA di heal() (D55) — lavora su ForgeDocument
-│   ├── thresholds.py     soglie di detect() (HOLE_DIAMETER_THRESHOLD...)
+│   ├── thresholds.py     soglie di detect_flat() (HOLE_DIAMETER_THRESHOLD...)
 │   └── model/            Hole / BendingLine / Engraving / ClassifiedEntity /
-│                         DetectedFeatures — output di detect(), non
+│                         DetectedFeatures — output di detect_flat(), non
 │                         geometria di heal() (D44): non in `model/` apposta
 │
 ├── io/           RENDERER del modello + serializzazione
@@ -173,7 +173,7 @@ consumatore (framer) compone gli stessi passi come gli serve.
    entrambi gli endpoint su nodi di branching (grado > 2) e il centroide fuori
    dal convex hull della loro componente sono candidati a non essere contorno
    (D49) — escono dal grafo per non rompere la ricerca dei loop. `heal` non
-   decide cosa siano: resta a `detect()` (che li interpreta come piega) o a un
+   decide cosa siano: resta a `detect_flat()` (che li interpreta come piega) o a un
    altro consumatore che preferisce decidere da sé
 5. **ricerca loop** (`find_loops` → `LoopSearch`, che dice quale gradino ha
    chiuso), con una scala di strategie sempre meno esatte:
@@ -223,19 +223,19 @@ come contorno. `island` parte da un fatto globale, cosa sta fuori:
    interno della più esterna che la contiene
 
 Stesso contratto di `heal`: un `ForgeResult`, un `ForgeCluster` per isola, e
-`detect` / `to_dxf` / `split` non sanno quale lettura l'ha prodotto. Cosa sia
+`detect_flat` / `to_dxf` / `split` non sanno quale lettura l'ha prodotto. Cosa sia
 un'isola (vista, pezzo, cornice) lo decide chi chiama (D21). `island` non
 chiama mai `heal`.
 
-### 3. `detect` (semantica)
+### 3. `detect_flat` (semantica)
 
 Classifica le feature dentro le parti. **Muta il `result` in-place e lo ritorna.**
 `heal_and_detect(doc)` fa il passo 2 e il passo 3 insieme (con `features="all"`);
 restano separati perché un renderer o un nesting tool possono volere la sola
 topologia.
 
-`detect(result)` nudo fa solo la lane dei ruoli assegnati al load + pulizia topologia. Le lane
-geometriche sono opt-in: `detect(result, "holes" | "bending" | "engrave" | "all")`.
+`detect_flat(result)` nudo fa solo la lane dei ruoli assegnati al load + pulizia topologia. Le lane
+geometriche sono opt-in: `detect_flat(result, "holes" | "bending" | "engrave" | "all")`.
 
 - **fori** (`features="holes"`) → un contorno interno circolare con Ø `<
   max_drill_diameter` (parametro di processo, default 32.1 mm) viene promosso a
@@ -314,7 +314,7 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
   `heal_and_detect()` inietta (`tools.manufacturing_role.is_structural`),
   `hole`/`countersink`/`threaded_hole` restano DENTRO il grafo (sono vera
   topologia di pezzo), solo `bending`/`engrave`/`marking` e i ruoli di un
-  consumatore restano fuori. In entrambi i casi `detect` non tocca ciò che
+  consumatore restano fuori. In entrambi i casi `detect_flat` non tocca ciò che
   non conosce, l'output lo scrive su un layer DXF col nome dello slug (non
   `Trash` — non è spazzatura), geometria intatta (D27, D30, D31, D47).
   Una regola combina segnali neutri — nome del gruppo sorgente, tratteggio,
@@ -332,7 +332,7 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
 `source` + `confidence`). `Engraving` lo segue. Il design resta aperto al binario
 dell'inferenza anche dove non è ancora implementato — es. `detect._detect_engrave`
 è un placeholder con già il parametro `engrave_tolerance` e il posto in
-`detect()`.
+`detect_flat()`.
 
 ---
 

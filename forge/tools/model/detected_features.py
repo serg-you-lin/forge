@@ -1,12 +1,12 @@
 """
 tools/model/detected_features.py
 ---------------------------------
-L'overlay di detect() — vocabolario aperto per nome, stessa mossa già fatta
+L'overlay di detect_flat() — vocabolario aperto per nome, stessa mossa già fatta
 per `role` in D27 (branch refactor/detect-overlay, MAP.md D44).
 
 `ForgeCluster.detected` non ha più campi fissi (`holes`/`bending_lines`/
 `engrave_lines`): è un `DetectedFeatures`, un contenitore che si scrive per
-nome — `detect()` di forge e un tool esterno (un domani framer, bendly, o un
+nome — `detect_flat()` di forge e un tool esterno (un domani framer, bendly, o un
 riconoscitore custom come "quante flange in su") usano lo stesso identico
 meccanismo, nessuno dei due è privilegiato nello schema. `cluster.detected is
 None` finché nessuno ci ha scritto: distingue "non ho ancora fatto detect" da
@@ -40,7 +40,7 @@ class DetectedFeature(Protocol):
 @dataclass
 class DetectedFeatures:
     """
-    Contenitore aperto per nome. `detect()` scrive sotto `holes`/
+    Contenitore aperto per nome. `detect_flat()` scrive sotto `holes`/
     `bending_lines`/`engrave_lines`; chiunque altro scrive sotto il nome che
     vuole, con lo stesso metodo.
     """

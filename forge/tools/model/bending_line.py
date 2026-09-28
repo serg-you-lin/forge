@@ -3,7 +3,7 @@ tools/model/bending_line.py
 
 Linea di piega — OpenFeature. Spostata da bridge/edge.py dove conviveva con
 Edge (topologia adapter), poi da model/bending_line.py a qui (branch
-refactor/detect-overlay): è output di detect(), non geometria di heal().
+refactor/detect-overlay): è output di detect_flat(), non geometria di heal().
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ class BendingLine(OpenFeature):
     cluster_label: str           = ""
     # Doppio binario di provenienza, come Hole ed Engraving (MAP.md D5):
     #   source="labeled"   → ruolo da role_rules       (confidence 1.0)
-    #   source="geometric" → inferenza in detect()     (confidence < 1.0)
+    #   source="geometric" → inferenza in detect_flat()     (confidence < 1.0)
     confidence: float         = 1.0
     source:     str           = ""
 

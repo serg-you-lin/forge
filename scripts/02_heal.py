@@ -7,7 +7,7 @@ API forge usate:
     validate_result    valida l'OUTPUT (heal la chiama già da solo; qui a scopo didattico)
 
 heal() fa il lavoro difficile: chiude i gap, trova i loop chiusi, costruisce
-l'albero di contenimento. NON classifica i fori (quello è detect(), vedi 03):
+l'albero di contenimento. NON classifica i fori (quello è detect_flat(), vedi 03):
 consegna ForgeCluster(outer, inners=[ForgeContour...]).
 
     python 02_heal.py

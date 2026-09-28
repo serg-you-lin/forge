@@ -1,7 +1,7 @@
 """
 tools/model/classified.py
 
-DTO di risultato: una entità classificata da `tools/detect()` senza una classe
+DTO di risultato: una entità classificata da `tools/detect_flat()` senza una classe
 di dominio dedicata (marking, work_type custom).
 
 Spostato da model/classified.py (branch refactor/detect-overlay): la ragione
@@ -19,9 +19,9 @@ from typing import Any, Optional, Tuple
 @dataclass
 class ClassifiedEntity:
     """
-    Risultato della classificazione di una entità da detect().
+    Risultato della classificazione di una entità da detect_flat().
 
-    Prodotto da detect(), consumato da inject() e write().
+    Prodotto da detect_flat(), consumato da inject() e write().
 
     Campi:
         work_type  : tipo lavorazione — chiave di WORK_TYPE_TO_LAYER

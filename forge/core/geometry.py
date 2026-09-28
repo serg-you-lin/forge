@@ -126,7 +126,7 @@ def group_collinear_lines(lines: list, tolerance: float = 0.1) -> list:
 # Una traccia aperta (bending line, incisione, frammento non chiuso) nel modello
 # è una lista di segmenti nativi (LineSeg / ArcSeg / SplineSeg / CircleSeg).
 # `pts`, `length`, `shape_type` sono valori DERIVATI da quei segmenti: qui, non
-# stoccati sul modello. Chi li consuma — detect(), write._write_trash,
+# stoccati sul modello. Chi li consuma — detect_flat(), write._write_trash,
 # inspect() — li ricava con queste funzioni.
 
 def track_points(segments, tolerance: Optional[float] = None) -> List[Point]:
@@ -211,7 +211,7 @@ def chord_angle_deg(a: Point, b: Point) -> float:
 # Geometria circolare — diametro / centro di un contorno chiuso ~circolare
 # ---------------------------------------------------------------------------
 # Serve alla regola di processo `Ø < max_drill_diameter → foro` che vive in
-# detect(): dato un contorno interno, questo helper dice se è geometricamente
+# detect_flat(): dato un contorno interno, questo helper dice se è geometricamente
 # un cerchio e con quale diametro/centro. Prima la stessa logica stava in
 # `hierarchy._single_loop_geometry` e i valori erano stoccati su ClosedFeature
 # (campi rimossi in D15) — ora si ricava qui, al momento della classificazione.

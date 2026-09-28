@@ -8,11 +8,11 @@ sua componente connessa, MAP.md D49).
 
 `heal()` non assegna mai un significato a questi edge: li esclude dal grafo e
 basta, restano in `trash_entities` col ruolo che avevano (`unknown` se nessuno
-l'ha già deciso). È `detect()` — un consumatore a valle come un altro — a
+l'ha già deciso). È `detect_flat()` — un consumatore a valle come un altro — a
 interpretarli (`_detect_bending`, "candidato dritto con gli estremi sul
 contorno esterno → piega, confidence 0.9").
 
-Un consumatore diverso da `detect()` (framer, l'interprete) può volere la
+Un consumatore diverso da `detect_flat()` (framer, l'interprete) può volere la
 stessa lista di candidati SENZA quell'interpretazione, per applicarne una
 propria (un bordo di feature in rilievo vista in pianta non è una piega) e
 assegnare `edge.role` prima di chiamare `heal()` (vedi FRAMER.md, MAP.md D30).

@@ -6,17 +6,17 @@ API forge usate:
     detect         classifica le feature dentro le parti già trovate da heal()
     ALL_FEATURES   la costante iterabile {"holes", "bending", "engrave"}
 
-detect(result) NUDO fa solo il minimo: i ruoli assegnati al load (role_rules) +
+detect_flat(result) NUDO fa solo il minimo: i ruoli assegnati al load (role_rules) +
 pulizia topologia. I fori arrivano SOLO dalle regole in NAME_ROLES; nessun
 foro dedotto dalla geometria — è il default per il taglio laser.
 Le lane geometriche sono OPT-IN via `features`:
 
-    detect(result, "holes")     cerchi Ø < max_drill_diameter -> Hole
-    detect(result, "bending")   linee di piega geometriche
-    detect(result, "engrave")   inferenza incisioni (oggi no-op)
-    detect(result, "all")       tutte e tre
+    detect_flat(result, "holes")     cerchi Ø < max_drill_diameter -> Hole
+    detect_flat(result, "bending")   linee di piega geometriche
+    detect_flat(result, "engrave")   inferenza incisioni (oggi no-op)
+    detect_flat(result, "all")       tutte e tre
 
-detect() MUTA il result in-place E lo ritorna.
+detect_flat() MUTA il result in-place E lo ritorna.
 
     python 03_detect.py
 """
@@ -49,20 +49,20 @@ def show(tag, result):
 # 1. detect nudo — solo role_rules + topologia
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 r = forge.heal(doc, tolerance=TOLERANCE)
-forge.detect(r)
-show("detect(result)", r)
+forge.detect_flat(r)
+show("detect_flat(result)", r)
 
 # 2. solo fori
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 r = forge.heal(doc, tolerance=TOLERANCE)
-forge.detect(r, "holes", max_drill_diameter=MAX_DRILL_DIAMETER)
-show("detect(result, 'holes')", r)
+forge.detect_flat(r, "holes", max_drill_diameter=MAX_DRILL_DIAMETER)
+show("detect_flat(result, 'holes')", r)
 
 # 3. tutto
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 r = forge.heal(doc, tolerance=TOLERANCE)
-forge.detect(r, "all", max_drill_diameter=MAX_DRILL_DIAMETER, bending_tolerance=1.0)
-show("detect(result, 'all')", r)
+forge.detect_flat(r, "all", max_drill_diameter=MAX_DRILL_DIAMETER, bending_tolerance=1.0)
+show("detect_flat(result, 'all')", r)
 
 # dettaglio fori tipati
 print()

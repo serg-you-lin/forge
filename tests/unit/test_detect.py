@@ -40,7 +40,7 @@ class TestDetectBase(unittest.TestCase):
         self.msp = doc.modelspace()
 
         self.result = forge.heal(forge.document_from_msp(self.msp))
-        forge.detect(self.result, features="all")
+        forge.detect_flat(self.result, features="all")
 
     # ---------------------------------------------------------------
     # detect NON deve rompere heal
@@ -72,7 +72,7 @@ class TestDetectBase(unittest.TestCase):
         hole = self.result.clusters[0].features("holes")[0]
         first = hole.hole_type
 
-        forge.detect(self.result, features="all")
+        forge.detect_flat(self.result, features="all")
         second = hole.hole_type
 
         self.assertEqual(first, second)
@@ -89,7 +89,7 @@ class TestDetectCountersink(unittest.TestCase):
         self.msp = doc.modelspace()
 
         self.result = forge.heal(forge.document_from_msp(self.msp))
-        forge.detect(self.result, features="all")
+        forge.detect_flat(self.result, features="all")
         
     def test_001_countersink_detected(self):
         holes = self.result.clusters[0].features("holes")
@@ -116,7 +116,7 @@ class TestDetectLabelMap(unittest.TestCase):
         from forge.tools.manufacturing_role import is_structural
         self.result = forge.heal(forge.document_from_msp(self.msp, role_rules=forge.name_rules(name_roles)),
                                   is_structural=is_structural)
-        forge.detect(self.result, features="all")
+        forge.detect_flat(self.result, features="all")
 
     def test_001_name_rule_override(self):
         hole = self.result.clusters[0].features("holes")[0]
@@ -136,7 +136,7 @@ class TestDetectThreaded(unittest.TestCase):
         self.msp = doc.modelspace()
 
         self.result = forge.heal(forge.document_from_msp(self.msp))
-        forge.detect(self.result, features="all")
+        forge.detect_flat(self.result, features="all")
 
     def test_001_thread_detected(self):
         holes = self.result.clusters[0].features("holes")
@@ -155,7 +155,7 @@ class TestFlangeCountersink(unittest.TestCase):
     def setUp(self):
         doc = load("flangia semplice.DXF")
         self.result = forge.heal(forge.document_from_msp(doc.modelspace()))
-        forge.detect(self.result, features="all")
+        forge.detect_flat(self.result, features="all")
 
     def test_concentric_large_hole_is_not_countersink(self):
         cluster = self.result.clusters[0]
@@ -178,7 +178,7 @@ class TestFlangeCountersink(unittest.TestCase):
 
 
 # -------------------------------------------------------------------
-# D15 — contratto parametrico di detect()
+# D15 — contratto parametrico di detect_flat()
 # -------------------------------------------------------------------
 
 class TestDetectParametric(unittest.TestCase):
@@ -188,32 +188,32 @@ class TestDetectParametric(unittest.TestCase):
         return forge.heal(forge.document_from_msp(doc.modelspace()))
 
     def test_bare_detect_promotes_no_holes(self):
-        # detect(result) nudo = solo topologia pulita + ruoli assegnati al load.
+        # detect_flat(result) nudo = solo topologia pulita + ruoli assegnati al load.
         result = self._healed()
-        forge.detect(result)
+        forge.detect_flat(result)
         self.assertEqual(sum(len(p.features("holes")) for p in result.clusters), 0)
         self.assertEqual(sum(len(p.inners) for p in result.clusters), 1)
 
     def test_features_holes_promotes(self):
         result = self._healed()
-        forge.detect(result, features="holes")
+        forge.detect_flat(result, features="holes")
         self.assertEqual(sum(len(p.features("holes")) for p in result.clusters), 1)
         self.assertEqual(sum(len(p.inners) for p in result.clusters), 0)
 
     def test_features_all_equivalent_to_holes_here(self):
         result = self._healed()
-        forge.detect(result, features="all")
+        forge.detect_flat(result, features="all")
         self.assertEqual(sum(len(p.features("holes")) for p in result.clusters), 1)
 
     def test_max_drill_diameter_gates_promotion(self):
         # Con soglia sotto il Ø del foro, il cerchio resta contorno interno.
         result = self._healed()
         hole_d = None
-        forge.detect(result, features="holes")
+        forge.detect_flat(result, features="holes")
         hole_d = result.clusters[0].features("holes")[0].diameter
 
         result2 = self._healed()
-        forge.detect(result2, features="holes", max_drill_diameter=hole_d - 1.0)
+        forge.detect_flat(result2, features="holes", max_drill_diameter=hole_d - 1.0)
         self.assertEqual(len(result2.clusters[0].features("holes")), 0)
         self.assertEqual(len(result2.clusters[0].inners), 1)
 
@@ -245,7 +245,7 @@ class TestDetectStyleMap(unittest.TestCase):
         )
         doc = forge.document_from_msp(msp, role_rules=[forge.RoleRule("bending", dashed=True)])
         result = forge.heal(doc)
-        forge.detect(result)
+        forge.detect_flat(result)
 
         cluster = result.clusters[0]
         self.assertEqual(len(cluster.features("bending_lines")), 1)
@@ -257,7 +257,7 @@ class TestDetectStyleMap(unittest.TestCase):
         )
         doc = forge.document_from_msp(msp, role_rules=[forge.RoleRule("engrave", color="cyan")])
         result = forge.heal(doc)
-        forge.detect(result)
+        forge.detect_flat(result)
 
         cluster = result.clusters[0]
         self.assertEqual(len(cluster.features("engrave_lines")), 1)
@@ -268,7 +268,7 @@ class TestDetectStyleMap(unittest.TestCase):
             msp = self._rect_with_internal_lines({}, {"color": 4})
             doc = forge.document_from_msp(msp, role_rules=[forge.RoleRule("engrave", color=key)])
             result = forge.heal(doc)
-            forge.detect(result)
+            forge.detect_flat(result)
             self.assertEqual(len(result.clusters[0].features("engrave_lines")), 1, msg=f"key={key!r}")
 
     def test_004_first_matching_rule_wins(self):
@@ -287,7 +287,7 @@ class TestDetectStyleMap(unittest.TestCase):
             ],
         )
         result = forge.heal(forge_doc)
-        forge.detect(result)
+        forge.detect_flat(result)
 
         cluster = result.clusters[0]
         self.assertEqual(len(cluster.features("bending_lines")), 1)

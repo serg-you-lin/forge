@@ -60,7 +60,7 @@ class TestIsland(unittest.TestCase):
         result = forge.island(_doc(edges))
         inner = result.clusters[0].inners[0]
         self.assertEqual([type(s).__name__ for s in inner.segments], ["CircleSeg"])
-        self.assertEqual(len(forge.detect(result, "holes").clusters[0].features("holes")), 1)
+        self.assertEqual(len(forge.detect_flat(result, "holes").clusters[0].features("holes")), 1)
 
     def test_lato_tagliato_da_un_asse_torna_un_segmento(self):
         # un asse che esce dal contorno lo spezza: il contorno esterno resta di 4 lati

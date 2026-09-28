@@ -53,7 +53,7 @@ class ClosedFeature(Feature):
 
     Non porta `diameter` / `center`: la geometria circolare di un contorno è
     ricavata al bisogno da `core.geometry.circular_geometry()` e stoccata
-    sull'oggetto `Hole` da `detect()` (D15), non sul contorno grezzo.
+    sull'oggetto `Hole` da `detect_flat()` (D15), non sul contorno grezzo.
     """
     polygon:  Polygon                          = field(default=None)
     segments: List[LineSeg | ArcSeg | SplineSeg] = field(default_factory=list)

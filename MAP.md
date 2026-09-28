@@ -18,7 +18,7 @@ reopening, say so explicitly — "reopening decision N".
 ```python
 doc    = forge.load_dxf("file.dxf")        # the only point that touches ezdxf for reading
 result = forge.heal(doc)                   # topology — zero DXF
-result = forge.detect(result, "all")       # semantics/features — zero DXF
+result = forge.detect_flat(result, "all")  # features of a flat part — zero DXF
 doc_out = forge.to_dxf(result, doc)        # a new document — no source_ref
 doc_out.saveas("output.dxf")
 
@@ -31,7 +31,7 @@ doc = forge.load_svg("file.svg")
 
 **Guiding principle:** `load_*` produces a `ForgeDocument` of pure data (edges
 + annotations). After loading, the source `ezdxf` document disappears.
-`heal`/`detect` never see a format. `to_dxf` builds a **new** document from the
+`heal`/`detect_flat` never see a format. `to_dxf` builds a **new** document from the
 model's own segments — it never copies entities from the source, never carries
 `source_ref`. The model is the product; DXF is only one of its
 representations.
@@ -80,8 +80,8 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `main` — `RoleRule(dash=...)` (D64) merged, version `0.7.2`.
-Suite: 833 passed + 47 subtests as of the latest decision below (D64),
+Branch: `main` — `detect` renamed `detect_flat` (D67), version `0.8.0`.
+Suite: 841 passed + 47 subtests as of the latest decision below (D67),
 golden all green.
 
 Still genuinely open:
@@ -1820,6 +1820,25 @@ the text is not forge's job.
   the measured geometry (scale, `Leva INOX` drawn at 1.25:1) is framer's.
 
 Suite: 841 passed (6 new in `test_anchor_annotations.py`), golden unchanged.
+
+### D67 — `detect` renamed `detect_flat` ✅
+`detect` assumes a flat part seen from its face (cutting file, sheet
+development): an inner circle is a hole, a line crossing the part is a bend.
+On `island()` views that is false by construction — it found "bends" in
+isometrics and "holes" in logo letters — and the old name said nothing about
+it. Federico: the name is misleading, rename it.
+
+- **Only the function is renamed**; the module stays `tools/detect.py`
+  (`describe_features` and the other helpers are imported from it) and
+  `heal_and_detect` keeps its name: `heal` already reads a flat part from the
+  inside, so the pair is not misleading. `NonContourEdgeDetector.detect` is
+  unrelated and unchanged.
+- **Clean break, no alias**: `forge.detect` no longer exists, so a caller
+  running it on views finds out instead of getting silent nonsense. Breaking
+  change → `0.8.0`.
+- Feature reading on island views is not built; where it goes is open.
+
+Suite: 841 passed, golden unchanged. `main` → 0.8.0.
 
 ---
 

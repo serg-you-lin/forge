@@ -134,7 +134,7 @@ def _make_test(path):
             is_structural=is_structural,
         )
 
-        forge.detect(result, features="all")
+        forge.detect_flat(result, features="all")
 
         # --- cluster count ---
         self.assertEqual(
@@ -453,7 +453,7 @@ def _make_roundtrip_test(path):
 
         def _pipeline(doc):
             r = forge.heal(doc, tolerance=tol, is_structural=is_structural)
-            forge.detect(r, features="all")
+            forge.detect_flat(r, features="all")
             return r
 
         result = _pipeline(

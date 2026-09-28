@@ -3,10 +3,10 @@
 ======================================
 
 API forge usate:
-    heal_and_detect    heal() + detect() in un colpo solo
+    heal_and_detect    heal() + detect_flat() in un colpo solo
 
-A differenza di detect() nudo, qui features="all" è il DEFAULT: fori, pieghe e
-incisioni vengono classificati. detect() viene saltato se heal() non produce
+A differenza di detect_flat() nudo, qui features="all" è il DEFAULT: fori, pieghe e
+incisioni vengono classificati. detect_flat() viene saltato se heal() non produce
 parti valide (il result torna comunque, is_valid=False).
 
 Questo è lo snippet da mettere nel README / negli altri script.

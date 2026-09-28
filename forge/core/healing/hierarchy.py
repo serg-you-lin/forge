@@ -45,7 +45,7 @@ def loop_to_closed_feature(
 
         # Guard sui micro-cerchi: un loop di una singola primitiva circolare
         # con diametro sotto soglia è rumore, non un contorno. La
-        # classificazione hole/inner vera e propria è di detect() (D15) —
+        # classificazione hole/inner vera e propria è di detect_flat() (D15) —
         # qui `diameter`/`center` NON vengono stoccati sul feature.
         if len(loop) == 1:
             diameter, _ = circular_geometry(poly, segments)
@@ -128,7 +128,7 @@ def _collect_inners(
     leggere per sapere quali contorni sono "nipoti" e di chi.
 
     heal() si ferma qui — non decide più hole vs inner né riconosce i
-    countersink dal nesting (D15). detect(features="holes") ri-deriva il
+    countersink dal nesting (D15). detect_flat(features="holes") ri-deriva il
     nesting per contenimento fra poligoni e promuove i fori.
     """
     for child_proxy, grandchildren in children:

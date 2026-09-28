@@ -42,7 +42,7 @@ def _pipeline(name, *, detect=False, name_roles=None):
     doc = forge.load_dxf(EXAMPLES_DIR / name, role_rules=forge.name_rules(name_roles or {}))
     result = forge.heal(doc)
     if detect:
-        forge.detect(result, features="all")
+        forge.detect_flat(result, features="all")
     doc_out = forge.to_dxf(result, doc)
     return result, doc_out.modelspace()
 
@@ -92,7 +92,7 @@ class TestWritebackCircleOuter(unittest.TestCase):
 class TestWritebackCircleHole(unittest.TestCase):
 
     def setUp(self):
-        # D15: la promozione a foro è di detect(features="holes"), non di heal().
+        # D15: la promozione a foro è di detect_flat(features="holes"), non di heal().
         self.result, self.msp = _pipeline("rect_with_circle_hole.dxf", detect=True)
 
     def test_001_circle_on_hole_layer(self):
@@ -118,7 +118,7 @@ class TestWritebackCircleInner(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Countersink — routing dopo detect()
+# Countersink — routing dopo detect_flat()
 # ---------------------------------------------------------------------------
 
 class TestWritebackCountersink(unittest.TestCase):
@@ -138,7 +138,7 @@ class TestWritebackCountersink(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Special layers (BEND + MARK) — routing dopo detect()
+# Special layers (BEND + MARK) — routing dopo detect_flat()
 # ---------------------------------------------------------------------------
 
 class TestWritebackSpecialLayers(unittest.TestCase):
@@ -389,7 +389,7 @@ class TestWritebackAnnotations(unittest.TestCase):
         self.assertEqual(kinds["DIMENSION"], 16)
         self.assertEqual(kinds["LEADER"], 4)
         result = forge.heal(doc)
-        forge.detect(result, features="all")
+        forge.detect_flat(result, features="all")
         msp = forge.to_dxf(result, doc).modelspace()
         ann_geom = [e for e in msp.query("LWPOLYLINE")
                     if e.dxf.layer == LAYER_ANNOTATION]

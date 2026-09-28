@@ -153,7 +153,7 @@ class TestPipelineDetectIdempotency(unittest.TestCase):
 
         import forge
 
-        forge.detect(
+        forge.detect_flat(
             result, features="all"
         )
 
@@ -229,7 +229,7 @@ class TestSpecialLayersEngrave(unittest.TestCase):
 
 class TestSpecialLayersWithoutDetect(unittest.TestCase):
     """
-    Senza detect(), le entità su layer non-strutturale vanno in Trash.
+    Senza detect_flat(), le entità su layer non-strutturale vanno in Trash.
     """
 
     def setUp(self):
@@ -246,7 +246,7 @@ class TestSpecialLayersWithoutDetect(unittest.TestCase):
         self.assertEqual(mark_count, 0)
 
     def test_002_trash_has_entities(self):
-        # Senza detect(), la geometria non strutturale resta nel modello
+        # Senza detect_flat(), la geometria non strutturale resta nel modello
         # come trash_entities (non più spostata su un layer "Trash" del msp).
         result = self.pipeline["result"]
         self.assertGreater(len(result.trash_entities), 0)
