@@ -121,6 +121,9 @@ from .core.healing.islands import spatial_islands, Island
 from .core.topology.noding import split_at_crossings, NodedEdges
 from .core.topology.outer_face import outer_face, OuterFace
 from .core.healing.normalizer import refit_tessellations
+# Forma di un contorno chiuso (cerchio, asola, rettangolo, ...): fatto
+# geometrico, non feature — vale su heal() e island(). MAP.md D68.
+from .core.shape import contour_shape, ContourShape
 # I passi di heal(), uno per funzione: heal() è la loro composizione di
 # default, un consumatore (framer) li compone nell'ordine che gli serve —
 # per esempio senza build_hierarchy, finché non ha deciso da sé cosa
@@ -169,6 +172,8 @@ __all__ = [
     "anchor_annotations",
     "leader_target",
     "resolve_target",
+    "contour_shape",
+    "ContourShape",
     "split_to_files",
     # Export
     "to_json",
