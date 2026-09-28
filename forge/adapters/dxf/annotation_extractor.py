@@ -29,6 +29,8 @@ from typing import List, Optional, Tuple
 from ...model.annotation import (
     Annotation, Note, Dimension, Leader, RenderedGeometry, RenderedText,
 )
+from ezdxf.tools.text import plain_mtext
+
 from .mtext import clean_mtext, mleader_text
 
 ANNOTATION_TYPES = frozenset({"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"})
@@ -219,6 +221,7 @@ def _dimension_annotation(entity, pos, layer) -> Optional[Dimension]:
         dim_type=dim_type,
         text_override=override,
         rendered=rendered,
+        measured_points=_measured_points(entity, dim_type),
     )
 
 
@@ -249,7 +252,37 @@ def _dimension_override(entity) -> Optional[str]:
     `write()` risolve "<>" con la misura.
     """
     raw = entity.dxf.get("text", "") or ""
-    return None if raw in ("", "<>") else raw
+    if raw in ("", "<>"):
+        return None
+    if raw.strip():
+        raw = plain_mtext(raw).strip()   # codici di formattazione MTEXT (\A1; ...)
+        if raw in ("", "<>"):
+            return None
+    for code, char in _SPECIAL_CODES.items():
+        raw = raw.replace(code, char).replace(code.upper(), char)
+    return raw
+
+
+# Codici speciali del testo DXF → carattere (diametro, grado, più-meno).
+_SPECIAL_CODES = {"%%c": "Ø", "%%d": "°", "%%p": "±"}
+
+
+def _measured_points(entity, dim_type: str) -> List[Tuple[float, float]]:
+    """
+    I punti sulla geometria fra cui la quota misura, dai def-point:
+    lineare → origini delle due direttrici (13, 14); diametro → i due punti
+    opposti sul cerchio (10, 15); raggio → il punto sull'arco (15; il 10 è
+    il centro). Angolari e ordinate: nessuno, per ora.
+    """
+    names = {"linear": ("defpoint2", "defpoint3"), "aligned": ("defpoint2", "defpoint3"),
+             "diameter": ("defpoint", "defpoint4"), "radius": ("defpoint4",)}.get(dim_type, ())
+    points = []
+    for name in names:
+        v = entity.dxf.get(name)
+        if v is None:
+            return []
+        points.append((float(v[0]), float(v[1])))
+    return points
 
 
 def _synthesize_dimension(entity):

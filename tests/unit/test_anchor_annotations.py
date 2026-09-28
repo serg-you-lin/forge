@@ -14,8 +14,8 @@ from forge.model.cluster import ForgeCluster
 from forge.model.contour import ForgeContour
 from forge.model.result import ForgeResult
 from forge.model.role import ContourRole
-from forge.model.annotation import Leader, Note
-from forge.tools.anchor import anchor_annotations, resolve_target
+from forge.model.annotation import Dimension, Leader, Note, RenderedGeometry, RenderedText
+from forge.tools.anchor import anchor_annotations, dimension_references, resolve_target
 
 
 def _part(x0, y0, x1, y1):
@@ -133,6 +133,71 @@ class TestLeaderTarget(unittest.TestCase):
         hole = resolve_target(result, result.annotations[0].target)
         self.assertIn(".holes[", result.annotations[0].target)
         self.assertAlmostEqual(hole.polygon.centroid.x, 20, places=1)
+
+
+class TestDimensionReferences(unittest.TestCase):
+    """`Dimension.references`: gli elementi fra cui la quota misura (D69)."""
+
+    def _result(self, *dims):
+        result = forge.island(_plate_with_holes())
+        result.annotations = list(dims)
+        return anchor_annotations(result)
+
+    def test_diametro_sul_foro(self):
+        dim = Dimension(position=(40, 40), dim_type="diameter", measured_points=[(60, 25), (80, 25)])
+        result = self._result(dim)
+        self.assertEqual(len(dim.references), 1)
+        hole = resolve_target(result, dim.references[0])
+        self.assertAlmostEqual(forge.contour_shape(hole).diameter, 20)
+
+    def test_raggio_sul_foro(self):
+        dim = Dimension(position=(40, 40), dim_type="radius", measured_points=[(20, 29)])
+        result = self._result(dim)
+        self.assertAlmostEqual(forge.contour_shape(resolve_target(result, dim.references[0])).diameter, 8)
+
+    def test_lineare_fra_due_elementi(self):
+        # dal bordo sinistro del pezzo al bordo sinistro del foro Ø8
+        dim = Dimension(position=(8, 60), measured_points=[(0, 25), (16, 25)])
+        result = self._result(dim)
+        self.assertEqual(dim.references[0], "clusters[0].outer")
+        self.assertEqual(len(dim.references), 2)
+        self.assertAlmostEqual(forge.contour_shape(resolve_target(result, dim.references[1])).diameter, 8)
+
+    def test_punti_fuori_dalla_geometria(self):
+        dim = Dimension(position=(0, 0), measured_points=[(-20, -20), (200, 200)])
+        self._result(dim)
+        self.assertEqual(dim.references, [])
+
+    def test_senza_punti(self):
+        result = forge.island(_plate_with_holes())
+        self.assertEqual(dimension_references(result, Dimension(position=(0, 0))), [])
+
+
+def _texts(*contents):
+    return RenderedGeometry(texts=[RenderedText(content=c, position=(0, 0)) for c in contents])
+
+
+class TestDimensionDisplayText(unittest.TestCase):
+
+    def test_override_con_la_misura_disegnata(self):
+        # il simbolo arriva come frammento a sé ("n" in un font di simboli): vale l'override
+        d = Dimension(position=(0, 0), text_override="Ø<>", measured_value=6.5, rendered=_texts("n", "6.5"))
+        self.assertEqual(d.display_text, "Ø6.5")
+
+    def test_override_usa_la_precisione_del_disegno(self):
+        d = Dimension(position=(0, 0), text_override="M<>", measured_value=5.000000004, rendered=_texts("M", "5"))
+        self.assertEqual(d.display_text, "M5")
+
+    def test_override_senza_testo_disegnato(self):
+        d = Dimension(position=(0, 0), text_override="(<>)", measured_value=35.0)
+        self.assertEqual(d.display_text, "(35)")
+
+    def test_frammenti_uniti(self):
+        d = Dimension(position=(0, 0), measured_value=6.625, rendered=_texts("∅5,3", "+0,05^-0"))
+        self.assertEqual(d.display_text, "∅5,3+0,05^-0")
+
+    def test_solo_misura(self):
+        self.assertEqual(Dimension(position=(0, 0), measured_value=12.50).display_text, "12.5")
 
 
 if __name__ == "__main__":

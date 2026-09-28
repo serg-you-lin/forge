@@ -17,17 +17,20 @@ Divisione dei compiti:
 
 ``cluster_ref`` è l'indice in ``result.clusters`` (stessa convenzione dei file split
 ``__000``/``__001``), non un ``id()`` — così resta valido dopo serializzazione.
-``target`` (percorso dell'elemento puntato, es. ``"clusters[0].inners[3]"``) lo
-popola ``anchor_annotations()``; ``references`` è predisposto ma non ancora
-popolato.
+``Leader.target`` (percorso dell'elemento puntato, es. ``"clusters[0].inners[3]"``)
+e ``Dimension.references`` (percorsi degli elementi quotati) li popola
+``anchor_annotations()``.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 Point = Tuple[float, float]
+
+_NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
 
 
 @dataclass
@@ -109,19 +112,32 @@ class Dimension(Annotation):
     """
     Quota. Versione minimale: valore misurato + tipo + eventuale override del
     testo. Tolleranze e GD&T si aggiungono quando un caso reale li richiede.
+
+    ``measured_points``: i punti sulla geometria fra cui la quota misura —
+    lineare: i due estremi; diametro: due punti opposti sul cerchio; raggio:
+    il punto sull'arco. ``text_override``: testo scritto dall'autore, ``<>`` =
+    la misura.
     """
-    measured_value: Optional[float]  = None
-    dim_type:       str              = "linear"  # linear|aligned|angular|diameter|radius|ordinate
-    text_override:  Optional[str]    = None
-    rendered:       RenderedGeometry = field(default_factory=RenderedGeometry)
-    references:     List[str]        = field(default_factory=list)  # label delle feature quotate
+    measured_value:  Optional[float]  = None
+    dim_type:        str              = "linear"  # linear|aligned|angular|diameter|radius|ordinate
+    text_override:   Optional[str]    = None
+    rendered:        RenderedGeometry = field(default_factory=RenderedGeometry)
+    measured_points: List[Point]      = field(default_factory=list)
+    references:      List[str]        = field(default_factory=list)  # percorsi degli elementi quotati (anchor_annotations, D69)
 
     @property
     def display_text(self) -> str:
+        if self.text_override is not None:
+            return self.text_override.replace("<>", self._shown_value())
         if self.rendered.texts:
-            return self.rendered.texts[0].content
-        if self.text_override:
-            return self.text_override
+            return "".join(t.content for t in self.rendered.texts)
+        return self._shown_value()
+
+    def _shown_value(self) -> str:
+        """La misura come la mostra il disegno (precisione, virgola), o calcolata."""
+        for t in self.rendered.texts:
+            if _NUMBER.fullmatch(t.content.strip()):
+                return t.content.strip()
         if self.measured_value is not None:
             return f"{self.measured_value:.2f}".rstrip("0").rstrip(".")
         return ""
