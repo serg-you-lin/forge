@@ -52,6 +52,22 @@ class TestIsland(unittest.TestCase):
         self.assertEqual(len(cluster.inners), 1)
         self.assertAlmostEqual(cluster.inners[0].polygon.area, math.pi * 9, delta=0.5)
 
+    def test_foro_tagliato_dagli_assi_torna_cerchio(self):
+        # gli assi spezzano il cerchio in 4 archi nella rete piana: il giro
+        # interno li ricompone, e detect lo vede come foro
+        edges = _poly((0, 0), (20, 0), (20, 20), (0, 20)) + [_circle((10, 10), 3)]
+        edges += [_line((5, 10), (15, 10)), _line((10, 5), (10, 15))]
+        result = forge.island(_doc(edges))
+        inner = result.clusters[0].inners[0]
+        self.assertEqual([type(s).__name__ for s in inner.segments], ["CircleSeg"])
+        self.assertEqual(len(forge.detect(result, "holes").clusters[0].features("holes")), 1)
+
+    def test_lato_tagliato_da_un_asse_torna_un_segmento(self):
+        # un asse che esce dal contorno lo spezza: il contorno esterno resta di 4 lati
+        edges = _poly((0, 0), (20, 0), (20, 20), (0, 20)) + [_line((10, -5), (10, 25))]
+        outer = forge.island(_doc(edges)).clusters[0].outer
+        self.assertEqual(len(outer.segments), 4)
+
     def test_cornice_marcata_resta_fuori(self):
         # D30: framer marca la cornice → island() non la legge, resta in trash col suo ruolo
         frame = _poly((0, 0), (100, 0), (100, 100), (0, 100))

@@ -1760,6 +1760,38 @@ gaps.
 
 Suite: 833 passed (9 new in `test_role_rule.py`), golden unchanged. `main` → 0.7.2.
 
+### D65 — `island()` merges after the cut: contours recomposed where the planar network split them ✅
+In `island()` every hole crossed by its axes came out as 2–4 ArcSegs:
+`split_at_crossings` cuts the circle where the axes cross it (the outer face
+needs those nodes, D59), and the loops are built from the pieces.
+`circular_geometry` only recognizes a single primitive, so `detect` saw no
+holes (`leva_01`: 3 holes drawn, 0 detected).
+
+- **Two merges, two jobs.** The merge in `_normalize` (before the cut) stays:
+  it removes the same line/arc traced twice in overlapping pieces, which
+  would enter the planar network as doubled edges. The new one
+  (`_merge_runs`, after the cut, on each contour already found) recomposes
+  what the cut split. Federico's call: merge after, on what needs merging —
+  not restoring the parent Edge (`NodedEdges.parent`), which would only undo
+  forge's own cuts, not a hole drawn as two arcs at the source.
+- **Rule**: consecutive segments of a closed contour on the same circle (or
+  line), same direction, same style → one segment; a contour made only of
+  arcs of one circle → `CircleSeg`. Same style so a hidden stretch isn't
+  swallowed by a continuous one.
+- **The polygon is untouched**: it is still built from the pieces, so which
+  contours are found does not change — only how they are described. Checked
+  on the 36 sheets of `tests/examples/islands`: outer areas identical on all,
+  holes +3 on each `leva_01`, +2 `SHEETCODE`, +1 `SHEETCODE`, +1
+  `SHEETCODE` (the 2 holes of the bottom view; the 8 small inners of the main
+  view are slots, correctly not holes); contour segments −10…−70%; time
+  unchanged.
+- Ray casting to choose what to cut was considered and not taken: rays see
+  only a subset of the outer boundary (concave edges are never first/last),
+  same reason as D59.
+
+Suite: 835 passed (2 new in `test_island.py`, both failing on the old
+`island.py`), golden unchanged.
+
 ---
 
 ## Closed questions (history)
