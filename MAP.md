@@ -1924,6 +1924,30 @@ circle a callout belongs to. Federico: do forge's part first, then snapdraw.
 Suite: 871 passed (12 new in `test_anchor_annotations.py`, 8 anchoring
 golden), geometry golden unchanged.
 
+### D70 — `to_dxf` writes every attached collection, not only detect_flat's ✅
+snapdraw reads features on the views of a drawing (holes, slots, openings,
+counterbores) and attaches them to `cluster.detected` with the D44 overlay,
+the same way `detect_flat()` does. `to_dxf` wrote only the three names of
+`detect_flat()` (`holes`, `bending_lines`, `engrave_lines`): the overlay was
+open for reading and closed for writing — a privilege D44 says nobody has.
+
+- **Rule**: any other collection in `cluster.detected` is written item by
+  item. An item with a `role` goes on the layer of its role
+  (`role_to_dxf_layer`, palette from `register_role_style`); its geometry is
+  `item.contours` (each with `segments`/`styles`) when it is made of several
+  closed contours — a hole with its seat — else `item.segments`. No role or
+  no geometry → skipped, silently: an overlay can hold things that are not
+  meant to be drawn.
+- **The three detect_flat collections are untouched**, written as before
+  (hole type → layer, bending lines, engraving). No duplicate: a consumer
+  that attaches features is expected to move their contours out of `inners`,
+  as `detect_flat()` does with holes.
+- Nothing else in forge reads unknown collections: `summary` counts them,
+  `anchor_annotations` resolves paths into them (`clusters[0].view_features[3]`),
+  `to_view_model`/JSON read their own names only.
+
+Suite: 875 passed (4 new in `test_attached_export.py`), golden unchanged.
+
 ---
 
 ## Closed questions (history)
