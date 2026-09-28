@@ -1948,6 +1948,38 @@ open for reading and closed for writing — a privilege D44 says nobody has.
 
 Suite: 875 passed (4 new in `test_attached_export.py`), golden unchanged.
 
+### D71 — `island()`: a nested island brings all its closed loops inside ✅
+Found by snapdraw on `SHEETCODE` (and `anch_02`, its copy): two threaded holes
+and a counterbore in trash, inside the plate view. `spatial_islands` groups by
+proximity: a few holes close to each other (< `island_gap`) but far from any
+line of the view (> `island_gap`) are an island of their own, made only of
+disjoint circles. `outer_face` picks one of them as the island's outer, the
+nesting puts that one inside the view — and the other circles of the group,
+outside the chosen outer, went to trash as `outside`. Federico: what lies
+inside an island that was found cannot be an island of its own.
+
+- **Rule**: a nested island (`nested_in` set) gives its host every closed
+  loop it has: the chosen outer, the loops inside it (as before), and the
+  closed loops among its `outside` edges (`IslandReading.outside_loops`,
+  new). The rest of `outside` still goes to trash. A top-level island is
+  unchanged: its `outside` loops still go to trash (a separate symbol next to
+  a view is not part of it — changing that would change cluster counts).
+- `read_islands` stays additive: `outside` keeps all outside edges,
+  `outside_loops` says which of them close.
+- **Checked on 86 view sheets** (`islands`, snapdraw's `complete_drawings` and
+  fixtures, `golden_anchoring`), island fingerprint before/after: same
+  clusters, same outers, every old inner still there; 34 sheets gain inners
+  and lose trash, nothing else moves (`SHEETCODE` +46 inners). Loaded
+  without removing the frame, the frame is the host of everything: title
+  block cells become its inners — they are loops inside it.
+- **Anchoring golden**: one change on `anch_02`, checked by hand and
+  regenerated: `M6 n°16 fori` had no anchor, now it anchors to the loop made
+  by its thread crest arc (Ø6) and an axis segment across it (the axes are
+  geometry there, no role rules). The loop was always a planar face; it was
+  just dropped with the rest of the group.
+
+Suite: 876 passed (1 new in `test_island.py`, failing before the fix).
+
 ---
 
 ## Closed questions (history)

@@ -58,6 +58,7 @@ class IslandReading:
     inner_loops:    List[list]             = field(default_factory=list)   # loop [(Edge, reversed)]
     spurs:          List[Edge]             = field(default_factory=list)   # percorsi andata e ritorno
     outside:        List[Edge]             = field(default_factory=list)   # fuori dal contorno
+    outside_loops:  List[list]             = field(default_factory=list)   # giri chiusi fra gli `outside` (D71)
     non_contour:    List[Edge]             = field(default_factory=list)   # criterio D49
     unclassified:   List[Edge]             = field(default_factory=list)
     nested_in:      Optional[int]          = None            # indice dell'isola che la contiene
@@ -75,7 +76,10 @@ def island(doc: ForgeDocument, tolerance: Optional[float] = None,
     esterno, `inners` i giri chiusi dentro. Un'isola il cui contorno sta
     dentro quello di un'altra non è un cluster: diventa interno dell'isola
     più esterna che la contiene (con la cornice nel disegno, l'unico
-    contorno esterno è la cornice — toglierla è del chiamante).
+    contorno esterno è la cornice — toglierla è del chiamante). Tutti i suoi
+    giri chiusi diventano interni, anche quelli fuori dal contorno scelto:
+    un gruppo di fori staccati, vicini fra loro e lontani dal bordo della
+    vista, è un'isola sola fatta di cerchi disgiunti (D71).
 
     tolerance:  come heal() — se None, doc.source_meta['tolerance'].
     island_gap: distanza massima fra due edge della stessa isola (mm).
@@ -109,11 +113,16 @@ def island(doc: ForgeDocument, tolerance: Optional[float] = None,
         if host is None:
             result.trash_entities += _open(r.edges)
             continue
+        outside = r.outside
         if r.nested_in is not None:
             host.inners.append(_contour(r.outer.segments, r.outer.styles, r.outer.polygon,
                                         ContourRole.INNER, host.outer))
             host.inners += _inners(r.inner_loops, host.outer)
-        result.trash_entities += _open(r.spurs + r.outside + r.non_contour + r.unclassified)
+            # D71: dentro l'ospite, anche i giri fuori dal contorno scelto sono interni
+            host.inners += _inners(r.outside_loops, host.outer)
+            in_loops = {id(e) for loop in r.outside_loops for e, _ in loop}
+            outside = [e for e in r.outside if id(e) not in in_loops]
+        result.trash_entities += _open(r.spurs + outside + r.non_contour + r.unclassified)
     result.clusters = sorted(clusters.values(), key=lambda c: c.outer.polygon.area, reverse=True)
     if not result.clusters:
         result.is_valid = False
@@ -148,7 +157,8 @@ def read_island(edges: List[Edge], tolerance: float, max_gap: float = 0.5) -> Is
     Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate,
     merge/weld di heal, gap fino a `max_gap`), rende la rete piana, ne
     percorre la faccia esterna, poi classifica il resto: giri chiusi
-    interni, non-contorno (D49), fuori dal contorno, non classificati.
+    interni, non-contorno (D49), fuori dal contorno (e i giri chiusi fra
+    questi, `outside_loops`, D71), non classificati.
     """
     normalized = _normalize(edges, tolerance, max_gap)
     noded = split_at_crossings(normalized, tolerance)
@@ -166,6 +176,8 @@ def read_island(edges: List[Edge], tolerance: float, max_gap: float = 0.5) -> Is
         reading.outside = [e for e in rest if not probe.contains(_geometry(e))]
         outside_ids = {id(e) for e in reading.outside}
         rest = [e for e in rest if id(e) not in outside_ids]
+        if reading.outside:
+            reading.outside_loops = LoopFinder().find(build_node_graph(reading.outside, epsilon=GRAPH_EPSILON))
 
     rest_graph = build_node_graph(rest, epsilon=GRAPH_EPSILON)
     loops = LoopFinder().find(rest_graph)
