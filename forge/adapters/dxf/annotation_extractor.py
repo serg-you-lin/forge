@@ -24,6 +24,7 @@ così ``write()`` la ri-materializza fedele all'originale.
 
 from __future__ import annotations
 
+import re
 from typing import List, Optional, Tuple
 
 from ...model.annotation import (
@@ -260,11 +261,12 @@ def _dimension_override(entity) -> Optional[str]:
             return None
     for code, char in _SPECIAL_CODES.items():
         raw = raw.replace(code, char).replace(code.upper(), char)
-    return raw
+    return _UNICODE_ESCAPE.sub(lambda m: chr(int(m.group(1), 16)), raw)
 
 
 # Codici speciali del testo DXF → carattere (diametro, grado, più-meno).
 _SPECIAL_CODES = {"%%c": "Ø", "%%d": "°", "%%p": "±"}
+_UNICODE_ESCAPE = re.compile(r"\\[Uu]\+([0-9A-Fa-f]{4})")   # "\U+00B0" → "°"
 
 
 def _measured_points(entity, dim_type: str) -> List[Tuple[float, float]]:

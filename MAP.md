@@ -1906,15 +1906,20 @@ circle a callout belongs to. Federico: do forge's part first, then snapdraw.
 - `measured_value` is in drawing units: `Leva INOX` measures 6.625 where
   `∅5,3` is written. The scale check is snapdraw's.
 
-- **Anchoring golden** (`tests/real/test_golden_anchoring.py`): for 8
-  original sheets of `islands`, every dimension and leader with the element
-  it is anchored to, described by collection + `contour_shape` (not by
-  index: reordering `inners` is not a regression, anchoring to another
-  circle is). Drawings and golden are local, outside git (clients'
-  drawings); without them the test skips. Regenerate with `--generate`,
-  only after checking by hand. The `_nf` variants are not used: their
-  dimension text is already lost (`∅5,3` → `6.63`), they were not written
-  by the current `to_dxf` (which redraws dimensions as lines and text).
+- **Anchoring golden** (`tests/real/test_golden_anchoring.py`): 8 sheets of
+  `islands`, renamed by Federico `anch_01`…`anch_08` in
+  `tests/examples/golden_anchoring/` (golden in `json/`), in git like the
+  other golden. For every dimension and leader: the element it is anchored
+  to, described by collection + `contour_shape` (not by index: reordering
+  `inners` is not a regression, anchoring to another circle is). Regenerate
+  with `--generate`, only after checking by hand.
+- **These copies were saved again, and lost dimension text.** Anchors are
+  identical to the originals on all 8, but the author's text is not:
+  tolerances dropped (`93±0.1` → `93`), and the linear scale factor is gone
+  (`anch_07` = `Leva INOX`: `∅5,3` → `6.63`, `12` → `15`; `anch_02`: `Ø11` →
+  `Ø22`). Fine for anchoring; not usable for snapdraw's scale check — that
+  needs the originals. Found on the way: an override may carry `\U+00B0`
+  escapes (`n\U+00b016 fori`); the adapter now decodes them (`n°16 fori`).
 
 Suite: 871 passed (12 new in `test_anchor_annotations.py`, 8 anchoring
 golden), geometry golden unchanged.
