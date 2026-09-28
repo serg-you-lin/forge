@@ -45,6 +45,17 @@ class TestIsland(unittest.TestCase):
         self.assertAlmostEqual(result.clusters[0].outer.polygon.area, 10000.0)
         self.assertEqual(len(result.clusters[0].inners), 1)
 
+    def test_gruppo_di_fori_staccati_dentro_una_vista_tutti_interni(self):
+        # D71: tre fori vicini fra loro (< island_gap) ma lontani dal bordo (> island_gap):
+        # sono un'isola a sé fatta di cerchi disgiunti; dentro la vista diventano tutti interni
+        edges = _poly((0, 0), (200, 0), (200, 100), (0, 100)) + [
+            _circle((90, 50), 3), _circle((100, 50), 5.5), _circle((110, 50), 3)]
+        result = forge.island(_doc(edges))
+        self.assertEqual(len(result.clusters), 1)
+        self.assertEqual(sorted(round(i.polygon.area) for i in result.clusters[0].inners),
+                         sorted(round(math.pi * r * r) for r in (3, 5.5, 3)))
+        self.assertEqual(result.trash_entities, [])
+
     def test_foro_resta_giro_interno(self):
         edges = _poly((0, 0), (20, 0), (20, 20), (0, 20)) + [_circle((10, 10), 3)]
         cluster = forge.island(_doc(edges)).clusters[0]
