@@ -17,8 +17,9 @@ Divisione dei compiti:
 
 ``cluster_ref`` è l'indice in ``result.clusters`` (stessa convenzione dei file split
 ``__000``/``__001``), non un ``id()`` — così resta valido dopo serializzazione.
-``references`` / ``target`` (label delle feature) sono predisposti ma non ancora
-popolati.
+``target`` (percorso dell'elemento puntato, es. ``"clusters[0].inners[3]"``) lo
+popola ``anchor_annotations()``; ``references`` è predisposto ma non ancora
+popolato.
 """
 
 from __future__ import annotations
@@ -131,7 +132,7 @@ class Leader(Annotation):
     """Direttrice con testo che punta a una feature."""
     text:     str              = ""
     vertices: List[Point]      = field(default_factory=list)
-    target:   Optional[str]    = None   # label della feature puntata (fase anchor, via vertices — non ancora calcolato)
+    target:   Optional[str]    = None   # elemento puntato da vertices[0], es. "clusters[0].inners[3]" (anchor_annotations, D66)
     rendered: RenderedGeometry = field(default_factory=RenderedGeometry)
 
     @property

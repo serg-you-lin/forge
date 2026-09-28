@@ -1792,6 +1792,35 @@ holes (`Leva INOX`: 3 holes drawn, 0 detected).
 Suite: 835 passed (2 new in `test_island.py`, both failing on the old
 `island.py`), golden unchanged.
 
+### D66 — `Leader.target`: the element the arrow tip lands on ✅
+A callout means something only once it is attached to the right feature
+("M8" → that hole). The field was in the model since D43, never computed.
+Federico: associate leaders with the right feature, generically — reading
+the text is not forge's job.
+
+- **`anchor_annotations`** now also sets `Leader.target`;
+  `leader_target(result, leader, distance)` is the rule,
+  `resolve_target(result, target)` the inverse. Both exported.
+- **`target` is a path in the result**, not a label: `"clusters[0].outer"`,
+  `"clusters[0].inners[3]"`, `"clusters[1].holes[2]"`. Contours have no
+  labels, and any collection in `cluster.detected` is a candidate (D44), so
+  the same rule works after `heal` + `detect` and after `island`. It
+  survives serialization like `cluster_ref`; it is stale if the collections
+  change afterwards (anchor after choosing the features).
+- **Rule** (tip = `vertices[0]`): nearest boundary within `distance` (0.5 mm
+  — an arrow tip sits on the line it points to; tie → smaller element, a hole
+  on the part's edge); else the smallest closed element other than the outer
+  that covers the tip (an arrow ending inside a hole); else `None`.
+- On `tests/examples/islands`: 18 leaders, none with text; 4 get a target
+  (tips exactly on a contour), 14 stay `None` — mostly section-plane arrows
+  stopping 5–6 mm outside the view, correctly not attached.
+- Not done: `Dimension.references` (which circle a diameter dimension
+  measures). On the same sample, hole callouts live in diameter dimensions
+  (`M<>`, `%%c<>`), not in leaders — next candidate. Comparing a callout with
+  the measured geometry (scale, `Leva INOX` drawn at 1.25:1) is framer's.
+
+Suite: 841 passed (6 new in `test_anchor_annotations.py`), golden unchanged.
+
 ---
 
 ## Closed questions (history)

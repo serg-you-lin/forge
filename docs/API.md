@@ -760,6 +760,51 @@ forge.save_json(result, "batch.json")
 
 ---
 
+### `anchor_annotations`
+
+```python
+forge.anchor_annotations(result: ForgeResult, snap_distance=0.0,
+                         leader_distance=0.5) -> ForgeResult
+```
+
+Collega le annotazioni alla geometria. Per ogni annotazione `cluster_ref` =
+indice del cluster il cui contorno esterno ne contiene la posizione (con
+`snap_distance` > 0, anche il più vicino entro quella distanza). Per ogni
+`Leader` con vertici anche `target` — vedi `leader_target`.
+
+**Muta** le annotazioni di `result` in-place. **Ritorna** lo stesso `result`.
+
+### `leader_target`
+
+```python
+forge.leader_target(result: ForgeResult, leader: Leader,
+                    distance=0.5) -> str | None
+```
+
+L'elemento su cui cade la punta (`vertices[0]`) di `leader`, come percorso in
+`result`: `"clusters[0].outer"`, `"clusters[0].inners[3]"`,
+`"clusters[1].holes[2]"` — qualunque collezione di `cluster.detected`, quindi
+vale dopo `heal` + `detect` come dopo `island`.
+
+Regola: il bordo più vicino alla punta, se entro `distance` (a parità, vince
+l'elemento più piccolo); altrimenti il più piccolo elemento chiuso, non il
+contorno esterno, che contiene la punta (freccia che finisce dentro un foro);
+altrimenti `None` (freccia di sezione, fuori dal pezzo). Non legge il testo.
+
+**Non muta** niente.
+
+### `resolve_target`
+
+```python
+forge.resolve_target(result: ForgeResult, target: str | None) -> Any
+```
+
+Il passo inverso: il contorno o la feature a cui punta un `target`, o `None`
+se il percorso non esiste più in `result` (per esempio dopo un `detect` che ha
+spostato i fori da `inners` a `holes`: ancorare dopo aver scelto le feature).
+
+---
+
 ### `inject`
 
 ```python
