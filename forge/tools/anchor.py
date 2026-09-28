@@ -13,9 +13,9 @@ fa già abbastanza (geometria + feature); l'ancoraggio delle annotazioni è
 un concern a sé, che il chiamante attiva quando gli serve
 (es. prima di split() o di inject(), per sapere quale nota va con quale pezzo).
 
-Popola ``Annotation.cluster_ref`` (indice della parte contenitrice) e
-``Leader.target`` (l'elemento su cui cade la punta della direttrice, D66).
-``Dimension.references`` è predisposto nel modello ma non ancora calcolato.
+Popola ``Annotation.cluster_ref`` (indice della parte contenitrice),
+``Leader.target`` (l'elemento su cui cade la punta della direttrice, D66) e
+``Dimension.references`` (gli elementi fra cui la quota misura, D69).
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from typing import Any, Iterator, Optional, Tuple
 
 from shapely.geometry import LineString, Point
 
-from ..model.annotation import Leader
+from ..model.annotation import Dimension, Leader
 from ..model.result import ForgeResult
 
 LEADER_TARGET_DISTANCE = 0.5   # mm — la punta di una freccia sta sulla linea che indica
@@ -45,8 +45,9 @@ def anchor_annotations(result: ForgeResult, snap_distance: float = 0.0,
     dal suo contorno — utile per i callout che il CAD posiziona appena fuori dal
     pezzo. Con il default 0.0 vale solo il contenimento stretto.
 
-    Per ogni ``Leader`` con vertici calcola anche ``target``: vedi
-    `leader_target`.
+    Per ogni ``Leader`` con vertici calcola anche ``target`` (vedi
+    `leader_target`), per ogni ``Dimension`` ``references`` (vedi
+    `dimension_references`).
 
     Muta le annotazioni in-place e ritorna il ``result``.
     """
@@ -63,6 +64,8 @@ def anchor_annotations(result: ForgeResult, snap_distance: float = 0.0,
         ann.cluster_ref = _assign(ann.position, refs, snap_distance)
         if isinstance(ann, Leader):
             ann.target = leader_target(result, ann, leader_distance)
+        elif isinstance(ann, Dimension):
+            ann.references = dimension_references(result, ann, leader_distance)
 
     return result
 
@@ -86,15 +89,38 @@ def leader_target(result: ForgeResult, leader: Leader,
     if not elements:
         return None
 
-    near = [(geom.boundary.distance(tip) if poly else geom.distance(tip), _size(geom, poly), path)
-            for path, geom, poly in elements]
-    dist, _, path = min(near)
-    if dist <= distance:
+    path = _on_boundary(elements, tip, distance)
+    if path is not None:
         return path
 
     inside = [(geom.area, path) for path, geom, poly in elements
               if poly and not path.endswith(".outer") and geom.covers(tip)]
     return min(inside)[1] if inside else None
+
+
+def dimension_references(result: ForgeResult, dimension: Dimension,
+                         distance: float = LEADER_TARGET_DISTANCE) -> list:
+    """
+    Gli elementi fra cui ``dimension`` misura, come percorsi in ``result``
+    (stesso formato di ``Leader.target``): per ogni punto di
+    ``measured_points`` l'elemento il cui bordo passa entro ``distance``, a
+    parità il più piccolo. Senza doppioni, nell'ordine dei punti. Un diametro
+    dà un elemento (il cerchio), una quota lineare uno o due.
+    """
+    elements = list(_elements(result))
+    refs = []
+    for point in dimension.measured_points:
+        path = _on_boundary(elements, Point(point), distance) if elements else None
+        if path is not None and path not in refs:
+            refs.append(path)
+    return refs
+
+
+def _on_boundary(elements, point, distance: float) -> Optional[str]:
+    """L'elemento col bordo più vicino a ``point``, se entro ``distance``."""
+    dist, _, path = min((geom.boundary.distance(point) if poly else geom.distance(point),
+                         _size(geom, poly), path) for path, geom, poly in elements)
+    return path if dist <= distance else None
 
 
 def resolve_target(result: ForgeResult, target: Optional[str]) -> Any:

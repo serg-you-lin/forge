@@ -795,7 +795,8 @@ forge.anchor_annotations(result: ForgeResult, snap_distance=0.0,
 Collega le annotazioni alla geometria. Per ogni annotazione `cluster_ref` =
 indice del cluster il cui contorno esterno ne contiene la posizione (con
 `snap_distance` > 0, anche il più vicino entro quella distanza). Per ogni
-`Leader` con vertici anche `target` — vedi `leader_target`.
+`Leader` con vertici anche `target` — vedi `leader_target`; per ogni
+`Dimension` `references` — vedi `dimension_references`.
 
 **Muta** le annotazioni di `result` in-place. **Ritorna** lo stesso `result`.
 
@@ -815,6 +816,21 @@ Regola: il bordo più vicino alla punta, se entro `distance` (a parità, vince
 l'elemento più piccolo); altrimenti il più piccolo elemento chiuso, non il
 contorno esterno, che contiene la punta (freccia che finisce dentro un foro);
 altrimenti `None` (freccia di sezione, fuori dal pezzo). Non legge il testo.
+
+**Non muta** niente.
+
+### `dimension_references`
+
+```python
+forge.dimension_references(result: ForgeResult, dimension: Dimension,
+                           distance=0.5) -> list[str]
+```
+
+Gli elementi fra cui la quota misura, come percorsi in `result` (stesso
+formato di `Leader.target`): per ogni punto di `measured_points` l'elemento
+il cui bordo passa entro `distance` (a parità il più piccolo). Senza doppioni,
+nell'ordine dei punti: un diametro dà il cerchio, una lineare uno o due
+elementi. Non legge il testo.
 
 **Non muta** niente.
 
@@ -1121,9 +1137,17 @@ core: dopo di lui, `ezdxf` non si tocca più.
 
 ### `Annotation`
 
-`kind` (`"TEXT"` | `"MTEXT"` | `"DIMENSION"` | `"LEADER"` | `"MULTILEADER"`),
-`position` `(x, y)`, `data` `dict` (contenuto testuale + forma renderizzata come
-primitive pure per le quote).
+`Note` / `Dimension` / `Leader`. Comuni: `kind` (`"TEXT"` | `"MTEXT"` |
+`"DIMENSION"` | `"LEADER"` | `"MULTILEADER"`), `position` `(x, y)`,
+`cluster_ref`, `display_text`.
+
+- `Note`: `text`, `height`, `rotation`.
+- `Dimension`: `measured_value`, `dim_type`, `text_override` (testo
+  dell'autore, `<>` = la misura), `rendered`, `measured_points` (i punti
+  sulla geometria fra cui misura), `references` (percorsi degli elementi
+  quotati, da `anchor_annotations`). `display_text` = override con `<>`
+  sostituito dalla misura come è scritta nel disegno.
+- `Leader`: `text`, `vertices` (`[0]` = punta), `target`.
 
 ### `ForgeText`
 

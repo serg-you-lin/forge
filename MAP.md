@@ -80,8 +80,8 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `main` — `contour_shape` (D68) on top of 0.8.0.
-Suite: 851 passed + 47 subtests as of the latest decision below (D68),
+Branch: `main` — `contour_shape` (D68), `Dimension.references` (D69) on top of 0.8.0.
+Suite: 863 passed + 47 subtests as of the latest decision below (D69),
 golden all green.
 
 Still genuinely open:
@@ -1873,6 +1873,41 @@ takes the process (snapbend).
   while holes go through `role_to_dxf_layer`.
 
 Suite: 851 passed (10 new in `test_shape.py`), golden unchanged.
+
+
+### D69 — `Dimension.references`: what a dimension measures; `display_text` whole ✅
+Next step after D66: on drawings of views the hole callouts live in diameter
+dimensions (`M<>`, `Ø<>`), not in leaders, and snapdraw needs to know which
+circle a callout belongs to. Federico: do forge's part first, then snapdraw.
+
+- **`Dimension.measured_points`** (model, neutral): the points on the
+  geometry the dimension measures — linear → the two ends, diameter → two
+  opposite points on the circle, radius → the point on the arc (not the
+  centre: a centre lies on no contour, or on a face edge by accident). The
+  DXF adapter fills it from the definition points; another adapter would
+  from its own.
+- **`dimension_references(result, dim)`**, called by `anchor_annotations`:
+  for each point, the element whose boundary passes within 0.5 (same rule as
+  `Leader.target`, shared `_on_boundary`), no duplicates. Paths in the same
+  format as `target`.
+- **`display_text` fixed**: it returned the first rendered fragment only
+  (`"n"` = Ø in a symbol font, `"M"`). Now: the author's text with `<>`
+  replaced by the value as drawn (drawing precision, decimal comma), else the
+  fragments joined, else the measurement. The adapter strips MTEXT
+  formatting from the override (`\A1;<>` → measurement only) and decodes
+  `%%c`/`%%d`/`%%p` → Ø/°/±. Annotation golden: one file, `text_override`
+  `"\A1;<>"` → `null` on 5 dimensions; `display_text` unchanged there.
+- On `tests/examples/islands` (36 files): diameter 76 → 54 with a reference,
+  32 of them a `circle` (`contour_shape`), 30 with the same Ø as measured;
+  radius 66 → 63; linear 644 → 421. The rest: points on lines that close no
+  contour (a thread drawn as an open ¾ arc, diameters measured on a side
+  view). An `M5` whose thread arc is open lands on the core circle (Ø4.13)
+  within 0.5 — near, not exact; snapdraw decides.
+- `measured_value` is in drawing units: `Leva INOX` measures 6.625 where
+  `∅5,3` is written. The scale check is snapdraw's.
+
+Suite: 863 passed (12 new in `test_anchor_annotations.py`), geometry golden
+unchanged.
 
 ---
 
