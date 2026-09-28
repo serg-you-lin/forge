@@ -1845,18 +1845,18 @@ Suite: 841 passed, golden unchanged. `main` → 0.8.0.
 Reading features on island views is open, and much of it is not forge's
 (process → snapbend, drawing conventions → snapdraw). But one part is pure
 geometry, the same on `heal` and `island`, and every module needs it: "this
-contour is a circle Ø6.625", "this is a slot". Federico: that part smells of
+contour is a circle Ø6.625", "this is a stadium". Federico: that part smells of
 forge. The line is the word: forge says **circle**, never **hole** — a circle
 in a view may be a through hole, a blind hole, a pin, a shaft seen end-on;
-that takes the other views and the notation (snapdraw), and drill vs laser
+same for **stadium** (the geometric name of two semicircles joined by two lines), never **slot** — that takes the other views and the notation (snapdraw), and drill vs laser
 takes the process (snapbend).
 
 - **`forge.contour_shape(contour)` → `ContourShape`**: `kind` (`circle`,
-  `slot`, `rectangle`, `polygon`, `other`), `center`, `length`, `width`,
+  `stadium`, `rectangle`, `polygon`, `other`), `center`, `length`, `width`,
   `angle` (long axis, [0, 180)), `sides`. `core/shape.py`, exported.
 - **Rules**, on the segments after recomposing runs on the same line/circle
   (reuses `island._merge_runs`, style ignored — shape doesn't care how a
-  line is drawn): circle = arcs of one circle, total sweep 360°; slot = arc,
+  line is drawn): circle = arcs of one circle, total sweep 360°; stadium = arc,
   line, arc, line with equal radii, 180° sweeps, lines as long as the axis
   and parallel to it; rectangle = 4 lines, consecutive at 90°, opposite
   sides equal; polygon = only lines; else other. Tolerances relative to the
@@ -1864,9 +1864,9 @@ takes the process (snapbend).
 - `circular_geometry` is untouched: it is what `detect_flat` uses and the
   golden are built on it; it goes with the detection when that moves out.
 - On `tests/examples/islands` (36 files, inner contours): 224 circles, 33
-  slots, 43 rectangles, 52 polygons, 652 other — the "other" are mostly the
+  stadiums, 43 rectangles, 52 polygons, 652 other — the "other" are mostly the
   faces between a view's lines. `SHEETCODE`: the 6 slots of the main view
-  are slots. DXF with one layer per shape in
+  come out as stadiums. DXF with one layer per shape in
   `output/esperimento_agente/shape/`.
 - Seen along the way, not changed: `to_dxf` writes an inner contour with a
   consumer role on `InnerContour` (`ROLE_TO_LAYER.get(..., LAYER_INNER)`),

@@ -6,7 +6,7 @@ import unittest
 
 import forge
 from forge.core.primitives.segments import ArcSeg, CircleSeg, LineSeg
-from forge.core.shape import CIRCLE, OTHER, POLYGON, RECTANGLE, SLOT, contour_shape
+from forge.core.shape import CIRCLE, OTHER, POLYGON, RECTANGLE, STADIUM, contour_shape
 from forge.core.topology.edge import Edge
 from forge.model.document import ForgeDocument
 
@@ -15,8 +15,8 @@ def _ring(*pts):
     return [LineSeg(start=pts[i], end=pts[(i + 1) % len(pts)]) for i in range(len(pts))]
 
 
-def _slot(c1, c2, r):
-    """Asola orizzontale fra i centri c1 e c2 (stessa y), percorsa in senso antiorario."""
+def _stadium(c1, c2, r):
+    """Stadio orizzontale fra i centri c1 e c2 (stessa y), percorsa in senso antiorario."""
     (x1, y), (x2, _) = c1, c2
     return [
         LineSeg(start=(x1, y - r), end=(x2, y - r)),
@@ -42,9 +42,9 @@ class TestContourShape(unittest.TestCase):
         self.assertEqual(s.kind, CIRCLE)
         self.assertAlmostEqual(s.diameter, 10)
 
-    def test_asola(self):
-        s = contour_shape(_slot((0, 0), (20, 0), 4))
-        self.assertEqual(s.kind, SLOT)
+    def test_stadio(self):
+        s = contour_shape(_stadium((0, 0), (20, 0), 4))
+        self.assertEqual(s.kind, STADIUM)
         self.assertAlmostEqual(s.length, 28)
         self.assertAlmostEqual(s.width, 8)
         self.assertAlmostEqual(s.angle, 0)
@@ -93,7 +93,7 @@ class TestContourShapeSuIsole(unittest.TestCase):
     def _doc(self):
         segs = (_ring((0, 0), (100, 0), (100, 50), (0, 50))
                 + [CircleSeg(center=(15, 25), radius=4)]
-                + _slot((40, 25), (70, 25), 5))
+                + _stadium((40, 25), (70, 25), 5))
         return ForgeDocument(edges=[_edge(s) for s in segs], annotations=[],
                              source_meta={"tolerance": 0.05}, source_path="")
 
@@ -103,12 +103,12 @@ class TestContourShapeSuIsole(unittest.TestCase):
     def test_island(self):
         cluster = forge.island(self._doc()).clusters[0]
         self.assertEqual(contour_shape(cluster.outer).kind, RECTANGLE)
-        self.assertEqual(self._kinds(cluster), [CIRCLE, SLOT])
+        self.assertEqual(self._kinds(cluster), [CIRCLE, STADIUM])
 
     def test_heal(self):
         cluster = forge.heal(self._doc()).clusters[0]
         self.assertEqual(contour_shape(cluster.outer).kind, RECTANGLE)
-        self.assertEqual(self._kinds(cluster), [CIRCLE, SLOT])
+        self.assertEqual(self._kinds(cluster), [CIRCLE, STADIUM])
 
 
 if __name__ == "__main__":
