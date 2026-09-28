@@ -1,7 +1,7 @@
 """
 forge/core/shape.py
 -------------------
-Fatti di forma di un contorno chiuso: cerchio, asola, rettangolo, poligono.
+Fatti di forma di un contorno chiuso: cerchio, stadio, rettangolo, poligono.
 Geometria pura, vale uguale su `heal()` e su `island()`. "circle" non vuol
 dire foro: cosa sia quel cerchio lo dice chi legge il disegno o il processo
 (MAP.md D68).
@@ -22,7 +22,7 @@ from .primitives.segments import ArcSeg, CircleSeg, LineSeg
 Point = Tuple[float, float]
 
 CIRCLE = "circle"
-SLOT = "slot"
+STADIUM = "stadium"
 RECTANGLE = "rectangle"
 POLYGON = "polygon"
 OTHER = "other"
@@ -34,10 +34,10 @@ ANGLE_TOLERANCE_DEG = 1.0
 @dataclass(frozen=True)
 class ContourShape:
     """
-    kind:   circle | slot | rectangle | polygon | other
-    center: centro (cerchio, asola, rettangolo) o baricentro (il resto)
-    length: dimensione maggiore — cerchio: diametro; asola: fuori tutto
-    width:  dimensione minore — cerchio: diametro; asola: 2 × raggio
+    kind:   circle | stadium | rectangle | polygon | other
+    center: centro (cerchio, stadio, rettangolo) o baricentro (il resto)
+    length: dimensione maggiore — cerchio: diametro; stadio: fuori tutto
+    width:  dimensione minore — cerchio: diametro; stadio: 2 × raggio
     angle:  gradi [0, 180) dell'asse lungo; None per il cerchio
     sides:  segmenti del contorno dopo la ricomposizione
     """
@@ -71,7 +71,7 @@ def contour_shape(item, tolerance: float = SHAPE_TOLERANCE,
     if not segments:
         return None
     segments, _ = _merge_runs(segments, [None] * len(segments))
-    for rule in (_circle, _slot, _rectangle):
+    for rule in (_circle, _stadium, _rectangle):
         shape = rule(segments, tolerance, angle_tolerance)
         if shape is not None:
             return shape
@@ -92,7 +92,7 @@ def _circle(segments, tol, _angle_tol):
     return ContourShape(CIRCLE, tuple(s0.center), d, d, None, len(segments))
 
 
-def _slot(segments, tol, angle_tol):
+def _stadium(segments, tol, angle_tol):
     if len(segments) != 4:
         return None
     k = 0 if isinstance(segments[0], ArcSeg) else 1
@@ -115,7 +115,7 @@ def _slot(segments, tol, angle_tol):
         if _angle_diff(chord_angle_deg(line.start, line.end), angle) > angle_tol:
             return None
     center = ((a1.center[0] + a2.center[0]) / 2, (a1.center[1] + a2.center[1]) / 2)
-    return ContourShape(SLOT, center, axis + 2 * r, 2 * r, angle, 4)
+    return ContourShape(STADIUM, center, axis + 2 * r, 2 * r, angle, 4)
 
 
 def _rectangle(segments, tol, angle_tol):

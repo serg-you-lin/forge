@@ -519,15 +519,15 @@ forge.contour_shape(contour, tolerance=0.01, angle_tolerance=1.0) -> ContourShap
 ```
 
 La forma di un contorno chiuso (`ForgeContour`, un oggetto con `.segments`
-o la lista dei segmenti): `circle`, `slot` (asola: due semicerchi uguali e
-due rette parallele), `rectangle`, `polygon` (solo rette), `other`. Fatto
+o la lista dei segmenti): `circle`, `stadium` (stadio: due semicerchi uguali
+e due rette parallele — nome geometrico, non "asola"), `rectangle`, `polygon` (solo rette), `other`. Fatto
 geometrico, non feature: `circle` non vuol dire foro, lo decide chi legge il
 disegno o il processo. Vale uguale su `heal` e su `island`. I segmenti
 consecutivi sulla stessa retta o circonferenza sono ricomposti prima.
 `tolerance` è una frazione della dimensione del contorno.
 
 `ContourShape`: `kind`, `center`, `length` (maggiore; cerchio: diametro;
-asola: fuori tutto), `width` (minore; asola: 2 × raggio), `angle` (gradi
+stadio: fuori tutto), `width` (minore; stadio: 2 × raggio), `angle` (gradi
 [0, 180) dell'asse lungo, `None` per il cerchio), `sides` (segmenti dopo la
 ricomposizione), `diameter` (solo cerchio), `.to_dict()`.
 
