@@ -650,6 +650,13 @@ entità dalla sorgente: `source_doc` serve solo a riportare gli header
 forge.to_dxf(result, doc, role_styles={"frame": forge.RoleStyle(color=(0, 0, 0))})
 ```
 
+**Collezioni attaccate** (D70): oltre a quelle di `detect_flat()` (`holes`,
+`bending_lines`, `engrave_lines`), scrive ogni altra collezione di
+`cluster.detected`. Un elemento con `role` va sul layer del suo ruolo; la
+geometria è `item.contours` (più contorni chiusi, ognuno con
+`segments`/`styles`, es. un foro con la sua sede) o `item.segments`. Senza
+ruolo o senza geometria si salta.
+
 **Ritorna** un `Drawing` `ezdxf`. Sta a te fare `doc_out.saveas(...)`.
 
 **Solleva `ValueError`** se `result.is_valid` è `False` — non genera un file di

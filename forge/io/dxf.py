@@ -151,6 +151,9 @@ def to_dxf(
             layer_name = role_to_dxf_layer("engrave")
             write_engrave_segments(eng.segments, msp, layer_name, styles=eng.styles)
 
+        # Le altre collezioni attaccate da un consumatore (D70)
+        _write_attached_features(msp, cluster)
+
     if include_trash and result.trash_entities:
         _write_trash(
             msp, result, written_clusters, result.clusters,
@@ -426,6 +429,34 @@ def _work_layer_for_hole(hole) -> Optional[str]:
     if hole.hole_type == HOLE_TYPE_THREADED:
         return role_to_dxf_layer("threaded_hole")
     return None
+
+
+# Le collezioni che to_dxf scrive già a modo suo, sopra.
+_WRITTEN_COLLECTIONS = frozenset({"holes", "bending_lines", "engrave_lines"})
+
+
+def _write_attached_features(msp, cluster: ForgeCluster) -> None:
+    """
+    Ogni altra collezione di `cluster.detected` (D70): un elemento con un
+    `role` si scrive sul layer del suo ruolo — i suoi `contours` (ognuno con
+    `segments`/`styles`) se è fatto di più contorni chiusi, altrimenti i suoi
+    `segments`. Un elemento senza ruolo o senza geometria si salta. Nessun
+    nome privilegiato: è lo stesso overlay di D44, visto dall'exporter.
+    """
+    if cluster.detected is None:
+        return
+    for name, items in cluster.detected.items():
+        if name in _WRITTEN_COLLECTIONS:
+            continue
+        for item in items:
+            role = getattr(item, "role", None)
+            if not role:
+                continue
+            contours = getattr(item, "contours", None) or [item]
+            for contour in contours:
+                segments = getattr(contour, "segments", None)
+                if segments:
+                    write_segments(segments, msp, role_to_dxf_layer(role), styles=getattr(contour, "styles", None))
 
 
 def _write_bending_lines(msp, cluster: ForgeCluster) -> None:
