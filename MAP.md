@@ -81,7 +81,7 @@ Full detail of every function in `docs/API.md`.
 ## Current status
 
 Branch: `main` — `contour_shape` (D68), `Dimension.references` (D69) on top of 0.8.0.
-Suite: 863 passed + 47 subtests as of the latest decision below (D69),
+Suite: 871 passed + 47 subtests as of the latest decision below (D69),
 golden all green.
 
 Still genuinely open:
@@ -1906,8 +1906,18 @@ circle a callout belongs to. Federico: do forge's part first, then snapdraw.
 - `measured_value` is in drawing units: `Leva INOX` measures 6.625 where
   `∅5,3` is written. The scale check is snapdraw's.
 
-Suite: 863 passed (12 new in `test_anchor_annotations.py`), geometry golden
-unchanged.
+- **Anchoring golden** (`tests/real/test_golden_anchoring.py`): for 8
+  original sheets of `islands`, every dimension and leader with the element
+  it is anchored to, described by collection + `contour_shape` (not by
+  index: reordering `inners` is not a regression, anchoring to another
+  circle is). Drawings and golden are local, outside git (clients'
+  drawings); without them the test skips. Regenerate with `--generate`,
+  only after checking by hand. The `_nf` variants are not used: their
+  dimension text is already lost (`∅5,3` → `6.63`), they were not written
+  by the current `to_dxf` (which redraws dimensions as lines and text).
+
+Suite: 871 passed (12 new in `test_anchor_annotations.py`, 8 anchoring
+golden), geometry golden unchanged.
 
 ---
 
