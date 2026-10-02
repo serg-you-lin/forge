@@ -68,7 +68,9 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
 7. **Due cose piccole dalla roadmap del preventivo**: `snap_distance` anche su
    `inject()` (✅ fatto, D82), e il controllo quota-vs-geometria misurata (step 0
-   e 1 di `ROADMAP.md`). Nota: `scripts/13_ARC_splitter_injected_fuzzy_new.py`
+   e 1 di `ROADMAP.md`). Il controllo quota **non è di forge** (D69): forge dà
+   già `measured_value`, `display_text` e `references`, il confronto col
+   numero scritto si fa in snapdraw — da portare nel TODO di snapdraw. Nota: `scripts/13_ARC_splitter_injected_fuzzy_new.py`
    importa ancora `extract_forge_texts`, che non esiste più — lo script è rotto. Piccole e redditizie: con quelle hai il primo Pippo-da-
    preventivo su forge da solo, senza moduli nuovi.
 8. **Il rename `forge` → `snapforge`** — `naming_convention.md` (non tracciato) è
