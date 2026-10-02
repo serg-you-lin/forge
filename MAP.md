@@ -2463,6 +2463,32 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
 
 ## Federico's notes (open questions, kept until they become decisions)
 
+- **forge as the step before an AI reads a drawing (Federico, 2 October — a
+  direction, not a decision).** People feed whole drawings (DXF, PDF, PNG) to
+  an AI and hope for a useful answer: most of what they pay for, in tokens and
+  energy, is file syntax or pixels, and the AI re-derives — badly — what forge
+  already computes deterministically (which loops close, what is inside what,
+  which dimension measures which element). forge could hand the AI a compact,
+  exact reading instead: fewer tokens, cleaner answers, less waste. Federico
+  wants it free and public, as a contribution, and says this is more what he
+  is about than selling; production use (snapbend) stays and is not replaced.
+  It fits forge's scope: a **renderer** of the model for a reader that is a
+  language model, knowing no process.
+  First measurement (approx. tokens = bytes / 4, 2 October), raw DXF vs what
+  forge outputs today: `anch_01` 64k raw → 20k `to_view_model` → 0.2k
+  `to_json`; `anch_02` 217k → 226k → 0.2k; `F6` 47k → 0.4k → 0.2k;
+  `Multipolis` 49k → 3.6k → 0.8k. So **neither existing output is the answer**:
+  `to_view_model` keeps every discretized point (on a sheet of views it is as
+  big as the file), `to_json` drops geometry entirely. Missing: a renderer that
+  states shapes, not points (a circle as Ø + centre, a rectangle as w × h, a
+  polyline only when nothing shorter is true), with the containment tree and
+  the dimensions anchored to the element they measure.
+  To make the case honestly: (1) count tokens with a real tokenizer, not
+  bytes / 4; (2) measure *answer quality*, not only size — the same questions
+  asked with the raw DXF, with a PNG, and with forge's reading, answers checked
+  against known truth (the anchoring golden already is one); (3) report energy
+  and water only as a range derived from a cited public per-token estimate, said
+  to be an estimate — the token saving is the measured fact.
 - **`anonymize`: cleaning a client drawing into a publishable fixture
   (Federico — wanted in forge *and* in every consumer).** Tests are made with
   client files by necessity, so the sanitizing step is a tool, not a habit. Key
