@@ -1,11 +1,11 @@
 # forge
 
-**Deterministic 2D-geometry engine for technical drawings.**
+**Deterministic 2D-geometry engine for technical drawings and CAD geometry.**
 
-`forge` turns a messy 2D drawing into a clean, structured model — closed part
-profiles, inner cutouts, holes (plain / countersink / threaded), bend lines,
-engraving traces — then renders it back to DXF (one file per part), JSON/XML
-metadata, or a view model for a UI. The model is the product; a CAD format is
+`forge` turns a messy 2D drawing into a clean, lossless model — healed closed
+contours, their containment hierarchy, the drawing's annotations, and an open
+overlay where detected features are attached — then renders it to DXF (one
+document, or one per part), JSON/XML, SVG, or a view model for a UI. The model is the product; a CAD format is
 only a door in or out of it. Today that door is DXF (DWG via ODA), handled by a
 single adapter — everything downstream works on the format-neutral model.
 
@@ -13,13 +13,15 @@ The distinctive part is the **healing**: reconnecting broken geometry — `LINE`
 soup from a CAM export, a client's DXF, a legacy R12 file — into closed contours.
 No other tool does that for you.
 
-Sheet and plate manufacturing is where forge grew up and still its first consumer,
-not its boundary: the engine knows no material, process or product. Feature reading
-is opt-in and lives in one optional module, so a consumer in another domain gets the
-same geometry with its own vocabulary on top.
+It is **not a DXF library** and **not a sheet-metal tool**. Sheet and plate
+manufacturing is where forge grew up and still its first consumer, not its
+boundary: the engine knows no material, process or product. Reading geometry as
+"a hole to drill" or "a bend" is the consumer's interpretation (`snapbend` for
+sheet metal, `snapdraw` for drawing notation). The one built-in reading of that
+kind, `detect_flat()`, is opt-in and lives in one optional module, so a consumer
+in another domain gets the same geometry with its own vocabulary on top.
 
-> Status: **alpha**. Used in production for laser/plasma cutting prep, but the API
-> still moves. See `MAP.md` for the current design decisions.
+> Status: **alpha**. Used in production, but the API still moves. See `MAP.md` for the current design decisions.
 
 ---
 
@@ -40,13 +42,13 @@ Dependencies: `ezdxf`, `shapely`, `numpy` (Python ≥ 3.10).
 import forge
 
 doc    = forge.load_dxf("part.dxf", tolerance=0.5)   # -> ForgeDocument
-result = forge.heal_and_detect(doc)                  # topology + holes/bends/engraving
+result = forge.heal_and_detect(doc)                  # topology + the flat-part reading
 #   == forge.heal(doc) then forge.detect_flat(result, "all"); call them separately if
 #      you only need the topology. Bare forge.detect_flat(result) does not classify
 #      holes — pass features ("holes" / "bending" / "engrave" / "all").
 
-if not result.is_valid:
-    raise SystemExit(result.errors)
+if not result.is_valid:                             # no closed outer contour
+    print(result.errors)                             # still renderable, see "Known limits"
 
 doc_out = forge.to_dxf(result, doc)                  # -> ezdxf Drawing
 doc_out.saveas("part_healed.dxf")
@@ -79,7 +81,7 @@ for cluster in result.clusters:              # one view (or part) per island
     print(cluster.outer.polygon.area, len(cluster.inners))
 ```
 
-`heal()` reads a cutting file from the inside (which loops close, which is
+`heal()` reads a drawing of separate flat outlines from the inside (which loops close, which is
 inside which). `island()` reads a drawing of views from the outside: islands
 by proximity, then the outer contour of each as the outer face of its planar
 network. Same `ForgeResult` out — see `docs/API.md` (`island`).
@@ -123,7 +125,7 @@ load_dxf(path)  ──►  ForgeDocument   (edges + annotations + source_meta)
    to_svg(result)       ──►  SVG string           render — for a UI / report
    to_view_model(result)  ─►  dict (full geometry) for an external renderer
    save_json / save_xml                           export the model (metadata)
-   inject(result, ...)                            optional CAM enrichment from texts
+   inject(result, ...)                            optional enrichment from texts
 ```
 
 The model is the product. `to_dxf` never re-reads the source file — every renderer
@@ -189,14 +191,18 @@ right and you need to see where in the chain it breaks.
 ## Known limits
 
 - **Splines and ellipses** are re-emitted natively on cut layers (`to_dxf`) but
-  **discretized** in `to_svg` / `to_view_model` (which are for viewing, not cutting).
+  **discretized** in `to_svg` / `to_view_model` (polylines: use `to_dxf` when
+  the exact curve matters).
 - **`load_pdf`** exists but is experimental — it returns raw edges, not a
   `ForgeDocument`, so it does not plug into `heal()` yet. Not in the public API.
 - **Geometric engraving inference** (`detect_flat` finding engraving without a
   `role_rules`) is a planned no-op placeholder.
 - **`arc/arc` gaps beyond tolerance** are not auto-closed — raise `tolerance`.
-- If no closed outer contour can be formed, `result.is_valid` is `False` and
-  `to_dxf` / `split` raise `ValueError` rather than emit a file of only trash.
+- If no closed outer contour can be formed, `result.is_valid` is `False`.
+  `to_dxf` / `to_svg` still render what is there (everything on `Trash`), so
+  you can see what forge understood; a caller feeding a machine passes
+  `allow_invalid=False` and gets `ValueError` instead. `split` always raises:
+  one file per part means nothing without parts.
 
 ---
 

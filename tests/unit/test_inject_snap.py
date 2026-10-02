@@ -35,15 +35,15 @@ class TestInjectSnapDistance(unittest.TestCase):
 
     def test_default_keeps_strict_containment(self):
         res = _result(_part(0, 0, 100, 100),
-                      annotations=[Note(position=(105, 50), text="S275 sp.3")])
+                      annotations=[Note(position=(105, 50), text="materiale sp.3")])
         forge.inject(res, data_injector=_collect)
         self.assertEqual(res.clusters[0].custom["testi"], [])
 
     def test_text_just_outside_goes_to_part(self):
         res = _result(_part(0, 0, 100, 100),
-                      annotations=[Note(position=(105, 50), text="S275 sp.3")])
+                      annotations=[Note(position=(105, 50), text="materiale sp.3")])
         forge.inject(res, data_injector=_collect, snap_distance=10.0)
-        self.assertEqual(res.clusters[0].custom["testi"], ["S275 sp.3"])
+        self.assertEqual(res.clusters[0].custom["testi"], ["materiale sp.3"])
 
     def test_beyond_snap_distance_goes_nowhere(self):
         res = _result(_part(0, 0, 100, 100),

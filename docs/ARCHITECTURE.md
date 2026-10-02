@@ -8,8 +8,12 @@ dell'API vedi [`API.md`](API.md).
 ## L'idea in una frase
 
 `forge` non è una libreria DXF. È un **motore di ricostruzione topologica** con
-un adapter DXF davanti. Prende geometria 2D rumorosa e produce un modello di
-fabbricazione consistente: contorni chiusi, gerarchia, feature.
+un adapter DXF davanti. Prende geometria 2D rumorosa e produce un modello
+geometrico consistente e senza perdite: contorni chiusi, gerarchia di
+contenimento, annotazioni, e un overlay aperto per le feature rilevate. Non sa
+cosa sia la lamiera né alcun processo: leggere un contorno come "foro" o una linea
+come "piega" è un'interpretazione — `detect_flat()` ne è una, opzionale, e il
+resto sta nei consumatori (`snapbend`, `snapdraw`).
 
 Il DXF è solo il primo formato di ingresso implementato. Il core non sa cosa sia
 un DXF, né cosa sia un arco o una spline in quanto entità di CAD — lavora su
@@ -37,7 +41,7 @@ Conseguenza pratica: **niente si perde**. Si importa tutto — quote, centerline
 Perché `forge` non perda
 niente, il modello è abbastanza ricco da tenere anche ciò che non ha classificato:
 
-- geometria di taglio classificata → parti / fori / feature
+- geometria chiusa ricostruita → parti / contorni interni / feature (se una lettura le aggiunge)
 - geometria non classificata → `result.trash_entities` (segmenti puri,
   formato-indipendenti — ogni loader li alimenta, ogni renderer sceglie se
   disegnarli)
@@ -194,8 +198,10 @@ consumatore (snapdraw) compone gli stessi passi come gli serve.
    `cluster.inners`.
 
 Se non si forma **nessun** contorno esterno chiuso, il risultato è dichiarato
-**non valido** (`is_valid = False`) — come il modelspace vuoto. `to_dxf` si
-rifiuterà di generare un file di sola spazzatura.
+**non valido** (`is_valid = False`) — come il modelspace vuoto. `to_dxf` e
+`to_svg` lo disegnano lo stesso (tutto in trash) per farti vedere cosa ha capito
+forge; rifiutarlo è scelta del chiamante che consegna a una macchina
+(`allow_invalid=False`, D83).
 
 `validate_result` viene chiamata automaticamente alla fine.
 

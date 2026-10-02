@@ -53,6 +53,7 @@ def to_svg(
     stroke_width: Optional[float] = None,
     size: Optional[str] = None,
     units: Optional[str] = None,
+    allow_invalid: bool = True,
 ) -> str:
     """
     `ForgeResult` → stringa SVG completa (`<svg>…</svg>`).
@@ -80,9 +81,15 @@ def to_svg(
                              per il taglio ad alta fedeltà usa `to_dxf`, non
                              l'SVG. `None` = SVG per visualizzazione.
 
-    Se `result` non ha parti valide, ritorna comunque un SVG (vuoto o con la sola
-    trash) — non solleva.
+    Un `result` non valido viene disegnato lo stesso (vuoto o con la sola
+    trash); `allow_invalid=False` → `ValueError`, per chi consegna a una
+    macchina (D83, stesso contratto di `to_dxf`).
     """
+    if not result.is_valid and not allow_invalid:
+        raise ValueError(
+            "to_svg(): il ForgeResult non è valido, nessun output generato. "
+            + " ".join(result.errors)
+        )
     cam = units == "mm"
     if cam:
         padding = 0.0

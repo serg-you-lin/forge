@@ -66,13 +66,15 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    fondo).
 6. **Estrazione dei loop planari (half-edge/DCEL)** — l'unica cosa in lista che
    cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
-7. **Due cose piccole dalla roadmap del preventivo**: `snap_distance` anche su
-   `inject()` (✅ fatto, D82), e il controllo quota-vs-geometria misurata (step 0
-   e 1 di `ROADMAP.md`). Il controllo quota **non è di forge** (D69): forge dà
-   già `measured_value`, `display_text` e `references`, il confronto col
-   numero scritto si fa in snapdraw — da portare nel TODO di snapdraw. Nota: `scripts/13_ARC_splitter_injected_fuzzy_new.py`
-   importa ancora `extract_forge_texts`, che non esiste più — lo script è rotto. Piccole e redditizie: con quelle hai il primo Pippo-da-
-   preventivo su forge da solo, senza moduli nuovi.
+7. **Due cose piccole dalla roadmap del preventivo** (step 0 e 1 di
+   `ROADMAP.md`): `snap_distance` anche su `inject()` — ✅ fatto (D82). Il
+   controllo quota-vs-geometria misurata **non è di forge** (D69): forge dà già
+   `measured_value`, `display_text` e `references`, il confronto col numero
+   scritto si fa in snapdraw — da portare nel TODO di snapdraw.
+   `scripts/13_ARC_splitter_injected_fuzzy_new.py` importa ancora
+   `extract_forge_texts`, che non esiste più: lo script è rotto e **passerà con
+   ogni probabilità in snapbend** (Federico, 2 ottobre), da riscrivere lì su
+   `inject(snap_distance=...)`.
 8. **Il rename `forge` → `snapforge`** — `naming_convention.md` (non tracciato) è
    un piano scritto e **mai eseguito**: nome umano `SnapForge`, identificatore
    tecnico `snapforge` per repo, cartella, package e `import`, stessa regola per
@@ -154,22 +156,14 @@ nome del fixture) ma la regola per il futuro è: la marcatura si tiene.
 
 ## Due cose decise a voce e mai scritte
 
-### `to_dxf` su un `ForgeResult` non valido — serve un parametro, non un renderer
+### `to_dxf` su un `ForgeResult` non valido — ✅ fatto (D83)
 
-Verificato sul modello, non a sensazione: niente si perde prima di `heal`. Su
-`anch_05`, `doc.edges = 103` e `island()` dà 1 cluster con 11 contorni + 92
-trash = 103. Su un documento che non chiude nulla (due linee aperte) `heal()` dà
-`is_valid=False, clusters=0, trash=2`: le due linee **sono** nel modello. Ogni
-edge sopravvive, e se ha un ruolo va sul layer del suo ruolo.
-
-Quello che manca non è un pezzo di modello, è un accordo su cosa fare di un
-result non valido: `to_svg` lo disegna, `to_dxf` solleva `ValueError`. Il rifiuto
-ha una ragione vera — non consegnare a un CAM un file di sola spazzatura — ma è
-una ragione sul **consumatore**, non sul formato. Quindi non serve un secondo
-renderer (`document_to_dxf` è l'idea scartata): basta un parametro su `to_dxf`
-che dica "non sono un CAM, sto guardando". Un parametro, nessun concetto in più,
-e sparisce l'asimmetria per cui "fammi vedere cosa ha capito forge" funziona in
-SVG e non in DXF. **Il nome del parametro lo scegli tu.**
+`allow_invalid=True` su `to_dxf` **e** `to_svg` (alcune macchine prendono SVG):
+di default si vede tutto, chi consegna a una macchina passa `False`. snapbend lo
+fa già nei tre `forge.to_dxf` di `snapbend/io/dxf.py` (modifica locale, **non
+committata**: quel file è ancora non tracciato in snapbend). In snapbend 3 test
+falliscono da prima, non per questo: `tests/test_to_dxf_integration.py` usa
+`cluster.bending_lines`, che non esiste più.
 
 ### il "pnger": forge sa già mostrare, solo non in raster
 

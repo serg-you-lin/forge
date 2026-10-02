@@ -2419,6 +2419,31 @@ nested outers), not the snap one. Same change: `docs/API.md` and `docs/LLM.md`
 still documented a `texts=` argument and `extract_forge_texts`/`ForgeText`,
 removed long ago; those cards are gone.
 
+### D83 — an invalid result is rendered; refusing it is the caller's choice (`allow_invalid`) ✅
+
+`to_svg` drew an invalid `ForgeResult` (no closed outer → zero parts, all
+geometry in `trash_entities`), `to_dxf` raised `ValueError`. The refusal had a
+real reason — do not hand a machine a file of only trash — but that reason is
+about the **consumer**, not about the format: the same model, the same trash,
+was viewable in one renderer and not in the other, so "show me what forge
+understood" worked in SVG and not in DXF. And SVG is not only for viewing: some
+machines import SVG, so the "machine" reason applies to it too.
+
+One contract for both renderers: `to_dxf(..., allow_invalid=True)` and
+`to_svg(..., allow_invalid=True)`. Default `True` — forge renders whatever the
+model holds, nothing is dropped (non-negotiable 7), and an invalid result is
+the case where seeing it matters most. A caller that delivers output to a
+machine passes `allow_invalid=False` and gets `ValueError`; `snapbend` does,
+on its three `forge.to_dxf` calls. Not a second renderer
+(`document_to_dxf`, discarded): one parameter, no new concept.
+
+`split` keeps raising on an invalid result, with no parameter: it makes one
+document *per part*, and an invalid result has no parts — there is nothing to
+show, not something to refuse. `docs/` and `CLAUDE.md` (non-negotiable 6)
+follow; in the same change the READMEs, `docs/LLM.md`, `docs/ARCHITECTURE.md`
+and `docs/API.md` stop describing forge as laser-cutting preparation and use
+the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
+
 ---
 
 ## Closed questions (history)
