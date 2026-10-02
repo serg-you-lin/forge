@@ -36,9 +36,9 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    riquadro del cartiglio da snapdraw: toglie i retini lì dentro, svuota i
    blocchi logo — inseriti nel cartiglio, con retini, ≤ metà del cartiglio — e
    rifiuta di scrivere se cambia un solo edge di forge fuori dal riquadro).
-   Lotto pulito in `anonimizzati/drw_0001…0033.dxf`, originali intatti; il
-   driver del lotto (regole con i nomi del cliente) è uno script in scratchpad
-   **da portare in `dxf-anonymize`** con le regole in un JSON locale.
+   Lotto pulito in `anonimizzati/drw_0001…0033.dxf`, originali intatti, fatto
+   con `dxf-anonymize batch CARTELLA --rules regole.json --out ...` (le
+   regole con i nomi del cliente in un JSON locale, accanto ai disegni).
    Cancellare *tutto* dentro il cartiglio: provato e **scartato** (toglieva il
    cartiglio). **Ancora aperto:** loghi senza retini (solo archi/cerchi, due
    disegni), e i 6 disegni dove snapdraw non è sicuro del cartiglio.
