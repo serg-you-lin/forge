@@ -15,11 +15,10 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
-1. **Committare quello che c'è nell'albero** — D72…D76 (entry point `CLAUDE.md`,
-   `docs/INDEX.md` generato, audit dati cliente, rename `FRAMER`→`SNAPDRAW`).
-   Non tracciati ma necessari: `docs/INDEX.md`, `scripts/gen_index.py`,
-   `scripts/audit_names.py`, `scripts/audit_fixtures.py`. `naming_convention.md`
-   resta fuori finché non decidi il rename `forge`→`snapforge`.
+1. **Pushare.** D72…D76 sono committati su `main` (un commit), D77 e la pulitura
+   dei nomi sul branch `tool/anonymize-fixtures` (due commit). Tutto **solo in
+   locale**: il push lo fa Federico. `naming_convention.md` resta fuori dai
+   commit finché non si decide il punto 8.
 2. **`anonymize`** — ✅ costruito (D77, branch `tool/anonymize-fixtures`):
    `scan` elenca tutto quello che è scritto dentro un disegno, `clean` sostituisce
    una mappa e forge verifica che la geometria non si sia mossa. Resta da **usarlo
@@ -39,7 +38,15 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
 7. **Due cose piccole dalla roadmap del preventivo**: `snap_distance` anche su
    `inject()`, e il controllo quota-vs-geometria misurata (step 0 e 1 di
-   `ROADMAP.md`).
+   `ROADMAP.md`). Piccole e redditizie: con quelle hai il primo Pippo-da-
+   preventivo su forge da solo, senza moduli nuovi.
+8. **Il rename `forge` → `snapforge`** — `naming_convention.md` (non tracciato) è
+   un piano scritto e **mai eseguito**: nome umano `SnapForge`, identificatore
+   tecnico `snapforge` per repo, cartella, package e `import`, stessa regola per
+   `SnapDraw` e `SnapBend`. Tocca `pyproject.toml`, la cartella del package, ogni
+   `import forge`, i docs, il remoto su GitHub e i consumer. Da decidere se farlo
+   prima della 1.0.0 (dopo è un breaking change per chi importa) e se nel
+   frattempo `naming_convention.md` entra in git come piano o resta locale.
 
 ---
 
@@ -186,8 +193,11 @@ Restano due cose:
    gia' pushati: `git filter-repo` su tutta la history + un solo force-push,
    dopo che tutto il resto e' committato. Cambia ogni SHA, quindi un eventuale
    clone va riclonato; GitHub puo' tenere gli oggetti vecchi raggiungibili per
-   SHA per un po'. Da rifare contro la lista di D76, non solo contro i nomi di
-   file: ci sono anche i codici che stavano dentro i disegni.
+   SHA per un po'. Da rifare contro la lista di D76 e D77, non solo contro i nomi
+   di file: nei commit vecchi ci sono i codici che stavano **dentro** i disegni e
+   le due sigle ripulite in D77. E non basta riscrivere il contenuto dei file:
+   almeno un **messaggio di commit** porta un codice pezzo nell'oggetto, quindi
+   serve anche un `--message-callback`.
 
 Due cose viste di passaggio, da decidere quando capita:
 
