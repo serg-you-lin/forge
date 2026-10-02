@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`74` modules · `349` module-level functions · `53` classes · `13512` lines of code.
+`74` modules · `350` module-level functions · `53` classes · `13535` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -200,7 +200,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `Hole` | class | `forge/tools/model/hole.py:30` |  |
 | `_hole_entry` | func | `forge/io/view_model.py:57` |  |
 | `_hole_from_contour` | func | `forge/tools/detect.py:429` |  |
-| `inject` | func | `forge/tools/inject.py:37` | Arricchisce i ForgeCluster con i dati estratti da un `data_injector` esterno. |
+| `inject` | func | `forge/tools/inject.py:39` | Arricchisce i ForgeCluster con i dati estratti da un `data_injector` esterno. |
 | `_inners` | func | `forge/core/island.py:219` | Un ForgeContour inner per giro chiuso; un giro senza poligono valido no. |
 | `inspect_document` | func | `forge/inspect.py:140` | Stampa un ForgeDocument prodotto da forge.load_dxf(): cosa ha estratto e |
 | `inspect_dxf` | func | `forge/inspect.py:61` | Apre un DXF/DWG con ezdxf e stampa cosa contiene, senza toccare forge. |
@@ -256,6 +256,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_moved_segment` | func | `forge/core/healing/gap_solver.py:327` | Nuovo segmento con l'endpoint `role` spostato su `new_pt`. None se non gestito. |
 | `MoveEndpoint` | class | `forge/core/healing/gap_solver.py:76` | Istruzione: sposta l'endpoint role di ref al punto new_pt. |
 | `name_rules` | func | `forge/model/role_rule.py:96` | Scorciatoia: {nome: ruolo} → una RoleRule(name=...) per voce. |
+| `_nearest_within` | func | `forge/tools/anchor.py:184` | L'indice della parte più vicina a ``probe``, se entro ``snap_distance`` (> 0). |
 | `NestedBridgeResult` | class | `forge/tools/tabs.py:207` | Risultato per UNA coppia isola/genitore-diretto trovata nella gerarchia. |
 | `node_decimals_for` | func | `forge/core/geometry.py:33` | Numero di decimali a cui arrotondare gli endpoint per la topologia. |
 | `NodedEdges` | class | `forge/core/topology/noding.py:39` | La rete piana: i pezzi, e per ognuno l'Edge da cui viene. |
@@ -388,7 +389,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_sub_part` | func | `forge/inspect.py:276` |  |
 | `_synthesize_dimension` | func | `forge/adapters/dxf/annotation_extractor.py:290` | Ricostruisce l'immagine di una DIMENSION lineare dai def-point, quando il |
 | `_text_item` | func | `forge/adapters/dxf/annotation_extractor.py:450` |  |
-| `_texts_inside` | func | `forge/tools/inject.py:70` | Testi delle annotazioni che ricadono dentro `outer_poly`, come list[str]. |
+| `_texts_by_part` | func | `forge/tools/inject.py:74` | Testi di `result.annotations` per indice di parte. Un testo coperto da più |
 | `_to_annotation` | func | `forge/adapters/dxf/annotation_extractor.py:60` |  |
 | `to_dxf` | func | `forge/io/dxf.py:49` | Crea un documento DXF nuovo (R2010) e vi materializza il ForgeResult. |
 | `to_json` | func | `forge/io/exporter.py:154` | Restituisce i metadati come stringa JSON secondo schema. Vedi `save_json` per `extra_metadata`. |
@@ -1114,7 +1115,7 @@ _forge/tools/_
 
 No module-level function or class.
 
-#### `forge/tools/anchor.py` — 190 lines
+#### `forge/tools/anchor.py` — 192 lines
 
 _forge/tools/anchor.py_
 
@@ -1127,6 +1128,7 @@ _forge/tools/anchor.py_
 - `_geometry(item)` — L162
 - `_size(geom, closed: bool) -> float` — L170 — A parità di distanza vince l'elemento più piccolo: un foro sul bordo del pezzo.
 - `_assign(position, refs, snap_distance: float) -> Optional[int]` — L175
+- `_nearest_within(probe: Point, refs, snap_distance: float) -> Optional[int]` — L184 — L'indice della parte più vicina a ``probe``, se entro ``snap_distance`` (> 0).
 
 #### `forge/tools/detect.py` — 715 lines
 
@@ -1165,12 +1167,12 @@ _forge/tools/hole_detector.py_
 - `is_threaded_hole(center: Tuple[float, float], radius: float, all_arcs: list[ArcSeg], tolerance_center: float=1.0, angle_tolerance: float=35.0, max_radius_ratio: float=THREADED_ARC_MAX_RADIUS_RATIO) -> bool` — L22 — True se esiste un arco a ~270° concentrico al cerchio e con raggio di poco
 - `is_countersink_outer(center: Tuple[float, float], radius: float, siblings: list[Tuple[Tuple[float, float], float]], tolerance: float=1.0) -> bool` — L68 — True se esiste un cerchio concentrico con raggio minore (svasatura).
 
-#### `forge/tools/inject.py` — 76 lines
+#### `forge/tools/inject.py` — 97 lines
 
 _inject.py_
 
-- `inject(result, data_injector: Optional[Callable]=None)` — L37 — Arricchisce i ForgeCluster con i dati estratti da un `data_injector` esterno.
-- `_texts_inside(annotations, outer_poly) -> List[str]` — L70 — Testi delle annotazioni che ricadono dentro `outer_poly`, come list[str].
+- `inject(result, data_injector: Optional[Callable]=None, snap_distance: float=0.0)` — L39 — Arricchisce i ForgeCluster con i dati estratti da un `data_injector` esterno.
+- `_texts_by_part(result, snap_distance: float) -> Dict[int, List[str]]` — L74 — Testi di `result.annotations` per indice di parte. Un testo coperto da più
 
 #### `forge/tools/manufacturing_role.py` — 111 lines
 
@@ -1319,6 +1321,7 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 | `forge/tools/anchor.py` | `forge.tools.model.annotation` · `forge.tools.model.result` |
 | `forge/tools/detect.py` | `forge.tools.core.geometry` · `forge.tools.hole_detector` · `forge.tools.manufacturing_role` · `forge.tools.model` · `forge.tools.model.feature` · `forge.tools.model.role` · `forge.tools.thresholds` |
 | `forge/tools/hole_detector.py` | `forge.core.primitives.segments` · `forge.tools.thresholds` |
+| `forge/tools/inject.py` | `forge.tools.anchor` |
 | `forge/tools/manufacturing_role.py` | `forge.tools.model.role` · `forge.tools.rules.palette` |
 | `forge/tools/model/__init__.py` | `forge.tools.bending_line` · `forge.tools.classified` · `forge.tools.detected_features` · `forge.tools.engraving` · `forge.tools.hole` |
 | `forge/tools/model/bending_line.py` | `forge.model.feature` · `forge.model.role` · `forge.tools.manufacturing_role` |
