@@ -15,11 +15,14 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
-1. **Pushare.** D72…D76 sono committati su `main` (un commit), D77 e la pulitura
-   dei nomi sul branch `tool/anonymize-fixtures` (due commit). Tutto **solo in
-   locale**: il push lo fa Federico. `naming_convention.md` resta fuori dai
-   commit finché non si decide il punto 8.
-2. **`anonymize`** — ✅ costruito (D77) e ✅ **uscito da forge (D80)**: non è più
+1. **Pushare.** ✅ `main` allineato in fast-forward con `tool/anonymize-fixtures`
+   e `refactor/tests-data-as-tracked-root` (2 ottobre). Il push parte **insieme
+   al rewrite del punto 4**, con un solo force-push: pushare prima metterebbe
+   su GitHub una history che il rewrite butta via subito dopo.
+2. **`anonymize`** — **si prosegue in snapdraw** (deciso il 2 ottobre): il lavoro
+   sul cartiglio e sui loghi è lettura del disegno, quindi è di snapdraw. Lo
+   stato lasciato qui sotto vale come punto di partenza.
+    — ✅ costruito (D77) e ✅ **uscito da forge (D80)**: non è più
    `forge.tools.anonymize`, è un progetto a sé (`dxf-anonymize`, repo privata,
    locale in `GitHub/dxf-anonymize/`), perché una dipendenza dichiarata in
    `pyproject.toml` di un consumer (snapbend, snapdraw) esporrebbe comunque nome
@@ -35,7 +38,8 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    **non committato** in quella repo, insieme a `remove_title_logos` (dato il
    riquadro del cartiglio da snapdraw: toglie i retini lì dentro, svuota i
    blocchi logo — inseriti nel cartiglio, con retini, ≤ metà del cartiglio — e
-   rifiuta di scrivere se cambia un solo edge di forge fuori dal riquadro).
+   rifiuta di scrivere se cambia un solo edge di forge fuori dal riquadro) —
+   ora **committato** in `dxf-anonymize`.
    Lotto pulito in `anonimizzati/drw_0001…0033.dxf`, originali intatti, fatto
    con `dxf-anonymize batch CARTELLA --rules regole.json --out ...` (le
    regole con i nomi del cliente in un JSON locale, accanto ai disegni).
@@ -58,10 +62,17 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    flag. `tests/examples/` resta locale (originali cliente, `islands/`,
    `111-23/`). 534 spostati con `git mv`, 32 nuovi + 2 golden, suite 887 dopo
    il move.
-4. **Il rewrite della history** (`git filter-repo`), per ultimo, quando tutto il
-   resto è committato. **D78 ha aggiunto una voce alla lista**: la sigla
-   ripulita stava già in tre disegni tracciati e pushati, e
-   `audit_names.py --strict` non la segnalava — cerca codici, quella è un nome.
+4. **Il rewrite della history** — **pronto, manca solo l'esecuzione** (2 ottobre).
+   `audit_names.py --history` legge ogni commit, path e messaggio; `--words`
+   cerca alla lettera un elenco locale di nomi veri (fuori dal repo). Provato
+   su una copia: via dalla history ogni file di dati che oggi non esiste più,
+   codici, nomi e percorsi locali/di rete sostituiti nel resto e nei messaggi,
+   **albero di oggi identico bit per bit**. Il rewrite ha fatto emergere un
+   buco dell'audit (un percorso assoluto *dentro* una riga di testo del
+   disegno, non in testa) — corretto — e con esso un disegno in `tests/data/`
+   con un percorso che nomina una persona e un'azienda: pulito con
+   `dxf-anonymize` su copia (`heal()` identica), **da copiare al suo posto**.
+   Poi: rewrite sul repo vero, un force-push di `main`, riclonare altrove.
 5. **`detect_flat()` → snapbend** — direzione già decisa; bloccata dal flag
    `structural: bool` al posto di `STRUCTURAL_ROLES` (vedi "Problema 2" in
    fondo).
