@@ -67,8 +67,9 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 6. **Estrazione dei loop planari (half-edge/DCEL)** — l'unica cosa in lista che
    cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
 7. **Due cose piccole dalla roadmap del preventivo**: `snap_distance` anche su
-   `inject()`, e il controllo quota-vs-geometria misurata (step 0 e 1 di
-   `ROADMAP.md`). Piccole e redditizie: con quelle hai il primo Pippo-da-
+   `inject()` (✅ fatto, D82), e il controllo quota-vs-geometria misurata (step 0
+   e 1 di `ROADMAP.md`). Nota: `scripts/13_ARC_splitter_injected_fuzzy_new.py`
+   importa ancora `extract_forge_texts`, che non esiste più — lo script è rotto. Piccole e redditizie: con quelle hai il primo Pippo-da-
    preventivo su forge da solo, senza moduli nuovi.
 8. **Il rename `forge` → `snapforge`** — `naming_convention.md` (non tracciato) è
    un piano scritto e **mai eseguito**: nome umano `SnapForge`, identificatore

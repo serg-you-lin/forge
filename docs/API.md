@@ -24,9 +24,8 @@ in fondo.
 4. [Export](#4-export) — `save_json`, `to_json`, `save_xml`, `to_view_model`, `to_svg`, `save_svg`
 5. [Metadati XDATA](#5-metadati-xdata) — `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema`
 6. [Ispezione / debug](#6-ispezione--debug) — `inspect_dxf`, `inspect_document`, `inspect_result`, `inspect_file`
-7. [Utilità](#7-utilità) — `extract_forge_texts`, `extract_texts_from_msp`
-8. [Tipi di dominio](#8-tipi-di-dominio)
-9. [Il flusso completo, in ordine](#9-il-flusso-completo-in-ordine)
+7. [Tipi di dominio](#7-tipi-di-dominio)
+8. [Il flusso completo, in ordine](#8-il-flusso-completo-in-ordine)
 
 ---
 
@@ -859,21 +858,21 @@ spostato i fori da `inners` a `holes`: ancorare dopo aver scelto le feature).
 forge.inject(
     result: ForgeResult,
     data_injector=None,
-    texts=None,
-    tolerance=0.1,   # accettato per compat, non più usato
+    snap_distance: float = 0.0,
 ) -> ForgeResult
 ```
 
 Arricchimento CAM **opzionale**. **Muta** `result.clusters[i].custom` in-place e
 ritorna il `result`. Fa **una cosa**: se passi `data_injector` —
-`callable(cluster, list[str]) -> dict` — gli passa i testi che ricadono dentro
-l'outer di ogni parte e mette il dict restituito in `cluster.custom` (codice pezzo,
-materiale, spessore, …). Senza `data_injector`, `inject()` non fa nulla.
+`callable(cluster, list[str]) -> dict` — gli passa i testi di
+`result.annotations` che ricadono dentro l'outer di ogni parte e mette il dict
+restituito in `cluster.custom` (codice pezzo, materiale, spessore, …). Senza
+`data_injector`, `inject()` non fa nulla.
 
-`texts` va passato come **`list[ForgeText]`** (`content` + `position`) — il
-filtraggio per parte è geometrico, servono le posizioni. Si ottiene con
-`forge.extract_forge_texts(msp)`, **non** con `extract_texts_from_msp` (che
-ritorna stringhe nude). Il `data_injector` riceve comunque `list[str]`.
+`snap_distance` > 0: un testo fuori da ogni parte va alla parte **più vicina**
+(una sola) se dista al massimo `snap_distance` dal suo contorno esterno — il
+callout scritto appena fuori dal pezzo. Stessa regola di `anchor_annotations`
+(MAP.md D82). Un testo contenuto non viene mai spostato dallo snap.
 
 I **conteggi delle feature** (fori per tipo, pieghe, lunghezza incisioni) NON si
 fanno più qui: vengono da `cluster.summary` (conteggio grezzo, sempre
@@ -883,14 +882,10 @@ fondono automaticamente; per una detection *tua*, che forge non può
 conoscere, passa `extra_metadata` (vedi sotto).
 
 ```python
-import ezdxf
-msp = ezdxf.readfile("pezzo.dxf").modelspace()
-
 def leggi_cartiglio(cluster, testi):
     return {"material": next((t for t in testi if t.startswith("S")), "S275JR")}
 
-forge.inject(result, data_injector=leggi_cartiglio,
-             texts=forge.extract_forge_texts(msp))
+forge.inject(result, data_injector=leggi_cartiglio, snap_distance=5.0)
 ```
 
 ---
@@ -1103,31 +1098,7 @@ forge.inspect_file("pezzo.dxf", role_rules=[forge.RoleRule("bending", dashed=Tru
 
 ---
 
-## 7. Utilità
-
-### `extract_forge_texts`
-
-```python
-forge.extract_forge_texts(msp) -> list[ForgeText]
-```
-
-Estrae i testi da un `modelspace` `ezdxf` come `ForgeText` (`content` +
-`position`). **È questo** l'argomento `texts` di `inject()` — il filtraggio per
-parte è geometrico e servono le posizioni. Non gestisce `INSERT` — vanno esplosi
-prima (`load_dxf` lo fa; qui riapri il file solo per i testi).
-
-### `extract_texts_from_msp`
-
-```python
-forge.extract_texts_from_msp(msp) -> list[str]
-```
-
-Come sopra ma ritorna solo le stringhe, senza posizione. Per chi vuole i testi e
-basta — **non** passabile a `inject()`.
-
----
-
-## 8. Tipi di dominio
+## 7. Tipi di dominio
 
 ### `ForgeDocument`
 
@@ -1155,11 +1126,6 @@ core: dopo di lui, `ezdxf` non si tocca più.
   quotati, da `anchor_annotations`). `display_text` = override con `<>`
   sostituito dalla misura come è scritta nel disegno.
 - `Leader`: `text`, `vertices` (`[0]` = punta), `target`.
-
-### `ForgeText`
-
-Prodotto da `extract_forge_texts(msp)`, consumato da `inject()`. `content` (`str`,
-già ripulito) + `position` (shapely `Point`, per il containment check per parte).
 
 ### `ForgeResult`
 
@@ -1286,7 +1252,7 @@ result = forge.heal(doc)   # "flange_up" è già fuori dal grafo, mai indovinato
 
 ---
 
-## 9. Il flusso completo, in ordine
+## 8. Il flusso completo, in ordine
 
 ```python
 import forge, ezdxf
@@ -1311,7 +1277,7 @@ if not result.is_valid:
     raise SystemExit(result.errors)
 
 # 6. arricchimento CAM (opzionale — solo se hai un data_injector per i testi)
-result = forge.inject(result, data_injector=leggi_cartiglio, texts=...)
+result = forge.inject(result, data_injector=leggi_cartiglio, snap_distance=5.0)
 
 # 7a. render — un documento con tutte le parti
 forge.to_dxf(result, doc).saveas("pezzo_healed.dxf")

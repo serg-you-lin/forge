@@ -29,12 +29,15 @@ Flusso tipico:
     forge.save_json(result, ...)   # i conteggi vengono da cluster.summary
 """
 
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from shapely.geometry import Point
 
+from .anchor import _nearest_within
 
-def inject(result, data_injector: Optional[Callable] = None):
+
+def inject(result, data_injector: Optional[Callable] = None,
+           snap_distance: float = 0.0):
     """
     Arricchisce i ForgeCluster con i dati estratti da un `data_injector` esterno.
 
@@ -45,18 +48,19 @@ def inject(result, data_injector: Optional[Callable] = None):
         data_injector: `callable(ForgeCluster, list[str]) -> dict`. Riceve i testi
                        contenuti nell'outer della parte, restituisce i campi da
                        mettere in `cluster.custom` (materiale, spessore, codice, ...).
+        snap_distance: > 0 → un testo fuori da ogni parte va alla parte più vicina
+                       se dista al massimo tanto dal suo contorno (stessa regola di
+                       `anchor_annotations`). Default 0.0: solo contenimento.
     """
     if not result.clusters or data_injector is None:
         return result
 
-    for cluster in result.clusters:
-        outer_poly = cluster.outer.polygon
-        if outer_poly is None or outer_poly.is_empty:
+    testi = _texts_by_part(result, snap_distance)
+    for i, cluster in enumerate(result.clusters):
+        if i not in testi:
             continue
-
-        testi = _texts_inside(result.annotations, outer_poly)
         try:
-            injected = data_injector(cluster, testi)
+            injected = data_injector(cluster, testi[i])
             if injected:
                 cluster.custom.update(injected)
         except Exception as ex:
@@ -67,10 +71,27 @@ def inject(result, data_injector: Optional[Callable] = None):
     return result
 
 
-def _texts_inside(annotations, outer_poly) -> List[str]:
-    """Testi delle annotazioni che ricadono dentro `outer_poly`, come list[str]."""
-    return [
-        ann.display_text
-        for ann in annotations
-        if ann.display_text and outer_poly.covers(Point(ann.position))
+def _texts_by_part(result, snap_distance: float) -> Dict[int, List[str]]:
+    """
+    Testi di `result.annotations` per indice di parte. Un testo coperto da più
+    outer va a ciascuno; uno fuori da tutti va alla parte più vicina entro
+    `snap_distance`, altrimenti a nessuna.
+    """
+    refs = [
+        (i, c.outer.polygon)
+        for i, c in enumerate(result.clusters)
+        if c.outer is not None and c.outer.polygon is not None
+        and not c.outer.polygon.is_empty
     ]
+    testi: Dict[int, List[str]] = {i: [] for i, _ in refs}
+    for ann in result.annotations:
+        if not ann.display_text:
+            continue
+        probe = Point(ann.position)
+        parts = [i for i, poly in refs if poly.covers(probe)]
+        if not parts:
+            nearest = _nearest_within(probe, refs, snap_distance)
+            parts = [] if nearest is None else [nearest]
+        for i in parts:
+            testi[i].append(ann.display_text)
+    return testi

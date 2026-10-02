@@ -106,7 +106,7 @@ sotto, non l'ho toccata senza dirtelo.
    quando c'è almeno una quota scritta, la geometria misurata concorda?
    Spostato qui dal vecchio punto 4 dopo la nota sulla scala sopra — è
    preventivo, non produzione.
-1. **(forge, piccolo)** `snap_distance` anche su `inject()` — stessa logica
+1. ✅ **(forge, piccolo, D82)** `snap_distance` anche su `inject()` — stessa logica
    già scritta per `anchor_annotations`, la stessa piccola tolleranza.
 2. **(tuo, privato)** scrivi il `data_injector` per il primo cliente che ti
    interessa — regex/pattern per material/thickness/qty/code. Non va nel

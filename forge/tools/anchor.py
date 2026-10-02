@@ -178,13 +178,15 @@ def _assign(position, refs, snap_distance: float) -> Optional[int]:
     covering = [i for i, poly in refs if poly.covers(probe)]
     if covering:
         return covering[0]
+    return _nearest_within(probe, refs, snap_distance)
 
-    if snap_distance > 0.0:
-        idx, dist = min(
-            ((i, poly.distance(probe)) for i, poly in refs),
-            key=lambda pair: pair[1],
-        )
-        if dist <= snap_distance:
-            return idx
 
-    return None
+def _nearest_within(probe: Point, refs, snap_distance: float) -> Optional[int]:
+    """L'indice della parte più vicina a ``probe``, se entro ``snap_distance`` (> 0)."""
+    if snap_distance <= 0.0 or not refs:
+        return None
+    idx, dist = min(
+        ((i, poly.distance(probe)) for i, poly in refs),
+        key=lambda pair: pair[1],
+    )
+    return idx if dist <= snap_distance else None

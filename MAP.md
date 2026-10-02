@@ -2396,6 +2396,29 @@ old objects reachable by SHA for a while.
 From here the invariant is forward-only: `audit_names.py --strict` on every
 change, `--history` before any release.
 
+### D82 — `inject(snap_distance=...)`: the same "just outside" rule as `anchor_annotations` ✅
+
+`inject()` filtered texts by strict containment in each part's outer, while
+`anchor_annotations` already accepted a text lying *just outside* the outer
+(`snap_distance`). A callout written next to the part, not on it, reached
+`cluster_ref` through one path and was lost through the other — the gap noted
+in `ROADMAP.md`, step 1.
+
+Geometric rule, one for both: a text covered by an outer belongs to it and the
+snap never moves it; a text covered by none goes to the part whose outer is
+nearest, if that distance is at most `snap_distance`, and to no part otherwise.
+"Nearest, only one" because the snap is a guess about proximity: handing the
+same text to two parts would make it data of both. Default `0.0` keeps strict
+containment, so no existing call changes. The nearest-part computation is one
+function (`anchor._nearest_within`) used by both.
+
+`inject()` keeps its own semantics for *covered* texts (every covering outer
+receives it), which `anchor_annotations` does not share (first covering part
+wins) — not unified here, because that is a different question (overlapping or
+nested outers), not the snap one. Same change: `docs/API.md` and `docs/LLM.md`
+still documented a `texts=` argument and `extract_forge_texts`/`ForgeText`,
+removed long ago; those cards are gone.
+
 ---
 
 ## Closed questions (history)
