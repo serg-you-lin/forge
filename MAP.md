@@ -2292,6 +2292,47 @@ assistant's: the decision to put a client-sourced drawing into git is his, and
 
 ---
 
+### D79 — `tests/data/` is the tracked root, and a drawing lives there to be publishable ✅
+The problem with D78 left unsolved: how do 32 cleaned fixtures get into git
+without a `git add -f` into an ignored folder (the thing that keeps going
+wrong, because "cleared for publication" becomes a fact someone has to
+remember per file, and `.gitignore` says the opposite of what the folder
+contents assert).
+
+The answer is to put the property on the folder instead. `.gitignore` was
+already written to ignore DXF files and then re-include `tests/data/**` — a
+pattern written and never used (D76's comment: "Test fixtures under tests/data/
+are explicitly kept"). Make that the real folder.
+
+`tests/data/` holds what the suite reads and that has passed the audits:
+- 534 files already tracked (moved with `git mv` so history follows)
+- 32 drawings read string by string in D78 and cleaned
+- 2 annotation goldens git never had but the tests tried to load
+
+`tests/examples/` stays local: client originals, `islands/`, `111-23/`,
+`cartella_3/`, all the folders a client's file comes with, and scratch output.
+`.gitignore` ignores it in one block with no re-inclusion.
+
+The goldens carry no path, only a bare filename (`source_file`, `parent_file`),
+so moving a drawing is invisible to them. 21 test roots and the script paths
+moved, 887 tests still pass.
+
+Found on the way and fixed: two annotation goldens the tests needed but git
+never had. `audit_fixtures.py` audits the drawings a golden points at, not the
+goldens themselves — a missing golden silently generates one test fewer, which
+is the exact failure the audit exists to catch (one level up). The goldens were
+moved into `tests/data/golden/annotations/` alongside their drawings.
+
+`scan` was also refined: `aggregate_scans()` merges several drawings into one
+row per distinct string (thirty separate reports are unreadable; a string in
+two files shows as `2 file` on one line); `--find PAROLA...` puts the words
+the reader suspects at the top and says which ones are absent (if you pass a
+client name and it says "nessuna traccia", that is the answer you need).
+
+Suite: 887 passed, unchanged by the move.
+
+---
+
 ## Closed questions (history)
 
 - **Q1 — hole classification: topology or detection?** → resolved by D15
