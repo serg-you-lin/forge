@@ -15,10 +15,7 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
-1. **Pushare.** ✅ `main` allineato in fast-forward con `tool/anonymize-fixtures`
-   e `refactor/tests-data-as-tracked-root` (2 ottobre). Il push parte **insieme
-   al rewrite del punto 4**, con un solo force-push: pushare prima metterebbe
-   su GitHub una history che il rewrite butta via subito dopo.
+1. **Pushare.** ✅ fatto insieme al rewrite (D81), 2 ottobre.
 2. **`anonymize`** — **si prosegue in snapdraw** (deciso il 2 ottobre): il lavoro
    sul cartiglio e sui loghi è lettura del disegno, quindi è di snapdraw. Lo
    stato lasciato qui sotto vale come punto di partenza.
@@ -62,17 +59,8 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    flag. `tests/examples/` resta locale (originali cliente, `islands/`,
    `111-23/`). 534 spostati con `git mv`, 32 nuovi + 2 golden, suite 887 dopo
    il move.
-4. **Il rewrite della history** — **pronto, manca solo l'esecuzione** (2 ottobre).
-   `audit_names.py --history` legge ogni commit, path e messaggio; `--words`
-   cerca alla lettera un elenco locale di nomi veri (fuori dal repo). Provato
-   su una copia: via dalla history ogni file di dati che oggi non esiste più,
-   codici, nomi e percorsi locali/di rete sostituiti nel resto e nei messaggi,
-   **albero di oggi identico bit per bit**. Il rewrite ha fatto emergere un
-   buco dell'audit (un percorso assoluto *dentro* una riga di testo del
-   disegno, non in testa) — corretto — e con esso un disegno in `tests/data/`
-   con un percorso che nomina una persona e un'azienda: pulito con
-   `dxf-anonymize` su copia (`heal()` identica), **da copiare al suo posto**.
-   Poi: rewrite sul repo vero, un force-push di `main`, riclonare altrove.
+4. **Il rewrite della history** — ✅ **fatto (D81)**, 2 ottobre: un force-push,
+   albero di oggi identico, `audit_names.py --history` pulito.
 5. **`detect_flat()` → snapbend** — direzione già decisa; bloccata dal flag
    `structural: bool` al posto di `STRUCTURAL_ROLES` (vedi "Problema 2" in
    fondo).
