@@ -132,7 +132,7 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
 
     Storia della soglia minima che c'era qui prima (rimossa): un'ipotesi di
     "servono almeno 3 pezzi indipendenti, una coppia può essere coincidenza"
-    è nata da due golden reali (`la_104`, `PROFILE_PART`) dove fondere
+    è nata da due golden reali (`la_104`, `staffa_scarto_doppia`) dove fondere
     esattamente 2 tratti — due caratteri di un'incisione allineati per caso,
     non un errore di disegno — sembrava aver rotto un pezzo vicino. Causa
     vera, trovata dopo: un bug di arrotondamento (sotto), non il numero di
@@ -180,7 +180,7 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
     di reale — un lato vero disegnato come polilinea e un doppione
     disegnato come LINE sciolte sono la stessa identica situazione di
     qualunque altra coppia, e l'esclusione impediva di vederlo (golden
-    reale `PROFILE_PART`: una staffa di scarto a 3 lati duplicava
+    reale `staffa_scarto_doppia`: una staffa di scarto a 3 lati duplicava
     esattamente un lato di una polilinea chiusa). Rimossa: `Edge` non porta
     più quel dato, per lo stesso motivo (MAP.md, seguito D50).
 
@@ -199,7 +199,7 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
     riconcatenare cambiava l'ordine anche a zero fusioni effettive, e quel
     solo riordino bastava a far scegliere al loop-finder un percorso diverso
     a un bivio — probabilmente paritario — in un golden reale,
-    `PROFILE_PART`, senza che una sola fusione fosse coinvolta.)
+    `staffa_scarto_doppia`, senza che una sola fusione fosse coinvolta.)
     """
     edges = list(edges)
     original_index = {id(e): i for i, e in enumerate(edges)}
@@ -246,7 +246,7 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
         # SEGMENTO porta il punto arrotondato produce, appena affianca un lato
         # nativo mai toccato dal merge, un contorno con uno scalino nel punto
         # che dovrebbe essere lo stesso angolo (trovato su un caso reale,
-        # TRG19E: un lato "verticale" con dx=0.031 invece di 0, lunghezza 0.97
+        # Caso reale: un lato "verticale" con dx=0.031 invece di 0, lunghezza 0.97
         # invece di 1 — la firma esatta di due fonti di verità diverse cucite
         # nello stesso contorno). La proiezione `_t` per ordinamento/
         # sovrapposizione resta a piena precisione in entrambi i casi.

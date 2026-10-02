@@ -93,7 +93,7 @@ from .model         import (
     ForgeResult, ForgeCluster, ForgeContour, ForgeDocument,
     Annotation, Note, Dimension, Leader,
 )
-# Un consumatore che marca la geometria prima di heal() (Framer: cornice /
+# Un consumatore che marca la geometria prima di heal() (snapdraw: cornice /
 # cartiglio) setta `edge.role` sugli Edge di `doc.edges` con uno slug ripulito
 # da normalize_role, e is_structural_role dice se quel ruolo è contorno di
 # pezzo o arredo che heal terrà fuori dal grafo. Vedi INTERPRETER.md / D30.
@@ -110,12 +110,12 @@ from .rules.palette   import RoleStyle, register_role_style
 # dei contorni (branching + centroide fuori dal hull, D49) — senza dire cosa
 # sia quell'edge. Un consumatore che vuole decidere `edge.role` prima di
 # heal() con un'interpretazione propria (non "bending" come fa detect_flat()) lo
-# chiama su doc.edges. Vedi FRAMER.md, MAP.md D55.
+# chiama su doc.edges. Vedi SNAPDRAW.md, MAP.md D55.
 from .tools.non_contour import non_contour_candidates
 # Seconda lettura di un documento, accanto a heal(): per isole, contorno
 # esterno come faccia esterna della rete piana (disegni di viste, 3D
 # proiettato). I mattoni restano esposti per chi compone la sua ricetta
-# (framer): isole, rete piana, faccia esterna, tassellature. Vedi MAP.md D58.
+# (snapdraw): isole, rete piana, faccia esterna, tassellature. Vedi MAP.md D58.
 from .core.island import island, read_islands, read_island, IslandReading
 from .core.healing.islands import spatial_islands, Island
 from .core.topology.noding import split_at_crossings, NodedEdges
@@ -125,7 +125,7 @@ from .core.healing.normalizer import refit_tessellations
 # geometrico, non feature — vale su heal() e island(). MAP.md D68.
 from .core.shape import contour_shape, ContourShape
 # I passi di heal(), uno per funzione: heal() è la loro composizione di
-# default, un consumatore (framer) li compone nell'ordine che gli serve —
+# default, un consumatore (snapdraw) li compone nell'ordine che gli serve —
 # per esempio senza build_hierarchy, finché non ha deciso da sé cosa
 # significa un contorno dentro un altro. Vedi MAP.md D62.
 from .core.healing.normalizer import (

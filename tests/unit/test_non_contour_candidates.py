@@ -63,7 +63,7 @@ class TestNonContourCandidates(unittest.TestCase):
     def test_edge_restituiti_sono_mutabili_in_place(self):
         # Il punto della funzione: il chiamante deve poter settare .role sugli
         # oggetti restituiti e vederlo riflesso su doc.edges, per passarli a
-        # heal() già etichettati (FRAMER.md).
+        # heal() già etichettati (SNAPDRAW.md).
         rect = [
             _make_edge((0.0, 0.0), (1.0, 0.0)),
             _make_edge((1.0, 0.0), (1.0, 2.0)),

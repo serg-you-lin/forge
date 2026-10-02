@@ -7,7 +7,7 @@ name = "forge"
 # Unica fonte di verità della versione. forge.__version__ la legge da qui via
 # importlib.metadata — non duplicarla nel codice (MAP.md D11).
 version = "0.8.0"
-description = "Deterministic 2D-geometry engine for sheet/plate manufacturing"
+description = "Deterministic 2D-geometry engine for technical drawings"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "All rights reserved" }

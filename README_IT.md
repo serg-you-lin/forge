@@ -1,6 +1,6 @@
 # forge
 
-**Motore di geometria 2D deterministico per la fabbricazione di lamiera / piastra.**
+**Motore di geometria 2D deterministico per il disegno tecnico.**
 
 `forge` prende un disegno 2D disordinato e ne ricava un modello pulito e
 strutturato — profili esterni chiusi, aperture interne, fori (passanti / svasati /
@@ -13,6 +13,12 @@ lavora sul modello neutro rispetto al formato.
 La parte che nessun altro strumento fa per te è l'**healing**: ricucire la
 geometria rotta — matasse di `LINE`/`ARC` da un export CAM, il DXF di un cliente,
 un vecchio file R12 — in contorni chiusi.
+
+La lamiera e la piastra sono il contesto in cui forge è nato, e il suo primo
+consumatore, non il suo confine: il motore non conosce materiale, processo né
+prodotto. La lettura delle feature è opzionale e vive in un solo modulo a parte,
+così un consumatore di un altro dominio ottiene la stessa geometria con il proprio
+vocabolario sopra.
 
 > Stato: **alpha**. In produzione per la preparazione al taglio laser/plasma, ma
 > l'API si muove ancora. Vedi `MAP.md` per le decisioni di design correnti.

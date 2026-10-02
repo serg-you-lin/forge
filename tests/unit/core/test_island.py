@@ -80,7 +80,7 @@ class TestIsland(unittest.TestCase):
         self.assertEqual(len(outer.segments), 4)
 
     def test_cornice_marcata_resta_fuori(self):
-        # D30: framer marca la cornice → island() non la legge, resta in trash col suo ruolo
+        # D30: snapdraw marca la cornice → island() non la legge, resta in trash col suo ruolo
         frame = _poly((0, 0), (100, 0), (100, 100), (0, 100))
         for e in frame:
             e.role = "frame"

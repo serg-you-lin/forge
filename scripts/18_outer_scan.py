@@ -24,23 +24,19 @@ import matplotlib.pyplot as plt
 from forge.core.healing.outer_scan import outer_candidate_edges
 
 # --- CONFIG ----------------------------------------------------------------
+# Default sui fogli di vista anonimizzati che stanno in git. Per girare su un
+# disegno vero metti qui il suo percorso (anche assoluto: `_paths` ha già fatto
+# chdir alla radice, quindi i relativi partono da lì) — ma non committare mai
+# il nome di un file cliente in uno script tracciato.
 INPUTS = [
-    r"tests/examples/islands/3d_painted.dxf",
-    r"tests/examples/islands/SHEETCODE_1.dxf",
-    r"tests/examples/islands/SHEETCODE_2.dxf",
-    r"tests/examples/islands/SHEETCODE_3.dxf",
-    r"tests/examples/islands/SHEETCODE.dxf",
+    r"tests/examples/golden_anchoring/anch_02.dxf",
+    r"tests/examples/golden_anchoring/anch_05.dxf",
 ]
 GROUND_TRUTH_COLOR = 134
 OUTDIR = r"pipeline_output/outer_scan"
-# finestre di zoom per file (xmin, xmax, ymin, ymax) — un PNG in più per ognuna
-ZOOMS = {
-    "SHEETCODE_3": [
-        (-510, -380, -25, 40),    # estremo sinistro + prima linguetta
-        (-215, -135, -25, 40),    # una linguetta in mezzo
-        (590, 680, -25, 40),      # estremo destro
-    ],
-}
+# finestre di zoom per nome file, senza estensione (xmin, xmax, ymin, ymax):
+# un PNG in più per ognuna. Vuoto = solo la vista intera.
+ZOOMS: dict[str, list[tuple[float, float, float, float]]] = {}
 # ---------------------------------------------------------------------------
 
 

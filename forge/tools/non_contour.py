@@ -12,10 +12,10 @@ l'ha già deciso). È `detect_flat()` — un consumatore a valle come un altro �
 interpretarli (`_detect_bending`, "candidato dritto con gli estremi sul
 contorno esterno → piega, confidence 0.9").
 
-Un consumatore diverso da `detect_flat()` (framer, l'interprete) può volere la
+Un consumatore diverso da `detect_flat()` (snapdraw, l'interprete) può volere la
 stessa lista di candidati SENZA quell'interpretazione, per applicarne una
 propria (un bordo di feature in rilievo vista in pianta non è una piega) e
-assegnare `edge.role` prima di chiamare `heal()` (vedi FRAMER.md, MAP.md D30).
+assegnare `edge.role` prima di chiamare `heal()` (vedi SNAPDRAW.md, MAP.md D30).
 `non_contour_candidates()` è il punto d'aggancio: stesso criterio, zero
 duplicazione, nessuna fonte di verità seconda che possa divergere da quella
 di `heal()`.

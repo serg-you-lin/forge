@@ -2,12 +2,14 @@
 
 Dense, token-minimal reference for an AI writing code against `forge`. No
 narrative, no rationale — those live in `API.md` (full reference), `ARCHITECTURE.md`
-(why), `MAP.md` (decision history). Load this file alone to use the library;
-load the others only if this one doesn't answer the question.
+(why), `MAP.md` (decision history), `INDEX.md` (generated inventory of every
+module-level name, internal helpers included — the place to check before writing
+a new one). Load this file alone to use the library; load the others only if this
+one doesn't answer the question.
 
 ## What it is
 
-Deterministic 2D-geometry reconstruction engine for sheet/plate manufacturing.
+Deterministic 2D-geometry reconstruction engine for technical drawings.
 Not a DXF library — DXF is just the first input adapter. Takes messy CAD
 geometry (DXF/DWG, experimental PDF, or raw point/primitive dicts) and
 produces a lossless domain model: healed closed contours, a containment
@@ -15,6 +17,12 @@ hierarchy, classified manufacturing features (holes/bends/engraving),
 annotations — then renders that model to DXF, JSON, XML, SVG, or a
 render-oriented view-model dict. Everything unclassified survives in
 `trash_entities`; nothing from the source is silently dropped.
+
+Process-agnostic by design: sheet/plate manufacturing is forge's first consumer,
+not its scope. The manufacturing vocabulary (`hole`/`countersink`/`threaded_hole`/
+`bending`/`engrave`/`marking`) is opt-in, owned by `tools/manufacturing_role.py`,
+and never imported by `core`/`model` (D47). The engine itself knows three roles
+and no material, process or product.
 
 ## Pipeline
 
@@ -88,7 +96,7 @@ forge.save_json(result, "out.json")
 | `normalize_role` / `is_structural_role` | `(value) -> str` / `(role) -> bool` | role-vocabulary primitives (see below). `is_structural_role` is the engine's own minimal predicate (outer/inner only) — the *extended* one detect uses is `tools.manufacturing_role.is_structural`. |
 | `RoleStyle` | `dataclass(color: tuple[int,int,int]|None, linetype: str|None, lineweight: float|None, layer_name: str|None)` | per-role visual override for `to_dxf`/`split` via `role_styles={role: RoleStyle(...)}`. `None` fields keep forge's default. Wins over anything `register_role_style` registered for the same role. |
 | `register_role_style` | `(role, style: RoleStyle) -> None` | registers a `RoleStyle` **once**, applied to every later `to_dxf`/`split` automatically — same idiom as `set_schema`. `tools.manufacturing_role` uses this exact call (no special privilege) to register its own default colors/layer names at import time. |
-| `non_contour_candidates` | `(doc, tolerance=None) -> list[Edge]` | same topological criterion `heal()` uses internally to exclude an edge from the contour graph (branching + centroid outside its connected component's convex hull, D49) — asserts **no** meaning (not "bending", not anything). `detect_flat()`'s `_detect_bending` is just one interpretation of these candidates, not privileged. A consumer that never calls `detect_flat()` (framer, the interpreter) and wants a different interpretation (a raised-feature edge in a plan view is not a bend line) calls this to get the same candidate set without re-deriving the criterion, then sets `edge.role` on the returned `Edge`s (references into `doc.edges` — mutation is reflected there) **before** `heal()`. Runs on `doc.edges` as-is, before `heal()`'s own merge/gap-closing preprocessing — meant to decide roles pre-`heal()`, not to predict its exact excluded set to the edge case. |
+| `non_contour_candidates` | `(doc, tolerance=None) -> list[Edge]` | same topological criterion `heal()` uses internally to exclude an edge from the contour graph (branching + centroid outside its connected component's convex hull, D49) — asserts **no** meaning (not "bending", not anything). `detect_flat()`'s `_detect_bending` is just one interpretation of these candidates, not privileged. A consumer that never calls `detect_flat()` (snapdraw, the interpreter) and wants a different interpretation (a raised-feature edge in a plan view is not a bend line) calls this to get the same candidate set without re-deriving the criterion, then sets `edge.role` on the returned `Edge`s (references into `doc.edges` — mutation is reflected there) **before** `heal()`. Runs on `doc.edges` as-is, before `heal()`'s own merge/gap-closing preprocessing — meant to decide roles pre-`heal()`, not to predict its exact excluded set to the edge case. |
 
 ### Debug/inspect (stdout only, 3 levels in order)
 
@@ -134,7 +142,7 @@ To mark geometry before `heal` excludes it from the graph: set `edge.role = forg
 
 ### Building your own role + palette (external-tool recipe)
 
-A tool built on top of forge (framer, bendly, the interpreter, or your own)
+A tool built on top of forge (snapdraw, bendly, the interpreter, or your own)
 defines its own roles the same way `tools.manufacturing_role` does for
 forge's own `detect_flat()` — **no privileged path exists**, this is the only
 mechanism. Minimal pattern, one module in your own project:
@@ -221,7 +229,7 @@ the title block, a magnifier circle over a view, a break line. Those are
 roles — the caller's job (D21, D30). With the frame still in the drawing, the
 frame is the only outer and every view becomes its interior.
 
-### Consumer recipe (framer / a drawing reader)
+### Consumer recipe (snapdraw / a drawing reader)
 
 ```python
 import forge

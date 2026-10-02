@@ -51,6 +51,24 @@ scripts/11_batch_heal.py path/`) e `--tol`; senza argomenti processa
 I tipi di dominio (`ForgeResult`, `ForgeCluster`, `ForgeContour`, `ForgeDocument`,
 `Annotation`) sono mostrati inline dentro gli script.
 
+## Strumenti di manutenzione
+
+Non fanno parte della palestra dell'API: non chiamano `forge`, guardano il repo.
+
+- `scripts/gen_index.py` — rigenera `docs/INDEX.md` (ogni nome di modulo con
+  `file:line`) e con `--check` esce 1 se è stale; verifica anche la regola di
+  dipendenza (`core`/`model` non importano `adapters`/`tools`/`io`, D44).
+- `scripts/audit_names.py` — cerca nei file tracciati i nomi che identificano un
+  cliente: nome del file, prosa e codice, **contenuto dei disegni** (percorsi di
+  salvataggio, nomi di layer, testi del cartiglio), e i nomi di sole cifre.
+  `--strict` esce 1 al primo sospetto, `--from-disk` cerca anche i nomi dei
+  disegni che stanno solo su questa macchina (D73, D75, D76).
+- `scripts/audit_fixtures.py` — i disegni che la suite usa e che non sono in
+  git: un golden senza il suo padre fa `skipTest`, quindi su un clone pulito
+  girano meno test di quanti se ne vedono passare. `--list` dà la lista da
+  passare a `git add -f`; mettere un disegno in git resta una decisione da
+  prendere, non un passo automatico (D76).
+
 ## Fuori serie
 
 - `scripts/13_ARC_splitter_injected_fuzzy_new.py` — codice di produzione su file

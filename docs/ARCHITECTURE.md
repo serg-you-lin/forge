@@ -154,7 +154,7 @@ lavora sul `ForgeDocument`.
 Il passo difficile. Lavora su `doc.edges`, zero `ezdxf`. `heal()` è una
 ricetta: ogni passo è una funzione pubblica in `core/healing/steps.py` (D62),
 `heal()` le compone in quest'ordine e scrive i warning che le raccontano. Un
-consumatore (framer) compone gli stessi passi come gli serve.
+consumatore (snapdraw) compone gli stessi passi come gli serve.
 
 1. **normalizza** (`merge_collinear_overlaps`, `merge_cocircular_overlaps`,
    `weld_degenerate_linesegs`): rette e archi tracciati a spezzoni fusi,
@@ -164,7 +164,7 @@ consumatore (framer) compone gli stessi passi come gli serve.
    consumatore come `frame` / `title_block`): non entrano nel grafo — sono
    marcatura o arredo del disegno, non contorno. Il predicato è
    `model/role.is_structural_role` (D30); è il punto d'aggancio per un
-   consumatore che marca la geometria prima di `heal` (framer) —
+   consumatore che marca la geometria prima di `heal` (snapdraw) —
    `forge.non_contour_candidates(doc)` (D55) espone lo stesso criterio del
    passo 4 sotto, per decidere QUALI edge marcare qui
 3. **chiude i gap** (`close_free_gaps`): estremi liberi entro `tolerance`

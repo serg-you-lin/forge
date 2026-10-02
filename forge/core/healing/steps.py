@@ -3,7 +3,7 @@ core/healing/steps.py
 ---------------------
 I passi di heal(), uno per funzione: edge in, edge o risultato parziale out,
 nessuno stato condiviso. heal() li compone nell'ordine di sempre; un
-chiamante con un altro disegno in mano (framer) li compone come gli serve.
+chiamante con un altro disegno in mano (snapdraw) li compone come gli serve.
 
 Puro: solo Edge, primitive e modello, nessun formato.
 """
