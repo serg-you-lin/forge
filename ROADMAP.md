@@ -101,18 +101,22 @@ sotto, non l'ho toccata senza dirtelo.
 
 ## Ordine consigliato (per il preventivo, non per Pippo intero)
 
-0. **(forge)** `Dimension.references`/`Leader.target` — non per incrociare
-   feature e quota in produzione, ma per il controllo minimo "preventivo":
+0. **(snapdraw, su dati che forge dà già)** il controllo minimo "preventivo":
    quando c'è almeno una quota scritta, la geometria misurata concorda?
    Spostato qui dal vecchio punto 4 dopo la nota sulla scala sopra — è
-   preventivo, non produzione.
+   preventivo, non produzione. ✅ **La parte di forge è fatta** (D66, D69):
+   ogni `Dimension` porta `measured_value` (la misura nel disegno),
+   `display_text` (il testo come è scritto) e `references` (gli elementi
+   quotati). **Il confronto è di snapdraw** (D69, chiusa): leggere il numero
+   in `"∅5,3"` o `"M5"` è lettura della notazione, non geometria — un `M5`
+   misura il nocciolo (Ø4.13), non 5, e solo chi legge la notazione lo sa.
 1. ✅ **(forge, piccolo, D82)** `snap_distance` anche su `inject()` — stessa logica
    già scritta per `anchor_annotations`, la stessa piccola tolleranza.
 2. **(tuo, privato)** scrivi il `data_injector` per il primo cliente che ti
    interessa — regex/pattern per material/thickness/qty/code. Non va nel
    repo pubblico (`forge-reports-drawing-never-guesses-no-shop-nomenclature`).
 3. **A questo punto hai già un primo Pippo-per-preventivi**, su forge da
-   solo: `heal_and_detect` → controllo quota (step 0, se presente) →
+   solo: `heal_and_detect` → controllo quota (step 0, in snapdraw) →
    `inject(data_injector=...)` → `cluster.summary` per la complessità.
    Nessun modulo nuovo, nessun repo nuovo.
 4. **(snapdraw)** cartiglio — quando ti serve leggere i metadati generali del
