@@ -149,7 +149,7 @@ Per aprire un `.dwg` serve quindi:
    <https://www.opendesign.com/guestfiles/oda_file_converter>
 2. `forge` deve trovare l'eseguibile. Due modi:
    - variabile d'ambiente **`ODA_PATH`** = *full path dell'eseguibile*
-     (non la cartella — se ODA è in `ODAFileConverter 27.1.0\`, il path deve
+     (non la cartella — se ODA è in `ODAFileConverter X.Y.Z\`, il path deve
      includere `\ODAFileConverter.exe`);
    - oppure `ODAFileConverter` raggiungibile dal `PATH` di sistema.
 
@@ -157,7 +157,7 @@ Impostare `ODA_PATH`:
 
 | SO | comando |
 |---|---|
-| Windows, permanente | `setx ODA_PATH "C:\Program Files\ODA\ODAFileConverter 27.1.0\ODAFileConverter.exe"` — poi **riapri il terminale** |
+| Windows, permanente | `setx ODA_PATH "C:\Program Files\ODA\ODAFileConverter X.Y.Z\ODAFileConverter.exe"` — poi **riapri il terminale** |
 | Windows, solo sessione (PowerShell) | `$env:ODA_PATH = "C:\...\ODAFileConverter.exe"` |
 | Windows, GUI | Impostazioni → *Modifica le variabili di ambiente relative al sistema* → *Variabili d'ambiente…* → *Nuova* |
 | Linux / macOS, permanente | `export ODA_PATH="/opt/ODAFileConverter/ODAFileConverter"` in `~/.bashrc` o `~/.zshrc`, poi riapri la shell |
