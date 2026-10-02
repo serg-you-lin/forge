@@ -73,15 +73,15 @@ niente cifra o punto prima e dopo (esclude i decimali), niente `#` prima
 ma un blob binario)."""
 
 NAME_CODE_DIGITS = re.compile(r"^\d{3,}$")
-"""Un nome di file che *comincia* con sole cifre (`1026.dxf`, `7072_...`) è un
+"""Un nome di file che *comincia* con sole cifre (`1026.dxf`, `4821_...`) è un
 codice pezzo: nei nomi non c'è nessuna coordinata da cui distinguerlo, quindi
 qui le cifre nude si possono cercare sempre. Vale solo per il primo token del
 nome — `anch_01` o `foglio__000` hanno il numero come indice, non come codice."""
 
 TOKEN_SPLIT = re.compile(r"[^A-Za-z0-9]+")
 """Spezza su tutto quello che non è lettera o cifra. Serve perché `\\b` non
-scatta dentro un underscore (`_` è un word character): in `PROFILE_PART` non
-c'è nessun confine di parola fra `7072` e `U150`, e un codice tenuto insieme
+scatta dentro un underscore (`_` è un word character): in `4821_U120_20X3` non
+c'è nessun confine di parola fra `4821` e `U120`, e un codice tenuto insieme
 dagli underscore passerebbe inosservato."""
 
 PROSE_SUFFIXES = {".md", ".py"}
