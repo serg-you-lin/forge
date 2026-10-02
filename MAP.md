@@ -2242,6 +2242,56 @@ Suite: 887 passed (876 + 11).
 
 ---
 
+### D78 — the 32 fixtures read one string at a time, and what that caught ✅
+`anonymize scan` pointed at the 32 drawings the suite uses and git does not have
+(`scripts/audit_fixtures.py`). Read per file it is 32 reports nobody finishes, so
+the strings were aggregated into **one list, one row per distinct string** with
+the contexts and the files it appears in: 261 strings to read, down from the
+thousands the format writes. That aggregation is the shape this reading wants and
+the reason it got done at all — the same linetype table repeated in twelve
+drawings is one row, not twelve.
+
+What the reading found, and it is the point of the whole exercise:
+
+- **Zero absolute paths.** That was D76's worst blind spot (a network path
+  carrying a client name and a job number). None of these 32 has one.
+- **One person's name**, as `$LASTSAVEDBY` in one drawing — whoever last saved
+  the file. Replaced with an invented name. Federico's own name stays: he is the
+  repo's author and the git user already says so, so it identifies nobody new.
+- **A three-letter initialism** used as the prefix of three dimension-style
+  names, replaced with `STD_` — and this is the finding that matters, because the
+  same initialism was **already in three tracked drawings** that
+  `audit_names.py --strict` passes. The audit looks for *codes*, which have a
+  shape; this is a *name*, which has none. It is the exact failure D77 predicted,
+  caught by eye on a drawing already pushed. So it joins the list for the history
+  rewrite: the rewrite is not only about part codes.
+
+**A drawing the suite uses exists in several copies.** `Multipolis.dxf` and
+`Polylines.dxf` each sit in four folders (`golden/`, `golden_multipli/`,
+`files_multipli/`, `mixed_pipeline/`), and `audit_fixtures.py` lists only the
+copies that are missing from git — by design, that is its job. Cleaning must
+therefore follow the **string** across the repo, not the audit's file list: eight
+files were cleaned for two substitutions. A `grep` for the string before writing
+the map is now part of the procedure, not an afterthought.
+
+What is *not* client data, confirmed by reading: the Italian structural layer set
+(`Ancoraggi`, `Bulloni`, `Calcestruzzo`, `Muri calcestruzzo`, …) is the CAD's own
+template vocabulary; the `ARTC_*`/`ARTL`/`ARTY_*` sigle are D77's own invented
+replacements, and the title-block text `Codice Articolo: ARTC` proves that
+substitution reached the annotations too; the lone `TEXT` on the `Signature`
+layer of two drawings is the marcatura, already equal to the fixture name, and by
+D77 the marcatura stays.
+
+`heal()` reported geometry identical on all eight files, and the suite is 887
+passed after the cleaning — the substitutions touched strings only, which is what
+`clean_dxf(verify=True)` exists to guarantee.
+
+The `git add -f` of the 32 is **Federico's**, not the tool's and not the
+assistant's: the decision to put a client-sourced drawing into git is his, and
+`audit_fixtures.py --list` stops at printing the list for that reason.
+
+---
+
 ## Closed questions (history)
 
 - **Q1 — hole classification: topology or detection?** → resolved by D15

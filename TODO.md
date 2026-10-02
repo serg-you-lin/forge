@@ -25,12 +25,38 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    sui 32 fixture** (punto 3) e da decidere se esportarlo in `forge.__all__` (per
    ora no: è igiene del repo, non geometria, e i consumer lo importano da
    `forge.tools.anonymize`).
-3. **I 32 disegni che la suite usa e non ha in git** —
-   `python scripts/audit_fixtures.py`. Senza di loro 61 golden su 114 fanno
-   `skipTest` su un clone pulito. Da fare dopo il punto 2, passandoli per
-   `anonymize`.
+
+   **Manca a `scan`: il referto aggregato su più disegni.** Oggi `scan` accetta
+   `nargs="+"` ma cicla e stampa un referto per file: su 32 disegni sono 32
+   referti con la stessa tabella dei linetype ripetuta 12 volte, e nessuno li
+   legge fino in fondo. Quello che serve è **una riga per stringa distinta
+   attraverso tutti i disegni**, con i contesti uniti e in quanti file compare —
+   che è la forma in cui una persona legge davvero, e in D78 è la forma che ha
+   fatto emergere la sigla (vederla segnata `2 file` su una riga è diverso dal
+   ritrovarla a 900 righe di distanza). In D78 è stato fatto con uno script
+   usa-e-getta che chiamava `scan_dxf()`: va dentro il tool, come
+   `aggregate_scans()` + un flag della CLI.
+3. **I 32 disegni che la suite usa e non ha in git** — **letti e puliti (D78),
+   resta da fare l'`add`**, che è una decisione di Federico, non dello
+   strumento. I 32 sono passati per `anonymize scan` aggregato (261 stringhe
+   distinte, lette una per una): zero percorsi assoluti, un nome di persona e
+   una sigla sostituiti su otto file, `heal()` identica, suite 887. Il comando
+   che resta:
+
+   ```
+   python scripts/audit_fixtures.py --list > fixtures.txt
+   git add -f --pathspec-from-file=fixtures.txt
+   rm fixtures.txt
+   python scripts/audit_fixtures.py --strict   # deve dire "tutti in git"
+   ```
+
+   Da committare anche i tre disegni **già tracciati** che la pulitura ha
+   modificato (`golden/Multipolis.dxf`, `golden/Polylines.dxf`,
+   `mixed_pipeline/Polylines.dxf`).
 4. **Il rewrite della history** (`git filter-repo`), per ultimo, quando tutto il
-   resto è committato.
+   resto è committato. **D78 ha aggiunto una voce alla lista**: la sigla
+   ripulita stava già in tre disegni tracciati e pushati, e
+   `audit_names.py --strict` non la segnalava — cerca codici, quella è un nome.
 5. **`detect_flat()` → snapbend** — direzione già decisa; bloccata dal flag
    `structural: bool` al posto di `STRUCTURAL_ROLES` (vedi "Problema 2" in
    fondo).
@@ -171,7 +197,14 @@ sta in MAP.md D76.
 
 Restano due cose:
 
-1. **Mettere in git i 32 disegni che la suite usa e non ha.**
+1. **Mettere in git i 32 disegni che la suite usa e non ha.** Letti e puliti in
+   D78 — `anonymize scan` su tutti e 32, aggregato in un elenco unico di 261
+   stringhe distinte, lette a occhio: zero percorsi assoluti, un nome di persona
+   in `$LASTSAVEDBY` e una sigla di tre lettere su tre stili di quota,
+   sostituiti su **otto** file (gli stessi disegni stanno in più cartelle, e la
+   pulitura segue la stringa, non la lista dell'audit). `heal()` identica su
+   tutti, suite 887.
+
    `python scripts/audit_fixtures.py` li elenca (3,2 MB, tutti puliti secondo
    l'audit): senza di loro 61 golden su 114 fanno `skipTest` su un clone pulito,
    e la suite resta verde mentre gira meno di quello che mostra. Decisione presa
@@ -194,10 +227,12 @@ Restano due cose:
    dopo che tutto il resto e' committato. Cambia ogni SHA, quindi un eventuale
    clone va riclonato; GitHub puo' tenere gli oggetti vecchi raggiungibili per
    SHA per un po'. Da rifare contro la lista di D76 e D77, non solo contro i nomi
-   di file: nei commit vecchi ci sono i codici che stavano **dentro** i disegni e
-   le due sigle ripulite in D77. E non basta riscrivere il contenuto dei file:
-   almeno un **messaggio di commit** porta un codice pezzo nell'oggetto, quindi
-   serve anche un `--message-callback`.
+   di file: nei commit vecchi ci sono i codici che stavano **dentro** i disegni,
+   le due sigle ripulite in D77 e la sigla ripulita in D78 — quest'ultima stava
+   in tre disegni **già tracciati e pushati**, e `audit_names.py --strict` li
+   dava per puliti perché cerca codici e quella è un nome. E non basta riscrivere
+   il contenuto dei file: almeno un **messaggio di commit** porta un codice pezzo
+   nell'oggetto, quindi serve anche un `--message-callback`.
 
 Due cose viste di passaggio, da decidere quando capita:
 
