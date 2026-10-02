@@ -13,6 +13,14 @@ un'abitudine. Due modalità, e la prima non è automatizzabile:
   forma e un pattern lo trova; un *nome* no: il nome di uno studio usato come
   nome di uno stile di quota non lo becca nessuna espressione regolare, lo
   vede una persona.
+- `aggregate_scans()` — gli stessi dati su più disegni, **una riga per stringa
+  distinta** invece di un referto per file, con in quanti file compare. È la
+  forma che si legge: trenta referti separati non li finisce nessuno, e una
+  sigla in due disegni su trentadue si vede solo così (D78).
+- `--find PAROLA...` — le parole che chi legge sa già di cercare finiscono in
+  cima, e il referto dice anche **quali non compaiono**: se passi il nome di un
+  cliente e la risposta è "nessuna traccia", quella è la risposta. La ricerca
+  guarda ogni stringa, anche quelle che il filtro di leggibilità collassa.
 - `clean_dxf()` — applica una mappa `originale → sostituto` a quelle stringhe e
   basta a quelle. Numeri e struttura non vengono toccati.
 
@@ -213,7 +221,23 @@ class ScanReport:
         return tuple(s for s in self.strings
                      if not s.internal or s.is_path)
 
-    def report(self, all_strings: bool = False) -> str:
+    def matching(self, terms: Iterable[str]) -> tuple[WrittenString, ...]:
+        """
+        Le stringhe che contengono una delle parole date, maiuscole a parte.
+
+        Cerca in `strings`, non in `to_read()`: chi passa una parola sa già cosa
+        cerca, e un nome può stare dove il filtro di leggibilità collassa (un
+        `AcDbXrecord`, un nome di classe, un blob che inizia come un GUID). Il
+        filtro serve a chi legge tutto, non a chi cerca.
+        """
+        wanted = [term.casefold() for term in terms if term]
+        if not wanted:
+            return ()
+        return tuple(s for s in self.strings
+                     if any(term in s.value.casefold() for term in wanted))
+
+    def report(self, all_strings: bool = False,
+               find: Iterable[str] = ()) -> str:
         """Il referto come testo."""
         shown = self.strings if all_strings else self.to_read()
         collapsed = len(self.strings) - len(shown)
@@ -221,6 +245,7 @@ class ScanReport:
         if collapsed:
             lines.append(f"   ({collapsed} scritte dal programma, non mostrate: "
                          f"GUID, timestamp, nomi di classe, blob)")
+        lines.extend(_found_block(self, list(find)))
         percorsi = self.paths()
         if percorsi:
             lines.append("")
@@ -236,6 +261,29 @@ class ScanReport:
         return "\n".join(lines)
 
 
+def _found_block(report: "ScanReport | AggregateReport",
+                 terms: list[str]) -> list[str]:
+    """
+    La sezione delle parole cercate: quelle trovate, e quelle che non c'erano.
+
+    Dire che una parola **non** compare è metà del valore: se Federico passa il
+    nome di un cliente e il referto risponde "non c'è", quella è la risposta che
+    cercava, e senza la riga non la distinguerebbe da una parola dimenticata.
+    """
+    if not terms:
+        return []
+    hits = report.matching(terms)
+    lines = ["", f"   CERCATE ({len(terms)} parole):"]
+    if hits:
+        for s in sorted(hits, key=lambda s: s.value.lower()):
+            lines.append(f"      {s}")
+    found = " ".join(s.value.casefold() for s in hits)
+    absent = [term for term in terms if term.casefold() not in found]
+    if absent:
+        lines.append(f"      nessuna traccia di: {', '.join(repr(t) for t in absent)}")
+    return lines
+
+
 _KIND_BY_CODE: dict[str, str] = {
     **{code: "text" for code in TEXT_CODES},
     **{code: "name" for code in NAME_CODES},
@@ -244,6 +292,68 @@ _KIND_BY_CODE: dict[str, str] = {
     **{code: "xdata" for code in ARBITRARY_CODES},
     COMMENT_CODE: "comment",
 }
+
+
+@dataclass
+class AggregateReport:
+    """
+    Più disegni letti come un elenco solo: una riga per stringa distinta.
+
+    Trenta referti separati non li legge nessuno — la stessa tabella di linetype
+    si ripete in ognuno — e quello che conta non lo si vede: una sigla in due
+    disegni su trentadue è una riga che dice `2 file`, non due righe a novecento
+    righe di distanza. L'unità resta la **stringa**, e `where` dice dove sta.
+    """
+
+    strings: tuple[WrittenString, ...] = field(default_factory=tuple)
+    where: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    """valore → i nomi dei disegni in cui compare."""
+    scanned: tuple[Path, ...] = field(default_factory=tuple)
+
+    def paths(self) -> tuple[WrittenString, ...]:
+        return tuple(s for s in self.strings if s.is_path)
+
+    def to_read(self) -> tuple[WrittenString, ...]:
+        return tuple(s for s in self.strings if not s.internal or s.is_path)
+
+    def matching(self, terms: Iterable[str]) -> tuple[WrittenString, ...]:
+        """Come `ScanReport.matching`: cerca in tutto, non nel filtrato."""
+        wanted = [term.casefold() for term in terms if term]
+        if not wanted:
+            return ()
+        return tuple(s for s in self.strings
+                     if any(term in s.value.casefold() for term in wanted))
+
+    def _tag(self, value: str) -> str:
+        files = self.where.get(value, ())
+        return f"{len(files)} file" if len(files) > 1 else (files[0] if files else "?")
+
+    def report(self, all_strings: bool = False,
+               find: Iterable[str] = ()) -> str:
+        shown = self.strings if all_strings else self.to_read()
+        collapsed = len(self.strings) - len(shown)
+        lines = [f"{len(self.scanned)} disegni, "
+                 f"{len(self.strings)} stringhe distinte scritte dentro"]
+        if collapsed:
+            lines.append(f"   ({collapsed} scritte dal programma, non mostrate)")
+        lines.extend(_found_block(self, list(find)))
+        percorsi = self.paths()
+        if percorsi:
+            lines.append("")
+            lines.append("   PERCORSI (sospetti in sé):")
+            lines.extend(f"      {s.value!r}  [{self._tag(s.value)}]"
+                         for s in percorsi)
+        rest = [s for s in shown if not s.is_path]
+        if rest:
+            lines.append("")
+            lines.append("   DA LEGGERE:")
+            for s in sorted(rest, key=lambda s: s.value.lower()):
+                lines.append(f"      {s.value!r}")
+                lines.append(f"          [{', '.join(s.contexts)}]  "
+                             f"{self._tag(s.value)}")
+        if not percorsi and not rest:
+            lines.append("   niente da leggere: solo stringhe del formato.")
+        return "\n".join(lines)
 
 
 def scan_dxf(path: Path | str) -> ScanReport:
@@ -256,6 +366,45 @@ def scan_dxf(path: Path | str) -> ScanReport:
     """
     tagged = read_tags(path)
     return _scan_tagged(tagged)
+
+
+def aggregate_scans(paths: Iterable[Path | str]) -> AggregateReport:
+    """
+    Legge più disegni e li fonde in un elenco solo, una riga per stringa.
+
+    Contesti e righe di ogni occorrenza si uniscono; `lines` diventa l'unione
+    dei numeri di riga di tutti i disegni, quindi vale per cercare, non per
+    puntare a un file preciso — a quello serve `where`.
+    """
+    merged: dict[str, dict[str, set]] = {}
+    where: dict[str, set[str]] = {}
+    scanned: list[Path] = []
+
+    for raw in paths:
+        path = Path(raw)
+        scanned.append(path)
+        for s in scan_dxf(path).strings:
+            slot = merged.setdefault(s.value, {"kinds": set(), "contexts": set(),
+                                               "lines": set(), "codes": set()})
+            slot["kinds"].update(s.kinds)
+            slot["contexts"].update(s.contexts)
+            slot["lines"].update(s.lines)
+            slot["codes"].update(s.codes)
+            where.setdefault(s.value, set()).add(path.name)
+
+    strings = tuple(
+        WrittenString(value=value,
+                      kinds=tuple(sorted(slot["kinds"])),
+                      contexts=tuple(sorted(slot["contexts"])),
+                      lines=tuple(sorted(slot["lines"])),
+                      codes=tuple(sorted(slot["codes"])))
+        for value, slot in merged.items()
+    )
+    return AggregateReport(
+        strings=strings,
+        where={value: tuple(sorted(names)) for value, names in where.items()},
+        scanned=tuple(scanned),
+    )
 
 
 def _scan_tagged(tagged: TaggedFile) -> ScanReport:
@@ -475,6 +624,11 @@ def _main(argv: Optional[Iterable[str]] = None) -> int:
     scan.add_argument("drawings", nargs="+", help="uno o più DXF")
     scan.add_argument("--all", action="store_true", dest="all_strings",
                       help="mostra anche le stringhe scritte dal programma")
+    scan.add_argument("--find", nargs="+", default=(), metavar="PAROLA",
+                      help="parole che sai di cercare (nomi, sigle): le mette in "
+                           "cima e dice anche quali NON compaiono")
+    scan.add_argument("--per-file", action="store_true",
+                      help="un referto per disegno invece dell'elenco unico")
 
     clean = sub.add_parser("clean", help="sostituisce le stringhe di una mappa")
     clean.add_argument("drawing", help="il DXF da ripulire")
@@ -494,9 +648,16 @@ def _main(argv: Optional[Iterable[str]] = None) -> int:
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if args.command == "scan":
-        for name in args.drawings:
-            print(scan_dxf(name).report(all_strings=args.all_strings))
-            print()
+        # Un disegno solo, o un referto per file se lo chiedi: altrimenti
+        # l'elenco unico, che è la forma in cui una persona legge davvero.
+        if args.per_file or len(args.drawings) == 1:
+            for name in args.drawings:
+                print(scan_dxf(name).report(all_strings=args.all_strings,
+                                            find=args.find))
+                print()
+        else:
+            print(aggregate_scans(args.drawings).report(
+                all_strings=args.all_strings, find=args.find))
         return 0
 
     import json
