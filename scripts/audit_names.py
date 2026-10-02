@@ -99,9 +99,6 @@ ABS_PATH = re.compile(r"^(\\\\[^\\]|[A-Za-z]:[\\/])")
 """Percorso assoluto (UNC o con lettera di unità) dentro un disegno: nomina una
 cartella di rete, una commessa, un utente. Sospetto in sé, anche senza codici."""
 
-UNICODE_ESCAPE = re.compile(r"\\U\+[0-9A-Fa-f]{4}")
-r"""Escape di un carattere non ASCII dentro un testo di quota (`\U+00b0`)."""
-
 NUMBER_LINE = re.compile(r"^[-+]?\d*\.?\d+([eE][-+]?\d+)?$")
 """Riga di un DXF che è solo un numero: una coordinata, niente da leggere."""
 
@@ -185,9 +182,23 @@ def tracked_files() -> list[str]:
     return [path for path in raw.decode("utf-8").split("\0") if path]
 
 
+GENERATED_SHAPES: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\\U\+[0-9A-Fa-f]{4}"),
+    re.compile(r"\{?[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}\}?"),
+    re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?"),
+)
+"""Forme che un programma genera e che, spezzate in token, imitano un codice:
+l'escape di un carattere non ASCII in un testo di quota (`\\U+00b0` → `00b07`),
+un GUID (`{F0864738-…}` → `F0864738`), una data ISO (`…-09-06T13:14` → `06T13`).
+Si togliono dal testo *prima* di spezzarlo, così non c'è bisogno di una voce in
+`ALLOWED` per ogni GUID che esiste."""
+
+
 def suspicious_tokens(text: str, bare_digits: bool = False) -> set[str]:
     """I token di `text` che hanno la forma di un codice pezzo."""
     found: set[str] = set()
+    for pattern in GENERATED_SHAPES:
+        text = pattern.sub(" ", text)
     for token in TOKEN_SPLIT.split(text):
         if not token:
             continue
@@ -234,12 +245,10 @@ def drawing_suspicions(path: Path) -> list[tuple[int, str]]:
             continue
         if any(pattern.search(value) for pattern in DRAWING_NOISE):
             continue
-        # un testo di quota scrive i caratteri non ASCII come `\U+00b0`: senza
-        # togliere l'escape, `\U+00b07` si legge come il codice `00b07`
         # dentro un disegno le cifre nude si cercano sempre: una coordinata è
         # una riga che contiene SOLO il numero, ed è già stata saltata sopra,
         # quindi un codice scritto nel cartiglio non la può imitare
-        hits = suspicious_tokens(UNICODE_ESCAPE.sub(" ", value), bare_digits=True)
+        hits = suspicious_tokens(value, bare_digits=True)
         if hits:
             out.append((n, f"[{', '.join(sorted(hits))}] {value[:80]}"))
     return out
