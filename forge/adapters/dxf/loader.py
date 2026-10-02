@@ -140,7 +140,7 @@ def _configure_odafc(sink: list = None, verbose: bool = False) -> None:
         f"1. Scaricalo (gratuito) da: {ODA_DOWNLOAD_URL}\n"
         f"2. {_ENV_VAR_HELP}\n\n"
         "Nota: se hai già ODA installato ma in una cartella con la versione nel "
-        "nome (es. 'ODAFileConverter 27.1.0'), ODA_PATH deve puntare al full "
+        "nome (es. 'ODAFileConverter X.Y.Z'), ODA_PATH deve puntare al full "
         "path dell'eseguibile, non alla cartella."
     )
 
