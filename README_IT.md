@@ -1,11 +1,12 @@
 # forge
 
-**Motore di geometria 2D deterministico per il disegno tecnico.**
+**Motore di geometria 2D deterministico per il disegno tecnico e la geometria CAD.**
 
-`forge` prende un disegno 2D disordinato e ne ricava un modello pulito e
-strutturato — profili esterni chiusi, aperture interne, fori (passanti / svasati /
-filettati), linee di piega, tracce di incisione — poi lo riscrive in DXF (un file
-per pezzo), metadati JSON/XML, o un view model per una UI. Il prodotto è il
+`forge` prende un disegno 2D disordinato e ne ricava un modello pulito e senza
+perdite — contorni chiusi ricuciti, la loro gerarchia di contenimento, le
+annotazioni del disegno, e un overlay aperto dove si attaccano le feature
+rilevate — poi lo riscrive in DXF (un documento, o uno per pezzo), JSON/XML, SVG,
+o un view model per una UI. Il prodotto è il
 modello; un formato CAD è solo una porta di entrata o di uscita. Oggi quella porta
 è il DXF (DWG via ODA), gestita da un solo adapter — tutto ciò che sta a valle
 lavora sul modello neutro rispetto al formato.
@@ -14,14 +15,16 @@ La parte che nessun altro strumento fa per te è l'**healing**: ricucire la
 geometria rotta — matasse di `LINE`/`ARC` da un export CAM, il DXF di un cliente,
 un vecchio file R12 — in contorni chiusi.
 
-La lamiera e la piastra sono il contesto in cui forge è nato, e il suo primo
-consumatore, non il suo confine: il motore non conosce materiale, processo né
-prodotto. La lettura delle feature è opzionale e vive in un solo modulo a parte,
-così un consumatore di un altro dominio ottiene la stessa geometria con il proprio
-vocabolario sopra.
+**Non è una libreria DXF** e **non è uno strumento per la lamiera**. La lamiera
+e la piastra sono il contesto in cui forge è nato, e il suo primo consumatore, non
+il suo confine: il motore non conosce materiale, processo né prodotto. Leggere la
+geometria come "un foro da forare" o "una piega" è interpretazione del
+consumatore (`snapbend` per la lamiera, `snapdraw` per la notazione del disegno).
+L'unica lettura di quel tipo inclusa, `detect_flat()`, è opzionale e vive in un
+solo modulo a parte, così un consumatore di un altro dominio ottiene la stessa
+geometria con il proprio vocabolario sopra.
 
-> Stato: **alpha**. In produzione per la preparazione al taglio laser/plasma, ma
-> l'API si muove ancora. Vedi `MAP.md` per le decisioni di design correnti.
+> Stato: **alpha**. In produzione, ma l'API si muove ancora. Vedi `MAP.md` per le decisioni di design correnti.
 
 ---
 
@@ -71,7 +74,7 @@ for cluster in result.clusters:              # una vista (o un pezzo) per isola
     print(cluster.outer.polygon.area, len(cluster.inners))
 ```
 
-`heal()` legge un file di taglio dall'interno (quali giri si chiudono, chi sta
+`heal()` legge un disegno di sagome piane separate dall'interno (quali giri si chiudono, chi sta
 dentro chi). `island()` legge un disegno di viste dall'esterno: isole per
 vicinanza, poi il contorno esterno di ognuna come faccia esterna della sua rete
 piana. Stesso `ForgeResult` in uscita — vedi `docs/API.md` (`island`).

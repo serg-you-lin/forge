@@ -13,8 +13,9 @@ Deterministic 2D-geometry reconstruction engine for technical drawings.
 Not a DXF library — DXF is just the first input adapter. Takes messy CAD
 geometry (DXF/DWG, experimental PDF, or raw point/primitive dicts) and
 produces a lossless domain model: healed closed contours, a containment
-hierarchy, classified manufacturing features (holes/bends/engraving),
-annotations — then renders that model to DXF, JSON, XML, SVG, or a
+hierarchy, annotations, an open overlay for detected features (`detect_flat()`
+is one optional reading that attaches holes/bends/engraving; forge itself knows
+no process) — then renders that model to DXF, JSON, XML, SVG, or a
 render-oriented view-model dict. Everything unclassified survives in
 `trash_entities`; nothing from the source is silently dropped.
 
@@ -45,7 +46,7 @@ import forge
 doc = forge.load_dxf("part.dxf", tolerance=0.5, role_rules=forge.name_rules({"Bend": "bending"}))
 check = forge.validate(doc)                      # input validation, optional
 result = forge.heal_and_detect(doc, label="P-1024")
-if not result.is_valid:                           # ALWAYS check before rendering
+if not result.is_valid:                           # check before handing output to a machine
     raise SystemExit(result.errors)
 forge.to_dxf(result, doc).saveas("out.dxf")
 forge.save_json(result, "out.json")
@@ -75,9 +76,9 @@ forge.save_json(result, "out.json")
 | `ALL_FEATURES` | `frozenset({"holes","engrave","bending"})` | the `"all"` set. |
 | `describe_features` | `(cluster: ForgeCluster) -> dict` | rich per-type feature counts (`plain_holes_count`, `countersink_count`, `threaded_holes_count`, grouped bend lines, `total_engrave_length`...). `cluster.summary` is the raw always-available count; this is the detailed version for forge's known types. |
 | `heal_and_detect` | `(doc, tolerance=None, label="", source_file="", features="all", max_drill_diameter=32.1, bending_tolerance=1.0, engrave_tolerance=1.0) -> ForgeResult` | `heal` + `detect_flat`, `features="all"` by default (unlike bare `detect_flat`). Skips `detect_flat` if `heal` produced no valid parts. |
-| `to_dxf` | `(result, source_doc=None, filter_cluster=None, include_annotations=True, include_trash=True, annotation_layer="Annotation", role_styles=None) -> ezdxf.Drawing` | renders the model to a **new** DXF (R2010), never rereads source. `source_doc` only for header vars (`$INSUNITS`...). Raises `ValueError` if `result.is_valid` is `False`. Besides `detect_flat`'s collections, writes **every other collection attached to `cluster.detected`**: an item with a `role` goes on its role's layer, geometry from `item.contours` (several closed contours) or `item.segments` (D70). |
-| `split` | `(result, source_doc=None, namer=None, include_annotations=True, min_area=50.0, exclude_types=None, on_cluster=None, annotation_layer="Annotation", role_styles=None) -> list[ezdxf.Drawing]` | like `to_dxf` but one `Drawing` per part; pure, doesn't touch disk. Parts under `min_area` mm² dropped (warning). Raises `ValueError` if invalid. |
-| `inject` | `(result, data_injector=None, snap_distance=0.0) -> ForgeResult` | optional CAM enrichment. **Mutates** `cluster.custom`. `data_injector(cluster, list[str]) -> dict` receives the texts of `result.annotations` inside each part's outer; `snap_distance > 0` also hands a text outside every part to the nearest one within that distance (same rule as `anchor_annotations`, D82). No-op without `data_injector`. |
+| `to_dxf` | `(result, source_doc=None, filter_cluster=None, include_annotations=True, include_trash=True, annotation_layer="Annotation", role_styles=None, allow_invalid=True) -> ezdxf.Drawing` | renders the model to a **new** DXF (R2010), never rereads source. `source_doc` only for header vars (`$INSUNITS`...). An invalid result is rendered anyway (trash + annotations), like `to_svg`; `allow_invalid=False` → `ValueError` (for a caller feeding a machine, D83). Besides `detect_flat`'s collections, writes **every other collection attached to `cluster.detected`**: an item with a `role` goes on its role's layer, geometry from `item.contours` (several closed contours) or `item.segments` (D70). |
+| `split` | `(result, source_doc=None, namer=None, include_annotations=True, min_area=50.0, exclude_types=None, on_cluster=None, annotation_layer="Annotation", role_styles=None) -> list[ezdxf.Drawing]` | like `to_dxf` but one `Drawing` per part; pure, doesn't touch disk. Parts under `min_area` mm² dropped (warning). Always raises `ValueError` if invalid (no parts, nothing to split). |
+| `inject` | `(result, data_injector=None, snap_distance=0.0) -> ForgeResult` | optional enrichment from texts. **Mutates** `cluster.custom`. `data_injector(cluster, list[str]) -> dict` receives the texts of `result.annotations` inside each part's outer; `snap_distance > 0` also hands a text outside every part to the nearest one within that distance (same rule as `anchor_annotations`, D82). No-op without `data_injector`. |
 | `anchor_annotations` | `(result, snap_distance=0.0, leader_distance=0.5) -> ForgeResult` | assigns `Annotation.cluster_ref` — which cluster an annotation belongs to, by containment (+ optional snap distance for annotations just outside) — `Leader.target` via `leader_target`, and `Dimension.references` via `dimension_references`. **Mutates** annotations in place, also returns. Run it after choosing the features (`detect_flat` moves holes from `inners` to `holes`: targets computed before go stale). |
 | `leader_target` | `(result, leader, distance=0.5) -> str\|None` | element the arrow tip (`leader.vertices[0]`) lands on, as a path in `result`: `"clusters[0].outer"`, `"clusters[0].inners[3]"`, `"clusters[1].holes[2]"` (any `cluster.detected` collection). Nearest boundary within `distance` (tie → smaller element); else smallest closed non-outer element covering the tip; else `None` (e.g. section arrows outside the view). Geometry only, never reads the text (D66). |
 | `dimension_references` | `(result, dimension, distance=0.5) -> list[str]` | elements a dimension measures, as `target`-style paths: for each of `measured_points`, the element whose boundary passes within `distance` (tie → smaller). No duplicates, in point order: a diameter gives the circle, a linear one or two elements. Pure geometry — reading `"M5"` as a thread is the reader's job. |
@@ -87,7 +88,7 @@ forge.save_json(result, "out.json")
 | `to_json` / `save_json` | `(result, indent=2, extra_metadata: Callable[[ForgeCluster], dict]=None) -> str / None(writes path)` | per-part metadata per `rules/metadata_schema.py`, no coordinates. `extra_metadata(cluster)` called once per cluster, result merged in outside the schema. |
 | `save_xml` | `(result, path, extra_metadata=None) -> None` | same fields as `save_json`, XML. |
 | `to_view_model` | `(result, tolerance=0.05, include_trash=True, include_annotations=True) -> dict` | render-oriented JSON: every feature's coordinates + role + hex color, **discretized to polylines**. Feeds `to_svg`; usable by an external renderer. |
-| `to_svg` / `save_svg` | `(result, tolerance=0.05, include_trash=True, include_annotations=True, padding=0.03, background="#1e1e1e", holes_as_circles=True, stroke_width=None, size=None, units=None) -> str / None(writes path)` | SVG render, one `<g data-cluster>` per part, Y flipped. `units="mm"` = true-scale for CAM import. Geometry still discretized — use `to_dxf` for cutting-fidelity output. |
+| `to_svg` / `save_svg` | `(result, tolerance=0.05, include_trash=True, include_annotations=True, padding=0.03, background="#1e1e1e", holes_as_circles=True, stroke_width=None, size=None, units=None, allow_invalid=True) -> str / None(writes path)` | SVG render, one `<g data-cluster>` per part, Y flipped. `units="mm"` = true scale (1 unit = 1 mm), e.g. for a machine that imports SVG. Geometry still discretized — use `to_dxf` when exact curves matter. Invalid result rendered anyway; `allow_invalid=False` → `ValueError` (D83). |
 | `write_metadata_to_dxf` / `read_metadata_from_dxf` | `(doc, cluster, extra=None) -> None` / `(doc) -> dict` | writes/reads the `save_json` fields as `FORGE` XDATA on the `OuterContour`-layer entity. |
 | `set_schema` | `(schema: dict) -> None` | replaces the active metadata schema at runtime (for pip-installed use where you can't edit `metadata_schema.py`). |
 | `extract_texts_from_msp` | `(msp) -> list[str]` | texts as bare strings — **not** usable by `inject`. |
@@ -111,7 +112,7 @@ forge.inspect_file(path, tolerance=0.05, role_rules=(),
 
 **`ForgeDocument`** (from `load_dxf`/`document_from_msp`/`load_geometry`): `edges: list[Edge]`, `annotations: list[Annotation]`, `source_meta: dict`, `source_path: str`, `warnings: list[str]`.
 
-**`ForgeResult`** (from `heal`, enriched by `detect_flat`/`inject`): `clusters: list[ForgeCluster]`, `is_valid: bool` (**check before render**), `warnings`/`errors: list[str]`, `trash_entities: list`, `annotations: list[Annotation]`, `classified_entities: list`, `all_arcs: list[ArcSeg]`, `cluster_count` (property). `.to_dict()` for JSON.
+**`ForgeResult`** (from `heal`, enriched by `detect_flat`/`inject`): `clusters: list[ForgeCluster]`, `is_valid: bool` (**check before handing output to a machine**), `warnings`/`errors: list[str]`, `trash_entities: list`, `annotations: list[Annotation]`, `classified_entities: list`, `all_arcs: list[ArcSeg]`, `cluster_count` (property). `.to_dict()` for JSON.
 
 **`ForgeCluster`**: `outer: ForgeContour`, `inners: list[ForgeContour]`, `label: str`, `custom: dict` (from `data_injector`), `detected: DetectedFeatures|None` (open-by-name overlay, `None` until something writes to it — D44), `.features(name)` → collection or `[]` (`"holes"` → `list[Hole]`, `"bending_lines"` → `list[BendingLine]`, `"engrave_lines"` → `list[Engraving]`, or a custom name a third party attached), `.summary` property (raw `{name}_count` for every `detected` collection, `{}` if `detected is None`), `.area`, `.bbox`. `ForgeContour` also has `.depth`/`.parent` (D34) — position in the containment tree, needed e.g. by `bridge_tabs`.
 
@@ -219,7 +220,7 @@ outer face → interior. Choose by the drawing:
 
 | drawing | call |
 |---|---|
-| flat cutting file, one or more separate parts, exact geometry to stitch | `heal()` / `heal_and_detect()` |
+| flat outlines (a cutting file, a development), one or more separate parts, exact geometry to stitch | `heal()` / `heal_and_detect()` |
 | technical drawing with views (plan, side, isometric) on a sheet | `island()` |
 
 What `island()` does **not** know: which island is a view, a part, the frame,
@@ -256,18 +257,18 @@ duplicated criteria): `spatial_islands` → `refit_tessellations` →
 
 Parameters to tune per client/drawing convention, never guessed by forge:
 `island_gap` (layout spacing between views), `max_gap` (drawing gaps closed on
-a view, default 0.5 mm — a view is not a cutting file).
+a view, default 0.5 mm — a view is not a set of exact flat outlines).
 
 ## Hard rules (violate these = broken output)
 
 - `heal()` never classifies holes/bends — that's `detect_flat(features=...)`, opt-in.
 - Bare `detect_flat(result)` does **only** the load-time roles (`role_rules`) + cleanup — no geometric inference without `features=`.
-- **Always check `result.is_valid` before `to_dxf`/`split`** — they raise `ValueError` otherwise.
+- **Check `result.is_valid`** before using output for anything but looking at it. `to_dxf`/`to_svg` render an invalid result anyway (default `allow_invalid=True`); pass `allow_invalid=False` to get `ValueError` instead. `split` always raises on invalid (D83).
 - `tolerance` default `0.05`; a gap ≥ 4× tolerance is **not** auto-closed (deliberate — raise `tolerance` or fix the source).
 - `role_rules` is a `load_dxf`/`document_from_msp` param, **not** a `heal`/`detect_flat` param.
 - `label_map`/`linetype_map`/`color_map` **no longer exist** (D63, clean break). Migration: `label_map=m` → `role_rules=forge.name_rules(m)`; `linetype_map={"DASHED": r}` → `forge.RoleRule(r, dashed=True)` (dash is read from the pattern, not the linetype name); `color_map={"cyan": r}` → `forge.RoleRule(r, color="cyan")`. The old fixed priority (name, then linetype, then colour) is gone: put the rules in the order you want, first match wins. `ForgeResult.label_map` and `doc.source_meta["label_map"]` are gone too.
 - `to_dxf`/`split` never re-read the source file — they render from the model only.
-- Splines are re-emitted as native `SPLINE`, engraving as native per-primitive entities — **never** discretized to `LWPOLYLINE` in DXF output. `to_svg`/`to_view_model` **do** discretize everything (visualization only, not cutting-fidelity).
+- Splines are re-emitted as native `SPLINE`, engraving as native per-primitive entities — **never** discretized to `LWPOLYLINE` in DXF output. `to_svg`/`to_view_model` **do** discretize everything (visualization, not exact curves).
 - Nothing is silently dropped: unclassified geometry → `trash_entities`/`Trash` layer, unmodeled DXF types (`HATCH`,`IMAGE`,`TABLE`,`3DFACE`,`XLINE`...) → warning in `doc.warnings`.
 - `island()` and `heal()` are two readings, not two steps: never chain them on the same document. Both return a `ForgeResult`; `to_dxf()`/`split()` work on either.
 - `detect_flat()` assumes a **flat part seen from its face** (cutting file, sheet development). **Never run it on `island()` views**: it finds "bends" in isometrics and assembly views and "holes" in logo letters — meaningless by construction. Feature reading on views is not built yet: use the geometry — `inners` + `contour_shape` (circle, stadium, rectangle...) — and say so; calling a circle a hole is the reader's call, not forge's. The name states the precondition (renamed from `detect`, D67).

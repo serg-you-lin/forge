@@ -56,7 +56,10 @@ python scripts/gen_index.py --check    # exit 1 if stale; also checks the depend
    development). Never run it on `island()` output: it invents bends in isometrics
    and holes in logo letters. `heal()` and `island()` are two *readings*, never two
    steps — never chain them on one document.
-6. **Always check `result.is_valid`** before `to_dxf`/`split` — they raise otherwise.
+6. **Always check `result.is_valid`** before handing output to a machine.
+   `to_dxf`/`to_svg` render an invalid result anyway (`allow_invalid=True`, so
+   you can see it); a caller that delivers to a machine passes
+   `allow_invalid=False`. `split` always raises on invalid (D83).
 7. **Nothing is silently dropped**: unclassified geometry goes to `trash_entities`,
    unmodeled source types to `doc.warnings`.
 8. **Justify every choice from forge's own geometry and domain model.** "That is

@@ -441,7 +441,7 @@ legge il disegno dall'esterno:
 
 **Quando usarla invece di `heal()`**: disegni di viste — più viste su un
 foglio, viste isometriche/3D proiettate, sagome con linee quasi coincidenti
-dove il grafo di `heal()` è ambiguo. Per un disegno di taglio piano (uno o più
+dove il grafo di `heal()` è ambiguo. Per un disegno di sagome piane (uno o più
 pezzi separati, geometria esatta da cucire) resta `heal()`.
 
 Un'isola il cui contorno sta **dentro** quello di un'altra non è un cluster:
@@ -554,8 +554,8 @@ usata sulle viste di `island()` (MAP.md D67).
 
 `detect_flat(result)` **nudo** fa solo il minimo: la lane dei ruoli assegnati al load
 (`role_rules`, decisi in `load_dxf()`) e la pulizia della topologia.
-I contorni circolari restano `inners`, nessun `Hole` — è il default per il
-taglio laser.
+I contorni circolari restano `inners`, nessun `Hole`: chiamare foro un cerchio
+è una lettura, e la chiedi tu con `features`.
 
 Le lane geometriche sono **opt-in** via `features`:
 
@@ -630,6 +630,7 @@ forge.to_dxf(
     include_trash=True,
     annotation_layer="Annotation",
     role_styles: dict[str, RoleStyle] = None,
+    allow_invalid: bool = True,
 ) -> ezdxf.document.Drawing
 ```
 
@@ -640,7 +641,8 @@ entità dalla sorgente: `source_doc` serve solo a riportare gli header
 | parametro | significato |
 |---|---|
 | `filter_cluster` | `callable(ForgeCluster) -> bool` — scrive solo le parti che passano. |
-| `include_trash` | `True` (default): la geometria non classificata va sul layer `Trash`. Un operatore CAM deve poter vedere ogni entità del disegno di partenza. |
+| `include_trash` | `True` (default): la geometria non classificata va sul layer `Trash`. Chi apre il file deve poter vedere ogni entità del disegno di partenza. |
+| `allow_invalid` | `True` (default): un `result` non valido viene scritto lo stesso (trash e annotazioni), come fa `to_svg`. `False` → `ValueError`: per il chiamante che consegna il file a una macchina (D83). |
 | `annotation_layer` | `"Annotation"` → layer forge dedicato; `"Trash"` o altro nome → quel layer; `None` → layer originale della sorgente. Nessuna annotazione viene mai scartata. |
 | `role_styles` | override esplicito, per ruolo, di colore/linetype/lineweight (vedi `RoleStyle` sotto). Agisce sul layer — tutto ciò che forge scrive è BYLAYER. `None` (default) = nessun cambiamento rispetto alla palette di `rules/palette.py`. |
 
@@ -658,12 +660,13 @@ ruolo o senza geometria si salta.
 
 **Ritorna** un `Drawing` `ezdxf`. Sta a te fare `doc_out.saveas(...)`.
 
-**Solleva `ValueError`** se `result.is_valid` è `False` — non genera un file di
-sola spazzatura. **Controlla `result.is_valid` prima di chiamarlo.**
+**Solleva `ValueError`** solo con `allow_invalid=False` e `result.is_valid`
+`False`. Il rifiuto non è del formato, è di chi consegna il file a una macchina:
+quel chiamante lo chiede esplicitamente.
 
 ```python
-if result.is_valid:
-    forge.to_dxf(result, doc).saveas("out.dxf")
+forge.to_dxf(result, doc).saveas("guarda.dxf")                         # sempre
+forge.to_dxf(result, doc, allow_invalid=False).saveas("macchina.dxf")  # solo se valido
 ```
 
 ---
@@ -862,7 +865,7 @@ forge.inject(
 ) -> ForgeResult
 ```
 
-Arricchimento CAM **opzionale**. **Muta** `result.clusters[i].custom` in-place e
+Arricchimento **opzionale** dai testi. **Muta** `result.clusters[i].custom` in-place e
 ritorna il `result`. Fa **una cosa**: se passi `data_injector` —
 `callable(cluster, list[str]) -> dict` — gli passa i testi di
 `result.annotations` che ricadono dentro l'outer di ogni parte e mette il dict
@@ -997,13 +1000,14 @@ forge.to_svg(
     holes_as_circles=True,
     stroke_width=None,        # None = auto (diagonale bbox / 400)
     size=None,                # None = niente width/height → scala al contenitore
-    units=None,               # "mm" = SVG in scala reale per import CAM/laser 1:1
+    units=None,               # "mm" = SVG in scala reale, 1 unità = 1 mm
+    allow_invalid=True,       # False → ValueError su un result non valido
 ) -> str
 forge.save_svg(result, path, **kwargs) -> None
 ```
 
-Renderer SVG del modello (MAP.md D12) — **per visualizzazione** (UI/report/
-anteprima). Un colore per ruolo (stessa palette semantica del DXF di output). La
+Renderer SVG del modello (MAP.md D12) — per visualizzazione (UI/report/
+anteprima) o per una macchina che importa SVG. Un colore per ruolo (stessa palette semantica del DXF di output). La
 Y viene ribaltata (modello Y-su → SVG Y-giù). Una parte = un `<g data-cluster="…">`.
 Costruito sopra `to_view_model`.
 
@@ -1012,9 +1016,12 @@ vettoriale e scala a riempire il contenitore (o la finestra del browser) — la
 zoomi quanto vuoi. Passa `size="800"` per fissare la larghezza in px.
 
 `units="mm"` produce un SVG **in scala reale** (`width="…mm"`, padding e sfondo a
-zero) per chi importa SVG in un software laser/CAM che vuole 1 unità = 1 mm.
-**Attenzione:** archi, cerchi e spline restano discretizzati a polilinea — per un
-taglio ad alta fedeltà (fori a tolleranza, cerchi lisci) usa `to_dxf`, non l'SVG.
+zero) per chi importa SVG in un software che vuole 1 unità = 1 mm.
+**Attenzione:** archi, cerchi e spline restano discretizzati a polilinea — quando
+conta la curva esatta (cerchi lisci, quote a tolleranza) usa `to_dxf`, non l'SVG.
+
+Un `result` non valido viene disegnato lo stesso. `allow_invalid=False` →
+`ValueError`, stesso contratto di `to_dxf` (D83).
 
 ```python
 forge.save_svg(result, "pezzo.svg")

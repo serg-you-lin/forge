@@ -249,17 +249,27 @@ class TestWritebackTrash(unittest.TestCase):
         for e in trash_pl:
             self.assertFalse(e.closed)
 
-    def test_005_no_output_when_no_closed_outer(self):
+    def test_005_invalid_result_written_unless_refused(self):
         # Nessun contorno esterno chiuso (arc_open a tolleranza default: gap
-        # arco/arco di ~0.26 mm > 0.05) → heal() invalida il risultato e
-        # to_dxf() si rifiuta di materializzare un file di sola trash.
+        # arco/arco di ~0.26 mm > 0.05) → heal() invalida il risultato. Di
+        # default to_dxf() lo scrive lo stesso (tutto in trash, D83); con
+        # allow_invalid=False si rifiuta, come vuole chi consegna a una macchina.
         doc = forge.load_dxf(EXAMPLES_DIR / "arc_open.dxf")
         result = forge.heal(doc)
         self.assertFalse(result.is_valid)
         self.assertEqual(result.cluster_count, 0)
         self.assertTrue(result.errors)
+
+        msp = forge.to_dxf(result, doc).modelspace()
+        trash = [e for e in msp if e.dxf.layer == TRASH_LAYER]
+        self.assertEqual(len(trash), len(result.trash_entities))
+        self.assertGreater(len(trash), 0)
+
         with self.assertRaises(ValueError):
-            forge.to_dxf(result, doc)
+            forge.to_dxf(result, doc, allow_invalid=False)
+        with self.assertRaises(ValueError):
+            forge.to_svg(result, allow_invalid=False)
+        self.assertIn("<svg", forge.to_svg(result))
 
 
 # ---------------------------------------------------------------------------

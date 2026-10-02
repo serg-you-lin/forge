@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`74` modules · `350` module-level functions · `53` classes · `13535` lines of code.
+`74` modules · `350` module-level functions · `53` classes · `13545` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -34,7 +34,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_annotation_entry` | func | `forge/io/view_model.py:119` |  |
 | `_annotation_signature` | func | `forge/adapters/dxf/loader.py:63` |  |
 | `apply_gap_fixes` | func | `forge/core/healing/gap_solver.py:345` | Applica i GapFix restituendo una NUOVA lista di Edge — `edges` non viene mutata. |
-| `_apply_role_styles` | func | `forge/io/dxf.py:527` | Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer |
+| `_apply_role_styles` | func | `forge/io/dxf.py:530` | Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer |
 | `_Arc` | class | `forge/core/healing/outer_scan.py:103` |  |
 | `arc_angles` | func | `forge/core/geometry.py:358` | `(start_angle, end_angle, ccw)` in radianti di un arco che passa per |
 | `_arc_end_point` | func | `forge/adapters/dxf/exporter.py:98` |  |
@@ -81,7 +81,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `ClosedFeature` | class | `forge/model/feature.py:47` | Feature con geometria chiusa: ha un polygon e una lista di segmenti. |
 | `_closest_to` | func | `forge/core/geometry.py:518` | Restituisce il punto più vicino a ref tra i candidati. |
 | `_cluster` | func | `forge/core/island.py:211` |  |
-| `cluster_passes_min_area` | func | `forge/io/dxf.py:173` | True se la parte supera la soglia di area minima (min_area <= 0 = nessun filtro). |
+| `cluster_passes_min_area` | func | `forge/io/dxf.py:175` | True se la parte supera la soglia di area minima (min_area <= 0 = nessun filtro). |
 | `cluster_points` | func | `forge/core/topology/graph.py:191` | Raggruppa punti 2D entro `epsilon` e restituisce {punto -> rappresentante}. |
 | `_collect_inners` | func | `forge/core/healing/hierarchy.py:112` | Appiattisce l'albero di contenimento in `cluster.inners` (ogni discendente |
 | `color_for_layer` | func | `forge/adapters/dxf/layers.py:58` | Colore DXF canonico per un layer. |
@@ -136,18 +136,18 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_elements` | func | `forge/tools/anchor.py:147` | (percorso, geometria shapely, è chiuso) per contorni e feature di ogni cluster. |
 | `EllipseSeg` | class | `forge/core/primitives/segments.py:603` | Ellisse (o arco ellittico) geometrico puro — stessa parametrizzazione del |
 | `_emit` | func | `forge/adapters/dxf/loader.py:99` | Aggiunge `msg` al canale warnings; lo stampa solo se verbose. |
-| `_emit_annotation` | func | `forge/io/dxf.py:287` |  |
-| `_emit_note` | func | `forge/io/dxf.py:297` |  |
-| `_emit_rendered` | func | `forge/io/dxf.py:323` | DIMENSION / LEADER: ri-materializza l'immagine appiattita. I testi in |
+| `_emit_annotation` | func | `forge/io/dxf.py:290` |  |
+| `_emit_note` | func | `forge/io/dxf.py:300` |  |
+| `_emit_rendered` | func | `forge/io/dxf.py:326` | DIMENSION / LEADER: ri-materializza l'immagine appiattita. I testi in |
 | `_endpoint_meta` | func | `forge/core/healing/gap_solver.py:257` | Dati che il solver usa per calcolare l'intersezione, per tipo di segmento. |
 | `_engrave_entry` | func | `forge/io/view_model.py:90` |  |
 | `Engraving` | class | `forge/tools/model/engraving.py:34` |  |
 | `_engraving_from_closed` | func | `forge/tools/detect.py:509` |  |
 | `_engraving_from_open` | func | `forge/tools/detect.py:493` |  |
 | `_ensure_detected` | func | `forge/tools/detect.py:39` | `cluster.detected`, creandolo alla prima scrittura. |
-| `_ensure_layer` | func | `forge/io/dxf.py:501` | Crea il layer `name` col suo colore canonico se non esiste già. Serve per i |
+| `_ensure_layer` | func | `forge/io/dxf.py:504` | Crea il layer `name` col suo colore canonico se non esiste già. Serve per i |
 | `_ensure_linetype` | func | `forge/adapters/dxf/exporter.py:23` | Registra (se serve) il linetype di `style` nel documento di output e ne |
-| `_ensure_linetype` | func | `forge/io/dxf.py:510` | Registra nel documento un linetype standard ezdxf (`ezdxf.tools.standards`, |
+| `_ensure_linetype` | func | `forge/io/dxf.py:513` | Registra nel documento un linetype standard ezdxf (`ezdxf.tools.standards`, |
 | `_entity_style` | func | `forge/adapters/dxf/adapter.py:74` | Cattura l'aspetto EFFETTIVO (linetype/colore) di un'entità DXF in un |
 | `entity_to_polygon` | func | `forge/adapters/dxf/adapter.py:211` | Converte un'entità DXF chiusa in un `Polygon` shapely, passando per le |
 | `_explode_inserts` | func | `forge/adapters/dxf/sanitize.py:106` | Esplode tutti gli INSERT (blocchi) nel modelspace in entità primitive. |
@@ -317,7 +317,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_register_merge` | func | `forge/core/healing/normalizer.py:293` | Una catena di 2+ span che si toccano/sovrappongono -> registra la |
 | `register_role_style` | func | `forge/rules/palette.py:158` | Registra uno `RoleStyle` per `role`, valido per ogni render successivo |
 | `registered_role_styles` | func | `forge/rules/palette.py:169` | Copia del registro attivo — letta dai renderer, mai mutata da loro. |
-| `_remove_excluded_entities` | func | `forge/io/dxf.py:486` |  |
+| `_remove_excluded_entities` | func | `forge/io/dxf.py:489` |  |
 | `_render_block` | func | `forge/adapters/dxf/annotation_extractor.py:402` | Espande l'immagine dell'entità in strokes/fills/texts puri. |
 | `RenderedGeometry` | class | `forge/model/annotation.py:46` | Immagine di una quota/direttrice già appiattita in primitive pure. |
 | `RenderedText` | class | `forge/model/annotation.py:37` | Un testo dentro l'immagine appiattita di una quota/direttrice. |
@@ -346,11 +346,11 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `sanitize` | func | `forge/adapters/dxf/sanitize.py:88` | Esegue tutti i sanitizer in sequenza sul modelspace ricevuto. |
 | `sanitize_pdf_geometries` | func | `forge/adapters/pdf/sanitize.py:13` | Prende gli item geometrici grezzi estratti dall'extractor, applica la conversione |
 | `save_json` | func | `forge/io/exporter.py:124` | Salva i metadati in JSON secondo lo schema di metadata_schema.py. |
-| `save_svg` | func | `forge/io/svg.py:164` | Scrive `to_svg(result, **kwargs)` su file. |
+| `save_svg` | func | `forge/io/svg.py:171` | Scrive `to_svg(result, **kwargs)` su file. |
 | `save_xml` | func | `forge/io/exporter.py:177` | Salva i metadati in XML secondo lo schema di metadata_schema.py. |
 | `_scale` | func | `forge/tools/tabs.py:58` |  |
 | `_scan_axis` | func | `forge/core/healing/outer_scan.py:186` |  |
-| `_scan_bbox` | func | `forge/io/svg.py:171` | bbox da tutti i punti del view model — fallback quando vm['bbox'] è None. |
+| `_scan_bbox` | func | `forge/io/svg.py:178` | bbox da tutti i punti del view model — fallback quando vm['bbox'] è None. |
 | `_search_warnings` | func | `forge/core/heal.py:170` | Cosa racconta heal() dei gradini della scala di find_loops(). |
 | `_seg_end_point` | func | `forge/adapters/dxf/exporter.py:104` |  |
 | `segment_endpoints` | func | `forge/core/primitives/segments.py:487` | (start, end) di un segmento primitivo, in coordinate XY non arrotondate. |
@@ -360,7 +360,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `segments_from_loop` | func | `forge/core/topology/loop_finder.py:155` | Segmenti nativi di un loop, orientati nel verso di percorrenza. |
 | `segments_to_pts_with_bulge` | func | `forge/adapters/dxf/exporter.py:112` |  |
 | `set_schema` | func | `forge/io/exporter.py:107` | Imposta uno schema esterno come schema attivo. |
-| `_setup_layers` | func | `forge/io/dxf.py:492` |  |
+| `_setup_layers` | func | `forge/io/dxf.py:495` |  |
 | `_shape` | func | `forge/io/svg.py:28` |  |
 | `_short_runs` | func | `forge/core/healing/normalizer.py:575` | Catene massimali: percorsi fra nodi di grado != 2, o anelli. |
 | `simplify_points` | func | `forge/core/primitives/fitting.py:203` | `detect_corners` + `fit_primitives` in un solo passo — comodo quando serve |
@@ -373,7 +373,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `spatial_islands` | func | `forge/core/healing/islands.py:55` | Union-find sulle coppie di Edge a distanza <= gap_tolerance (STRtree, |
 | `SplineSeg` | class | `forge/core/primitives/segments.py:319` |  |
 | `_split` | func | `forge/core/topology/noding.py:202` |  |
-| `split` | func | `forge/io/dxf.py:178` | Materializza un ForgeResult in un Drawing per parte. |
+| `split` | func | `forge/io/dxf.py:180` | Materializza un ForgeResult in un Drawing per parte. |
 | `split_at_crossings` | func | `forge/core/topology/noding.py:60` | Spezza ogni LineSeg/ArcSeg/CircleSeg nei punti dove incrocia un altro |
 | `_split_circle` | func | `forge/core/topology/noding.py:227` |  |
 | `_split_closed_polyline_at_cuts` | func | `forge/tools/tabs.py:165` | Spezza il contorno chiuso `points` sui tagli in `cuts` — ognuno |
@@ -402,7 +402,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `track_shape_type` | func | `forge/core/geometry.py:159` | `"line"` se la traccia è un solo segmento retto (2 vertici), altrimenti `"curve"`. |
 | `transform_point` | func | `forge/adapters/pdf/geometry_adapter.py:27` | Converte un punto da punti PDF (pt) a millimetri (mm) |
 | `_trash_entry` | func | `forge/io/view_model.py:109` |  |
-| `_trash_probe_point` | func | `forge/io/dxf.py:352` | Punto rappresentativo di un'entità trash, per assegnarla a una parte. |
+| `_trash_probe_point` | func | `forge/io/dxf.py:355` | Punto rappresentativo di un'entità trash, per assegnarla a una parte. |
 | `_try_fit_arc` | func | `forge/core/primitives/fitting.py:90` | Prova un fit a cerchio su `points`; lo accetta solo se lo scostamento |
 | `_upgrade_to_r2010` | func | `forge/adapters/dxf/loader.py:180` | Converte un documento DXF legacy in R2010. |
 | `validate` | func | `forge/rules/validator.py:29` | Valida l'input prima di heal(). |
@@ -411,16 +411,16 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `weld_degenerate_linesegs` | func | `forge/core/healing/normalizer.py:471` | Salda (non cancella) i LineSeg `role == UNKNOWN` di lunghezza reale |
 | `_width_factor` | func | `forge/adapters/dxf/annotation_extractor.py:159` | Stretch orizzontale effettivo del testo (1.0 = nessuno). |
 | `_with_nodes` | func | `forge/core/topology/noding.py:196` |  |
-| `_work_layer_for_hole` | func | `forge/io/dxf.py:422` | Restituisce il layer lavorazione corretto per fori speciali. |
-| `_write_annotations` | func | `forge/io/dxf.py:245` | Riscrive le annotazioni testuali della sorgente nel documento di output. |
-| `_write_attached_features` | func | `forge/io/dxf.py:438` | Ogni altra collezione di `cluster.detected` (D70): un elemento con un |
-| `_write_bending_lines` | func | `forge/io/dxf.py:462` | Materializza le bending lines da geometria pura (bl.geometry). |
+| `_work_layer_for_hole` | func | `forge/io/dxf.py:425` | Restituisce il layer lavorazione corretto per fori speciali. |
+| `_write_annotations` | func | `forge/io/dxf.py:248` | Riscrive le annotazioni testuali della sorgente nel documento di output. |
+| `_write_attached_features` | func | `forge/io/dxf.py:441` | Ogni altra collezione di `cluster.detected` (D70): un elemento con un |
+| `_write_bending_lines` | func | `forge/io/dxf.py:465` | Materializza le bending lines da geometria pura (bl.geometry). |
 | `_write_custom` | func | `forge/tools/detect.py:624` |  |
 | `write_engrave_segments` | func | `forge/adapters/dxf/exporter.py:278` | Materializza un'incisione come geometria NATIVA, una entità DXF per |
 | `write_metadata_to_dxf` | func | `forge/io/exporter.py:273` | Scrive i metadati come XDATA sull'entità OuterContour. |
 | `write_open_segments` | func | `forge/adapters/dxf/exporter.py:343` | Materializza una lista di segmenti puri come geometria APERTA su msp. |
 | `write_segments` | func | `forge/adapters/dxf/exporter.py:199` | Materializza una lista di segmenti puri su msp. |
-| `_write_trash` | func | `forge/io/dxf.py:368` | Materializza `result.trash_entities`. |
+| `_write_trash` | func | `forge/io/dxf.py:371` | Materializza `result.trash_entities`. |
 | `_xy` | func | `forge/adapters/dxf/annotation_extractor.py:475` |  |
 | `_xy` | func | `forge/io/view_model.py:32` | Lista di punti (2D o 3D) → lista di [x, y] arrotondati. |
 
@@ -430,7 +430,7 @@ Same name defined at module level in different modules. Not automatically a bug 
 
 | name | defined in |
 |---|---|
-| `_ensure_linetype` | `forge/adapters/dxf/exporter.py:23` · `forge/io/dxf.py:510` |
+| `_ensure_linetype` | `forge/adapters/dxf/exporter.py:23` · `forge/io/dxf.py:513` |
 | `_geometry` | `forge/core/healing/islands.py:101` · `forge/core/island.py:301` · `forge/core/topology/noding.py:248` · `forge/tools/anchor.py:162` |
 | `_normalize` | `forge/core/island.py:197` · `forge/tools/tabs.py:66` |
 | `_xy` | `forge/adapters/dxf/annotation_extractor.py:475` · `forge/io/view_model.py:32` |
@@ -928,27 +928,27 @@ _forge/inspect.py_
 
 ### `forge/io/`
 
-#### `forge/io/dxf.py` — 553 lines
+#### `forge/io/dxf.py` — 556 lines
 
 _forge/io/dxf.py_
 
-- `to_dxf(result: ForgeResult, source_doc: Optional[ForgeDocument]=None, filter_cluster: Optional[Callable[[ForgeCluster], bool]]=None, include_annotations: bool=True, include_trash: bool=True, annotation_layer: Optional[str]=LAYER_ANNOTATION, role_styles: Optional[Dict[str, RoleStyle]]=None) -> 'ezdxf.document.Drawing'` — L49 — Crea un documento DXF nuovo (R2010) e vi materializza il ForgeResult.
-- `cluster_passes_min_area(cluster: ForgeCluster, min_area: float) -> bool` — L173 — True se la parte supera la soglia di area minima (min_area <= 0 = nessun filtro).
-- `split(result: ForgeResult, source_doc: Optional[ForgeDocument]=None, namer: Optional[Callable]=None, include_annotations: bool=True, min_area: float=DEFAULT_MIN_CLUSTER_AREA, exclude_types: Set[str]=None, on_part: Optional[Callable]=None, annotation_layer: Optional[str]=LAYER_ANNOTATION, role_styles: Optional[Dict[str, RoleStyle]]=None) -> List['ezdxf.document.Drawing']` — L178 — Materializza un ForgeResult in un Drawing per parte.
-- `_write_annotations(msp, annotations: List[Annotation], written_clusters: List[ForgeCluster], all_clusters: List[ForgeCluster], annotation_layer: Optional[str], restrict_to_written: bool) -> None` — L245 — Riscrive le annotazioni testuali della sorgente nel documento di output.
-- `_emit_annotation(msp, ann: Annotation, annotation_layer: Optional[str]) -> None` — L287
-- `_emit_note(msp, note: Note, attribs: dict) -> None` — L297
-- `_emit_rendered(msp, ann, attribs: dict) -> None` — L323 — DIMENSION / LEADER: ri-materializza l'immagine appiattita. I testi in
-- `_trash_probe_point(trash) -> Optional[tuple]` — L352 — Punto rappresentativo di un'entità trash, per assegnarla a una parte.
-- `_write_trash(msp, result: ForgeResult, written_clusters: List[ForgeCluster], all_clusters: List[ForgeCluster], restrict_to_written: bool) -> None` — L368 — Materializza `result.trash_entities`.
-- `_work_layer_for_hole(hole) -> Optional[str]` — L422 — Restituisce il layer lavorazione corretto per fori speciali.
-- `_write_attached_features(msp, cluster: ForgeCluster) -> None` — L438 — Ogni altra collezione di `cluster.detected` (D70): un elemento con un
-- `_write_bending_lines(msp, cluster: ForgeCluster) -> None` — L462 — Materializza le bending lines da geometria pura (bl.geometry).
-- `_remove_excluded_entities(msp, excluded_upper: Set[str]) -> None` — L486
-- `_setup_layers(doc) -> None` — L492
-- `_ensure_layer(doc, name: str) -> None` — L501 — Crea il layer `name` col suo colore canonico se non esiste già. Serve per i
-- `_ensure_linetype(doc, name: str) -> None` — L510 — Registra nel documento un linetype standard ezdxf (`ezdxf.tools.standards`,
-- `_apply_role_styles(doc, role_styles: Optional[Dict[str, 'RoleStyle']]) -> None` — L527 — Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer
+- `to_dxf(result: ForgeResult, source_doc: Optional[ForgeDocument]=None, filter_cluster: Optional[Callable[[ForgeCluster], bool]]=None, include_annotations: bool=True, include_trash: bool=True, annotation_layer: Optional[str]=LAYER_ANNOTATION, role_styles: Optional[Dict[str, RoleStyle]]=None, allow_invalid: bool=True) -> 'ezdxf.document.Drawing'` — L49 — Crea un documento DXF nuovo (R2010) e vi materializza il ForgeResult.
+- `cluster_passes_min_area(cluster: ForgeCluster, min_area: float) -> bool` — L175 — True se la parte supera la soglia di area minima (min_area <= 0 = nessun filtro).
+- `split(result: ForgeResult, source_doc: Optional[ForgeDocument]=None, namer: Optional[Callable]=None, include_annotations: bool=True, min_area: float=DEFAULT_MIN_CLUSTER_AREA, exclude_types: Set[str]=None, on_part: Optional[Callable]=None, annotation_layer: Optional[str]=LAYER_ANNOTATION, role_styles: Optional[Dict[str, RoleStyle]]=None) -> List['ezdxf.document.Drawing']` — L180 — Materializza un ForgeResult in un Drawing per parte.
+- `_write_annotations(msp, annotations: List[Annotation], written_clusters: List[ForgeCluster], all_clusters: List[ForgeCluster], annotation_layer: Optional[str], restrict_to_written: bool) -> None` — L248 — Riscrive le annotazioni testuali della sorgente nel documento di output.
+- `_emit_annotation(msp, ann: Annotation, annotation_layer: Optional[str]) -> None` — L290
+- `_emit_note(msp, note: Note, attribs: dict) -> None` — L300
+- `_emit_rendered(msp, ann, attribs: dict) -> None` — L326 — DIMENSION / LEADER: ri-materializza l'immagine appiattita. I testi in
+- `_trash_probe_point(trash) -> Optional[tuple]` — L355 — Punto rappresentativo di un'entità trash, per assegnarla a una parte.
+- `_write_trash(msp, result: ForgeResult, written_clusters: List[ForgeCluster], all_clusters: List[ForgeCluster], restrict_to_written: bool) -> None` — L371 — Materializza `result.trash_entities`.
+- `_work_layer_for_hole(hole) -> Optional[str]` — L425 — Restituisce il layer lavorazione corretto per fori speciali.
+- `_write_attached_features(msp, cluster: ForgeCluster) -> None` — L441 — Ogni altra collezione di `cluster.detected` (D70): un elemento con un
+- `_write_bending_lines(msp, cluster: ForgeCluster) -> None` — L465 — Materializza le bending lines da geometria pura (bl.geometry).
+- `_remove_excluded_entities(msp, excluded_upper: Set[str]) -> None` — L489
+- `_setup_layers(doc) -> None` — L495
+- `_ensure_layer(doc, name: str) -> None` — L504 — Crea il layer `name` col suo colore canonico se non esiste già. Serve per i
+- `_ensure_linetype(doc, name: str) -> None` — L513 — Registra nel documento un linetype standard ezdxf (`ezdxf.tools.standards`,
+- `_apply_role_styles(doc, role_styles: Optional[Dict[str, 'RoleStyle']]) -> None` — L530 — Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer
 
 #### `forge/io/exporter.py` — 355 lines
 
@@ -964,15 +964,15 @@ _exporter.py_
 - `write_metadata_to_dxf(doc, cluster: ForgeCluster, extra: Optional[dict]=None)` — L273 — Scrive i metadati come XDATA sull'entità OuterContour.
 - `read_metadata_from_dxf(doc) -> dict` — L316 — Legge i metadati FORGE XDATA dall'entità OuterContour.
 
-#### `forge/io/svg.py` — 189 lines
+#### `forge/io/svg.py` — 196 lines
 
 _io/svg.py_
 
 - `_fmt(pts) -> str` — L23 — Lista di [x, y] → stringa 'x0,y0 x1,y1 …' per points= di polyline/polygon.
 - `_shape(entry: dict, stroke_w: float, holes_as_circles: bool) -> str` — L28
-- `to_svg(result: ForgeResult, tolerance: float=0.05, include_trash: bool=True, include_annotations: bool=True, padding: float=0.03, background: Optional[str]='#1e1e1e', holes_as_circles: bool=True, stroke_width: Optional[float]=None, size: Optional[str]=None, units: Optional[str]=None) -> str` — L45 — `ForgeResult` → stringa SVG completa (`<svg>…</svg>`).
-- `save_svg(result: ForgeResult, path: str, **kwargs) -> None` — L164 — Scrive `to_svg(result, **kwargs)` su file.
-- `_scan_bbox(vm: dict) -> Optional[list]` — L171 — bbox da tutti i punti del view model — fallback quando vm['bbox'] è None.
+- `to_svg(result: ForgeResult, tolerance: float=0.05, include_trash: bool=True, include_annotations: bool=True, padding: float=0.03, background: Optional[str]='#1e1e1e', holes_as_circles: bool=True, stroke_width: Optional[float]=None, size: Optional[str]=None, units: Optional[str]=None, allow_invalid: bool=True) -> str` — L45 — `ForgeResult` → stringa SVG completa (`<svg>…</svg>`).
+- `save_svg(result: ForgeResult, path: str, **kwargs) -> None` — L171 — Scrive `to_svg(result, **kwargs)` su file.
+- `_scan_bbox(vm: dict) -> Optional[list]` — L178 — bbox da tutti i punti del view model — fallback quando vm['bbox'] è None.
 
 #### `forge/io/view_model.py` — 209 lines
 

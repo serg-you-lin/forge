@@ -54,6 +54,7 @@ def to_dxf(
     include_trash: bool = True,
     annotation_layer: Optional[str] = LAYER_ANNOTATION,
     role_styles: Optional[Dict[str, RoleStyle]] = None,
+    allow_invalid: bool = True,
 ) -> "ezdxf.document.Drawing":
     """
     Crea un documento DXF nuovo (R2010) e vi materializza il ForgeResult.
@@ -86,11 +87,12 @@ def to_dxf(
 
     Restituisce il documento ezdxf: sta al chiamante fare doc.saveas(...).
 
-    Se `result` non è valido (es. nessun contorno esterno chiuso → zero parti)
-    solleva `ValueError`: non si genera un file di sola trash. Il chiamante deve
-    controllare `result.is_valid` / `result.errors` prima.
+    Un `result` non valido (es. nessun contorno esterno chiuso → zero parti)
+    viene scritto lo stesso, con quello che c'è (trash, annotazioni): come
+    `to_svg`, serve a vedere cosa ha capito forge. `allow_invalid=False` →
+    `ValueError` invece: il chiamante che consegna a una macchina (D83).
     """
-    if not result.is_valid:
+    if not result.is_valid and not allow_invalid:
         raise ValueError(
             "to_dxf(): il ForgeResult non è valido, nessun output generato. "
             + " ".join(result.errors)
@@ -195,7 +197,8 @@ def split(
     Ritorna i Drawing nell'ordine delle parti tenute (quelle che superano
     `min_area`). `namer(i, cluster)` — se passato — assegna `cluster.label`, così il
     nome file resta ricavabile a valle come `f"{cluster.label}.dxf"`.
-    Come `to_dxf()`, solleva `ValueError` se `result` non è valido.
+    Solleva `ValueError` se `result` non è valido: un file per parte non ha
+    senso senza parti (D83).
     """
     if not result.is_valid:
         raise ValueError(
