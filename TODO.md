@@ -20,10 +20,12 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    Non tracciati ma necessari: `docs/INDEX.md`, `scripts/gen_index.py`,
    `scripts/audit_names.py`, `scripts/audit_fixtures.py`. `naming_convention.md`
    resta fuori finché non decidi il rename `forge`→`snapforge`.
-2. **`anonymize`: lo strumento di pulitura dei fixture** (sotto, sezione sua).
-   È quello che sblocca tutto il resto del punto 3: con i disegni ripuliti alla
-   fonte, i fixture possono stare nel repo pubblico e i test girano identici su
-   qualsiasi macchina.
+2. **`anonymize`** — ✅ costruito (D77, branch `tool/anonymize-fixtures`):
+   `scan` elenca tutto quello che è scritto dentro un disegno, `clean` sostituisce
+   una mappa e forge verifica che la geometria non si sia mossa. Resta da **usarlo
+   sui 32 fixture** (punto 3) e da decidere se esportarlo in `forge.__all__` (per
+   ora no: è igiene del repo, non geometria, e i consumer lo importano da
+   `forge.tools.anonymize`).
 3. **I 32 disegni che la suite usa e non ha in git** —
    `python scripts/audit_fixtures.py`. Senza di loro 61 golden su 114 fanno
    `skipTest` su un clone pulito. Da fare dopo il punto 2, passandoli per
@@ -43,10 +45,22 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
 ## `anonymize` — ripulire un disegno cliente per farne un fixture
 
+**Costruito (D77).** `forge/tools/anonymize.py` + `forge/adapters/dxf/tags.py`,
+11 test in `tests/unit/test_anonymize.py`. Quello che segue è il perché, che
+resta valido come guida all'uso; quello che resta da fare è passarci i 32
+fixture del punto 3.
+
+```
+python -m forge.tools.anonymize scan  disegno.dxf [--all]
+python -m forge.tools.anonymize clean disegno.dxf --map mappa.json \
+        [--out fixture.dxf] [--also golden1.json golden2.json] [--whole-value]
+```
+
 Il bisogno vale per forge **e per tutti i consumer**: i test si fanno per forza
-con disegni di clienti, quindi serve un passaggio che li renda pubblicabili. Da
-mettere in `forge/tools/anonymize.py` (esportato, così ogni consumer che importa
-forge ce l'ha) con la lettura/scrittura del formato in `adapters/dxf/`.
+con disegni di clienti, quindi serve un passaggio che li renda pubblicabili. Vive
+in `forge/tools/anonymize.py` con la lettura/scrittura del formato in
+`adapters/dxf/tags.py`; fuori da `forge.__all__`, i consumer lo importano da
+`forge.tools.anonymize`.
 
 **Perché non un round-trip attraverso forge.** `load_dxf` → `heal` → `to_dxf`
 restituisce la *lettura* di forge, non il file: spline strane, entità fuori
@@ -84,9 +98,9 @@ python -m forge.tools.anonymize clean disegno.dxf --out fixture.dxf --map mappa.
 
 `scan` stampa tutto quello che è scritto dentro, da leggere con l'occhio: è la
 parte che non si può automatizzare, perché un **codice** ha una forma e un
-pattern lo trova, un **nome** no. Prova che serve: `Arcardini`, nome di uno stile
-di quota dentro `golden_multipli/sviluppo_multiparte.dxf`, trovato solo dumpando
-576 stringhe e leggendole. `clean` applica una mappa (sigle inventate generate,
+pattern lo trova, un **nome** no. Prova che serve: il nome di uno studio usato
+come nome di uno stile di quota in uno dei disegni, trovato solo dumpando 576
+stringhe e leggendole una per una (ora sostituito). `clean` applica una mappa (sigle inventate generate,
 o scritta a mano) e dice cosa ha sostituito. **La mappa resta locale**: è l'unico
 file che lega il fixture all'originale.
 
@@ -388,7 +402,8 @@ creare una fingerprint geometrica per validare na forge part.
 ## PRIORITÀ BASSA — futuro
 
 ### Feature di tracciatura.
-Simil_arcardini_segni_tracciati_stretto_healed --> questo file ha una serie di dentelli che partono da una linea orizzontele, che sono considerati parte del grafo giustamnete. vorrei aggiungere un parametro che sotto una certa distanza queste linee siano considerate solo dei segni di marcatura, completando il grafo solo con la linea orizzontale. Anche se ho degli inner che hanno distanza inferiore alla tolleranza di cui sopra, devono essere detectati come segni di incisione e posti sul layer 'Engrave'. probabilmente questa cosa va implementata nel modulo detect e può essere individuato il tutto solo passando detect_flat() come facciamo con le bl che hanno la loro tolleranza.
+Il caso: un disegno (quello dei segni tracciati stretti, oggi non più su disco)
+ha una serie di dentelli che partono da una linea orizzontale, che sono considerati parte del grafo giustamnete. vorrei aggiungere un parametro che sotto una certa distanza queste linee siano considerate solo dei segni di marcatura, completando il grafo solo con la linea orizzontale. Anche se ho degli inner che hanno distanza inferiore alla tolleranza di cui sopra, devono essere detectati come segni di incisione e posti sul layer 'Engrave'. probabilmente questa cosa va implementata nel modulo detect e può essere individuato il tutto solo passando detect_flat() come facciamo con le bl che hanno la loro tolleranza.
 
 
 ### Implementazione nuovo formato:

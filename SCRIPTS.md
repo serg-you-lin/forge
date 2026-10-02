@@ -63,6 +63,12 @@ Non fanno parte della palestra dell'API: non chiamano `forge`, guardano il repo.
   salvataggio, nomi di layer, testi del cartiglio), e i nomi di sole cifre.
   `--strict` esce 1 al primo sospetto, `--from-disk` cerca anche i nomi dei
   disegni che stanno solo su questa macchina (D73, D75, D76).
+- `python -m forge.tools.anonymize` — non è in `scripts/` ma si usa da riga di
+  comando come loro: `scan` elenca tutto quello che è scritto dentro un disegno
+  (testi, nomi di layer/blocco/stile, percorsi, variabili d'intestazione, XDATA),
+  `clean` sostituisce una mappa in quelle sole stringhe e forge verifica che la
+  geometria non si sia mossa. È il passaggio che rende pubblicabile un disegno
+  cliente (D77); la mappa resta locale.
 - `scripts/audit_fixtures.py` — i disegni che la suite usa e che non sono in
   git: un golden senza il suo padre fa `skipTest`, quindi su un clone pulito
   girano meno test di quanti se ne vedono passare. `--list` dà la lista da

@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`74` modules · `349` module-level functions · `53` classes · `13512` lines of code.
+`76` modules · `359` module-level functions · `59` classes · `14162` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -34,6 +34,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_annotation_entry` | func | `forge/io/view_model.py:119` |  |
 | `_annotation_signature` | func | `forge/adapters/dxf/loader.py:63` |  |
 | `apply_gap_fixes` | func | `forge/core/healing/gap_solver.py:345` | Applica i GapFix restituendo una NUOVA lista di Edge — `edges` non viene mutata. |
+| `apply_mapping` | func | `forge/tools/anonymize.py:438` | Applica la stessa mappa a file di testo che citano quelle stringhe — i |
 | `_apply_role_styles` | func | `forge/io/dxf.py:527` | Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer |
 | `_Arc` | class | `forge/core/healing/outer_scan.py:103` |  |
 | `arc_angles` | func | `forge/core/geometry.py:358` | `(start_angle, end_angle, ccw)` in radianti di un arco che passa per |
@@ -75,7 +76,9 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `circular_geometry` | func | `forge/core/geometry.py:222` | (diameter, center) se il contorno è ~circolare, altrimenti (None, None). |
 | `_circular_inners` | func | `forge/tools/detect.py:359` | (contour, diameter, center) per ogni inner geometricamente circolare. |
 | `ClassifiedEntity` | class | `forge/tools/model/classified.py:20` | Risultato della classificazione di una entità da detect_flat(). |
+| `clean_dxf` | func | `forge/tools/anonymize.py:368` | Sostituisce `mapping` nelle sole stringhe scritte dentro il disegno. |
 | `clean_mtext` | func | `forge/adapters/dxf/mtext.py:18` | Testo semplice da una stringa MTEXT grezza: rimuove i codici di |
+| `CleanReport` | class | `forge/tools/anonymize.py:316` | Cosa è stato sostituito, e se forge ha confermato la geometria. |
 | `close_free_gaps` | func | `forge/core/healing/steps.py:69` | Chiude i gap fra estremi liberi entro `tolerance` col gap solver |
 | `_close_self_loop` | func | `forge/core/topology/graph.py:254` | ArcSeg il cui sviluppo (raggio*sweep) supera epsilon -> CircleSeg (loop degenere vero). Altrimenti `None` (sl… |
 | `ClosedFeature` | class | `forge/model/feature.py:47` | Feature con geometria chiusa: ha un polygon e una lista di segmenti. |
@@ -128,6 +131,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `DxfAdapter` | class | `forge/adapters/dxf/adapter.py:228` | Adapter DXF che traduce entità DXF in Edge del dominio Forge. |
 | `DxfAnnotationExtractor` | class | `forge/adapters/dxf/annotation_extractor.py:43` | Traduce le entità di annotazione di un msp in list[Annotation]. |
 | `DxfEntityDispatcher` | class | `forge/adapters/dxf/parser.py:21` | Centralizza il routing per tipo di entità DXF. |
+| `DxfTag` | class | `forge/adapters/dxf/tags.py:34` | Una coppia del file. `line` è l'indice (1-based) della riga del *valore*, |
 | `Edge` | class | `forge/core/topology/edge.py:28` | Layer intermedio tra l'entità sorgente grezza (di qualsiasi formato) e il |
 | `_edge_coords` | func | `forge/core/topology/graph.py:324` |  |
 | `edge_styles_from_loop` | func | `forge/core/topology/loop_finder.py:181` | Stili grezzi (linetype/colore) di un loop, allineati 1:1 con |
@@ -184,12 +188,14 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_geometry` | func | `forge/core/island.py:301` |  |
 | `_geometry` | func | `forge/core/topology/noding.py:248` |  |
 | `_geometry` | func | `forge/tools/anchor.py:162` |  |
+| `geometry_fingerprint` | func | `forge/tools/anonymize.py:344` | Un'impronta della geometria letta da forge, per dire se una pulitura ha |
 | `GeometryAdapter` | class | `forge/adapters/geometry/loader.py:47` | Traduce descrizioni geometriche pure (dict) in Edge del dominio forge. |
 | `_get_solver` | func | `forge/core/healing/gap_solver.py:180` |  |
 | `__getattr__` | func | `forge/model/__init__.py:30` |  |
 | `_graph` | func | `forge/core/healing/steps.py:267` |  |
 | `Graph` | class | `forge/core/topology/graph.py:59` | Grafo topologico interrogabile. |
 | `group_collinear_lines` | func | `forge/core/geometry.py:101` | Raggruppa LINE in gruppi collineari (stessa retta infinita). |
+| `group_values` | func | `forge/adapters/dxf/tags.py:130` | Le coppie cercate, raccolte per codice di gruppo. |
 | `_h` | func | `forge/inspect.py:41` |  |
 | `_handle_engrave_closed` | func | `forge/tools/detect.py:572` |  |
 | `_handle_engrave_closed_trash` | func | `forge/tools/detect.py:553` | Come _handle_engrave_open ma per una traccia engrave già chiusa |
@@ -209,7 +215,9 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `interior_angle_deg` | func | `forge/core/geometry.py:268` | Angolo interno (gradi) in curr_pt fra i lati verso prev_pt e next_pt. |
 | `interpolate_bspline` | func | `forge/core/geometry.py:382` | B-spline di grado `degree` che passa per tutti i `points` (interpolazione |
 | `_intersections` | func | `forge/core/healing/outer_scan.py:152` | Punti del pezzo con coordinata `a` == level. |
+| `is_ascii_dxf` | func | `forge/adapters/dxf/tags.py:90` | `False` per un DXF binario (o per un file che non si può leggere). |
 | `is_countersink_outer` | func | `forge/tools/hole_detector.py:68` | True se esiste un cerchio concentrico con raggio minore (svasatura). |
+| `is_format_internal` | func | `forge/tools/anonymize.py:113` | `True` se la stringa l'ha scritta il programma, non il disegnatore. |
 | `is_structural` | func | `forge/tools/manufacturing_role.py:77` | Predicato strutturale COMPLETO: outer/inner (motore) + hole/countersink/ |
 | `is_structural_role` | func | `forge/model/role.py:86` | True se ``role`` è OUTER o INNER per il motore (vedi ``STRUCTURAL_ROLES``). |
 | `is_threaded_hole` | func | `forge/tools/hole_detector.py:22` | True se esiste un arco a ~270° concentrico al cerchio e con raggio di poco |
@@ -242,6 +250,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `LoopFinder` | class | `forge/core/topology/loop_finder.py:22` |  |
 | `loops_to_features` | func | `forge/core/healing/steps.py:175` | Un ClosedFeature per loop, col ruolo del primo edge; senza poligono valido, niente. |
 | `LoopSearch` | class | `forge/core/healing/steps.py:37` | Come find_loops() ha chiuso (o non chiuso) i giri, gradino per gradino. |
+| `_main` | func | `forge/tools/anonymize.py:464` |  |
 | `_make_inner` | func | `forge/core/healing/hierarchy.py:91` |  |
 | `_make_polygon` | func | `forge/core/primitives/polygon_builder.py:48` |  |
 | `map_sanitized_item_to_edge` | func | `forge/adapters/pdf/graph_adapter.py:13` |  |
@@ -308,6 +317,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `read_island` | func | `forge/core/island.py:155` | Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate, |
 | `read_islands` | func | `forge/core/island.py:133` | `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola |
 | `read_metadata_from_dxf` | func | `forge/io/exporter.py:316` | Legge i metadati FORGE XDATA dall'entità OuterContour. |
+| `read_tags` | func | `forge/adapters/dxf/tags.py:99` | Apre un DXF ASCII in coppie (codice, valore). |
 | `_rectangle` | func | `forge/core/shape.py:121` |  |
 | `_refine_segment` | func | `forge/core/primitives/segments.py:269` | Suddivide `[t0, t1]` finché il punto medio (valutato con `evaluate(t)`) |
 | `refit_tessellations` | func | `forge/core/healing/normalizer.py:523` | Una catena di almeno `min_run` LineSeg (`role == UNKNOWN`) più corti di |
@@ -322,6 +332,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `RenderedText` | class | `forge/model/annotation.py:37` | Un testo dentro l'immagine appiattita di una quota/direttrice. |
 | `renode` | func | `forge/core/topology/noding.py:52` | Nodi di ogni Edge ricalcolati dal punto reale del segmento a |
 | `repair_merged_corners` | func | `forge/core/healing/steps.py:102` | Chiude gli angoli che il grafo esatto vede aperti e il clustering degli |
+| `Replacement` | class | `forge/tools/anonymize.py:307` | Una sostituzione applicata, col numero di coppie che ha toccato. |
 | `resolve_role` | func | `forge/model/role_rule.py:88` | Ruolo della prima regola che matcha, in ordine; `unknown` se nessuna. |
 | `resolve_target` | func | `forge/tools/anchor.py:126` | L'oggetto (contorno o feature) a cui punta un ``target``, o ``None``. |
 | `_result_bbox_center` | func | `forge/tools/rotate.py:231` | Centro del bbox unito degli outer di tutti i cluster — vedi `rotate_to_longest`. |
@@ -350,6 +361,9 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_scale` | func | `forge/tools/tabs.py:58` |  |
 | `_scan_axis` | func | `forge/core/healing/outer_scan.py:186` |  |
 | `_scan_bbox` | func | `forge/io/svg.py:171` | bbox da tutti i punti del view model — fallback quando vm['bbox'] è None. |
+| `scan_dxf` | func | `forge/tools/anonymize.py:247` | Elenca ogni stringa scritta dentro il disegno, con dove e in che veste. |
+| `_scan_tagged` | func | `forge/tools/anonymize.py:259` |  |
+| `ScanReport` | class | `forge/tools/anonymize.py:195` | Tutto quello che è scritto in un disegno, da leggere con l'occhio. |
 | `_search_warnings` | func | `forge/core/heal.py:170` | Cosa racconta heal() dei gradini della scala di find_loops(). |
 | `_seg_end_point` | func | `forge/adapters/dxf/exporter.py:104` |  |
 | `segment_endpoints` | func | `forge/core/primitives/segments.py:487` | (start, end) di un segmento primitivo, in coordinate XY non arrotondate. |
@@ -387,6 +401,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_sub` | func | `forge/tools/tabs.py:50` |  |
 | `_sub_part` | func | `forge/inspect.py:276` |  |
 | `_synthesize_dimension` | func | `forge/adapters/dxf/annotation_extractor.py:290` | Ricostruisce l'immagine di una DIMENSION lineare dai def-point, quando il |
+| `TaggedFile` | class | `forge/adapters/dxf/tags.py:51` | Il file aperto in coppie, con le righe originali a fianco. |
 | `_text_item` | func | `forge/adapters/dxf/annotation_extractor.py:450` |  |
 | `_texts_inside` | func | `forge/tools/inject.py:70` | Testi delle annotazioni che ricadono dentro `outer_poly`, come list[str]. |
 | `_to_annotation` | func | `forge/adapters/dxf/annotation_extractor.py:60` |  |
@@ -420,6 +435,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `write_open_segments` | func | `forge/adapters/dxf/exporter.py:343` | Materializza una lista di segmenti puri come geometria APERTA su msp. |
 | `write_segments` | func | `forge/adapters/dxf/exporter.py:199` | Materializza una lista di segmenti puri su msp. |
 | `_write_trash` | func | `forge/io/dxf.py:368` | Materializza `result.trash_entities`. |
+| `WrittenString` | class | `forge/tools/anonymize.py:155` | Una stringa scritta dentro il disegno, con tutti i posti in cui compare. |
 | `_xy` | func | `forge/adapters/dxf/annotation_extractor.py:475` |  |
 | `_xy` | func | `forge/io/view_model.py:32` | Lista di punti (2D o 3D) → lista di [x, y] arrotondati. |
 
@@ -569,6 +585,18 @@ _adapters/dxf/sanitize.py_
 - `extract_keyed_entities(msp) -> List[Tuple[Hashable, Any]]` — L201 — Produce la lista (key, entity) per tutte le entità del msp.
 - `delete_entities(refs: List[Any], msp) -> None` — L210 — Elimina le entità dal msp in-place.
 - `deduplicate(msp) -> int` — L216 — Shortcut: estrae chiavi, trova duplicati, li elimina.
+
+#### `forge/adapters/dxf/tags.py` — 136 lines
+
+_forge/adapters/dxf/tags.py_
+
+- **class** `DxfTag` — L34 — Una coppia del file. `line` è l'indice (1-based) della riga del *valore*,
+  - methods: `code_line`
+- **class** `TaggedFile` — L51 — Il file aperto in coppie, con le righe originali a fianco.
+  - methods: `replace_value`, `text`, `save`, `tags_with_code`
+- `is_ascii_dxf(path: Path \| str) -> bool` — L90 — `False` per un DXF binario (o per un file che non si può leggere).
+- `read_tags(path: Path \| str, encoding: str='utf-8') -> TaggedFile` — L99 — Apre un DXF ASCII in coppie (codice, valore).
+- `group_values(tagged: TaggedFile, codes: Sequence[str]) -> dict[str, list[DxfTag]]` — L130 — Le coppie cercate, raccolte per codice di gruppo.
 
 #### `forge/adapters/geometry/__init__.py` — 0 lines
 
@@ -1128,6 +1156,25 @@ _forge/tools/anchor.py_
 - `_size(geom, closed: bool) -> float` — L170 — A parità di distanza vince l'elemento più piccolo: un foro sul bordo del pezzo.
 - `_assign(position, refs, snap_distance: float) -> Optional[int]` — L175
 
+#### `forge/tools/anonymize.py` — 514 lines
+
+_forge/tools/anonymize.py_
+
+- `is_format_internal(value: str) -> bool` — L113 — `True` se la stringa l'ha scritta il programma, non il disegnatore.
+- **class** `WrittenString` — L155 — Una stringa scritta dentro il disegno, con tutti i posti in cui compare.
+  - methods: `is_path`, `internal`
+- **class** `ScanReport` — L195 — Tutto quello che è scritto in un disegno, da leggere con l'occhio.
+  - methods: `of_kind`, `paths`, `to_read`, `report`
+- `scan_dxf(path: Path \| str) -> ScanReport` — L247 — Elenca ogni stringa scritta dentro il disegno, con dove e in che veste.
+- `_scan_tagged(tagged: TaggedFile) -> ScanReport` — L259
+- **class** `Replacement` — L307 — Una sostituzione applicata, col numero di coppie che ha toccato.
+- **class** `CleanReport` — L316 — Cosa è stato sostituito, e se forge ha confermato la geometria.
+  - methods: `total`, `summary`
+- `geometry_fingerprint(path: Path \| str) -> tuple` — L344 — Un'impronta della geometria letta da forge, per dire se una pulitura ha
+- `clean_dxf(path: Path \| str, mapping: dict[str, str], output: Optional[Path \| str]=None, *, whole_value: bool=False, verify: bool=True) -> CleanReport` — L368 — Sostituisce `mapping` nelle sole stringhe scritte dentro il disegno.
+- `apply_mapping(paths: Iterable[Path \| str], mapping: dict[str, str]) -> dict[str, int]` — L438 — Applica la stessa mappa a file di testo che citano quelle stringhe — i
+- `_main(argv: Optional[Iterable[str]]=None) -> int` — L464
+
 #### `forge/tools/detect.py` — 715 lines
 
 _forge/tools/detect.py_
@@ -1317,6 +1364,7 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 | `forge/rules/validator.py` | `forge.rules.core.primitives.segments` · `forge.rules.core.topology.graph` · `forge.rules.model` · `forge.rules.model.document` |
 | `forge/tools/__init__.py` | `forge.anchor` · `forge.detect` · `forge.inject` |
 | `forge/tools/anchor.py` | `forge.tools.model.annotation` · `forge.tools.model.result` |
+| `forge/tools/anonymize.py` | `forge` · `forge.adapters.dxf.tags` |
 | `forge/tools/detect.py` | `forge.tools.core.geometry` · `forge.tools.hole_detector` · `forge.tools.manufacturing_role` · `forge.tools.model` · `forge.tools.model.feature` · `forge.tools.model.role` · `forge.tools.thresholds` |
 | `forge/tools/hole_detector.py` | `forge.core.primitives.segments` · `forge.tools.thresholds` |
 | `forge/tools/manufacturing_role.py` | `forge.tools.model.role` · `forge.tools.rules.palette` |

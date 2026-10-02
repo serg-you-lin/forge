@@ -2191,6 +2191,57 @@ Suite: 876 passed throughout, every step.
 
 ---
 
+### D77 — `anonymize`: a drawing is cleaned as a file, and forge says whether it worked ✅
+Federico's ask, and the reason the fixture problem is solvable at all: tests are
+made with client drawings by necessity, so the sanitizing step has to be a tool —
+one that every consumer of forge gets, not a habit repeated by hand per repo.
+
+**Not a round-trip through the model.** `load_dxf` → `heal` → `to_dxf` returns
+forge's *reading* of the drawing, not the drawing: the odd splines, the entities
+outside any contour, the `Trash` — exactly what makes that file a test case —
+would not come back. So a fixture is cleaned as a **file**: `adapters/dxf/tags.py`
+(new) opens a DXF ASCII as the sequence of (code, value) pairs it is, keeps every
+line as it sits on disk, and `tools/anonymize.py` rewrites string values only.
+Writing back a file nothing changed in leaves it identical to the byte, which is a
+test.
+
+**What can and cannot be automated.** A *code* has a shape, so a pattern finds it
+(that is `scripts/audit_names.py`). A *name* has no shape: a firm's name as the
+name of a dimension style, a client's initials as the name of a block and of
+another dimension style inside a drawing already tracked — no regex reaches those,
+and they were found by dumping every string and reading it. Both are gone from the
+drawings now (replaced by what they are: `logo_sviluppi`, `stile_quote_sviluppi`),
+and the names themselves do not belong in this file either. So `scan_dxf()` is deliberately not
+a detector: it lists everything written inside, grouped one row per **string**
+(not per occurrence) with the contexts that say what the string *is* —
+a firm's name plus `name/AcDbDimStyleTableRecord` is readable, the same word
+on its own is not. Strings the program wrote (GUIDs, ISO timestamps, hex blobs, class and
+dictionary vocabulary) are collapsed so the report is short enough that a person
+actually reads it: that collapsing is a readability filter, never a safety one,
+and `--all` shows everything.
+
+**forge is the oracle.** `clean_dxf(verify=True)` takes the geometry fingerprint
+before and after — edge count, validity, cluster count, trash count, areas,
+bounding boxes — and if anything moved it deletes what it wrote and raises. The
+tool cannot quietly damage a drawing, and that is the property that makes it safe
+to point at 32 fixtures.
+
+Two lessons from D76 are built in rather than written in a guide: a string is
+**replaced, not deleted** (dropping a title-block text changes what `annotations`
+and `inject()` see), and a substitution applies **by value**, so a layer renamed
+in the table is renamed in the `8` group of every entity too — the `MARCATURA`
+test covers exactly that, 9 occurrences in one call. `apply_mapping()` carries the
+same map to the goldens that quote those strings, because a cleaned fixture whose
+golden still expects the old text is a broken test.
+
+It stays out of `forge.__all__`: it is repo hygiene, not geometry, and the public
+API is the pipeline. Consumers import `forge.tools.anonymize` — which is enough
+for "I want it in every consumer", since they all depend on forge already.
+
+Suite: 887 passed (876 + 11).
+
+---
+
 ## Closed questions (history)
 
 - **Q1 — hole classification: topology or detection?** → resolved by D15
