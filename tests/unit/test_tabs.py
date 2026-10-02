@@ -82,7 +82,7 @@ class TestBridgeNestedTabs(unittest.TestCase):
     """Cammina la gerarchia — a qualunque profondita', mai un livello saltato."""
 
     def test_001_single_pair_on_real_fixture(self):
-        doc = forge.load_dxf(str(project_root / "tests/examples/cerchi_concentrici_detect_is_counter_tabs_join.dxf"))
+        doc = forge.load_dxf(str(project_root / "tests/data/cerchi_concentrici_detect_is_counter_tabs_join.dxf"))
         result = forge.heal(doc)
         cluster = result.clusters[0]
 

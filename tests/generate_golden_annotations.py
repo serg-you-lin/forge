@@ -8,8 +8,8 @@ Snapshot di `forge.load_dxf(...).annotations` — l'estrazione grezza, prima di
 heal() e prima di anchor_annotations(). Se un domani serve anche cluster_ref /
 target / references nel golden, questo script si estende.
 
-DXF sorgente: tests/examples/*.dxf (quelli che contengono annotazioni)
-Golden JSON:  tests/examples/golden/annotations/
+DXF sorgente: tests/data/*.dxf (quelli che contengono annotazioni)
+Golden JSON:  tests/data/golden/annotations/
 
 Runna UNA VOLTA quando sei soddisfatto dell'estrazione corrente, e mai per far
 passare un test senza aver prima verificato che l'output è giusto.
@@ -34,10 +34,10 @@ import forge
 from forge.model.annotation import Note, Dimension, Leader
 from forge.tools.anchor import anchor_annotations
 
-EXAMPLES_DIR = project_root / "tests" / "examples"
+EXAMPLES_DIR = project_root / "tests" / "data"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"
 
-# I DXF sorgente vivono sotto tests/examples/ o tests/examples/golden/.
+# I DXF sorgente vivono sotto tests/data/ o tests/data/golden/.
 _SOURCE_DIRS = [EXAMPLES_DIR, EXAMPLES_DIR / "golden"]
 
 _ANNOTATION_DXF_TYPES = {"TEXT", "MTEXT", "DIMENSION", "LEADER", "MULTILEADER"}

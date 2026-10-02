@@ -26,7 +26,7 @@ from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
 from forge.tools.manufacturing_role import LAYER_HOLE
 from forge.rules.palette import COLOR_OUTER, COLOR_INNER
 
-EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 def load(name):

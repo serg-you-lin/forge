@@ -3,7 +3,7 @@ test_golden_annotations.py
 --------------------------
 Regressione sull'estrazione delle annotazioni: confronta
 `forge.load_dxf(...).annotations` (Note / Dimension / Leader) con i golden in
-tests/examples/golden/annotations/.
+tests/data/golden/annotations/.
 
 Golden generati da tests/generate_golden_annotations.py — da rigenerare solo
 dopo aver verificato a mano che l'estrazione è giusta, mai per far passare un
@@ -25,7 +25,7 @@ import forge
 from forge.model.annotation import Note, Dimension, Leader
 from forge.tools.anchor import anchor_annotations
 
-EXAMPLES_DIR = project_root / "tests" / "examples"
+EXAMPLES_DIR = project_root / "tests" / "data"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"
 _SOURCE_DIRS = [EXAMPLES_DIR, EXAMPLES_DIR / "golden"]
 

@@ -12,7 +12,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 
-EDGE_CASES_DIR = project_root / "tests" / "examples" / "edge_cases"
+EDGE_CASES_DIR = project_root / "tests" / "data" / "edge_cases"
 
 
 def _extract_pline_vertices(msp):

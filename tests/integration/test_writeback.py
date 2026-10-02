@@ -34,7 +34,7 @@ from forge.tools.manufacturing_role import (
     LAYER_HOLE, LAYER_COUNTERSINK, LAYER_BENDING, LAYER_ENGRAVE,
 )
 
-EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 def _pipeline(name, *, detect=False, name_roles=None):

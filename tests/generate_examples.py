@@ -2,7 +2,7 @@
 generate_examples.py
 --------------------
 Genera i DXF di esempio usati nei test.
-Lancia questo script una volta sola per creare i file in tests/examples/.
+Lancia questo script una volta sola per creare i file in tests/data/.
 
     python tests/generate_examples.py
 """
@@ -12,7 +12,7 @@ import numpy as np
 import os
 from pathlib import Path
 
-EXAMPLES_DIR = Path(__file__).resolve().parent / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent / "data"
 EXAMPLES_DIR.mkdir(parents=True, exist_ok=True)
 
 

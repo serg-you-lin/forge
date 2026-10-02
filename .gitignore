@@ -55,24 +55,29 @@ desktop.ini
 # Local data / generated test artifacts
 # ===========================================================================
 
-# DXF/DWG files are not versioned by default.
-# Test fixtures under tests/data/ are explicitly kept.
+# A drawing is not versioned by default.
 *.dxf
 *.dwg
-!tests/data/**/*.dxf
-!tests/data/**/*.dwg
 
-# Generated test examples / artifacts
+# tests/examples/ is local only: client originals, job folders, scratch
+# output. Nothing in here ever enters git, and no rule below re-includes it.
 tests/examples/
-tests/**/golden/
-tests/**/generated/
-tests/**/output/
-tests/**/outputs/
 
-# Generated golden JSON files
+# Generated artifacts outside tests/data/
+tests/examples/**/golden/
+tests/examples/**/generated/
+tests/examples/**/output/
+tests/examples/**/outputs/
 **/*golden*.json
-
 pipeline_output/
+
+# tests/data/ is the tracked root the suite reads: the drawings that passed
+# `scripts/audit_names.py` and `anonymize scan`, plus their goldens and
+# configs. It comes last, so it wins over every rule above — which is the
+# point: a drawing is publishable because of the folder it is in, not
+# because someone remembered a `git add -f`.
+!tests/data/
+!tests/data/**
 mixed_pipeline_output/
 output/
 

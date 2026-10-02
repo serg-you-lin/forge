@@ -5,7 +5,7 @@ test_layers.py
 Verifica che dopo write() ogni layer forge abbia il colore canonico
 nella tabella layer del documento, e che ogni entità abbia color=256 (BYLAYER).
 
-File di test: tests/examples/Multifeature.dxf
+File di test: tests/data/Multifeature.dxf
 """
 
 import os
@@ -26,7 +26,7 @@ from forge.tools.manufacturing_role import LAYER_BENDING
 from forge.model.role import ContourRole
 from forge.tools.manufacturing_role import HOLE, THREADED_HOLE, COUNTERSINK
 
-EXAMPLES_DIR = project_root / "tests" / "examples"
+EXAMPLES_DIR = project_root / "tests" / "data"
 MULTIFEATURE = EXAMPLES_DIR / "Multifeature.dxf"
 
 SPECIAL_LAYERS = {

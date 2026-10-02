@@ -11,7 +11,7 @@ da dove lanci lo script (riga di comando, pulsante Run di VS Code, un terminale
 aperto in un'altra cartella). Quindi nel blocco CONFIG scrivi il percorso
 grezzo e basta:
 
-    INPUT  = r"tests/examples/Multifeature.dxf"   # relativo -> parte dal repo
+    INPUT  = r"tests/data/Multifeature.dxf"   # relativo -> parte dal repo
     INPUT  = r"C:\\job\\disegno_cliente.dxf"       # assoluto -> usato com'è
     OUTDIR = r"pipeline_output"                    # scritto in <repo>/pipeline_output
 

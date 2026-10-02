@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<forge>
+  <source_file>F6.DXF</source_file>
+  <is_valid>true</is_valid>
+  <cluster_count>1</cluster_count>
+  <warnings>
+    <warning>2 LINE candidate come bending escluse dal grafo (entrambi gli endpoint su nodi di branching).</warning>
+    <warning>detect(): entità bending non contenuta in nessun part (source=special_layers). Registrata in classified_entities.</warning>
+  </warnings>
+  <clusters>
+    <cluster>
+      <label>F6</label>
+      <source_file>F6.DXF</source_file>
+      <quantity>1</quantity>
+      <material>S275JR</material>
+      <thickness_mm>0.0</thickness_mm>
+      <bending_lines>1</bending_lines>
+      <countersink_count>0</countersink_count>
+      <threaded_holes_count>0</threaded_holes_count>
+      <total_engrave_length_mm>0.0</total_engrave_length_mm>
+      <area_mm2>138810.4862</area_mm2>
+      <holes_count>0</holes_count>
+      <inner_contours_count>0</inner_contours_count>
+      <outer_perimeter_mm>3106.5153</outer_perimeter_mm>
+      <inner_perimeter_mm>0</inner_perimeter_mm>
+      <total_perimeter_mm>3106.5153</total_perimeter_mm>
+      <bbox>
+        <minx>-960.1359</minx>
+        <miny>279.2774</miny>
+        <maxx>239.7205</maxx>
+        <maxy>1202.9446</maxy>
+      </bbox>
+    </cluster>
+  </clusters>
+</forge>

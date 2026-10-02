@@ -14,7 +14,7 @@ from pathlib import Path
 
 import forge
 
-EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
+EXAMPLES = Path(__file__).resolve().parents[1] / "data"
 MULTI_PART   = EXAMPLES / "golden" / "example_4_polylines.dxf"
 SPECIAL      = EXAMPLES / "rect_with_special_layers.dxf"
 MULTIFEATURE = EXAMPLES / "Multifeature.dxf"   # non tracciato — test extra se presente

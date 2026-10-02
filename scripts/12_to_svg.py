@@ -22,7 +22,7 @@ import os
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Multifeature.dxf"
+INPUT     = r"tests/data/Multifeature.dxf"
 TOLERANCE = 0.5
 NAME_ROLES = {
     "Filettati": "threaded_hole",

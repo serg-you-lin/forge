@@ -29,7 +29,7 @@ def _tall_rect_with_diagonal():
     """
     Rettangolo 100x400 (outer verticale, lati lunghi = 400) più una linea
     interna diagonale (più corta e non outer) — stessa forma di
-    tests/examples/try_for_rotation.dxf, costruita in memoria.
+    tests/data/try_for_rotation.dxf, costruita in memoria.
     """
     return forge.load_geometry([
         {"type": "polyline", "points": [(0, 0), (100, 0), (100, 400), (0, 400)], "closed": True},

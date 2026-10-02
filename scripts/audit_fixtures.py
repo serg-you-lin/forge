@@ -53,9 +53,13 @@ import audit_names
 ROOT = Path(__file__).resolve().parent.parent
 """Radice del repo (scripts/ ne è figlia)."""
 
-EXAMPLES = ROOT / "tests" / "examples"
-GOLDEN = EXAMPLES / "golden"
-MULTIPLI = EXAMPLES / "golden_multipli"
+DATA = ROOT / "tests" / "data"
+"""La radice tracciata che la suite legge. Un disegno qui dentro e' in git per
+il fatto di stare qui (`.gitignore` tiene `tests/data/**`), non per un
+`git add -f` che qualcuno si e' ricordato di dare."""
+
+GOLDEN = DATA / "golden"
+MULTIPLI = DATA / "golden_multipli"
 
 DXF_LITERAL = re.compile(r'["\']([^"\'*{]+\.(?:dxf|DXF))["\']')
 """Una stringa che nomina un disegno dentro un test. Esclude i modelli con
@@ -84,7 +88,7 @@ def _golden_parents() -> set[Path]:
 
     for golden in sorted((GOLDEN / "annotations").glob("*.json")):
         name = json.loads(golden.read_text(encoding="utf-8"))["source_file"]
-        add(next((base / name for base in (EXAMPLES, GOLDEN)
+        add(next((base / name for base in (DATA, GOLDEN)
                   if (base / name).exists()), None))
 
     for golden in sorted((MULTIPLI / "golden").glob("*.json")):
@@ -103,7 +107,7 @@ def _named_in_tests() -> set[Path]:
         text = module.read_text(encoding="utf-8", errors="replace")
         for name in DXF_LITERAL.findall(text):
             base = name.rsplit("/", 1)[-1]
-            for candidate in (EXAMPLES / base, GOLDEN / base):
+            for candidate in (DATA / base, GOLDEN / base):
                 if candidate.exists():
                     found.add(candidate)
                     break
