@@ -113,7 +113,7 @@ class TestMergeCollinearOverlaps(unittest.TestCase):
 
     def test_ordine_preservato_per_tutto_il_resto(self):
         # Un pre-pass di pulizia non deve riordinare edge che non tocca —
-        # anche a zero fusioni (v. golden PROFILE_PART: il solo riordino,
+        # anche a zero fusioni (v. golden staffa_scarto_doppia: il solo riordino,
         # senza nessuna fusione, cambiava il risultato del loop-finder).
         others = [_line((i * 100.0, 0.0), (i * 100.0 + 1.0, 0.0)) for i in range(5)]
         chain = [
@@ -151,7 +151,7 @@ class TestMergeCollinearOverlaps(unittest.TestCase):
         #     l'export legge per costruire la geometria in output, e un fuso
         #     il cui segmento porta il punto arrotondato produce uno scalino
         #     visibile appena affianca un lato nativo mai toccato dal merge
-        #     nello stesso contorno (bug trovato su SHEET_BLANK.dxf: un
+        #     nello stesso contorno (bug trovato su un foglio reale: un
         #     lato "verticale" con dx=0.031 invece di 0, lunghezza 0.97
         #     invece di 1).
         edges = [

@@ -61,7 +61,7 @@ class ContourRole(str, Enum):
     # `engrave`/`marking` sono vocabolario manifatturiero — vive in
     # `tools/manufacturing_role.py`, a fianco di `detect_flat()`, che è l'unico a
     # saperne il significato. `frame`/`title_block`/... sono slug di un
-    # consumatore esterno (framer, ...) — stesso trattamento, nessuna
+    # consumatore esterno (snapdraw, ...) — stesso trattamento, nessuna
     # eccezione: core non distingue "il ruolo di detect" da "il ruolo di un
     # consumatore qualunque", sono entrambi fuori da questo enum.
 

@@ -91,7 +91,7 @@ class TestRoleRule(unittest.TestCase):
         self.assertFalse(rule.matches("Taglio", CONTINUA))
 
     def test_condizioni_tutte_vere_insieme(self):
-        # il caso del framer: tratteggiata E nome "construction"
+        # il caso del snapdraw: tratteggiata E nome "construction"
         rule = forge.RoleRule("construction", name_contains="construction", dashed=True)
         self.assertTrue(rule.matches("construction", TRATTEGGIATA))
         self.assertFalse(rule.matches("construction", CONTINUA))
@@ -103,7 +103,7 @@ class TestRoleRule(unittest.TestCase):
         self.assertFalse(rule.matches("", TRATTEGGIATA))
 
     def test_forma_del_tratto(self):
-        # la regola ISO 128 del framer: catena → costruzione, il tratteggio no
+        # la regola ISO 128 del snapdraw: catena → costruzione, il tratteggio no
         rule = forge.RoleRule("construction", dash="chain")
         self.assertTrue(rule.matches("", TRATTO_PUNTO))
         self.assertTrue(rule.matches("", DUE_TRATTI))

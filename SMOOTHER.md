@@ -1,6 +1,6 @@
 # Smoother — da immagine a DXF pulito
 
-`Smoother` è un **repo a sé**, sorella di `framer` e `bendly`, consumatore di
+`Smoother` è un **repo a sé**, sorella di `snapdraw` e `bendly`, consumatore di
 `forge` via `pip install -e ../dxf-forge` — non un modulo dentro forge (memoria
 `forge-neutral-substrate-agent-layer-above`, `dont-bolt-adapters-onto-forge-for-external-projects`).
 
@@ -13,7 +13,7 @@ line/spline vere, non discretizzate.
 
 Dipende da OpenCV (cv2), fa I/O immagine e — in prospettiva — UI di ritocco: né
 l'una né l'altra cosa hanno posto in forge, che resta neutro, deterministico,
-zero dipendenze da computer vision (stessa ragione per cui `framer` è fuori).
+zero dipendenze da computer vision (stessa ragione per cui `snapdraw` è fuori).
 Quello che forge dà a Smoother è già pronto:
 
 - `forge.simplify_points()` (MAP.md D33) — ricostruzione linea/spline da una
@@ -99,10 +99,10 @@ direzione, per non chiudere strade con le scelte di Smoother:
 
 ## Stato
 
-Aperto come repo il 2026-09-13, sibling di `dxf-forge`/`framer`. Questo
+Aperto come repo il 2026-09-13, sibling di `dxf-forge`/`snapdraw`. Questo
 documento resta lo spec d'origine (perché); le decisioni vive e il piano di
-lavoro stanno in `smoother/MAP.md` e `smoother/TODO.md`, come `FRAMER.md` sta a
-`framer/DESIGN.md`.
+lavoro stanno in `smoother/MAP.md` e `smoother/TODO.md`, come `SNAPDRAW.md` sta a
+`snapdraw/DESIGN.md`.
 
 Fatto: scaffolding del repo, `smoother_5.py` migrato in
 `scripts/00_image_to_dxf.py` (spigoli/refit ora via `forge.simplify_points()`,

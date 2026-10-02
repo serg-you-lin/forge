@@ -215,16 +215,16 @@ class TestLayerSplit(unittest.TestCase):
                 )
 
 
-class TestLineetteBastarde(unittest.TestCase):
+class TestLineetteSpurie(unittest.TestCase):
     """
-    ORDERCODE_lineette_bastarde.dxf
+    lineette_spurie.dxf
     Dopo heal() le 4 LINE spurie devono finire su Trash, non su Bending.
     Attesi: 1 outer, 2 entità su Bending, 4 entità su Trash.
     """
 
     @classmethod
     def setUpClass(cls):
-        cls.dxf_path = EXAMPLES_DIR / "ORDERCODE_lineette_bastarde.dxf"
+        cls.dxf_path = EXAMPLES_DIR / "lineette_spurie.dxf"
         if not cls.dxf_path.exists():
             raise unittest.SkipTest(f"File non trovato: {cls.dxf_path}")
 

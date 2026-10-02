@@ -26,9 +26,9 @@ che li separa è **di cosa parlano**, non quanto sono certi:
 
 - **forge** — cosa *è* il pezzo fabbricato: geometria, topologia, feature di
   lavorazione (fori, pieghe, incisioni). Dominio: manifattura.
-- **framer** — come il pezzo *è documentato* sul foglio: cornice, cartiglio,
+- **snapdraw** — come il pezzo *è documentato* sul foglio: cornice, cartiglio,
   callout, raggruppamento viste. Dominio: convenzioni di disegno tecnico.
-  Framer è generico e riusabile fra clienti — nessun dato privato.
+  snapdraw è generico e riusabile fra clienti — nessun dato privato.
 - **l'interprete** — cosa quella documentazione *significa per questo
   cliente*: nomenclatura di reparto, profili per-cliente, riempimento buchi
   da ERP. Dominio: conoscenza privata, mai nel repo pubblico.
@@ -99,7 +99,7 @@ da non confondere quando questo pezzo si costruirà davvero.
   linea di rottura a zig-zag che indica "vista interrotta"), quel lavoro non
   entra qui anche se fosse implementato in modo deterministico: cambierebbe
   cosa significa la geometria nel disegno, non la ricostruirebbe — stessa
-  ragione per cui `frame_detector` è uscito da forge (D24). Va in framer.
+  ragione per cui `frame_detector` è uscito da forge (D24). Va in snapdraw.
 - feature dentro un cluster: fori (per tipo), pieghe, incisioni — via `detect`
 - annotazioni tipate: `Note` / `Dimension` / `Leader`, con `cluster_ref`
   (quale cluster contiene l'annotazione) via `anchor_annotations` (D43,
@@ -120,7 +120,7 @@ La "part-ness" è interpretazione, ed è del consumatore.
 quota — sono predisposti nel modello ma **mai calcolati**. È la stessa
 famiglia geometrica di `cluster_ref` (dato un punto/una direttrice e la
 geometria vicina, trova cosa sta quotando) — meccanica pura, deterministica
-data la posizione, quindi resta candidata a `anchor.py`, non a framer. È il
+data la posizione, quindi resta candidata a `anchor.py`, non a snapdraw. È il
 pezzo mancante prima che qualunque cross-check "la quota scritta concorda con
 la geometria misurata" sia possibile.
 
@@ -170,27 +170,27 @@ disegno tipico".
 > pipeline normale di lettura di un disegno.
 
 
-## framer — il lettore di documentazione (ambito allargato)
+## snapdraw — il lettore di documentazione (ambito allargato)
 
 > **Nota (Federico): probabilmente da rinominare pesantemente, i nomi mi
 > stanno facendo venire l'ansia.**
 > **Risposta:** segnato — stesso filone della discussione sul brand di
 > stasera, non lo risolvo qui per non forzarti a deciderlo in mezzo al resto.
-> Framer che allarga il mandato oltre cornice/cartiglio è un motivo in più
+> snapdraw che allarga il mandato oltre cornice/cartiglio è un motivo in più
 > per rivederne il nome quando ci torni sopra, non un'urgenza di per sé.
 >
 > **Nota: capisce anche che tipo di cliente è??**
 > **Risposta:** oggi no, ed è un pezzo mancante reale, non ancora in questo
 > documento — grazie per averlo fatto notare. È diverso da tutto il resto di
-> framer: non "leggere cosa c'è scritto" ma "riconoscere DI CHI è questo
+> snapdraw: non "leggere cosa c'è scritto" ma "riconoscere DI CHI è questo
 > disegno" (dal layout del cartiglio, dai pattern dei callout, magari da un
 > nome di blocco ricorrente) e scegliere il `ShopProfile` giusto invece di
-> farselo dire dal chiamante. Non può stare in framer (framer non tocca dati
+> farselo dire dal chiamante. Non può stare in snapdraw (snapdraw non tocca dati
 > privati di cliente) — è un passo dell'interprete, che confronta contro i
 > `profiles/` che già possiede. L'ho aggiunto alla tabella dei moduli
 > dell'interprete più sotto (`profile_matching`).
 
-Prima framer copriva solo cornice + cartiglio. In questa revisione assorbe
+Prima snapdraw copriva solo cornice + cartiglio. In questa revisione assorbe
 anche quello che nella vecchia versione di questo documento erano moduli
 separati dell'interprete (`callouts.py`, `titleblock.py`, `views.py`): sono
 tutti la stessa famiglia di lavoro — riconoscere convenzioni di
@@ -198,7 +198,7 @@ documentazione tecnica sulla geometria e sul testo che forge ha già estratto,
 con `source` + `confidence`, senza dati privati di nessun cliente.
 
 - **cornice** (`frame`) — il riquadro ISO che borda il foglio. **Fatto**,
-  portato da forge D24, verificato su un disegno reale (framer D3/D5).
+  portato da forge D24, verificato su un disegno reale (snapdraw D3/D5).
 - **cartiglio** (`title_block`) — il riquadro delle informazioni, celle +
   testo. **Stub**, non ancora implementato (`detect_titleblock`,
   `read_titleblock`).
@@ -214,7 +214,7 @@ con `source` + `confidence`, senza dati privati di nessun cliente.
   di scriverci codice vale la pena guardare un po' di disegni veri e
   vedere quanti pattern ricorrono davvero. Un pezzo del contratto con forge
   che questo lavoro userà c'è già (`forge.non_contour_candidates`, MAP.md
-  D55, FRAMER.md): dice quali edge sono topologicamente ambigui, non cosa
+  D55, SNAPDRAW.md): dice quali edge sono topologicamente ambigui, non cosa
   siano — resta tutto da scrivere il come deciderlo incrociando le viste.
 
 > **Nota (Federico): è fattibile davvero?**
@@ -226,15 +226,15 @@ con `source` + `confidence`, senza dati privati di nessun cliente.
 > viste spezzate/linee di rottura è più varia di un cartiglio (che è quasi
 > sempre un rettangolo a griglia). Non lo eviterei per questo — lo
 > tratterei con più cautela: prima i disegni veri, poi il codice, pronto a
-> scoprire che il primo tentativo va rifatto, come è successo a framer D5.
+> scoprire che il primo tentativo va rifatto, come è successo a snapdraw D5.
 
 Nessuno di questi tocca forge oltre a leggerne l'output e a riassegnare ruoli
 via `edge.role` prima di `heal` (l'interfaccia già chiusa in forge D30,
-verificata da framer D2/D6 — il punto sperimentale vero di questo lavoro, e
+verificata da snapdraw D2/D6 — il punto sperimentale vero di questo lavoro, e
 resta il contributo più prezioso finora: riusabile paro paro da bendly se un
 giorno gli servirà).
 
-Stato reale: framer è pre-alpha, non ha ancora un repo GitHub remoto, non ha
+Stato reale: snapdraw è pre-alpha, non ha ancora un repo GitHub remoto, non ha
 fixture reali in `tests/examples/`. Un solo pezzo dei cinque sopra è fatto.
 
 
@@ -252,9 +252,9 @@ fixture reali in `tests/examples/`. Un solo pezzo dei cinque sopra è fatto.
 > **Risposta, con calma perché sono domande vere:** "agente" qui — Pippo, o
 > me stesso in questa conversazione — non è una rete neurale che addestri tu
 > da zero. È un modello linguistico già addestrato da altri (Claude, o
-> equivalenti) a cui dai **strumenti da chiamare** (forge, framer, le
+> equivalenti) a cui dai **strumenti da chiamare** (forge, snapdraw, le
 > funzioni dell'interprete) e **contesto strutturato da leggere** (il
-> `ShopProfile`, l'output di forge/framer con `source`/`confidence`). Il
+> `ShopProfile`, l'output di forge/snapdraw con `source`/`confidence`). Il
 > "ragionare" lo fa il modello generale, che il ragionamento sa già farlo in
 > generale — tu non lo insegni da capo.
 >
@@ -270,14 +270,14 @@ fixture reali in `tests/examples/`. Un solo pezzo dei cinque sopra è fatto.
 > dopo (l'analogia del disegnatore) — insieme rispondono a questa per
 > intero, ce l'hai fatta a spiegartelo da solo mentre scrivevi.
 
-Tolto tutto quello che si è spostato in framer, quello che resta
+Tolto tutto quello che si è spostato in snapdraw, quello che resta
 dell'"interprete" è molto più piccolo di quanto sembrasse: non più un
 orchestratore a 11 passi, ma poco più che **traduzione con dati privati +
 incrocio con fonti esterne + assemblaggio finale**. Ha senso restare un
 progetto a sé (mai nomenclatura di reparto nel repo pubblico — vedi
 `forge-reports-drawing-never-guesses-no-shop-nomenclature`), ma potrebbe
 anche finire per essere sottile abbastanza da non aver bisogno di un vero
-`pipeline.py`: l'agente stesso potrebbe chiamare forge → framer → queste
+`pipeline.py`: l'agente stesso potrebbe chiamare forge → snapdraw → queste
 funzioni di traduzione, senza un orchestratore dedicato in mezzo. Domanda
 aperta, non decisa qui.
 
@@ -286,12 +286,12 @@ aperta, non decisa qui.
 | `profile_matching.py` | riconosce **di chi** è il disegno (layout cartiglio, pattern callout) e sceglie il `ShopProfile` giusto, invece di farselo dire dal chiamante. Idea di Federico, non ancora nel resto del documento prima di questa revisione |
 | `nomenclature.py` | traduzione nomi di reparto (FE-DECAPATO → …). Tabelle vere in config privato, mai nel repo |
 | `enrich.py` | hook di gap-filling (ERP, foglio di lavoro). Callback |
-| `profiles/` | profili per-reparto/per-cliente: pattern callout (passati a framer), convenzioni cornice, materiale di default. Dove si materializza l'apprendimento per-cliente |
-| `model.py` | `Drawing` (metadati + pezzi), `InterpretedPart` (il cluster di forge + framer, più material/thickness/quantity/code/instructions, ognuno con `source`/`confidence`) |
+| `profiles/` | profili per-reparto/per-cliente: pattern callout (passati a snapdraw), convenzioni cornice, materiale di default. Dove si materializza l'apprendimento per-cliente |
+| `model.py` | `Drawing` (metadati + pezzi), `InterpretedPart` (il cluster di forge + snapdraw, più material/thickness/quantity/code/instructions, ognuno con `source`/`confidence`) |
 
 ### Cosa restituisce — la forma comoda per l'agente
 
-- `drawing.parts[i]` = cluster di forge **più** framer **più**
+- `drawing.parts[i]` = cluster di forge **più** snapdraw **più**
   `.material`/`.thickness`/`.quantity`/`.code`/`.instructions`, ognuno con
   `.source` e `.confidence`
 - `drawing.metadata` — numero disegno, revisione, scala, materiale generale
@@ -306,13 +306,13 @@ Può essere probabilistico ma deve **etichettare** l'incertezza. Dove non sa:
 
 ### Addestramento
 
-Corpus per disegno: `(forge_result.json, framer_output.json,
+Corpus per disegno: `(forge_result.json, snapdraw_output.json,
 interprete_output.json, verità_umana.json)`. Il `ShopProfile` si affina dai
-diff. Mai in forge o in framer — non si impara su un output che già indovina.
+diff. Mai in forge o in snapdraw — non si impara su un output che già indovina.
 
 > **Nota (Federico): non lo so se ho capito...**
 > **Risposta, in concreto:** per ogni disegno che passa nella pipeline tieni
-> 4 file — cosa ha estratto forge, cosa ha letto framer, cosa ha indovinato
+> 4 file — cosa ha estratto forge, cosa ha letto snapdraw, cosa ha indovinato
 > l'interprete, e cosa era **davvero giusto** (tu che correggi l'output).
 > Confrontando "l'interprete ha detto X" con "in realtà era Y" su tanti
 > disegni dello stesso cliente, vedi DOVE sbaglia sistematicamente — es.
@@ -323,7 +323,7 @@ diff. Mai in forge o in framer — non si impara su un output che già indovina.
 ### Domanda aperta
 
 L'agente sta **sopra** l'interprete (lo usa come tool), o **è** l'agente a
-chiamare forge/framer/nomenclatura direttamente, senza un "interprete" come
+chiamare forge/snapdraw/nomenclatura direttamente, senza un "interprete" come
 prodotto a sé? Non decisa — dipende da quanto la parte di traduzione privata
 finisce per pesare in pratica.
 
@@ -343,14 +343,14 @@ finisce per pesare in pratica.
 > cliente* = il `ShopProfile` che affini tu, esattamente come nella nota
 > sopra. Il "dare feedback agli sviluppatori per migliorare il software" =
 > letteralmente questa conversazione di stasera: tu che scopri un caso reale
-> (le linguette, i disegni spezzati) e io/te che aggiustiamo forge/framer di
+> (le linguette, i disegni spezzati) e io/te che aggiustiamo forge/snapdraw di
 > conseguenza. Tutti e tre i pezzi della tua analogia hanno già un posto
 > preciso in questo documento.
 >
 > La precisazione: a differenza del disegnatore, la "bravura generale" del
 > tuo agente (il modello sotto) non è qualcosa che TU alleni o possiedi —
 > quella è di chi ha costruito il modello. Quello che costruisci e possiedi
-> tu è tutto il resto: la cassetta degli attrezzi (forge/framer) e la
+> tu è tutto il resto: la cassetta degli attrezzi (forge/snapdraw) e la
 > libreria di profili per cliente. Non è un limite — è in realtà una buona
 > notizia per uno che lavora da solo: non devi costruire il cervello, solo
 > l'officina e il know-how che ci gira intorno, che è già abbastanza.
@@ -378,7 +378,7 @@ passi, nello stesso ordine, ogni volta. Quello che c'è, oggi e in prospettiva,
 
 ```
 forge:   load_* · heal · detect · split · anchor_annotations · inspect · to_dxf/to_svg
-framer:  detect_frame (fatto) · detect_titleblock/read_titleblock (stub)
+snapdraw:  detect_frame (fatto) · detect_titleblock/read_titleblock (stub)
          · callout parsing (da fare) · raggruppamento viste (da fare)
 interprete: nomenclatura · enrich · profili · Drawing (tutto da fare, ambito ridotto)
 bendly:  sviluppo lamiere (esiste, direzione opposta — oracolo di verifica, forse)
@@ -398,7 +398,7 @@ che qualcosa sia utile.
 > altro? Ci sono sub-agenti, con un agentone che intanto impara da tutti?**
 > **Risposta:** più semplice di quanto sembri, proprio perché "overfittare"
 > qui vuol dire "un file di config dedicato", non "un modello dedicato" (vedi
-> le due note sopra). Quello che consegni al cliente è: forge + framer (lo
+> le due note sopra). Quello che consegni al cliente è: forge + snapdraw (lo
 > stesso codice per tutti, generico) **più** il `profiles/<questo-cliente>`
 > — un file suo, separato per costruzione dai file degli altri clienti. Non
 > passi "l'agente overfittato": il modello resta uno solo e generale (Claude
@@ -415,5 +415,5 @@ che qualcosa sia utile.
 > non un'implicazione automatica di come funziona oggi.
 - guessing non etichettato con `source` + `confidence`
 - logica di un singolo cliente fuori dai `profiles/`
-- modifiche a forge per far comodo a framer o all'interprete: forge resta
+- modifiche a forge per far comodo a snapdraw o all'interprete: forge resta
   neutro, sono loro ad adattarsi

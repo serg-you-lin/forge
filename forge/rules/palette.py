@@ -146,7 +146,7 @@ class RoleStyle:
 
 # ---------------------------------------------------------------------------
 # Registro globale di RoleStyle — stesso idioma di set_schema() in
-# io/exporter.py per i metadati: un consumatore (framer, bendly, ...)
+# io/exporter.py per i metadati: un consumatore (snapdraw, bendly, ...)
 # registra UNA VOLTA come vuole che appaia un suo ruolo, e ogni to_dxf/split
 # successivo lo applica senza doverlo ripassare a ogni chiamata. Il
 # `role_styles=` esplicito passato a una singola chiamata resta possibile e

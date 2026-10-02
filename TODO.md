@@ -10,6 +10,182 @@ ancora aperto.
 
 ---
 
+## I FILI APERTI — si riparte da qui
+
+Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
+dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
+
+1. **Committare quello che c'è nell'albero** — D72…D76 (entry point `CLAUDE.md`,
+   `docs/INDEX.md` generato, audit dati cliente, rename `FRAMER`→`SNAPDRAW`).
+   Non tracciati ma necessari: `docs/INDEX.md`, `scripts/gen_index.py`,
+   `scripts/audit_names.py`, `scripts/audit_fixtures.py`. `naming_convention.md`
+   resta fuori finché non decidi il rename `forge`→`snapforge`.
+2. **`anonymize`: lo strumento di pulitura dei fixture** (sotto, sezione sua).
+   È quello che sblocca tutto il resto del punto 3: con i disegni ripuliti alla
+   fonte, i fixture possono stare nel repo pubblico e i test girano identici su
+   qualsiasi macchina.
+3. **I 32 disegni che la suite usa e non ha in git** —
+   `python scripts/audit_fixtures.py`. Senza di loro 61 golden su 114 fanno
+   `skipTest` su un clone pulito. Da fare dopo il punto 2, passandoli per
+   `anonymize`.
+4. **Il rewrite della history** (`git filter-repo`), per ultimo, quando tutto il
+   resto è committato.
+5. **`detect_flat()` → snapbend** — direzione già decisa; bloccata dal flag
+   `structural: bool` al posto di `STRUCTURAL_ROLES` (vedi "Problema 2" in
+   fondo).
+6. **Estrazione dei loop planari (half-edge/DCEL)** — l'unica cosa in lista che
+   cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
+7. **Due cose piccole dalla roadmap del preventivo**: `snap_distance` anche su
+   `inject()`, e il controllo quota-vs-geometria misurata (step 0 e 1 di
+   `ROADMAP.md`).
+
+---
+
+## `anonymize` — ripulire un disegno cliente per farne un fixture
+
+Il bisogno vale per forge **e per tutti i consumer**: i test si fanno per forza
+con disegni di clienti, quindi serve un passaggio che li renda pubblicabili. Da
+mettere in `forge/tools/anonymize.py` (esportato, così ogni consumer che importa
+forge ce l'ha) con la lettura/scrittura del formato in `adapters/dxf/`.
+
+**Perché non un round-trip attraverso forge.** `load_dxf` → `heal` → `to_dxf`
+restituisce la *lettura* di forge, non il file: spline strane, entità fuori
+contorno, il `Trash` — cioè esattamente ciò che rende quel disegno un caso di
+prova — non tornerebbero uguali. Il fixture deve restare il file, byte per byte,
+tranne le stringhe che identificano.
+
+**Quindi passata testuale diretta sul DXF, non `ezdxf`.** Un DXF ASCII è una
+sequenza di coppie (codice, valore), una per riga: si riscrivono solo i valori
+stringa, i numeri non si toccano mai e la struttura resta allineata. I gruppi che
+possono portare un'identità: `1`/`3`/`304` (testi), `2` (nomi di tabella e di
+blocco, compresi gli stili di quota), `6`/`7`/`8` (linetype, stile, layer),
+`300`-`309` e `1000` (testo arbitrario e XDATA), `9` (variabili d'intestazione
+tipo `$LASTSAVEDBY`, `$PROJECTNAME`, `$HYPERLINKBASE`), `999` (commenti).
+
+**forge è l'oracolo.** Dopo la pulitura: `heal()` prima e dopo, e numero di
+cluster, aree, perimetri, bbox e `trash` devono coincidere. Se cambia un numero
+lo strumento ha sbagliato e si rifiuta di scrivere.
+
+Due trappole viste sul campo, da gestire dentro lo strumento:
+
+- una stringa si **sostituisce, non si cancella**: togliere il testo del
+  cartiglio cambia quello che vedono `annotations` e `inject()`;
+- se un golden cita quel testo (`"display_text": …`) va riallineato nello stesso
+  passaggio, altrimenti il test rompe; e un layer rinominato va rinominato in
+  *tutti* i posti dove compare (record di tabella, blocchi, gruppo 8 di ogni
+  entità).
+
+Due modalità:
+
+```
+python -m forge.tools.anonymize scan  disegno.dxf
+python -m forge.tools.anonymize clean disegno.dxf --out fixture.dxf --map mappa.json
+```
+
+`scan` stampa tutto quello che è scritto dentro, da leggere con l'occhio: è la
+parte che non si può automatizzare, perché un **codice** ha una forma e un
+pattern lo trova, un **nome** no. Prova che serve: `Arcardini`, nome di uno stile
+di quota dentro `golden_multipli/sviluppo_multiparte.dxf`, trovato solo dumpando
+576 stringhe e leggendole. `clean` applica una mappa (sigle inventate generate,
+o scritta a mano) e dice cosa ha sostituito. **La mappa resta locale**: è l'unico
+file che lega il fixture all'originale.
+
+Quello che NON è dato cliente, verificato con Federico: la **marcatura** — il
+testo dentro il disegno che ripete il numero del pezzo — la scrive Advance Steel
+per ogni pezzo tagliato, è il nome del normalino e può stare in git. In D76 era
+stata sostituita per eccesso di zelo; non è un danno (ora il marchio coincide col
+nome del fixture) ma la regola per il futuro è: la marcatura si tiene.
+
+---
+
+## Due cose decise a voce e mai scritte
+
+### `to_dxf` su un `ForgeResult` non valido — serve un parametro, non un renderer
+
+Verificato sul modello, non a sensazione: niente si perde prima di `heal`. Su
+`anch_05`, `doc.edges = 103` e `island()` dà 1 cluster con 11 contorni + 92
+trash = 103. Su un documento che non chiude nulla (due linee aperte) `heal()` dà
+`is_valid=False, clusters=0, trash=2`: le due linee **sono** nel modello. Ogni
+edge sopravvive, e se ha un ruolo va sul layer del suo ruolo.
+
+Quello che manca non è un pezzo di modello, è un accordo su cosa fare di un
+result non valido: `to_svg` lo disegna, `to_dxf` solleva `ValueError`. Il rifiuto
+ha una ragione vera — non consegnare a un CAM un file di sola spazzatura — ma è
+una ragione sul **consumatore**, non sul formato. Quindi non serve un secondo
+renderer (`document_to_dxf` è l'idea scartata): basta un parametro su `to_dxf`
+che dica "non sono un CAM, sto guardando". Un parametro, nessun concetto in più,
+e sparisce l'asimmetria per cui "fammi vedere cosa ha capito forge" funziona in
+SVG e non in DXF. **Il nome del parametro lo scegli tu.**
+
+### il "pnger": forge sa già mostrare, solo non in raster
+
+Sono due cose diverse. **Renderizzare il modello** — che geometria c'è, con
+ruoli e colori — è di forge, e forge lo fa già due volte: `to_svg` e
+`to_view_model`. Un SVG lo apre qualsiasi browser, è scalabile, e per un umano è
+meglio di un PNG. **Comporre un'immagine per un lettore preciso** — ritagliare,
+togliere le quote perché un modello leggerebbe i numeri invece delle forme — è
+del consumatore: quelle scelte hanno bisogno di `ViewLayout` e dei ruoli
+`FRAME`/`TITLE_BLOCK`/`CONSTRUCTION`, che forge non ha.
+
+Quindi: il raster serve quando il lettore è una macchina, non quando sei tu.
+`to_svg` resta la via umana di forge e **non** si aggiunge `to_png` adesso; in
+snapdraw il pnger si riscrive su Pillow (una ventina di righe, e matplotlib esce
+di scena con la sua dipendenza non dichiarata). Se un domani il raster serve
+anche a forge, è un `to_png` sottile sopra lo stesso view-model, nell'extra
+`raster` che il `pyproject` già dichiara. L'interattivo è un viewer, cioè un'app
+a parte (MAP.md D16).
+
+---
+
+## Audit dati cliente prima della 1.0.0 — resta il rewrite della history
+
+D76 ha rifatto l'audit e il "zero sospetti" di D73/D75 era cieco in tre punti
+(path quotati da git, `\b` che non scatta dentro gli underscore, e il contenuto
+dei disegni mai letto). Ora `python scripts/audit_names.py --strict` controlla
+quattro cose — nomi, prosa e codice, **dentro i disegni**, nomi di sole cifre —
+ed esce 0. Dentro i DXF tracciati c'erano un percorso di rete con nome cliente e
+commessa, il nome di una stampante d'ufficio e cinque codici pezzo come nomi di
+layer e testi di cartiglio: tutto sostituito, suite ferma a 876. Il dettaglio
+sta in MAP.md D76.
+
+Restano due cose:
+
+1. **Mettere in git i 32 disegni che la suite usa e non ha.**
+   `python scripts/audit_fixtures.py` li elenca (3,2 MB, tutti puliti secondo
+   l'audit): senza di loro 61 golden su 114 fanno `skipTest` su un clone pulito,
+   e la suite resta verde mentre gira meno di quello che mostra. Decisione presa
+   (i golden devono girare anche da chi scarica il progetto), manca solo lo
+   `git add -f` — `tests/examples/` e' ignorato in blocco, quindi serve il
+   `-f`:
+
+   ```
+   python scripts/audit_fixtures.py --list > fixtures.txt
+   git add -f --pathspec-from-file=fixtures.txt
+   python scripts/audit_fixtures.py --strict   # deve dire "tutti in git"
+   ```
+
+   `--pathspec-from-file` e non `$(cat ...)`: un fixture ha uno spazio nel nome
+   (`flangia semplice.DXF`) e la sostituzione di shell lo spezzerebbe in due
+   percorsi che non esistono. `fixtures.txt` si cancella subito dopo.
+
+2. **Il rewrite della history** (il punto 6 del piano). I codici sono nei commit
+   gia' pushati: `git filter-repo` su tutta la history + un solo force-push,
+   dopo che tutto il resto e' committato. Cambia ogni SHA, quindi un eventuale
+   clone va riclonato; GitHub puo' tenere gli oggetti vecchi raggiungibili per
+   SHA per un po'. Da rifare contro la lista di D76, non solo contro i nomi di
+   file: ci sono anche i codici che stavano dentro i disegni.
+
+Due cose viste di passaggio, da decidere quando capita:
+
+- `tests/examples/cartella_3/` — il nome della cartella non e' un codice pezzo e
+  l'audit non lo segnala, ma non e' neanche un nome inventato. La cartella non
+  e' tracciata e nessun test la usa (il `la_104.DXF` che i test usano e' quello
+  in `tests/examples/`), quindi non e' un problema di git: e' da guardare.
+- `scripts/13_production_splitter.py` (non versionato, "fuori serie"
+  in SCRIPTS.md) ha un percorso assoluto con un codice pezzo nel `CONFIG`.
+  Finche' resta non versionato non entra in git, ma se un giorno lo si porta
+  alla nuova API quel percorso va via prima.
+
 ## RIPARTENZA — stato a fine sessione 2026-09-18 (seconda parte), da qui la prossima chat
 
 Chiuso: `refactor/ellipse-primitive` (docs cleanup + `EllipseSeg`, due
@@ -52,12 +228,12 @@ Resta aperto, discusso ma non affrontato:
   proiettata in una vista che mostra la flangia piegata
   (`arccos(proiettata/vera)`) — ma questo richiede sapere quale edge dello
   sviluppo corrisponde a quale edge della vista, che è lavoro di
-  framer/interprete, non di forge.
+  snapdraw/interprete, non di forge.
 - **Idea collegata ma volutamente NON la stessa cosa**: "ruotare" una vista
   per farla combaciare con un'altra vista proiettata (per trasferire feature
   da una faccia allo sviluppo) è un problema di matching/registrazione fra
   due insiemi di punti (tipo ICP), non una semplice rotazione — molto più
-  grosso, legato al "raggruppamento viste" di `framer` (`FRAMER.md`, ancora
+  grosso, legato al "raggruppamento viste" di `snapdraw` (`SNAPDRAW.md`, ancora
   da scrivere) — non deciso se/come affrontarlo.
 - Le annotazioni (`ForgeDocument.annotations`/`ForgeResult.annotations`) non
   sono ancora ruotate (nessun caso reale l'ha ancora richiesto) — se/quando
@@ -100,11 +276,11 @@ committato — la storia sta nel git log e in `MAP.md`).
   dall'outer non viene mai detectata: il filtro sulla distanza dal bordo è
   hard-coded a <1.0mm, alzare `bending_tolerance` non basta (quel parametro
   filtra solo la lunghezza minima).
-- **ORDERCODE_P1NoLineaPiega.dxf** (fixture cliente reale) — due bug noti:
+- **senza_linea_piega.dxf** (fixture cliente reale) — due bug noti:
   (a) il pezzo `_1` genera 1 sola bending line dove ce ne sono di più, causa
   non ancora indagata; (b) il cartiglio (`Cartiglio_sviluppo` esploso) viene
   rilevato come un cluster a sé. Il punto (b) non è più "da risolvere in
-  forge": è esattamente il caso d'uso che motiva `Framer` (`FRAMER.md`), che
+  forge": è esattamente il caso d'uso che motiva `snapdraw` (`SNAPDRAW.md`), che
   lo elimina marcando `role="title_block"` prima di `heal`.
 - **arc/arc oltre tolleranza** — `compute_gap_fixes` scarta ogni coppia con
   `distance > tolerance` anche per gli archi; esentarli quando i loro cerchi
@@ -113,10 +289,10 @@ committato — la storia sta nel git log e in `MAP.md`).
 - **outer che non si chiude su viste vere, ricorrente** — non più un caso
   isolato: tre disegni reali indipendenti, stesso sintomo in superficie
   ("outer vero, tutto in trash") ma **cause diverse** — non era un bug solo:
-  - `PARTCODE` (framer MAP D5, mesi fa): pezzi veri non chiudono in `heal`,
+  - **foglio A** (snapdraw MAP D5, mesi fa): pezzi veri non chiudono in `heal`,
     tanti archi e linee di costruzione — causa non ancora ri-analizzata con
     gli strumenti di oggi.
-  - `SHEET_BLANK` ✅ **risolto, MAP.md D49** — non era un gap né una
+  - **foglio B** ✅ **risolto, MAP.md D49** — non era un gap né una
     duplicazione da fondere: il file ha due viste indipendenti sullo stesso
     foglio (il piano e, sopra, una vista sottile dello spessore), e
     `NonContourEdgeDetector` calcolava il convex hull su TUTTO il documento
@@ -124,8 +300,8 @@ committato — la storia sta nel git log e in `MAP.md`).
     suoi 4 lati veri, scambiati per corde interne perché "dentro" l'hull
     dominato dalla vista grande. Fix: hull per componente connessa
     (`Graph.connected_components()`, nuovo). Ora chiude in 2 cluster puliti.
-  - `PARTCODE` (framer, survey reale): di 3 viste sullo stesso foglio, 1
-    sana, 2 no. Sintomo diverso da `TRG19E`: `result.trash_entities` qui non
+  - **foglio di rilievo C** (snapdraw, survey reale): di 3 viste sullo stesso
+    foglio, 1 sana, 2 no. Sintomo diverso dal **foglio B**: `result.trash_entities` qui non
     sono ~10 frammenti ma **1682**, con lunghe catene di segmenti minuscoli
     (~0.3-0.5mm ciascuno) che sembrano un profilo curvo scomposto in tanti
     tratti retti che non richiudono l'anello — non ancora capito se manchi
@@ -136,8 +312,8 @@ committato — la storia sta nel git log e in `MAP.md`).
     richiede la STESSA retta esatta) probabilmente non li tocca; da
     verificare comunque su un file reale prima di escluderlo.
 
-  Non ancora deciso se/quando riaprire un'indagine dedicata su `PARTCODE`
-  e `PARTCODE` — `refactor/heal-branch-topology` (D49, D50) ha chiuso il
+  Non ancora deciso se/quando riaprire un'indagine dedicata sui fogli **A**
+  e **C** — `refactor/heal-branch-topology` (D49, D50) ha chiuso il
   caso più semplice dei tre, non gli altri due.
 
 - **linea tracciata a spezzoni sovrapposti** ✅ **risolto, MAP.md D50** —
@@ -177,7 +353,7 @@ committato — la storia sta nel git log e in `MAP.md`).
   file quasi tutto SPLINE il dedup di fatto non gira. Anche dove si applica,
   la chiave è un'uguaglianza esatta a 2 decimali: due entità quasi
   coincidenti ma scostate di qualche decimo di mm (come le tracciature
-  doppie viste sia qui che in `TRG19E`) hanno chiavi diverse e non vengono
+  doppie viste sia qui che nel foglio B) hanno chiavi diverse e non vengono
   mai considerate duplicate — è un dedup per copie esatte, non per
   prossimità.
   Non è la stessa causa degli altri punti: lì servirebbe riconoscere
@@ -275,7 +451,7 @@ eventualmente ML/vision.
   fisso, ma nessuno l'ha ancora disegnato.
 - **Idea "detect dovrebbe usare il suo stesso contratto"**: `detect_flat()` ha
   accesso diretto/privilegiato alla tassonomia dei ruoli invece di passare
-  dagli stessi ganci (`role`) di un consumatore esterno come framer. Appena
+  dagli stessi ganci (`role`) di un consumatore esterno come snapdraw. Appena
   nata, non ancora messa a fuoco nemmeno da Federico. Collegata al problema
   2 ma non identica — risolvere il problema 2 potrebbe aiutare come effetto
   collaterale, non è garantito.

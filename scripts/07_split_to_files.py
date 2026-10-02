@@ -20,7 +20,7 @@ import forge
 INPUT     = r"tests/examples/golden/example_4_polylines.dxf"
 TOLERANCE = 0.5
 OUTDIR    = "pipeline_output/batch_demo"
-LABEL     = "PARTCODE"
+LABEL     = "P-1024"
 # -------------------------------------------------------------------------
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE)

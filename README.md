@@ -1,6 +1,6 @@
 # forge
 
-**Deterministic 2D-geometry engine for sheet/plate manufacturing.**
+**Deterministic 2D-geometry engine for technical drawings.**
 
 `forge` turns a messy 2D drawing into a clean, structured model — closed part
 profiles, inner cutouts, holes (plain / countersink / threaded), bend lines,
@@ -12,6 +12,11 @@ single adapter — everything downstream works on the format-neutral model.
 The distinctive part is the **healing**: reconnecting broken geometry — `LINE`/`ARC`
 soup from a CAM export, a client's DXF, a legacy R12 file — into closed contours.
 No other tool does that for you.
+
+Sheet and plate manufacturing is where forge grew up and still its first consumer,
+not its boundary: the engine knows no material, process or product. Feature reading
+is opt-in and lives in one optional module, so a consumer in another domain gets the
+same geometry with its own vocabulary on top.
 
 > Status: **alpha**. Used in production for laser/plasma cutting prep, but the API
 > still moves. See `MAP.md` for the current design decisions.

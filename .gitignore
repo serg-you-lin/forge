@@ -117,3 +117,6 @@ HEALSTEP_REFACTOR.md
 # Prototipi e archivio: solo locali
 dev_tools/
 _archive/
+
+# PNG di debug in tests/lab (output matplotlib, fase chiusa)
+tests/lab/*.png

@@ -349,7 +349,7 @@ result = forge.heal(doc, tolerance=0.5, label="P-1024")
 #### I passi di `heal()`
 
 `heal()` è una ricetta: compone questi passi, nell'ordine sotto, e scrive i
-warning che li raccontano. Esposti per chi compone la sua (framer: per esempio
+warning che li raccontano. Esposti per chi compone la sua (snapdraw: per esempio
 fermarsi prima di `build_hierarchy`, finché non ha deciso da sé cosa significa
 un contorno dentro un altro — D62). Stessi pezzi di `heal()`, nessun criterio
 duplicato.
@@ -473,7 +473,7 @@ for cluster in result.clusters:          # una vista / un pezzo per cluster
 
 #### I mattoni di `island()`
 
-Esposti per chi compone la sua ricetta (framer: togliere cornice e cartiglio
+Esposti per chi compone la sua ricetta (snapdraw: togliere cornice e cartiglio
 per ruolo, poi leggere le viste) — stessi pezzi, nessun criterio duplicato.
 
 ```python
@@ -646,7 +646,7 @@ entità dalla sorgente: `source_doc` serve solo a riportare gli header
 | `role_styles` | override esplicito, per ruolo, di colore/linetype/lineweight (vedi `RoleStyle` sotto). Agisce sul layer — tutto ciò che forge scrive è BYLAYER. `None` (default) = nessun cambiamento rispetto alla palette di `rules/palette.py`. |
 
 ```python
-# la cornice (ruolo "frame", assegnato da un consumatore come framer) in nero
+# la cornice (ruolo "frame", assegnato da un consumatore come snapdraw) in nero
 forge.to_dxf(result, doc, role_styles={"frame": forge.RoleStyle(color=(0, 0, 0))})
 ```
 
@@ -745,7 +745,7 @@ forge.register_role_style(role, style: RoleStyle) -> None
 
 Registra uno `RoleStyle` per `role` **una volta sola**, valido per ogni
 `to_dxf`/`split` successivo senza doverlo ripassare — stesso idioma di
-`forge.set_schema()` per i metadati. Un consumatore (framer, bendly, ...)
+`forge.set_schema()` per i metadati. Un consumatore (snapdraw, bendly, ...)
 lo chiama una volta al proprio setup invece di ricostruire `role_styles=`
 a ogni chiamata; `forge.tools.manufacturing_role` lo usa per registrare i
 propri colori di default (`hole` magenta, `bending` rosa, ...) — stesso
@@ -1228,8 +1228,8 @@ di `heal`**: tiene i riferimenti agli `Edge` di `doc.edges`, imposta
 `edge.role = forge.normalize_role("frame")` — resta fuori dal grafo per
 default (nessun predicato lo riconosce strutturale), la geometria marcata
 finisce in `trash_entities` col ruolo intatto e l'output la scrive sul layer
-`frame`. È l'aggancio usato da `framer` per cornice e cartiglio
-(`FRAMER.md`).
+`frame`. È l'aggancio usato da `snapdraw` per cornice e cartiglio
+(`SNAPDRAW.md`).
 
 ### `tools.manufacturing_role` (vocabolario di `detect_flat()`, non del motore)
 
@@ -1257,13 +1257,13 @@ non assegna un significato a questi edge: li esclude e basta, restano in
 (`_detect_bending`: dritto, estremi sul contorno esterno → `"bending"`,
 confidence 0.9) — un'interpretazione a valle come un'altra, non privilegiata.
 
-Un consumatore che non chiama `detect_flat()` (framer, l'interprete) e vuole
+Un consumatore che non chiama `detect_flat()` (snapdraw, l'interprete) e vuole
 un'interpretazione propria (un bordo di feature in rilievo vista in pianta non
 è una piega) chiama `non_contour_candidates(doc)` per ottenere la stessa lista
 di candidati che `heal()` userebbe, senza duplicare il criterio, e decide da
 sé come marcarli — poi assegna `edge.role` sugli `Edge` restituiti (sono
 riferimenti dentro `doc.edges`, mutarli si riflette lì) **prima** di chiamare
-`heal()` (vedi `ContourRole` sopra, FRAMER.md, MAP.md D55).
+`heal()` (vedi `ContourRole` sopra, SNAPDRAW.md, MAP.md D55).
 
 | parametro | significato |
 |---|---|

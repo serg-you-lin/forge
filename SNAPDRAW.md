@@ -1,6 +1,6 @@
-# Framer — rilevamento automatico di cornice e cartiglio
+# snapdraw — rilevamento automatico di cornice e cartiglio
 
-`Framer` è un **modulo a sé**, consumatore di `forge`, che riconosce in un
+`snapdraw` è un **modulo a sé**, consumatore di `forge`, che riconosce in un
 disegno tecnico impaginato due cose:
 
 - la **cornice** (frame) — il riquadro di formato ISO che borda il foglio;
@@ -9,17 +9,17 @@ disegno tecnico impaginato due cose:
   in alcuni casi il cartiglio è in giro per il disegno e la cornice assente.
 
 Non fa parte di `forge`: `forge` resta neutro e deterministico e non decide cosa
-sia un cartiglio (memoria `forge-neutral-substrate-agent-layer-above`). Framer
+sia un cartiglio (memoria `forge-neutral-substrate-agent-layer-above`). snapdraw
 usa le primitive di forge per fare il riconoscimento, assegna i ruoli
 (`frame`, `title_block`) e li riporta giù a forge come input — esattamente il
 pattern di `role_rules` e di `detect_flat`.
 
-Nel disegno d'insieme, Framer è un **modulo dell'interprete** (`INTERPRETER.md`),
+Nel disegno d'insieme, snapdraw è un **modulo dell'interprete** (`INTERPRETER.md`),
 sorella di `views.py` e dell'unfolder. È scorporato in un documento suo perché il
 problema è grosso e interessante di per sé: trattare i cartigli in automatico
 vale come capacità a prescindere dall'interprete.
 
-Doppio scopo di questo lavoro: oltre alla feature, Framer è il **primo banco di
+Doppio scopo di questo lavoro: oltre alla feature, snapdraw è il **primo banco di
 prova reale dell'interfaccia forge ↔ consumatore** — come un modulo esterno
 inietta decisioni geometriche in forge prima di `heal`. Quello che impariamo qui
 serve all'unfolder e a ogni modulo futuro.
@@ -32,7 +32,7 @@ tutta la geometria del foglio come inner: la cornice è il loop più esterno e s
 mangia tutto. Il cartiglio, se è un rettangolo chiuso, viene contato come cluster
 a sé.
 
-Caso reale, fixture `ORDERCODE_P1NoLineaPiega.dxf` (bug noto, vedi `TODO.md`):
+Caso reale, fixture `senza_linea_piega.dxf` (bug noto, vedi `TODO.md`):
 il riquadro del cartiglio (blocco `Cartiglio_sviluppo` esploso,
 rettangolo 80×55 mm a ~[41,36]) viene rilevato come parte →
 `cluster_count = 6` invece di 5, e i 3 MTEXT del cartiglio prendono
@@ -41,7 +41,7 @@ disegni della pipeline sono richiesti al cliente senza cornice per poterli
 splittare) — ma è una stampella: un vero strumento che "interpreta il disegno del
 cliente" deve gestire il 99% dei disegni, che la cornice ce l'hanno.
 
-Framer toglie la stampella: rileva cornice e cartiglio **prima** di `heal`, li
+snapdraw toglie la stampella: rileva cornice e cartiglio **prima** di `heal`, li
 marca, e `heal` li esclude dal calcolo dei cluster. L'outer vero dei pezzi
 emerge; il cartiglio non è un cluster; i suoi testi hanno `cluster_ref = None`.
 
@@ -57,7 +57,7 @@ file CAD
 [1]  forge.load_dxf(path)            → ForgeDocument (edges puri + annotations)
    │
    ▼
-[2]  Framer.detect(doc)              → trova cornice + cartiglio sulla geometria
+[2]  snapdraw.detect(doc)              → trova cornice + cartiglio sulla geometria
    │                                   GREZZA (prima di heal); marca gli Edge
    │                                   con role="frame" / role="title_block"
    ▼
@@ -67,7 +67,7 @@ file CAD
 [4]  forge.detect_flat(result)            → feature dentro i cluster (forge)
    │
    ▼
-[5]  Framer.read_titleblock(doc)     → legge le celle del cartiglio → metadati
+[5]  snapdraw.read_titleblock(doc)     → legge le celle del cartiglio → metadati
    │                                   di disegno (vedi "Cosa restituisce")
    ▼
 ...  resto dell'interprete (views, callout, nomenclatura, enrich)
@@ -75,7 +75,7 @@ file CAD
 
 Il passo [2] lavora su `doc.edges` — le primitive che forge ha già parsato e
 normalizzato (OCS sanificato, Z appiattita), ma prima che `heal` costruisca il
-grafo. È lì che Framer ha bisogno di agganciarsi.
+grafo. È lì che snapdraw ha bisogno di agganciarsi.
 
 
 ## Cosa rileva, e i due ruoli
@@ -84,7 +84,7 @@ grafo. È lì che Framer ha bisogno di agganciarsi.
 
 Il riquadro esterno del foglio. **Non** è un ruolo di forge (MAP D31 —
 `ContourRole.FRAME` rimosso: la cornice non è un concetto di forge): è uno slug
-di consumatore come `title_block`. `framer` lo assegna con
+di consumatore come `title_block`. `snapdraw` lo assegna con
 `forge.normalize_role("frame")`.
 
 ### `title_block` — il cartiglio
@@ -117,7 +117,7 @@ che su `RawSegment` propri.
    restante i cui punti stanno dentro la sua bbox (con un piccolo margine).
 4. Tieni i candidati con contenimento ≥ **80%** (`CONTAINMENT_THRESHOLD`); tra
    questi prendi il **più grande** — quella è la cornice.
-5. **Conservativo**: se nessun candidato supera la soglia, Framer **non filtra
+5. **Conservativo**: se nessun candidato supera la soglia, snapdraw **non filtra
    niente** e segnala `frame: uncertain` nei flag. Meglio un cluster sporco che
    buttare via geometria di un pezzo.
 
@@ -132,7 +132,7 @@ Segnali (da combinare, nessuno da solo è sufficiente):
 
 - rettangolo chiuso **suddiviso da linee interne** in una griglia di celle —
   è il segnale più forte e non dipende dalla cornice;
-- **racchiude un gruppo denso di annotazioni** — Framer incrocia
+- **racchiude un gruppo denso di annotazioni** — snapdraw incrocia
   `doc.annotations` (i `Note` / MTEXT già estratti da forge) e cerca il
   rettangolo che ne contiene di più;
 - dimensioni tipiche da cartiglio (poche decine / ~200 mm di lato), piccolo
@@ -148,8 +148,8 @@ nei flag.
 
 ## L'interfaccia forge ↔ consumatore (il punto sperimentale)
 
-Framer deve dire a `heal` "questi edge non sono contorno di pezzo". La
-decisione su come — tre opzioni valutate, scelta l'opzione B (Framer setta
+snapdraw deve dire a `heal` "questi edge non sono contorno di pezzo". La
+decisione su come — tre opzioni valutate, scelta l'opzione B (snapdraw setta
 `edge.role` su `doc.edges` prima di `heal`; forge estende il suo filtro
 non-strutturale a ogni ruolo di consumatore, senza API nuova) — è chiusa in
 `MAP.md` D30/D31: dettaglio delle tre opzioni, motivazione e comportamento
@@ -157,7 +157,7 @@ risultante (geometria in `trash_entities`, output su un layer col nome dello
 slug) sono lì, non ripetuti qui.
 
 Invariante da rispettare comunque (`INTERPRETER.md`, "Cosa NON ci va"):
-Framer non ragiona *dentro* forge. Framer chiama `forge.load_dxf`, fa il suo
+snapdraw non ragiona *dentro* forge. snapdraw chiama `forge.load_dxf`, fa il suo
 lavoro geometrico, e restituisce a forge dei ruoli. Se serve un cambiamento in
 forge è solo per **accettare** i ruoli, mai per **decidere** cosa sia un
 cartiglio.
@@ -165,12 +165,12 @@ cartiglio.
 L'altra metà dell'interfaccia, rimasta scoperta finché non è servita davvero
 (caso reale: "raggruppamento viste", una vista in pianta con una flangia in
 rilievo — `heal` la esclude dal grafo per topologia, ma solo `detect_flat()` prova
-a dire cosa sia, indovinando sempre "piega"): **come Framer trova QUALI edge
+a dire cosa sia, indovinando sempre "piega"): **come snapdraw trova QUALI edge
 sono ambigui**, prima ancora di decidere il ruolo. `forge.non_contour_candidates(doc)`
 espone lo stesso identico criterio topologico che `heal()` usa internamente
 (branching + centroide fuori dal hull, D49) senza passare da `detect_flat()` e
-senza che Framer si riscriva una sua versione del test — stessa fonte di
-verità, mai una seconda che possa divergere. Framer filtra quei candidati con
+senza che snapdraw si riscriva una sua versione del test — stessa fonte di
+verità, mai una seconda che possa divergere. snapdraw filtra quei candidati con
 la sua logica (es. incrocio multi-vista) e assegna `edge.role` solo a quelli
 che decide di reinterpretare; il resto arriva a `heal()` tale e quale, e lì fa
 la stessa fine di sempre (`trash_entities`, `role="unknown"`). Vedi MAP.md D55.
@@ -178,7 +178,7 @@ la stessa fine di sempre (`trash_entities`, `role="unknown"`). Vedi MAP.md D55.
 
 ## Il verso "aggiungi" (più avanti)
 
-Oltre a *rilevare* una cornice esistente, Framer può *generarne* una standard e
+Oltre a *rilevare* una cornice esistente, snapdraw può *generarne* una standard e
 metterla attorno a un disegno che non ce l'ha — è la nota in `TODO.md`
 ("Cornice: potrebbe essere parte del plugin per i draft"). Stesso modulo, verso
 opposto: dato un `ForgeResult` e un formato ISO, produce gli edge di cornice +
@@ -188,7 +188,7 @@ il posto giusto.
 
 ## Cosa restituisce
 
-`framer.detect(doc)` → un oggetto (nome da decidere, es. `FrameLayout`) con:
+`snapdraw.detect(doc)` → un oggetto (nome da decidere, es. `FrameLayout`) con:
 
 - `frame` — bbox e edge della cornice, o `None`
 - `title_block` — bbox, edge, e le **celle** (rettangoli interni con il testo che
@@ -197,7 +197,7 @@ il posto giusto.
 - `confidence` per frame e per cartiglio
 - `flags` — `frame: uncertain`, `title_block: uncertain`, `multiple_frames`, …
 
-`framer.read_titleblock(layout)` → dict dei campi del cartiglio
+`snapdraw.read_titleblock(layout)` → dict dei campi del cartiglio
 (`{material, drawing_number, revision, scale, ...}`), ognuno con `source` e
 `confidence`, `None` + voce in `unresolved` dove non legge. Questo alimenta lo
 step `titleblock.py` dell'interprete (`INTERPRETER.md` passo [8]) — o lo è.
@@ -210,7 +210,7 @@ step `titleblock.py` dell'interprete (`INTERPRETER.md` passo [8]) — o lo è.
   dell'interprete, mai qui e mai su GitHub);
 - guessing non etichettato: ogni campo letto dal cartiglio porta `source` +
   `confidence`, e "non lo so" è `None` + `unresolved`, mai una supposizione;
-- discretizzazione: se Framer rimuove/riemette geometria di cornice, la riemette
+- discretizzazione: se snapdraw rimuove/riemette geometria di cornice, la riemette
   con le primitive native, come ogni renderer di forge.
 
 
@@ -225,13 +225,13 @@ step `titleblock.py` dell'interprete (`INTERPRETER.md` passo [8]) — o lo è.
 - [ ] `read_titleblock` — lettura delle celle
 - [ ] repo separato o cartella nel repo dell'interprete? (l'interprete non esiste
       ancora — vedi `INTERPRETER.md`)
-- [ ] fixture: `ORDERCODE` con la cornice (chiedere al cliente una versione
+- [ ] fixture: `ARTX` con la cornice (chiedere al cliente una versione
       completa), più un paio di A3/A4 standard
 
 ### Domande aperte
 
-- Framer è un modulo dell'interprete o un progetto a sé che l'interprete importa?
+- snapdraw è un modulo dell'interprete o un progetto a sé che l'interprete importa?
   (`INTERPRETER.md` ha la stessa domanda aperta per l'agente.)
-- La lettura dei campi del cartiglio è di Framer o dello step `titleblock.py`
-  dell'interprete? Framer di sicuro **delimita** il cartiglio e le sue celle;
+- La lettura dei campi del cartiglio è di snapdraw o dello step `titleblock.py`
+  dell'interprete? snapdraw di sicuro **delimita** il cartiglio e le sue celle;
   leggere i valori potrebbe stare di là.

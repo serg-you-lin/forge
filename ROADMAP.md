@@ -54,7 +54,7 @@ scala, vedi la nota sotto: qui la frase originale era imprecisa.
 | pezzo | di cosa si occupa | dove vive |
 |---|---|---|
 | **forge** | il pezzo fabbricato: geometria, topologia, feature (fori/pieghe/incisioni), conteggi (`cluster.summary`) | `dxf-forge`, maturo |
-| **framer** | come il disegno è documentato: cornice, cartiglio, callout, raggruppamento viste | `framer`, pre-alpha, un pezzo su cinque fatto |
+| **snapdraw** | come il disegno è documentato: cornice, cartiglio, callout, raggruppamento viste | `snapdraw`, pre-alpha, un pezzo su cinque fatto |
 | **l'interprete** | nomenclatura privata del cliente, profili, riempimento buchi da ERP | non esiste ancora un repo — e forse non gli serve nemmeno, vedi `INTERPRETER.md` |
 | **bendly** | sviluppo lamiere — direzione opposta (da specifica a DXF), oracolo di verifica in futuro | `unfold_generator`, alpha, già in uso |
 
@@ -63,8 +63,8 @@ scala, vedi la nota sotto: qui la frase originale era imprecisa.
 > **Risposta:** non "l'interprete non ti serve" (quello ti serve di sicuro:
 > nomenclatura, profili, ERP restano privati per forza). Intendevo: forse non
 > ti serve un **repo/progetto vero e proprio con un orchestratore** —
-> `pipeline.py` che chiama forge poi framer poi traduzione in sequenza
-> fissa. Perché una volta tolto tutto quello che è finito in framer, quello
+> `pipeline.py` che chiama forge poi snapdraw poi traduzione in sequenza
+> fissa. Perché una volta tolto tutto quello che è finito in snapdraw, quello
 > che resta dell'interprete è poca roba: un paio di file Python privati
 > (`nomenclature.py`, `profiles/`) con dentro le tue tabelle e i tuoi
 > pattern. È abbastanza sottile che potrebbe bastarti chiamare quelle
@@ -82,7 +82,7 @@ manifattura/documentazione/privato) è spiegazione del *perché* questa tabella
 ## Scoperta di stasera: il preventivo è più vicino di quanto sembrasse
 
 Rileggendo `forge/tools/inject.py` per rispondere a "cosa fa il parser
-regex": **non devi aspettare che framer costruisca `callouts.py`.**
+regex": **non devi aspettare che snapdraw costruisca `callouts.py`.**
 `forge.inject(result, data_injector=una_tua_funzione)` esiste già, maturo,
 testato — raccoglie i testi dentro l'outer di ogni pezzo e li passa a una
 funzione che scrivi tu (privata, mai nel repo), che ritorna
@@ -115,11 +115,11 @@ sotto, non l'ho toccata senza dirtelo.
    solo: `heal_and_detect` → controllo quota (step 0, se presente) →
    `inject(data_injector=...)` → `cluster.summary` per la complessità.
    Nessun modulo nuovo, nessun repo nuovo.
-4. **(framer)** cartiglio — quando ti serve leggere i metadati generali del
+4. **(snapdraw)** cartiglio — quando ti serve leggere i metadati generali del
    disegno oltre al singolo pezzo (numero disegno, revisione), non prima.
-5. **(framer, ultimo, il più incerto)** raggruppamento viste / linee di
+5. **(snapdraw, ultimo, il più incerto)** raggruppamento viste / linee di
    rottura — solo quando il caso reale lo chiede, e solo dopo aver guardato
-   disegni veri (stessa lezione di framer D5: non scriverlo a tavolino).
+   disegni veri (stessa lezione di snapdraw D5: non scriverlo a tavolino).
 
 I passi 4-5 servono alla produzione più che al preventivo — restano nella
 roadmap, ma dopo, non prima.
