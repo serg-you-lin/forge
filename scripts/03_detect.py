@@ -26,7 +26,7 @@ import _paths  # noqa: F401  — chdir alla radice del repo
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Multifeature.dxf"   # ha Filettati/Svasati/Piega/MARK
+INPUT     = r"tests/data/Multifeature.dxf"   # ha Filettati/Svasati/Piega/MARK
 TOLERANCE = 0.5
 NAME_ROLES = {
     "Filettati": "threaded_hole",

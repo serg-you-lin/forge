@@ -1,0 +1,47 @@
+{
+  "source_file": "Multifeature.dxf",
+  "is_valid": true,
+  "cluster_count": 1,
+  "warnings": [],
+  "errors": [],
+  "clusters": [
+    {
+      "label": "Multifeature",
+      "source_file": "Multifeature.dxf",
+      "quantity": 1,
+      "material": "S275JR",
+      "thickness_mm": 0.0,
+      "bending_lines": [
+        {
+          "start": [
+            380.0,
+            215.304
+          ],
+          "end": [
+            380.0,
+            135.305
+          ],
+          "length": 79.999,
+          "angle_deg": 90.0,
+          "confidence": 1.0,
+          "source": "labeled"
+        }
+      ],
+      "countersink_count": 10,
+      "threaded_holes_count": 7,
+      "total_engrave_length_mm": 29.574,
+      "area_mm2": 26975.6747,
+      "holes_count": 17,
+      "inner_contours_count": 3,
+      "outer_perimeter_mm": 860.0,
+      "inner_perimeter_mm": 119.0784,
+      "total_perimeter_mm": 979.0784,
+      "bbox": {
+        "minx": 224.727,
+        "miny": 135.3048,
+        "maxx": 574.727,
+        "maxy": 215.3048
+      }
+    }
+  ]
+}

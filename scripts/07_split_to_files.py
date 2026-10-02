@@ -17,7 +17,7 @@ import _paths  # noqa: F401  — chdir alla radice del repo
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/golden/example_4_polylines.dxf"
+INPUT     = r"tests/data/golden/example_4_polylines.dxf"
 TOLERANCE = 0.5
 OUTDIR    = "pipeline_output/batch_demo"
 LABEL     = "P-1024"

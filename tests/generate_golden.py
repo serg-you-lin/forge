@@ -4,13 +4,13 @@ generate_golden.py
 Genera i golden file per il test di regressione.
 
 Runna UNA VOLTA quando sei soddisfatto dell'output corrente.
-I golden file vengono salvati in tests/examples/golden/json/.
+I golden file vengono salvati in tests/data/golden/json/.
 
-DXF sorgente: tests/examples/golden/
-Golden JSON:  tests/examples/golden/json/
+DXF sorgente: tests/data/golden/
+Golden JSON:  tests/data/golden/json/
 
 Per ogni DXF è possibile affiancare un file di configurazione opzionale:
-    tests/examples/config/la_104.json
+    tests/data/config/la_104.json
 
 Formato config (tutti i campi sono opzionali):
     {
@@ -37,7 +37,7 @@ sys.path.insert(0, str(project_root))
 import forge
 from forge.tools.detect import describe_features
 
-EXAMPLES_DIR      = project_root / "tests" / "examples"
+EXAMPLES_DIR      = project_root / "tests" / "data"
 GOLDEN_DXF_DIR    = EXAMPLES_DIR / "golden"
 GOLDEN_JSON_DIR   = EXAMPLES_DIR / "golden" / "json"
 DEFAULT_TOLERANCE = 0.5

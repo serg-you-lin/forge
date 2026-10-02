@@ -1,0 +1,14 @@
+{
+  "parent_file": "Multipolis.dxf",
+  "part_index": 2,
+  "area_mm2": 66572.6374,
+  "holes_count": 0,
+  "outer_perimeter_mm": 1032.0992,
+  "inner_perimeter_mm": 0,
+  "total_perimeter_mm": 1032.0992,
+  "outer_wkt": "POLYGON ((-617.4674852928061 -308.8020924657721, -617.4674852928061 -564.7861048964204, -357.4018789654389 -564.7861048964204, -357.4018789654389 -308.8020924657721, -617.4674852928061 -308.8020924657721))",
+  "inners_wkt": [],
+  "outer_layer": "OuterContour",
+  "inners_layers": [],
+  "custom": {}
+}

@@ -31,7 +31,7 @@ import forge
 from forge.tools.rotate import longest_structural_segment
 
 # --- CONFIG ------------------------------------------------------------
-INPUT = r"tests/examples/try_for_rotation.dxf"
+INPUT = r"tests/data/try_for_rotation.dxf"
 TOLERANCE = 0.5
 OUTDIR = "pipeline_output"
 # -------------------------------------------------------------------------

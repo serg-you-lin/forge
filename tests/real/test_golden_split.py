@@ -5,7 +5,7 @@ test_golden_split.py
 --------------------
 Test di regressione geometrica per i file prodotti dallo splitting.
 
-Per ogni golden in tests/examples/multipli_golden/golden/:
+Per ogni golden in tests/data/multipli_golden/golden/:
   1. Riprocessa il DXF padre con la pipeline completa (heal → detect → write → split)
      in una cartella temporanea.
   2. Riprocessa il figlio corrispondente (heal → detect → write).
@@ -47,7 +47,7 @@ from forge.io.dxf import cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
 from forge.tools.detect import describe_features
 
 
-MULTIPLI_DIR = project_root / "tests" / "examples" / "golden_multipli"
+MULTIPLI_DIR = project_root / "tests" / "data" / "golden_multipli"
 GOLDEN_DIR   = MULTIPLI_DIR / "golden"
 
 TOL_AREA      = 0.1

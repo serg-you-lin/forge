@@ -3,8 +3,8 @@ test_golden.py
 --------------
 Test di regressione geometrica contro i golden file.
 
-DXF sorgente: tests/examples/golden/
-Golden JSON:  tests/examples/golden/json/
+DXF sorgente: tests/data/golden/
+Golden JSON:  tests/data/golden/json/
 """
 
 import unittest
@@ -25,7 +25,7 @@ from forge.tools.manufacturing_role import (
 from forge.tools.detect import describe_features
 
 
-EXAMPLES_DIR = project_root / "tests" / "examples"
+EXAMPLES_DIR = project_root / "tests" / "data"
 GOLDEN_DXF_DIR = EXAMPLES_DIR / "golden"
 GOLDEN_JSON_DIR = GOLDEN_DXF_DIR / "json"
 

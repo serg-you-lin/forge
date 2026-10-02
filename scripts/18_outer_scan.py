@@ -29,8 +29,8 @@ from forge.core.healing.outer_scan import outer_candidate_edges
 # chdir alla radice, quindi i relativi partono da lì) — ma non committare mai
 # il nome di un file cliente in uno script tracciato.
 INPUTS = [
-    r"tests/examples/golden_anchoring/anch_02.dxf",
-    r"tests/examples/golden_anchoring/anch_05.dxf",
+    r"tests/data/golden_anchoring/anch_02.dxf",
+    r"tests/data/golden_anchoring/anch_05.dxf",
 ]
 GROUND_TRUTH_COLOR = 134
 OUTDIR = r"pipeline_output/outer_scan"

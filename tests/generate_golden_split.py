@@ -4,9 +4,9 @@ generate_golden_split.py
 Genera i golden file per il test di regressione dello splitting.
 
 Struttura attesa:
-    tests/examples/golden_multipli/          ← DXF multiparte sorgente
-    tests/examples/golden_multipli/config/   ← config opzionali
-    tests/examples/golden_multipli/golden/   ← golden JSON generati (uno per parte)
+    tests/data/golden_multipli/          ← DXF multiparte sorgente
+    tests/data/golden_multipli/config/   ← config opzionali
+    tests/data/golden_multipli/golden/   ← golden JSON generati (uno per parte)
 
 Per ogni DXF padre viene eseguita la pipeline completa:
     heal → detect → write → split
@@ -35,7 +35,7 @@ import forge
 from forge.adapters.dxf.layers import role_to_dxf_layer
 from forge.tools.detect import describe_features
 
-MULTIPLI_DIR      = project_root / "tests" / "examples" / "golden_multipli"
+MULTIPLI_DIR      = project_root / "tests" / "data" / "golden_multipli"
 GOLDEN_DIR        = MULTIPLI_DIR / "golden"
 DEFAULT_TOLERANCE = 0.5
 

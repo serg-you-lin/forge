@@ -7,7 +7,7 @@ quota e freccia, l'elemento a cui `anchor_annotations` la lega
 forma (`contour_shape`) e non col suo indice — un riordino degli `inners`
 non è una regressione, un aggancio a un altro cerchio sì.
 
-Disegni in `tests/examples/golden_anchoring/` (`anch_NN.dxf`, fogli del campione
+Disegni in `tests/data/golden_anchoring/` (`anch_NN.dxf`, fogli del campione
 `islands` rinominati), golden in `json/` accanto. Senza i disegni il test si
 salta.
 
@@ -28,7 +28,7 @@ sys.path.insert(0, str(project_root))
 import forge
 from forge.model.annotation import Dimension, Leader
 
-SOURCE_DIR = project_root / "tests" / "examples" / "golden_anchoring"
+SOURCE_DIR = project_root / "tests" / "data" / "golden_anchoring"
 GOLDEN_DIR = SOURCE_DIR / "json"
 
 FILES = [f"anch_{i:02d}.dxf" for i in range(1, 9)]

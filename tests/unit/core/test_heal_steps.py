@@ -21,7 +21,7 @@ from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg, CircleSeg, SplineSeg
 from forge.tools.manufacturing_role import is_structural
 
-EXAMPLES = project_root / "tests" / "examples"
+EXAMPLES = project_root / "tests" / "data"
 
 
 def _line(p1, p2, role=ContourRole.UNKNOWN, decimals=3):

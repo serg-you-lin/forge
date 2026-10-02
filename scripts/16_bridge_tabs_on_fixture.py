@@ -24,7 +24,7 @@ from forge.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
 from forge.tools.tabs import bridge_nested_tabs
 
 # --- CONFIG ------------------------------------------------------------
-INPUT = r"tests/examples/cerchi_concentrici_detect_is_counter_tabs_join.dxf"
+INPUT = r"tests/data/cerchi_concentrici_detect_is_counter_tabs_join.dxf"
 TAB_COUNT = 4
 TAB_WIDTH = 2.0    # mm, larghezza reale (perpendicolare) della linguetta
 ARC_FIT_TOLERANCE = 0.05

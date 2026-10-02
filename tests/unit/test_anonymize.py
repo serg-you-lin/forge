@@ -29,7 +29,7 @@ from forge.tools.anonymize import (
     scan_dxf,
 )
 
-FIXTURE = project_root / "tests" / "examples" / "Linee_piegatura.dxf"
+FIXTURE = project_root / "tests" / "data" / "Linee_piegatura.dxf"
 
 
 class TestScan(unittest.TestCase):

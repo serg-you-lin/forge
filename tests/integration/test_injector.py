@@ -38,7 +38,7 @@ import forge
 from forge.tools.manufacturing_role import LAYER_BENDING, LAYER_ENGRAVE
 from forge.tools.detect import describe_features
 
-EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 def load(name):

@@ -62,7 +62,7 @@ from forge.adapters.dxf.layers import (
 from forge.tools.manufacturing_role import (
     LAYER_HOLE, LAYER_BENDING, LAYER_MARKING, LAYER_ENGRAVE,
 )
-EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 # ---------------------------------------------------------------------------

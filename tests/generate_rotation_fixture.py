@@ -13,7 +13,7 @@ diagonale che è più corta e comunque non outer).
 import ezdxf
 from pathlib import Path
 
-EXAMPLES_DIR = Path(__file__).resolve().parent / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent / "data"
 EXAMPLES_DIR.mkdir(parents=True, exist_ok=True)
 
 W, H = 100.0, 400.0  # largo 100, alto 400 — i lati più lunghi sono i verticali

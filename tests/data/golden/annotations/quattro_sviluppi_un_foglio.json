@@ -1,0 +1,23 @@
+{
+  "source_file": "quattro_sviluppi_un_foglio.dxf",
+  "annotation_count": 1,
+  "by_kind": {
+    "TEXT": 1
+  },
+  "cluster_count": 4,
+  "annotations": [
+    {
+      "type": "Note",
+      "kind": "TEXT",
+      "position": [
+        50.0,
+        70.0
+      ],
+      "display_text": "quattro_sviluppi_un_foglio",
+      "layer": "Signature",
+      "cluster_ref": 0,
+      "height": 20.0,
+      "rotation": 0.0
+    }
+  ]
+}

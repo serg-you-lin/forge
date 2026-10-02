@@ -1,0 +1,182 @@
+{
+  "source_file": "anch_07.dxf",
+  "annotations": [
+    {
+      "type": "Dimension",
+      "dim_type": "radius",
+      "display_text": "10.63",
+      "position": [
+        73.0,
+        183.78
+      ],
+      "anchored": [
+        {
+          "in": "inners",
+          "shape": "other",
+          "center": [
+            155.71,
+            185.51
+          ],
+          "length": 183.733,
+          "width": 26.875
+        }
+      ]
+    },
+    {
+      "type": "Dimension",
+      "dim_type": "diameter",
+      "display_text": "6.63",
+      "position": [
+        75.92,
+        182.21
+      ],
+      "anchored": [
+        {
+          "in": "inners",
+          "shape": "circle",
+          "center": [
+            73.0,
+            183.78
+          ],
+          "length": 6.625,
+          "width": 6.625
+        }
+      ]
+    },
+    {
+      "type": "Dimension",
+      "dim_type": "linear",
+      "display_text": "15",
+      "position": [
+        114.65,
+        179.4
+      ],
+      "anchored": [
+        {
+          "in": "inners",
+          "shape": "other",
+          "center": [
+            155.71,
+            185.51
+          ],
+          "length": 183.733,
+          "width": 26.875
+        }
+      ]
+    },
+    {
+      "type": "Dimension",
+      "dim_type": "linear",
+      "display_text": "105.5",
+      "position": [
+        178.5,
+        150.65
+      ],
+      "anchored": []
+    },
+    {
+      "type": "Dimension",
+      "dim_type": "linear",
+      "display_text": "57",
+      "position": [
+        178.5,
+        150.65
+      ],
+      "anchored": []
+    },
+    {
+      "type": "Dimension",
+      "dim_type": "diameter",
+      "display_text": "5.37",
+      "position": [
+        180.8,
+        177.68
+      ],
+      "anchored": [
+        {
+          "in": "inners",
+          "shape": "circle",
+          "center": [
+            178.5,
+            176.28
+          ],
+          "length": 5.375,
+          "width": 5.375
+        }
+      ]
+    },
+    {
+      "type": "Dimension",
+      "dim_type": "diameter",
+      "display_text": "6.62",
+      "position": [
+        232.71,
+        182.0
+      ],
+      "anchored": [
+        {
+          "in": "inners",
+          "shape": "circle",
+          "center": [
+            235.5,
+            183.78
+          ],
+          "length": 6.625,
+          "width": 6.625
+        }
+      ]
+    },
+    {
+      "type": "Dimension",
+      "dim_type": "radius",
+      "display_text": "10.63",
+      "position": [
+        235.5,
+        183.78
+      ],
+      "anchored": [
+        {
+          "in": "inners",
+          "shape": "other",
+          "center": [
+            155.71,
+            185.51
+          ],
+          "length": 183.733,
+          "width": 26.875
+        }
+      ]
+    },
+    {
+      "type": "Dimension",
+      "dim_type": "linear",
+      "display_text": "162.5",
+      "position": [
+        235.5,
+        213.74
+      ],
+      "anchored": []
+    },
+    {
+      "type": "Dimension",
+      "dim_type": "linear",
+      "display_text": "5",
+      "position": [
+        302.3,
+        203.87
+      ],
+      "anchored": [
+        {
+          "in": "inners",
+          "shape": "rectangle",
+          "center": [
+            299.8,
+            180.96
+          ],
+          "length": 26.875,
+          "width": 5.0
+        }
+      ]
+    }
+  ]
+}

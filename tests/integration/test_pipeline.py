@@ -5,7 +5,7 @@ tests/integration/test_pipeline.py
 Test semantic pipeline integrity.
 
 Usa solo file generati in:
-tests/examples/
+tests/data/
 """
 
 import sys
@@ -21,7 +21,7 @@ from test_helpers import (
     count_entities_on_layer,
 )
 
-EXAMPLES_DIR = TEST_DIR.parent / "examples"
+EXAMPLES_DIR = TEST_DIR.parent / "data"
 
 
 

@@ -21,7 +21,7 @@ from pathlib import Path
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-DEFAULT_DIR = r"tests/examples"
+DEFAULT_DIR = r"tests/data"
 TOLERANCE   = 0.2
 NAME_ROLES = {
     "MARK":      "engrave",

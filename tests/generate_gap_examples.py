@@ -9,7 +9,7 @@ Genera DXF di esempio per testare la gestione dei gap.
 import ezdxf
 from pathlib import Path
 
-EXAMPLES_DIR = Path(__file__).resolve().parent / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent / "data"
 EXAMPLES_DIR.mkdir(parents=True, exist_ok=True)
 
 

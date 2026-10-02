@@ -17,7 +17,7 @@ import os
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/golden/example_4_polylines.dxf"   # 4 parti
+INPUT     = r"tests/data/golden/example_4_polylines.dxf"   # 4 parti
 TOLERANCE = 0.5
 OUTDIR    = "pipeline_output/split_demo"
 MIN_AREA  = 50.0

@@ -1,0 +1,6 @@
+{
+  "special_layers": {
+    "MARK": "engrave"
+  },
+  "tolerance": 0.5
+}

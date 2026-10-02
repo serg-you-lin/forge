@@ -1,0 +1,23 @@
+{
+  "source_file": "rect_with_trash.dxf",
+  "annotation_count": 1,
+  "by_kind": {
+    "TEXT": 1
+  },
+  "cluster_count": 1,
+  "annotations": [
+    {
+      "type": "Note",
+      "kind": "TEXT",
+      "position": [
+        0.0,
+        0.0
+      ],
+      "display_text": "REF_001",
+      "layer": "TESTO",
+      "cluster_ref": 0,
+      "height": 5.0,
+      "rotation": 0.0
+    }
+  ]
+}

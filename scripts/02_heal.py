@@ -18,7 +18,7 @@ import _paths  # noqa: F401  — chdir alla radice del repo
 import forge
 
 # --- CONFIG ----------------------------------------------------------------
-INPUT     = r"tests/examples/Linee_piegatura.dxf"
+INPUT     = r"tests/data/Linee_piegatura.dxf"
 TOLERANCE = 0.5
 # -------------------------------------------------------------------------
 
