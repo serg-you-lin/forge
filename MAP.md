@@ -2366,6 +2366,36 @@ repository happens to be open. The asymmetry is deliberate: the tool's own
 forge is public and that direction reveals nothing; no public or shared repo
 may declare the tool, because that direction would.
 
+### D81 — the history rewritten once: what may live in git is what HEAD holds ✅
+
+Cleaning HEAD (D73–D79) left every earlier commit on GitHub carrying what had
+been cleaned: client drawings committed and later removed, old pipeline
+outputs, part and order codes in old versions of `MAP.md` and of the scripts,
+local and network paths naming firms and people, codes in commit messages.
+
+Two rules, chosen so that the rewrite is checkable rather than trusted:
+
+- **Data files that no longer exist in HEAD leave the history entirely.** A
+  drawing or golden that is gone today has no value in an old commit and is
+  exactly where an un-audited client file hides; a file that is in HEAD keeps
+  its history only from the commit where it reached `tests/data/`. Code and
+  prose keep their history.
+- **Strings are replaced everywhere else, including commit messages**, with
+  neutral placeholders (`PARTCODE`, `ORDERCODE`, `FIRM`, `LOCAL_DRAWING.dxf`, …).
+  The replacement list lives outside the repo, since it is the list of names.
+
+The proof is HEAD's tree hash: identical before and after (`cf84fa0…`), so not
+one byte of today's files changed, and `audit_names.py --history --words` on
+the rewritten history finds only known false positives. Building the list
+exposed a real blind spot in the audit — an absolute path *inside* a drawing's
+text line, not at its start — fixed in the tool, and with it one fixture in
+`tests/data/` still naming a person and a firm, cleaned with `dxf-anonymize`
+(`heal()` identical). One force-push of `main`, 2 October; GitHub may keep the
+old objects reachable by SHA for a while.
+
+From here the invariant is forward-only: `audit_names.py --strict` on every
+change, `--history` before any release.
+
 ---
 
 ## Closed questions (history)
