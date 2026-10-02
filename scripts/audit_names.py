@@ -232,16 +232,30 @@ def drawing_suspicions(path: Path) -> list[tuple[int, str]]:
     """
     try:
         with path.open("r", encoding="utf-8", errors="replace", newline="") as fh:
-            lines = fh.read().split("\n")
+            text = fh.read()
     except OSError:
         return []
     out: list[tuple[int, str]] = []
-    for n, line in enumerate(lines, 1):
+    for n, hits, value in drawing_line_hits(text):
+        if value is None:
+            out.append((n, f"percorso: {next(iter(hits))}"))
+        else:
+            out.append((n, f"[{', '.join(sorted(hits))}] {value[:80]}"))
+    return out
+
+
+def drawing_line_hits(text: str) -> list[tuple[int, set[str], str | None]]:
+    """
+    Le righe sospette del testo di un disegno: (riga, sospetti, valore). Per un
+    percorso assoluto il sospetto è il percorso stesso e il valore è `None`.
+    """
+    out: list[tuple[int, set[str], str | None]] = []
+    for n, line in enumerate(text.split("\n"), 1):
         value = line.strip()
         if not value or NUMBER_LINE.match(value):
             continue
         if ABS_PATH.match(value):
-            out.append((n, f"percorso: {value[:120]}"))
+            out.append((n, {value[:120]}, None))
             continue
         if any(pattern.search(value) for pattern in DRAWING_NOISE):
             continue
@@ -250,7 +264,7 @@ def drawing_suspicions(path: Path) -> list[tuple[int, str]]:
         # quindi un codice scritto nel cartiglio non la può imitare
         hits = suspicious_tokens(value, bare_digits=True)
         if hits:
-            out.append((n, f"[{', '.join(sorted(hits))}] {value[:80]}"))
+            out.append((n, hits, value))
     return out
 
 
@@ -276,6 +290,99 @@ def disk_drawing_names(tracked: Iterable[str]) -> set[str]:
     return names
 
 
+def read_words(path: Path) -> set[str]:
+    """
+    Parole da cercare alla lettera, una per riga (`#` commenta). Il file sta
+    fuori dal repo: dentro ci sono i nomi veri che non devono entrare in git.
+    """
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return {w.strip() for w in lines if w.strip() and not w.startswith("#")}
+
+
+def _git(*args: str) -> bytes:
+    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True,
+                          check=True).stdout
+
+
+def _word_hits(text: str, words: set[str]) -> set[str]:
+    low = text.lower()
+    return {w for w in words if w.lower() in low}
+
+
+def history_suspicions(words: set[str]) -> dict[str, dict[str, list[str]]]:
+    """
+    I sospetti in tutta la history, su ogni ref: nei path mai esistiti, in ogni
+    versione di ogni file, nei messaggi di commit. Raggruppati per sospetto,
+    con i posti in cui compare: è l'elenco che serve a un rewrite, che pulisce
+    una stringa ovunque e non un file alla volta.
+    """
+    found: dict[str, dict[str, list[str]]] = {
+        "path": {}, "contenuto": {}, "messaggio": {}}
+
+    def note(kind: str, hits: Iterable[str], where: str) -> None:
+        for hit in hits:
+            found[kind].setdefault(hit, []).append(where)
+
+    # path: ogni nome che un commit abbia mai toccato
+    raw = _git("log", "--all", "--format=", "--name-only", "-z")
+    for rel in sorted({p for p in raw.decode("utf-8").split("\0") if p.strip()}):
+        rel = rel.strip()
+        note("path", name_suspicions(rel) | _word_hits(rel, words), rel)
+
+    # contenuto: ogni blob una volta sola, letto con `cat-file --batch`
+    listing = _git("rev-list", "--all", "--objects").decode("utf-8")
+    blobs: dict[str, str] = {}
+    for line in listing.splitlines():
+        sha, _, rel = line.partition(" ")
+        if rel and Path(rel).suffix.lower() in (DRAWING_SUFFIXES | TEXT_SUFFIXES):
+            blobs.setdefault(sha, rel)
+    proc = subprocess.Popen(["git", "cat-file", "--batch"], cwd=ROOT,
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    assert proc.stdin and proc.stdout
+    for sha, rel in blobs.items():
+        proc.stdin.write(f"{sha}\n".encode())
+        proc.stdin.flush()
+        header = proc.stdout.readline().split()
+        if len(header) < 3 or header[1] != b"blob":
+            continue
+        data = proc.stdout.read(int(header[2]))
+        proc.stdout.read(1)
+        text = data.decode("utf-8", errors="replace")
+        where = f"{rel}@{sha[:8]}"
+        note("contenuto", _word_hits(text, words), where)
+        suffix = Path(rel).suffix
+        if suffix.lower() in DRAWING_SUFFIXES:
+            for _, hits, _ in drawing_line_hits(text):
+                note("contenuto", hits, where)
+        elif rel not in ALLOWED_PREFIX_DIRS:
+            bare = suffix in PROSE_SUFFIXES
+            for line in text.splitlines():
+                note("contenuto", suspicious_tokens(line, bare_digits=bare), where)
+    proc.stdin.close()
+    proc.wait()
+
+    # messaggi di commit
+    log = _git("log", "--all", "--format=%h%x00%B%x01").decode("utf-8")
+    for entry in log.split("\x01"):
+        sha, _, body = entry.strip().partition("\0")
+        if sha:
+            note("messaggio", suspicious_tokens(body, bare_digits=True)
+                 | _word_hits(body, words), sha)
+    return found
+
+
+def print_history(found: dict[str, dict[str, list[str]]]) -> int:
+    """Stampa un sospetto per riga, con quante volte e il primo posto."""
+    total = 0
+    for kind, hits in found.items():
+        print(f"\n— nei {kind.upper()} della history ({len(hits)} distinti)")
+        for hit in sorted(hits, key=str.lower):
+            places = sorted(set(hits[hit]))
+            print(f"    {hit}   ×{len(places)}   es. {places[0]}")
+        total += len(hits)
+    return total
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Cerca nomi di clienti nei file tracciati.")
@@ -288,10 +395,27 @@ def main(argv: list[str] | None = None) -> int:
                         help="segnala anche i codici di sole cifre, ma solo in "
                              "prosa e codice (.md/.py): nei golden sarebbero "
                              "coordinate")
+    parser.add_argument("--history", action="store_true",
+                        help="cerca in tutta la history (ogni commit, path e "
+                             "messaggio) invece che nei file di adesso")
+    parser.add_argument("--words", type=Path,
+                        help="file locale, fuori dal repo: parole da cercare "
+                             "alla lettera, una per riga (i nomi veri che i "
+                             "pattern non riconoscono)")
     args = parser.parse_args(argv)
 
     tracked = tracked_files()
     extra_names = disk_drawing_names(tracked) if args.from_disk else set()
+    if args.words:
+        extra_names |= read_words(args.words)
+
+    if args.history:
+        total = print_history(history_suspicions(extra_names))
+        if not total:
+            print("\nnessun sospetto nella history.")
+            return 0
+        print(f"\n{total} sospetti distinti nella history.")
+        return 1 if args.strict else 0
 
     in_names: list[str] = []
     in_content: list[str] = []
