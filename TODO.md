@@ -28,8 +28,25 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    installa una volta con `pipx` e si lancia da terminale, nessun progetto lo
    nomina nei suoi file tracciati. `scan` aggregato su più disegni e `--find
    PAROLA...` ci sono già (fatti prima dell'estrazione, portati con sé).
-   **Manca ancora:** pubblicare la repo privata su GitHub (per ora è solo
-   locale) e installarla con `pipx` sul sistema.
+   **Manca ancora:** installarla con `pipx` sul sistema (la repo privata è già
+   su GitHub). **Aperto dal primo lotto vero (33 disegni, 2 ottobre):**
+   `dxf-anonymize` ora legge i DWG (via ODA), scrive sul posto solo dopo che
+   `heal()` ha verificato, e il conteggio con `whole_value` è corretto — tutto
+   **non committato** in quella repo, insieme a `remove_title_logos` (dato il
+   riquadro del cartiglio da snapdraw: toglie i retini lì dentro, svuota i
+   blocchi logo — inseriti nel cartiglio, con retini, ≤ metà del cartiglio — e
+   rifiuta di scrivere se cambia un solo edge di forge fuori dal riquadro).
+   Lotto pulito in `anonimizzati/drw_0001…0033.dxf`, originali intatti; il
+   driver del lotto (regole con i nomi del cliente) è uno script in scratchpad
+   **da portare in `dxf-anonymize`** con le regole in un JSON locale.
+   Cancellare *tutto* dentro il cartiglio: provato e **scartato** (toglieva il
+   cartiglio). **Ancora aperto:** loghi senza retini (solo archi/cerchi, due
+   disegni), e i 6 disegni dove snapdraw non è sicuro del cartiglio.
+   **snapdraw `read_titleblock` alla prova del lotto:** trova il cartiglio in
+   27/33, ma i campi letti sono quasi tutti sbagliati — `drawn_by` aggancia
+   "DISEGNO DI PROPRIETÀ", `date` prende le etichette vicine o "PEZZA",
+   `drawing_number` ha letto "Group" in 8 disegni. Nomi e date li hanno trovati
+   le regole sul testo, non il cartiglio.
 3. **I 32 disegni che la suite usa e non ha in git** — ✅ **IN GIT, D79 risolto**
    `anonymize scan` aggregato su 261 stringhe distinte (D78): zero percorsi
    assoluti, un nome di persona, una sigla sui tre stili di quota, ripuliti su
