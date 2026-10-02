@@ -36,23 +36,17 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    ritrovarla a 900 righe di distanza). In D78 è stato fatto con uno script
    usa-e-getta che chiamava `scan_dxf()`: va dentro il tool, come
    `aggregate_scans()` + un flag della CLI.
-3. **I 32 disegni che la suite usa e non ha in git** — **letti e puliti (D78),
-   resta da fare l'`add`**, che è una decisione di Federico, non dello
-   strumento. I 32 sono passati per `anonymize scan` aggregato (261 stringhe
-   distinte, lette una per una): zero percorsi assoluti, un nome di persona e
-   una sigla sostituiti su otto file, `heal()` identica, suite 887. Il comando
-   che resta:
-
-   ```
-   python scripts/audit_fixtures.py --list > fixtures.txt
-   git add -f --pathspec-from-file=fixtures.txt
-   rm fixtures.txt
-   python scripts/audit_fixtures.py --strict   # deve dire "tutti in git"
-   ```
-
-   Da committare anche i tre disegni **già tracciati** che la pulitura ha
-   modificato (`golden/Multipolis.dxf`, `golden/Polylines.dxf`,
-   `mixed_pipeline/Polylines.dxf`).
+3. **I 32 disegni che la suite usa e non ha in git** — ✅ **IN GIT, D79 risolto**
+   `anonymize scan` aggregato su 261 stringhe distinte (D78): zero percorsi
+   assoluti, un nome di persona, una sigla sui tre stili di quota, ripuliti su
+   8 file, `heal()` identica, suite 887.
+   
+   Non con un `git add -f` in una cartella ignorata: `tests/data/` è diventata
+   la radice tracciata (D79, `.gitignore` la dichiara da anni inutilizzata). Un
+   disegno è pubblicabile **perché sta lì**, non perché qualcuno si ricorda una
+   flag. `tests/examples/` resta locale (originali cliente, `islands/`,
+   `111-23/`). 534 spostati con `git mv`, 32 nuovi + 2 golden, suite 887 dopo
+   il move.
 4. **Il rewrite della history** (`git filter-repo`), per ultimo, quando tutto il
    resto è committato. **D78 ha aggiunto una voce alla lista**: la sigla
    ripulita stava già in tre disegni tracciati e pushati, e
