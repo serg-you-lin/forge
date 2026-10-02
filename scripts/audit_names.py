@@ -95,9 +95,12 @@ SCIENTIFIC = re.compile(r"^\d+[eE][-+]?\d*$")
 (`34788079488412e-15`): cifre seguite da `e` ± esponente. L'esponente può
 mancare perché il token viene spezzato sul segno meno."""
 
-ABS_PATH = re.compile(r"^(\\\\[^\\]|[A-Za-z]:[\\/])")
+ABS_PATH = re.compile(r"(?<![A-Za-z0-9])(\\\\[^\\\s]|[A-Za-z]:[\\/])")
 """Percorso assoluto (UNC o con lettera di unità) dentro un disegno: nomina una
-cartella di rete, una commessa, un utente. Sospetto in sé, anche senza codici."""
+cartella di rete, una commessa, un utente. Sospetto in sé, anche senza codici.
+Si cerca in tutta la riga, non solo in testa: un disegno lo scrive anche dentro
+un testo (`Source file=C:\\...`). Non attaccato a una lettera, così `https://`
+non conta."""
 
 NUMBER_LINE = re.compile(r"^[-+]?\d*\.?\d+([eE][-+]?\d+)?$")
 """Riga di un DXF che è solo un numero: una coordinata, niente da leggere."""
@@ -254,7 +257,7 @@ def drawing_line_hits(text: str) -> list[tuple[int, set[str], str | None]]:
         value = line.strip()
         if not value or NUMBER_LINE.match(value):
             continue
-        if ABS_PATH.match(value):
+        if ABS_PATH.search(value):
             out.append((n, {value[:120]}, None))
             continue
         if any(pattern.search(value) for pattern in DRAWING_NOISE):
