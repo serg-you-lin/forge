@@ -2333,6 +2333,41 @@ Suite: 887 passed, unchanged by the move.
 
 ---
 
+### D80 — `anonymize` leaves forge entirely: no consumer may name it ✅
+D77 built the tool inside forge because that was the easiest place, but
+Federico named the real problem with that: having it tracked in forge's own
+`pyproject.toml`/`tools/` package means every consumer that depends on it (to
+reuse the same tool on its own fixtures, which was always the intent — "voluto
+in forge *e* in ogni consumer") would have to *declare* that dependency in
+their own tracked `pyproject.toml`. A dependency line naming a tool whose whole
+job is "scrub client-identifying strings out of drawings" is a suspicion by
+itself, true or not, and it would sit in a file every clone of snapbend or
+snapdraw can read — moving the exposure from forge to its consumers fixes
+nothing.
+
+**The dependency was already backwards.** `anonymize` calls `forge.load_dxf`
+and `forge.heal` as its verification oracle — it depends on forge, not the
+other way around. Forge never imported it (confirmed: `tags.py` and
+`anonymize.py` were used only by each other inside this tree). So the fix is
+structural, not a relocation: `anonymize` becomes its own project
+(`dxf-anonymize`, a private, non-forge repository) that depends on forge, and
+forge's own `tools/` package drops both files entirely — `forge/tools/
+anonymize.py`, `forge/adapters/dxf/tags.py`, and their 11 tests, all removed
+(876 passed, back from 887, with the 11 now passing in the new project
+instead).
+
+**No project that uses it may name it.** Not even as a dev-dependency or an
+optional extra: a `pyproject.toml` entry is visible in the tracked source
+regardless of whether it installs by default. `dxf-anonymize` is installed once
+per machine with `pipx` — a system command, not a project dependency — and
+invoked from a terminal against whatever file needs it, independent of which
+repository happens to be open. The asymmetry is deliberate: the tool's own
+(private) `pyproject.toml` may freely declare `forge` as a dependency, because
+forge is public and that direction reveals nothing; no public or shared repo
+may declare the tool, because that direction would.
+
+---
+
 ## Closed questions (history)
 
 - **Q1 — hole classification: topology or detection?** → resolved by D15

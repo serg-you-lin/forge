@@ -19,23 +19,17 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    dei nomi sul branch `tool/anonymize-fixtures` (due commit). Tutto **solo in
    locale**: il push lo fa Federico. `naming_convention.md` resta fuori dai
    commit finché non si decide il punto 8.
-2. **`anonymize`** — ✅ costruito (D77, branch `tool/anonymize-fixtures`):
-   `scan` elenca tutto quello che è scritto dentro un disegno, `clean` sostituisce
-   una mappa e forge verifica che la geometria non si sia mossa. Resta da **usarlo
-   sui 32 fixture** (punto 3) e da decidere se esportarlo in `forge.__all__` (per
-   ora no: è igiene del repo, non geometria, e i consumer lo importano da
-   `forge.tools.anonymize`).
-
-   **Manca a `scan`: il referto aggregato su più disegni.** Oggi `scan` accetta
-   `nargs="+"` ma cicla e stampa un referto per file: su 32 disegni sono 32
-   referti con la stessa tabella dei linetype ripetuta 12 volte, e nessuno li
-   legge fino in fondo. Quello che serve è **una riga per stringa distinta
-   attraverso tutti i disegni**, con i contesti uniti e in quanti file compare —
-   che è la forma in cui una persona legge davvero, e in D78 è la forma che ha
-   fatto emergere la sigla (vederla segnata `2 file` su una riga è diverso dal
-   ritrovarla a 900 righe di distanza). In D78 è stato fatto con uno script
-   usa-e-getta che chiamava `scan_dxf()`: va dentro il tool, come
-   `aggregate_scans()` + un flag della CLI.
+2. **`anonymize`** — ✅ costruito (D77) e ✅ **uscito da forge (D80)**: non è più
+   `forge.tools.anonymize`, è un progetto a sé (`dxf-anonymize`, repo privata,
+   locale in `GitHub/dxf-anonymize/`), perché una dipendenza dichiarata in
+   `pyproject.toml` di un consumer (snapbend, snapdraw) esporrebbe comunque nome
+   e scopo dello strumento a chi guarda quella repo, anche con `dxf-anonymize`
+   stessa privata. Dipende da forge (oracolo `heal()`), mai il contrario; si
+   installa una volta con `pipx` e si lancia da terminale, nessun progetto lo
+   nomina nei suoi file tracciati. `scan` aggregato su più disegni e `--find
+   PAROLA...` ci sono già (fatti prima dell'estrazione, portati con sé).
+   **Manca ancora:** pubblicare la repo privata su GitHub (per ora è solo
+   locale) e installarla con `pipx` sul sistema.
 3. **I 32 disegni che la suite usa e non ha in git** — ✅ **IN GIT, D79 risolto**
    `anonymize scan` aggregato su 261 stringhe distinte (D78): zero percorsi
    assoluti, un nome di persona, una sigla sui tre stili di quota, ripuliti su
