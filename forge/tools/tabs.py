@@ -63,7 +63,7 @@ def _dot(a: Point, b: Point) -> float:
     return a[0] * b[0] + a[1] * b[1]
 
 
-def _normalize(v: Point) -> Point:
+def _unit_vector(v: Point) -> Point:
     length = math.hypot(v[0], v[1])
     if length < 1e-12:
         raise ValueError("direzione nulla: anchor_parent e anchor_child coincidono")
@@ -117,7 +117,7 @@ def bridge_tabs(
     Solleva `ValueError` se la linea offsettata non interseca uno dei due
     contorni (es. `tab_width` troppo grande, o anchor fuori posto).
     """
-    direction = _normalize(_sub(anchor_parent, anchor_child))
+    direction = _unit_vector(_sub(anchor_parent, anchor_child))
     perp = _perp(direction)
     offset = _scale(perp, tab_width / 2.0)
 

@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`75` modules · `354` module-level functions · `54` classes · `13817` lines of code.
+`75` modules · `351` module-level functions · `54` classes · `13790` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -22,8 +22,8 @@ Every module-level name in the package, alphabetically. **Search here before wri
 |---|---|---|---|
 | `_adaptive_polyline` | func | `forge/core/primitives/segments.py:298` | Discretizza una curva parametrica valutata da `evaluate(t) -> Point` fra |
 | `_add` | func | `forge/tools/tabs.py:54` |  |
-| `_add_ellipse` | func | `forge/adapters/dxf/exporter.py:172` | Materializza una EllipseSeg come ELLIPSE nativa — mai una spline: forge |
-| `_add_spline` | func | `forge/adapters/dxf/exporter.py:127` | Materializza una SplineSeg come SPLINE nativa, ricostruita dalla primitiva |
+| `_add_ellipse` | func | `forge/adapters/dxf/exporter.py:173` | Materializza una EllipseSeg come ELLIPSE nativa — mai una spline: forge |
+| `_add_spline` | func | `forge/adapters/dxf/exporter.py:128` | Materializza una SplineSeg come SPLINE nativa, ricostruita dalla primitiva |
 | `AddSegment` | class | `forge/core/healing/gap_solver.py:87` | Istruzione: aggiungi un segmento retto tra pt_a e pt_b. |
 | `anchor_annotations` | func | `forge/tools/anchor.py:34` | Assegna ``cluster_ref`` a ogni annotazione di ``result.annotations``. |
 | `_angle_diff` | func | `forge/core/shape.py:157` | Differenza fra due direzioni modulo 180, in [0, 90]. |
@@ -34,16 +34,16 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_annotation_entry` | func | `forge/io/view_model.py:119` |  |
 | `_annotation_signature` | func | `forge/adapters/dxf/loader.py:63` |  |
 | `apply_gap_fixes` | func | `forge/core/healing/gap_solver.py:345` | Applica i GapFix restituendo una NUOVA lista di Edge — `edges` non viene mutata. |
-| `_apply_role_styles` | func | `forge/io/dxf.py:530` | Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer |
+| `_apply_role_styles` | func | `forge/io/dxf.py:513` | Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer |
 | `_Arc` | class | `forge/core/healing/outer_scan.py:103` |  |
 | `arc_angles` | func | `forge/core/geometry.py:358` | `(start_angle, end_angle, ccw)` in radianti di un arco che passa per |
-| `_arc_end_point` | func | `forge/adapters/dxf/exporter.py:98` |  |
+| `_arc_end_point` | func | `forge/adapters/dxf/exporter.py:99` |  |
 | `_arc_key` | func | `forge/core/healing/normalizer.py:330` | Chiave del cerchio (centro+raggio) a precisione fissa — v. `_line_key`. |
 | `_arc_point` | func | `forge/core/healing/outer_scan.py:132` |  |
 | `_arc_points` | func | `forge/adapters/dxf/annotation_extractor.py:479` |  |
 | `_arc_s` | func | `forge/core/topology/noding.py:90` |  |
-| `arc_seg_to_bulge` | func | `forge/adapters/dxf/exporter.py:76` |  |
-| `_arc_start_point` | func | `forge/adapters/dxf/exporter.py:92` |  |
+| `arc_seg_to_bulge` | func | `forge/adapters/dxf/exporter.py:77` |  |
+| `_arc_start_point` | func | `forge/adapters/dxf/exporter.py:93` |  |
 | `ArcSeg` | class | `forge/core/primitives/segments.py:102` |  |
 | `are_collinear` | func | `forge/core/geometry.py:87` | Restituisce True se due LineString giacciono sulla stessa retta infinita. |
 | `_arrival_direction` | func | `forge/core/topology/graph.py:338` |  |
@@ -80,7 +80,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_close_self_loop` | func | `forge/core/topology/graph.py:254` | ArcSeg il cui sviluppo (raggio*sweep) supera epsilon -> CircleSeg (loop degenere vero). Altrimenti `None` (sl… |
 | `ClosedFeature` | class | `forge/model/feature.py:47` | Feature con geometria chiusa: ha un polygon e una lista di segmenti. |
 | `_closest_to` | func | `forge/core/geometry.py:518` | Restituisce il punto più vicino a ref tra i candidati. |
-| `_cluster` | func | `forge/core/island.py:211` |  |
+| `_cluster` | func | `forge/core/island.py:210` |  |
 | `cluster_passes_min_area` | func | `forge/io/dxf.py:175` | True se la parte supera la soglia di area minima (min_area <= 0 = nessun filtro). |
 | `cluster_points` | func | `forge/core/topology/graph.py:191` | Raggruppa punti 2D entro `epsilon` e restituisce {punto -> rappresentante}. |
 | `_collect_inners` | func | `forge/core/healing/hierarchy.py:112` | Appiattisce l'albero di contenimento in `cluster.inners` (ogni discendente |
@@ -88,8 +88,8 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_color_index` | func | `forge/model/role_rule.py:105` | Intero ACI da intero, stringa numerica ("4") o nome standard ("cyan"). |
 | `compute_gap_fixes` | func | `forge/core/healing/gap_solver.py:192` | Calcola i GapFix per tutti gli endpoint liberi entro tolerance. |
 | `_configure_odafc` | func | `forge/adapters/dxf/loader.py:107` | Punta l'addon `odafc` all'eseguibile ODA File Converter. |
-| `_continues` | func | `forge/core/island.py:271` | `seg` prosegue `prev` sulla stessa curva, nello stesso verso? |
-| `_contour` | func | `forge/core/island.py:231` | Il poligono resta quello dei pezzi della rete piana; i segmenti sono |
+| `_continues` | func | `forge/core/island.py:270` | `seg` prosegue `prev` sulla stessa curva, nello stesso verso? |
+| `_contour` | func | `forge/core/island.py:230` | Il poligono resta quello dei pezzi della rete piana; i segmenti sono |
 | `_contour_entry` | func | `forge/io/view_model.py:49` |  |
 | `contour_shape` | func | `forge/core/shape.py:62` | Forma di un contorno chiuso (`ForgeContour`, o qualunque oggetto con |
 | `ContourRole` | class | `forge/model/role.py:47` | I tre ruoli che il motore topologico conosce. **Non esaustivo** — un |
@@ -130,6 +130,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `DxfEntityDispatcher` | class | `forge/adapters/dxf/parser.py:21` | Centralizza il routing per tipo di entità DXF. |
 | `Edge` | class | `forge/core/topology/edge.py:28` | Layer intermedio tra l'entità sorgente grezza (di qualsiasi formato) e il |
 | `_edge_coords` | func | `forge/core/topology/graph.py:324` |  |
+| `edge_geometry` | func | `forge/core/topology/noding.py:248` | L'edge come geometria shapely: LineString discretizzata, Point se degenere. |
 | `edge_styles_from_loop` | func | `forge/core/topology/loop_finder.py:181` | Stili grezzi (linetype/colore) di un loop, allineati 1:1 con |
 | `edges_to_open_features` | func | `forge/core/topology/loop_finder.py:204` | Converte gli Edge non assorbiti da un loop strutturale in OpenFeature. |
 | `EdgeStyle` | class | `forge/model/style.py:38` |  |
@@ -146,8 +147,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_engraving_from_open` | func | `forge/tools/detect.py:493` |  |
 | `_ensure_detected` | func | `forge/tools/detect.py:39` | `cluster.detected`, creandolo alla prima scrittura. |
 | `_ensure_layer` | func | `forge/io/dxf.py:504` | Crea il layer `name` col suo colore canonico se non esiste già. Serve per i |
-| `_ensure_linetype` | func | `forge/adapters/dxf/exporter.py:23` | Registra (se serve) il linetype di `style` nel documento di output e ne |
-| `_ensure_linetype` | func | `forge/io/dxf.py:513` | Registra nel documento un linetype standard ezdxf (`ezdxf.tools.standards`, |
+| `ensure_linetype` | func | `forge/adapters/dxf/exporter.py:23` | Garantisce che il linetype `name` esista in `doc` e ne ritorna il nome; |
 | `_entity_style` | func | `forge/adapters/dxf/adapter.py:74` | Cattura l'aspetto EFFETTIVO (linetype/colore) di un'entità DXF in un |
 | `entity_to_polygon` | func | `forge/adapters/dxf/adapter.py:211` | Converte un'entità DXF chiusa in un `Polygon` shapely, passando per le |
 | `_explode_inserts` | func | `forge/adapters/dxf/sanitize.py:106` | Esplode tutti gli INSERT (blocchi) nel modelspace in entità primitive. |
@@ -181,10 +181,6 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `gap_endpoints_at_nodes` | func | `forge/core/healing/gap_solver.py:297` | GapEndpoint per gli endpoint che cadono su uno dei `nodes` — tuple di |
 | `GapEndpoint` | class | `forge/core/healing/gap_solver.py:49` | Endpoint libero nel grafo topologico. |
 | `_generic` | func | `forge/core/shape.py:138` |  |
-| `_geometry` | func | `forge/core/healing/islands.py:101` |  |
-| `_geometry` | func | `forge/core/island.py:301` |  |
-| `_geometry` | func | `forge/core/topology/noding.py:248` |  |
-| `_geometry` | func | `forge/tools/anchor.py:162` |  |
 | `GeometryAdapter` | class | `forge/adapters/geometry/loader.py:47` | Traduce descrizioni geometriche pure (dict) in Edge del dominio forge. |
 | `_get_solver` | func | `forge/core/healing/gap_solver.py:180` |  |
 | `__getattr__` | func | `forge/model/__init__.py:30` |  |
@@ -202,7 +198,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_hole_entry` | func | `forge/io/view_model.py:57` |  |
 | `_hole_from_contour` | func | `forge/tools/detect.py:429` |  |
 | `inject` | func | `forge/tools/inject.py:39` | Arricchisce i ForgeCluster con i dati estratti da un `data_injector` esterno. |
-| `_inners` | func | `forge/core/island.py:219` | Un ForgeContour inner per giro chiuso; un giro senza poligono valido no. |
+| `_inners` | func | `forge/core/island.py:218` | Un ForgeContour inner per giro chiuso; un giro senza poligono valido no. |
 | `inspect_document` | func | `forge/inspect.py:140` | Stampa un ForgeDocument prodotto da forge.load_dxf(): cosa ha estratto e |
 | `inspect_dxf` | func | `forge/inspect.py:61` | Apre un DXF/DWG con ezdxf e stampa cosa contiene, senza toccare forge. |
 | `inspect_file` | func | `forge/inspect.py:319` | Apre un file e stampa i tre livelli in fila: |
@@ -214,10 +210,11 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `is_structural` | func | `forge/tools/manufacturing_role.py:77` | Predicato strutturale COMPLETO: outer/inner (motore) + hole/countersink/ |
 | `is_structural_role` | func | `forge/model/role.py:86` | True se ``role`` è OUTER o INNER per il motore (vedi ``STRUCTURAL_ROLES``). |
 | `is_threaded_hole` | func | `forge/tools/hole_detector.py:22` | True se esiste un arco a ~270° concentrico al cerchio e con raggio di poco |
-| `Island` | class | `forge/core/healing/islands.py:37` | Gruppo di Edge vicini, con la bbox che li contiene tutti. |
-| `island` | func | `forge/core/island.py:71` | Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno |
-| `IslandReading` | class | `forge/core/island.py:54` | Cosa island() ha deciso su un'isola, pezzo per pezzo. |
-| `_joined` | func | `forge/core/island.py:290` |  |
+| `Island` | class | `forge/core/healing/islands.py:36` | Gruppo di Edge vicini, con la bbox che li contiene tutti. |
+| `island` | func | `forge/core/island.py:70` | Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno |
+| `IslandReading` | class | `forge/core/island.py:53` | Cosa island() ha deciso su un'isola, pezzo per pezzo. |
+| `_item_geometry` | func | `forge/tools/anchor.py:162` |  |
+| `_joined` | func | `forge/core/island.py:289` |  |
 | `_key_for` | func | `forge/adapters/dxf/sanitize.py:154` | Restituisce una chiave hashable che identifica univocamente |
 | `labeled_features` | func | `forge/core/healing/steps.py:228` | Gli Edge messi da parte da split_labeled() come feature col loro ruolo |
 | `_labeled_hole_from_contour` | func | `forge/tools/detect.py:447` | `ForgeContour` con ruolo foro da role_rules → `Hole(source="labeled")`. |
@@ -251,7 +248,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_merge_arc_group` | func | `forge/core/healing/normalizer.py:379` | Un gruppo di ArcSeg sullo stesso cerchio -> spezza in catene di |
 | `merge_cocircular_overlaps` | func | `forge/core/healing/normalizer.py:339` | `merge_collinear_overlaps` per gli ArcSeg: fonde gruppi co-circolari |
 | `merge_collinear_overlaps` | func | `forge/core/healing/normalizer.py:120` | Fonde gruppi di LineSeg collineari (stessa retta infinita, `_line_key`) |
-| `_merge_runs` | func | `forge/core/island.py:239` | Segmenti consecutivi di un giro chiuso sulla stessa circonferenza (o |
+| `_merge_runs` | func | `forge/core/island.py:238` | Segmenti consecutivi di un giro chiuso sulla stessa circonferenza (o |
 | `_mleader_anchor` | func | `forge/adapters/dxf/annotation_extractor.py:113` | Primo vertice della direttrice di un MULTILEADER. |
 | `mleader_text` | func | `forge/adapters/dxf/mtext.py:37` | Testo grezzo di un MULTILEADER (prima della pulizia), None se assente. |
 | `_moved_segment` | func | `forge/core/healing/gap_solver.py:327` | Nuovo segmento con l'endpoint `role` spostato su `new_pt`. None se non gestito. |
@@ -263,8 +260,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `NodedEdges` | class | `forge/core/topology/noding.py:39` | La rete piana: i pezzi, e per ognuno l'Edge da cui viene. |
 | `non_contour_candidates` | func | `forge/tools/non_contour.py:40` | Edge di `doc.edges` che l'euristica topologica di `heal()` escluderebbe dal |
 | `NonContourEdgeDetector` | class | `forge/core/topology/non_contour_edges.py:41` |  |
-| `_normalize` | func | `forge/core/island.py:197` | Stessi passi di heal, ma sulla griglia fine della rete piana: prima i |
-| `_normalize` | func | `forge/tools/tabs.py:66` |  |
+| `_normalize` | func | `forge/core/island.py:196` | Stessi passi di heal, ma sulla griglia fine della rete piana: prima i |
 | `_normalize_features` | func | `forge/tools/detect.py:66` | Normalizza l'argomento `features` di detect_flat() in un set di stringhe. |
 | `normalize_ocs` | func | `forge/adapters/dxf/sanitize.py:19` | Normalizza il vettore di estrusione di tutte le entità OCS nel modelspace. |
 | `normalize_role` | func | `forge/model/role.py:107` | Ripulisce una stringa-ruolo che arriva dal chiamante (``RoleRule``, |
@@ -272,7 +268,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `num_segments_for_bulge` | func | `forge/core/geometry.py:47` | Numero di segmenti per discretizzare un arco dato il suo bulge. |
 | `_on_arc` | func | `forge/core/healing/outer_scan.py:126` |  |
 | `_on_boundary` | func | `forge/tools/anchor.py:119` | L'elemento col bordo più vicino a ``point``, se entro ``distance``. |
-| `_open` | func | `forge/core/island.py:297` |  |
+| `_open` | func | `forge/core/island.py:296` |  |
 | `OpenFeature` | class | `forge/model/feature.py:72` | Feature con geometria aperta: ha segmenti ma non un polygon. |
 | `outer_candidate_edges` | func | `forge/core/healing/outer_scan.py:71` | Per ogni asse, una quota rappresentativa (punto medio) fra ogni coppia |
 | `outer_face` | func | `forge/core/topology/outer_face.py:53` | Contorno esterno della rete `edges` (già piana: split_at_crossings). I |
@@ -307,8 +303,8 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_raw_linetype_pattern` | func | `forge/adapters/dxf/adapter.py:51` | Pattern grezzo (lunghezza totale + tratti con segno, `+` = tratto, |
 | `_ray_exit_point` | func | `forge/tools/tabs.py:224` | Punto in cui il raggio da `center` verso `direction` esce dal contorno chiuso `points`. |
 | `_read_dwg` | func | `forge/adapters/dxf/loader.py:148` | Legge un file DWG usando ezdxf.addons.odafc (wrapper di ODA File Converter). |
-| `read_island` | func | `forge/core/island.py:155` | Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate, |
-| `read_islands` | func | `forge/core/island.py:133` | `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola |
+| `read_island` | func | `forge/core/island.py:154` | Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate, |
+| `read_islands` | func | `forge/core/island.py:132` | `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola |
 | `read_metadata_from_dxf` | func | `forge/io/exporter.py:316` | Legge i metadati FORGE XDATA dall'entità OuterContour. |
 | `_rectangle` | func | `forge/core/shape.py:121` |  |
 | `_refine_segment` | func | `forge/core/primitives/segments.py:269` | Suddivide `[t0, t1]` finché il punto medio (valutato con `evaluate(t)`) |
@@ -343,6 +339,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `rotate_result` | func | `forge/tools/rotate.py:147` | Nuovo `ForgeResult` con ogni cluster (`rotate_cluster`), `trash_entities` |
 | `rotate_to_longest` | func | `forge/tools/rotate.py:247` | Ruota `result` (già sano, da un `heal()` già fatto dal chiamante) in modo |
 | `round_point` | func | `forge/core/geometry.py:29` |  |
+| `_round_points` | func | `forge/io/view_model.py:32` | Lista di punti (2D o 3D) → lista di [x, y] arrotondati. |
 | `sample_bezier_cubic` | func | `forge/adapters/pdf/geometry_adapter.py:37` | Campiona una curva di Bezier cubica in un set di punti lineari (poligonale). |
 | `sanitize` | func | `forge/adapters/dxf/sanitize.py:88` | Esegue tutti i sanitizer in sequenza sul modelspace ricevuto. |
 | `sanitize_pdf_geometries` | func | `forge/adapters/pdf/sanitize.py:13` | Prende gli item geometrici grezzi estratti dall'extractor, applica la conversione |
@@ -354,13 +351,13 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_scan_axis` | func | `forge/core/healing/outer_scan.py:186` |  |
 | `_scan_bbox` | func | `forge/io/svg.py:178` | bbox da tutti i punti del view model — fallback quando vm['bbox'] è None. |
 | `_search_warnings` | func | `forge/core/heal.py:170` | Cosa racconta heal() dei gradini della scala di find_loops(). |
-| `_seg_end_point` | func | `forge/adapters/dxf/exporter.py:104` |  |
+| `_seg_end_point` | func | `forge/adapters/dxf/exporter.py:105` |  |
 | `segment_endpoints` | func | `forge/core/primitives/segments.py:487` | (start, end) di un segmento primitivo, in coordinate XY non arrotondate. |
 | `segment_is_closed` | func | `forge/core/primitives/segments.py:540` | True se gli endpoint del segmento coincidono entro ``tolerance``. |
 | `_segment_key` | func | `forge/adapters/dxf/adapter.py:160` | Chiave univoca per deduplicazione. |
 | `segment_length` | func | `forge/core/geometry.py:170` | Lunghezza reale di una primitiva nativa singola (`LineSeg`/`ArcSeg`/ |
 | `segments_from_loop` | func | `forge/core/topology/loop_finder.py:155` | Segmenti nativi di un loop, orientati nel verso di percorrenza. |
-| `segments_to_pts_with_bulge` | func | `forge/adapters/dxf/exporter.py:112` |  |
+| `segments_to_pts_with_bulge` | func | `forge/adapters/dxf/exporter.py:113` |  |
 | `set_schema` | func | `forge/io/exporter.py:107` | Imposta uno schema esterno come schema attivo. |
 | `_setup_layers` | func | `forge/io/dxf.py:495` |  |
 | `_shape` | func | `forge/io/svg.py:28` |  |
@@ -372,7 +369,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_solve_arc_line` | func | `forge/core/healing/gap_solver.py:120` |  |
 | `_solve_line_line` | func | `forge/core/healing/gap_solver.py:103` |  |
 | `_solve_spline_any` | func | `forge/core/healing/gap_solver.py:156` |  |
-| `spatial_islands` | func | `forge/core/healing/islands.py:55` | Union-find sulle coppie di Edge a distanza <= gap_tolerance (STRtree, |
+| `spatial_islands` | func | `forge/core/healing/islands.py:54` | Union-find sulle coppie di Edge a distanza <= gap_tolerance (STRtree, |
 | `SplineSeg` | class | `forge/core/primitives/segments.py:319` |  |
 | `_split` | func | `forge/core/topology/noding.py:202` |  |
 | `split` | func | `forge/io/dxf.py:180` | Materializza un ForgeResult in un Drawing per parte. |
@@ -386,7 +383,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_stadium` | func | `forge/core/shape.py:95` |  |
 | `structural_loops` | func | `forge/core/healing/steps.py:164` | I loop in cui ogni edge con ruolo deciso è strutturale: un solo edge non |
 | `structural_segments` | func | `forge/tools/rotate.py:73` | Segmenti nativi dei contorni strutturali di ogni cluster: sempre |
-| `_style_attribs` | func | `forge/adapters/dxf/exporter.py:52` | dxfattribs per una entità in output: layer + linetype della sorgente, se |
+| `_style_attribs` | func | `forge/adapters/dxf/exporter.py:49` | dxfattribs per una entità in output: layer + linetype della sorgente, se |
 | `_sub` | func | `forge/tools/tabs.py:50` |  |
 | `_sub_part` | func | `forge/inspect.py:276` |  |
 | `_synthesize_dimension` | func | `forge/adapters/dxf/annotation_extractor.py:290` | Ricostruisce l'immagine di una DIMENSION lineare dai def-point, quando il |
@@ -408,6 +405,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_trash_probe_point` | func | `forge/io/dxf.py:355` | Punto rappresentativo di un'entità trash, per assegnarla a una parte. |
 | `_try_fit_arc` | func | `forge/core/primitives/fitting.py:90` | Prova un fit a cerchio su `points`; lo accetta solo se lo scostamento |
 | `_uniform_knots` | func | `forge/io/text.py:161` | Nodi bloccati agli estremi e passo interno costante: non serve scriverli. |
+| `_unit_vector` | func | `forge/tools/tabs.py:66` |  |
 | `_upgrade_to_r2010` | func | `forge/adapters/dxf/loader.py:180` | Converte un documento DXF legacy in R2010. |
 | `validate` | func | `forge/rules/validator.py:29` | Valida l'input prima di heal(). |
 | `validate_result` | func | `forge/rules/validator.py:128` | Valida i ForgeCluster dentro un ForgeResult già popolato da heal(). |
@@ -420,25 +418,17 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_write_attached_features` | func | `forge/io/dxf.py:441` | Ogni altra collezione di `cluster.detected` (D70): un elemento con un |
 | `_write_bending_lines` | func | `forge/io/dxf.py:465` | Materializza le bending lines da geometria pura (bl.geometry). |
 | `_write_custom` | func | `forge/tools/detect.py:624` |  |
-| `write_engrave_segments` | func | `forge/adapters/dxf/exporter.py:278` | Materializza un'incisione come geometria NATIVA, una entità DXF per |
+| `write_engrave_segments` | func | `forge/adapters/dxf/exporter.py:279` | Materializza un'incisione come geometria NATIVA, una entità DXF per |
 | `write_metadata_to_dxf` | func | `forge/io/exporter.py:273` | Scrive i metadati come XDATA sull'entità OuterContour. |
-| `write_open_segments` | func | `forge/adapters/dxf/exporter.py:343` | Materializza una lista di segmenti puri come geometria APERTA su msp. |
-| `write_segments` | func | `forge/adapters/dxf/exporter.py:199` | Materializza una lista di segmenti puri su msp. |
+| `write_open_segments` | func | `forge/adapters/dxf/exporter.py:344` | Materializza una lista di segmenti puri come geometria APERTA su msp. |
+| `write_segments` | func | `forge/adapters/dxf/exporter.py:200` | Materializza una lista di segmenti puri su msp. |
 | `_write_trash` | func | `forge/io/dxf.py:371` | Materializza `result.trash_entities`. |
 | `_Writer` | class | `forge/io/text.py:43` | Numeri arrotondati e id dei contorni per una sola chiamata di `to_text`. |
 | `_xy` | func | `forge/adapters/dxf/annotation_extractor.py:475` |  |
-| `_xy` | func | `forge/io/view_model.py:32` | Lista di punti (2D o 3D) → lista di [x, y] arrotondati. |
 
 ## Duplicate names
 
-Same name defined at module level in different modules. Not automatically a bug — but each one is either two implementations of one job (merge them) or two different jobs sharing a name (rename one).
-
-| name | defined in |
-|---|---|
-| `_ensure_linetype` | `forge/adapters/dxf/exporter.py:23` · `forge/io/dxf.py:513` |
-| `_geometry` | `forge/core/healing/islands.py:101` · `forge/core/island.py:301` · `forge/core/topology/noding.py:248` · `forge/tools/anchor.py:162` |
-| `_normalize` | `forge/core/island.py:197` · `forge/tools/tabs.py:66` |
-| `_xy` | `forge/adapters/dxf/annotation_extractor.py:475` · `forge/io/view_model.py:32` |
+No module-level name is defined in more than one module.
 
 ## Dependency rule
 
@@ -505,22 +495,22 @@ _adapters/dxf/annotation_extractor.py_
 - `_dimension_measurement(entity) -> str` — L536
 - `_f(value) -> Optional[float]` — L546
 
-#### `forge/adapters/dxf/exporter.py` — 413 lines
+#### `forge/adapters/dxf/exporter.py` — 414 lines
 
 _adapters/dxf/exporter.py_
 
-- `_ensure_linetype(doc, style: Optional[EdgeStyle]) -> str` — L23 — Registra (se serve) il linetype di `style` nel documento di output e ne
-- `_style_attribs(doc, layer: str, style: Optional[EdgeStyle]=None) -> dict` — L52 — dxfattribs per una entità in output: layer + linetype della sorgente, se
-- `arc_seg_to_bulge(arc: ArcSeg) -> float` — L76
-- `_arc_start_point(arc: ArcSeg) -> tuple` — L92
-- `_arc_end_point(arc: ArcSeg) -> tuple` — L98
-- `_seg_end_point(seg) -> Optional[tuple]` — L104
-- `segments_to_pts_with_bulge(segments: list) -> list` — L112
-- `_add_spline(spline: SplineSeg, msp, layer: str, style: Optional[EdgeStyle]=None) -> object` — L127 — Materializza una SplineSeg come SPLINE nativa, ricostruita dalla primitiva
-- `_add_ellipse(ellipse: EllipseSeg, msp, layer: str, style: Optional[EdgeStyle]=None) -> object` — L172 — Materializza una EllipseSeg come ELLIPSE nativa — mai una spline: forge
-- `write_segments(segments: List, msp, layer: str, styles: Optional[List]=None) -> Optional[object]` — L199 — Materializza una lista di segmenti puri su msp.
-- `write_engrave_segments(segments: List, msp, layer: str, styles: Optional[List]=None) -> List[object]` — L278 — Materializza un'incisione come geometria NATIVA, una entità DXF per
-- `write_open_segments(segments: List, msp, layer: str, styles: Optional[List]=None) -> List[object]` — L343 — Materializza una lista di segmenti puri come geometria APERTA su msp.
+- `ensure_linetype(doc, name: str, pattern: Optional[Tuple[float, ...]]=None, description: str='') -> Optional[str]` — L23 — Garantisce che il linetype `name` esista in `doc` e ne ritorna il nome;
+- `_style_attribs(doc, layer: str, style: Optional[EdgeStyle]=None) -> dict` — L49 — dxfattribs per una entità in output: layer + linetype della sorgente, se
+- `arc_seg_to_bulge(arc: ArcSeg) -> float` — L77
+- `_arc_start_point(arc: ArcSeg) -> tuple` — L93
+- `_arc_end_point(arc: ArcSeg) -> tuple` — L99
+- `_seg_end_point(seg) -> Optional[tuple]` — L105
+- `segments_to_pts_with_bulge(segments: list) -> list` — L113
+- `_add_spline(spline: SplineSeg, msp, layer: str, style: Optional[EdgeStyle]=None) -> object` — L128 — Materializza una SplineSeg come SPLINE nativa, ricostruita dalla primitiva
+- `_add_ellipse(ellipse: EllipseSeg, msp, layer: str, style: Optional[EdgeStyle]=None) -> object` — L173 — Materializza una EllipseSeg come ELLIPSE nativa — mai una spline: forge
+- `write_segments(segments: List, msp, layer: str, styles: Optional[List]=None) -> Optional[object]` — L200 — Materializza una lista di segmenti puri su msp.
+- `write_engrave_segments(segments: List, msp, layer: str, styles: Optional[List]=None) -> List[object]` — L279 — Materializza un'incisione come geometria NATIVA, una entità DXF per
+- `write_open_segments(segments: List, msp, layer: str, styles: Optional[List]=None) -> List[object]` — L344 — Materializza una lista di segmenti puri come geometria APERTA su msp.
 
 #### `forge/adapters/dxf/layers.py` — 92 lines
 
@@ -706,14 +696,13 @@ _core/healing/gap_solver.py_
 - **class** `HierarchyBuilder` — L149
   - methods: `__init__`, `build`, `_build_parts`, `_collect_trash`
 
-#### `forge/core/healing/islands.py` — 105 lines
+#### `forge/core/healing/islands.py` — 95 lines
 
 _core/healing/islands.py_
 
-- **class** `Island` — L37 — Gruppo di Edge vicini, con la bbox che li contiene tutti.
+- **class** `Island` — L36 — Gruppo di Edge vicini, con la bbox che li contiene tutti.
   - methods: `width`, `height`
-- `spatial_islands(edges: Iterable[Edge], gap_tolerance: float) -> List[Island]` — L55 — Union-find sulle coppie di Edge a distanza <= gap_tolerance (STRtree,
-- `_geometry(edge: Edge)` — L101
+- `spatial_islands(edges: Iterable[Edge], gap_tolerance: float) -> List[Island]` — L54 — Union-find sulle coppie di Edge a distanza <= gap_tolerance (STRtree,
 
 #### `forge/core/healing/normalizer.py` — 603 lines
 
@@ -768,23 +757,22 @@ _core/healing/steps.py_
 - `_graph(edges: List[Edge], exclude_ids: FrozenSet[int], epsilon: float=0.0)` — L267
 - `_ring_segments(coords) -> List[LineSeg]` — L273
 
-#### `forge/core/island.py` — 305 lines
+#### `forge/core/island.py` — 298 lines
 
 _core/island.py_
 
-- **class** `IslandReading` — L54 — Cosa island() ha deciso su un'isola, pezzo per pezzo.
-- `island(doc: ForgeDocument, tolerance: Optional[float]=None, island_gap: float=10.0, max_gap: float=0.5, is_structural: Optional[Callable[[str], bool]]=None) -> ForgeResult` — L71 — Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno
-- `read_islands(edges: List[Edge], tolerance: float, island_gap: float=10.0, max_gap: float=0.5) -> List[IslandReading]` — L133 — `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola
-- `read_island(edges: List[Edge], tolerance: float, max_gap: float=0.5) -> IslandReading` — L155 — Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate,
-- `_normalize(edges: List[Edge], tolerance: float, max_gap: float) -> List[Edge]` — L197 — Stessi passi di heal, ma sulla griglia fine della rete piana: prima i
-- `_cluster(reading: IslandReading, source_file: str) -> ForgeCluster` — L211
-- `_inners(loops, parent: ForgeContour) -> List[ForgeContour]` — L219 — Un ForgeContour inner per giro chiuso; un giro senza poligono valido no.
-- `_contour(segments, styles, polygon, role, parent) -> ForgeContour` — L231 — Il poligono resta quello dei pezzi della rete piana; i segmenti sono
-- `_merge_runs(segments: list, styles: list)` — L239 — Segmenti consecutivi di un giro chiuso sulla stessa circonferenza (o
-- `_continues(prev, prev_style, seg, style) -> bool` — L271 — `seg` prosegue `prev` sulla stessa curva, nello stesso verso?
-- `_joined(prev, seg)` — L290
-- `_open(edges: List[Edge]) -> list` — L297
-- `_geometry(edge: Edge)` — L301
+- **class** `IslandReading` — L53 — Cosa island() ha deciso su un'isola, pezzo per pezzo.
+- `island(doc: ForgeDocument, tolerance: Optional[float]=None, island_gap: float=10.0, max_gap: float=0.5, is_structural: Optional[Callable[[str], bool]]=None) -> ForgeResult` — L70 — Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno
+- `read_islands(edges: List[Edge], tolerance: float, island_gap: float=10.0, max_gap: float=0.5) -> List[IslandReading]` — L132 — `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola
+- `read_island(edges: List[Edge], tolerance: float, max_gap: float=0.5) -> IslandReading` — L154 — Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate,
+- `_normalize(edges: List[Edge], tolerance: float, max_gap: float) -> List[Edge]` — L196 — Stessi passi di heal, ma sulla griglia fine della rete piana: prima i
+- `_cluster(reading: IslandReading, source_file: str) -> ForgeCluster` — L210
+- `_inners(loops, parent: ForgeContour) -> List[ForgeContour]` — L218 — Un ForgeContour inner per giro chiuso; un giro senza poligono valido no.
+- `_contour(segments, styles, polygon, role, parent) -> ForgeContour` — L230 — Il poligono resta quello dei pezzi della rete piana; i segmenti sono
+- `_merge_runs(segments: list, styles: list)` — L238 — Segmenti consecutivi di un giro chiuso sulla stessa circonferenza (o
+- `_continues(prev, prev_style, seg, style) -> bool` — L270 — `seg` prosegue `prev` sulla stessa curva, nello stesso verso?
+- `_joined(prev, seg)` — L289
+- `_open(edges: List[Edge]) -> list` — L296
 
 #### `forge/core/primitives/__init__.py` — 11 lines
 
@@ -874,7 +862,7 @@ _loop_finder.py_
 - `edge_styles_from_loop(loop) -> list` — L181 — Stili grezzi (linetype/colore) di un loop, allineati 1:1 con
 - `edges_to_open_features(edges: list, exclude_ids: set) -> list` — L204 — Converte gli Edge non assorbiti da un loop strutturale in OpenFeature.
 
-#### `forge/core/topology/noding.py` — 252 lines
+#### `forge/core/topology/noding.py` — 253 lines
 
 _core/topology/noding.py_
 
@@ -893,7 +881,7 @@ _core/topology/noding.py_
 - `_with_nodes(edge, seg, decimals)` — L196
 - `_split(edge, params, decimals)` — L202
 - `_split_circle(edge, near, tol, decimals)` — L227
-- `_geometry(edge)` — L248
+- `edge_geometry(edge: Edge)` — L248 — L'edge come geometria shapely: LineString discretizzata, Point se degenere.
 
 #### `forge/core/topology/non_contour_edges.py` — 80 lines
 
@@ -933,7 +921,7 @@ _forge/inspect.py_
 
 ### `forge/io/`
 
-#### `forge/io/dxf.py` — 556 lines
+#### `forge/io/dxf.py` — 544 lines
 
 _forge/io/dxf.py_
 
@@ -952,8 +940,7 @@ _forge/io/dxf.py_
 - `_remove_excluded_entities(msp, excluded_upper: Set[str]) -> None` — L489
 - `_setup_layers(doc) -> None` — L495
 - `_ensure_layer(doc, name: str) -> None` — L504 — Crea il layer `name` col suo colore canonico se non esiste già. Serve per i
-- `_ensure_linetype(doc, name: str) -> None` — L513 — Registra nel documento un linetype standard ezdxf (`ezdxf.tools.standards`,
-- `_apply_role_styles(doc, role_styles: Optional[Dict[str, 'RoleStyle']]) -> None` — L530 — Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer
+- `_apply_role_styles(doc, role_styles: Optional[Dict[str, 'RoleStyle']]) -> None` — L513 — Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer
 
 #### `forge/io/exporter.py` — 355 lines
 
@@ -994,7 +981,7 @@ _io/text.py_
 
 _io/view_model.py_
 
-- `_xy(seq) -> list` — L32 — Lista di punti (2D o 3D) → lista di [x, y] arrotondati.
+- `_round_points(seq) -> list` — L32 — Lista di punti (2D o 3D) → lista di [x, y] arrotondati.
 - `_poly_points(polygon) -> list` — L37 — Vertici dell'anello esterno di un polygon shapely come lista di [x, y].
 - `_track(segments, tolerance: float) -> list` — L44 — Traccia aperta (lista di segmenti nativi) discretizzata a lista di [x, y].
 - `_contour_entry(contour, tolerance: float) -> dict` — L49
@@ -1141,7 +1128,7 @@ _forge/tools/anchor.py_
 - `_on_boundary(elements, point, distance: float) -> Optional[str]` — L119 — L'elemento col bordo più vicino a ``point``, se entro ``distance``.
 - `resolve_target(result: ForgeResult, target: Optional[str]) -> Any` — L126 — L'oggetto (contorno o feature) a cui punta un ``target``, o ``None``.
 - `_elements(result: ForgeResult) -> Iterator[Tuple[str, Any, bool]]` — L147 — (percorso, geometria shapely, è chiuso) per contorni e feature di ogni cluster.
-- `_geometry(item)` — L162
+- `_item_geometry(item)` — L162
 - `_size(geom, closed: bool) -> float` — L170 — A parità di distanza vince l'elemento più piccolo: un foro sul bordo del pezzo.
 - `_assign(position, refs, snap_distance: float) -> Optional[int]` — L175
 - `_nearest_within(probe: Point, refs, snap_distance: float) -> Optional[int]` — L184 — L'indice della parte più vicina a ``probe``, se entro ``snap_distance`` (> 0).
@@ -1263,7 +1250,7 @@ _forge/tools/tabs.py_
 - `_add(a: Point, b: Point) -> Point` — L54
 - `_scale(v: Point, s: float) -> Point` — L58
 - `_dot(a: Point, b: Point) -> float` — L62
-- `_normalize(v: Point) -> Point` — L66
+- `_unit_vector(v: Point) -> Point` — L66
 - `_perp(v: Point) -> Point` — L73 — Ruota `v` di 90° (verso arbitrario, coerente fra le due chiamate).
 - **class** `BridgeTab` — L83 — Risultato di un singolo ponte. `*_cut_{a,b}` sono `(punto, indice_lato)`
 - `bridge_tabs(parent_points: List[Point], child_points: List[Point], anchor_parent: Point, anchor_child: Point, tab_width: float) -> BridgeTab` — L97 — Costruisce UNA linguetta fra `child_points` (contorno chiuso, il figlio
@@ -1303,7 +1290,7 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 | `forge/core/heal.py` | `forge.core.healing.normalizer` · `forge.core.healing.steps` · `forge.core.model.document` · `forge.core.model.result` · `forge.core.model.role` · `forge.core.primitives.segments` · `forge.core.rules.validator` · `forge.core.topology.loop_finder` |
 | `forge/core/healing/gap_solver.py` | `forge.core.healing.geometry` · `forge.core.healing.primitives.segments` · `forge.core.healing.topology.edge` · `forge.core.model.role` |
 | `forge/core/healing/hierarchy.py` | `forge.core.core.geometry` · `forge.core.core.topology.loop_finder` · `forge.core.model.cluster` · `forge.core.model.contour` · `forge.core.model.feature` · `forge.core.model.role` |
-| `forge/core/healing/islands.py` | `forge.core.healing.primitives.segments` · `forge.core.healing.topology.edge` |
+| `forge/core/healing/islands.py` | `forge.core.healing.topology.edge` · `forge.core.healing.topology.noding` |
 | `forge/core/healing/normalizer.py` | `forge.core.healing.primitives.fitting` · `forge.core.healing.primitives.segments` · `forge.core.healing.topology.edge` · `forge.core.healing.topology.graph` · `forge.core.model.role` |
 | `forge/core/healing/outer_scan.py` | `forge.core.healing.primitives.segments` · `forge.core.healing.topology.edge` |
 | `forge/core/healing/steps.py` | `forge.core.healing.gap_solver` · `forge.core.healing.geometry` · `forge.core.healing.hierarchy` · `forge.core.healing.primitives` · `forge.core.healing.primitives.polygon_builder` · `forge.core.healing.primitives.segments` · `forge.core.healing.topology.edge` · `forge.core.healing.topology.graph` · `forge.core.healing.topology.loop_finder` · `forge.core.healing.topology.non_contour_edges` · `forge.core.model.cluster` · `forge.core.model.feature` · `forge.core.model.role` |

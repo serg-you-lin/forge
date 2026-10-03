@@ -29,7 +29,7 @@ from ..core.geometry import track_points
 from ..tools.detect import describe_features
 
 
-def _xy(seq) -> list:
+def _round_points(seq) -> list:
     """Lista di punti (2D o 3D) → lista di [x, y] arrotondati."""
     return [[round(p[0], 4), round(p[1], 4)] for p in seq]
 
@@ -38,12 +38,12 @@ def _poly_points(polygon) -> list:
     """Vertici dell'anello esterno di un polygon shapely come lista di [x, y]."""
     if polygon is None or polygon.is_empty:
         return []
-    return _xy(polygon.exterior.coords)
+    return _round_points(polygon.exterior.coords)
 
 
 def _track(segments, tolerance: float) -> list:
     """Traccia aperta (lista di segmenti nativi) discretizzata a lista di [x, y]."""
-    return _xy(track_points(segments, tolerance))
+    return _round_points(track_points(segments, tolerance))
 
 
 def _contour_entry(contour, tolerance: float) -> dict:
@@ -69,7 +69,7 @@ def _hole_entry(hole, tolerance: float) -> dict:
 
 
 def _bending_entry(bl) -> dict:
-    coords = _xy(bl.geometry.coords) if bl.geometry else []
+    coords = _round_points(bl.geometry.coords) if bl.geometry else []
     return {
         # "bending" è vocabolario di detect (tools/manufacturing_role.py),
         # non del motore — qui è una stringa letterale apposta, non un
@@ -92,7 +92,7 @@ def _engrave_entry(eng, tolerance: float) -> dict:
     if eng.polygon is not None:
         pts = _poly_points(eng.polygon)
     elif eng.pts:
-        pts = _xy(eng.pts)
+        pts = _round_points(eng.pts)
     else:
         pts = _track(getattr(eng, "segments", []), tolerance)
     return {

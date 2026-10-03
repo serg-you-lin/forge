@@ -24,7 +24,7 @@ from ..model.annotation import Annotation, Note, Dimension, Leader
 from ..tools.model.hole import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
 from ..model.role import ContourRole
 from ..adapters.dxf.exporter import (
-    write_segments, write_open_segments, write_engrave_segments,
+    ensure_linetype, write_segments, write_open_segments, write_engrave_segments,
 )
 from ..adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER,
@@ -510,23 +510,6 @@ def _ensure_layer(doc, name: str) -> None:
         doc.layers.new(name).color = color_for_layer(name)
 
 
-def _ensure_linetype(doc, name: str) -> None:
-    """
-    Registra nel documento un linetype standard ezdxf (`ezdxf.tools.standards`,
-    es. `"DASHED"`, `"CENTER"`) se non è già presente — un doc nuovo ha solo
-    `Continuous`. Un nome non standard non viene toccato: resta responsabilità
-    del chiamante che quel linetype esista già (o ezdxf solleverà al save).
-    """
-    if not name or name in doc.linetypes:
-        return
-    from ezdxf.tools.standards import linetypes as standard_linetypes
-
-    for lt_name, desc, pattern in standard_linetypes():
-        if lt_name.upper() == name.upper():
-            doc.linetypes.new(lt_name, dxfattribs={"description": desc, "pattern": pattern})
-            return
-
-
 def _apply_role_styles(doc, role_styles: Optional[Dict[str, "RoleStyle"]]) -> None:
     """
     Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer
@@ -550,7 +533,12 @@ def _apply_role_styles(doc, role_styles: Optional[Dict[str, "RoleStyle"]]) -> No
         if style.color is not None:
             layer.rgb = style.color
         if style.linetype is not None:
-            _ensure_linetype(doc, style.linetype)
-            layer.dxf.linetype = style.linetype
+            linetype = ensure_linetype(doc, style.linetype)
+            if linetype is None:
+                raise ValueError(
+                    f"RoleStyle per {role!r}: linetype {style.linetype!r} sconosciuto "
+                    "(né nel documento né tra gli standard)"
+                )
+            layer.dxf.linetype = linetype
         if style.lineweight is not None:
             layer.dxf.lineweight = round(style.lineweight * 100)

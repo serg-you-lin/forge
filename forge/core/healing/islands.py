@@ -25,10 +25,9 @@ from dataclasses import dataclass, field
 from typing import Iterable, List, Tuple
 
 from shapely import STRtree
-from shapely.geometry import LineString, Point
 
 from ..topology.edge import Edge
-from ..primitives.segments import DEFAULT_TOLERANCE
+from ..topology.noding import edge_geometry
 
 BBox = Tuple[float, float, float, float]   # xmin, ymin, xmax, ymax
 
@@ -62,7 +61,7 @@ def spatial_islands(edges: Iterable[Edge], gap_tolerance: float) -> List[Island]
     if not edges:
         return []
 
-    geoms = [_geometry(e) for e in edges]
+    geoms = [edge_geometry(e) for e in edges]
     parent = list(range(len(edges)))
 
     def find(i: int) -> int:
@@ -94,12 +93,3 @@ def spatial_islands(edges: Iterable[Edge], gap_tolerance: float) -> List[Island]
     return islands
 
 
-# ---------------------------------------------------------------------------
-# Helper
-# ---------------------------------------------------------------------------
-
-def _geometry(edge: Edge):
-    pts = edge.segment.discretize(DEFAULT_TOLERANCE)
-    if len(pts) < 2 or all(p == pts[0] for p in pts):
-        return Point(pts[0])
-    return LineString(pts)

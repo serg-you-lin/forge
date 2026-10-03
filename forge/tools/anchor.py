@@ -154,12 +154,12 @@ def _elements(result: ForgeResult) -> Iterator[Tuple[str, Any, bool]]:
             collections += list(cluster.detected.items())
         for name, items in collections:
             for k, item in enumerate(items):
-                geom = _geometry(item)
+                geom = _item_geometry(item)
                 if geom is not None:
                     yield f"clusters[{ci}].{name}[{k}]", geom, geom.geom_type == "Polygon"
 
 
-def _geometry(item):
+def _item_geometry(item):
     polygon = getattr(item, "polygon", None)
     if polygon is not None and not polygon.is_empty:
         return polygon
