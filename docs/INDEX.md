@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`74` modules · `350` module-level functions · `53` classes · `13545` lines of code.
+`75` modules · `354` module-level functions · `54` classes · `13816` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -164,6 +164,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `find_loops` | func | `forge/core/healing/steps.py:128` | La scala di heal() per chiudere i giri, esclusi `non_contour_ids`: |
 | `find_non_contour_edges` | func | `forge/core/healing/steps.py:93` | id(edge) degli Edge che non chiudono un contorno (branching + centroide |
 | `_first_coord` | func | `forge/core/topology/graph.py:331` |  |
+| `_first_point` | func | `forge/io/text.py:153` | Un punto che sta sul segmento, per dire in quale pezzo cade. |
 | `_first_step` | func | `forge/core/topology/outer_face.py:113` | L'edge che contiene il punto più a sinistra del componente, percorso |
 | `fit_circle_kasa` | func | `forge/core/geometry.py:326` | Fit algebrico (Kasa) ai minimi quadrati di un cerchio su `points`: minimizza |
 | `fit_primitives` | func | `forge/core/primitives/fitting.py:137` | Spezza `points` sui corner marcati in `is_corner` e rifitta ogni tratto: un |
@@ -347,6 +348,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `sanitize_pdf_geometries` | func | `forge/adapters/pdf/sanitize.py:13` | Prende gli item geometrici grezzi estratti dall'extractor, applica la conversione |
 | `save_json` | func | `forge/io/exporter.py:124` | Salva i metadati in JSON secondo lo schema di metadata_schema.py. |
 | `save_svg` | func | `forge/io/svg.py:171` | Scrive `to_svg(result, **kwargs)` su file. |
+| `save_text` | func | `forge/io/text.py:265` | Scrive `to_text(result)` su `path` (per convenzione `<nome>.forge.md`). |
 | `save_xml` | func | `forge/io/exporter.py:177` | Salva i metadati in XML secondo lo schema di metadata_schema.py. |
 | `_scale` | func | `forge/tools/tabs.py:58` |  |
 | `_scan_axis` | func | `forge/core/healing/outer_scan.py:186` |  |
@@ -395,6 +397,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `to_json` | func | `forge/io/exporter.py:154` | Restituisce i metadati come stringa JSON secondo schema. Vedi `save_json` per `extra_metadata`. |
 | `to_nester_input` | func | `forge/io/exporter.py:251` | Produce l'input per il nester: coordinate grezze + metadati base. |
 | `to_svg` | func | `forge/io/svg.py:45` | `ForgeResult` → stringa SVG completa (`<svg>…</svg>`). |
+| `to_text` | func | `forge/io/text.py:172` | Il `ForgeResult` come testo per un modello linguistico (`.forge.md`). |
 | `to_view_model` | func | `forge/io/view_model.py:141` | `ForgeResult` → dizionario JSON-ready con la geometria di ogni feature. |
 | `_track` | func | `forge/io/view_model.py:44` | Traccia aperta (lista di segmenti nativi) discretizzata a lista di [x, y]. |
 | `track_length` | func | `forge/core/geometry.py:151` | Lunghezza totale di una polilinea (somma delle corde). |
@@ -404,6 +407,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_trash_entry` | func | `forge/io/view_model.py:109` |  |
 | `_trash_probe_point` | func | `forge/io/dxf.py:355` | Punto rappresentativo di un'entità trash, per assegnarla a una parte. |
 | `_try_fit_arc` | func | `forge/core/primitives/fitting.py:90` | Prova un fit a cerchio su `points`; lo accetta solo se lo scostamento |
+| `_uniform_knots` | func | `forge/io/text.py:161` | Nodi bloccati agli estremi e passo interno costante: non serve scriverli. |
 | `_upgrade_to_r2010` | func | `forge/adapters/dxf/loader.py:180` | Converte un documento DXF legacy in R2010. |
 | `validate` | func | `forge/rules/validator.py:29` | Valida l'input prima di heal(). |
 | `validate_result` | func | `forge/rules/validator.py:128` | Valida i ForgeCluster dentro un ForgeResult già popolato da heal(). |
@@ -421,6 +425,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `write_open_segments` | func | `forge/adapters/dxf/exporter.py:343` | Materializza una lista di segmenti puri come geometria APERTA su msp. |
 | `write_segments` | func | `forge/adapters/dxf/exporter.py:199` | Materializza una lista di segmenti puri su msp. |
 | `_write_trash` | func | `forge/io/dxf.py:371` | Materializza `result.trash_entities`. |
+| `_Writer` | class | `forge/io/text.py:43` | Numeri arrotondati e id dei contorni per una sola chiamata di `to_text`. |
 | `_xy` | func | `forge/adapters/dxf/annotation_extractor.py:475` |  |
 | `_xy` | func | `forge/io/view_model.py:32` | Lista di punti (2D o 3D) → lista di [x, y] arrotondati. |
 
@@ -448,7 +453,7 @@ Same name defined at module level in different modules. Not automatically a bug 
 
 ### `forge/` (root)
 
-#### `forge/__init__.py` — 242 lines
+#### `forge/__init__.py` — 245 lines
 
 _forge_
 
@@ -974,6 +979,17 @@ _io/svg.py_
 - `save_svg(result: ForgeResult, path: str, **kwargs) -> None` — L171 — Scrive `to_svg(result, **kwargs)` su file.
 - `_scan_bbox(vm: dict) -> Optional[list]` — L178 — bbox da tutti i punti del view model — fallback quando vm['bbox'] è None.
 
+#### `forge/io/text.py` — 268 lines
+
+_io/text.py_
+
+- **class** `_Writer` — L43 — Numeri arrotondati e id dei contorni per una sola chiamata di `to_text`.
+  - methods: `__init__`, `num`, `pt`, `deg`, `label`, `segment`, `spline`, `contour`, `detected_item`
+- `_first_point(s) -> Optional[tuple]` — L153 — Un punto che sta sul segmento, per dire in quale pezzo cade.
+- `_uniform_knots(knots, degree: int) -> bool` — L161 — Nodi bloccati agli estremi e passo interno costante: non serve scriverli.
+- `to_text(result: ForgeResult, source_name: str='', decimals: int=3, spline_data: bool=False) -> str` — L172 — Il `ForgeResult` come testo per un modello linguistico (`.forge.md`).
+- `save_text(result: ForgeResult, path: str \| Path, source_name: str='', decimals: int=3, spline_data: bool=False) -> None` — L265 — Scrive `to_text(result)` su `path` (per convenzione `<nome>.forge.md`).
+
 #### `forge/io/view_model.py` — 209 lines
 
 _io/view_model.py_
@@ -1270,7 +1286,7 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 
 | module | imports |
 |---|---|
-| `forge/__init__.py` | `adapters.dxf.loader` · `adapters.geometry.loader` · `adapters.pdf.loader` · `core.heal` · `core.healing.islands` · `core.healing.normalizer` · `core.healing.steps` · `core.island` · `core.primitives.fitting` · `core.shape` · `core.topology.loop_finder` · `core.topology.noding` · `core.topology.outer_face` · `inspect` · `io.dxf` · `io.exporter` · `io.svg` · `io.view_model` · `model` · `model.role` · `model.role_rule` · `recipes` · `rules.palette` · `rules.validator` · `tools.anchor` · `tools.detect` · `tools.inject` · `tools.non_contour` · `tools.rotate` |
+| `forge/__init__.py` | `adapters.dxf.loader` · `adapters.geometry.loader` · `adapters.pdf.loader` · `core.heal` · `core.healing.islands` · `core.healing.normalizer` · `core.healing.steps` · `core.island` · `core.primitives.fitting` · `core.shape` · `core.topology.loop_finder` · `core.topology.noding` · `core.topology.outer_face` · `inspect` · `io.dxf` · `io.exporter` · `io.svg` · `io.text` · `io.view_model` · `model` · `model.role` · `model.role_rule` · `recipes` · `rules.palette` · `rules.validator` · `tools.anchor` · `tools.detect` · `tools.inject` · `tools.non_contour` · `tools.rotate` |
 | `forge/adapters/dxf/adapter.py` | `forge.adapters.core.adapter_base` · `forge.adapters.core.geometry` · `forge.adapters.core.primitives.polygon_builder` · `forge.adapters.core.primitives.segments` · `forge.adapters.core.topology.edge` · `forge.adapters.dxf.parser` · `forge.adapters.model.role_rule` · `forge.adapters.model.style` |
 | `forge/adapters/dxf/annotation_extractor.py` | `forge.adapters.dxf.mtext` · `forge.adapters.model.annotation` |
 | `forge/adapters/dxf/exporter.py` | `forge.adapters.core.primitives` · `forge.adapters.model.style` |
@@ -1306,6 +1322,7 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 | `forge/io/dxf.py` | `forge.io.adapters.dxf.exporter` · `forge.io.adapters.dxf.layers` · `forge.io.core.geometry` · `forge.io.model` · `forge.io.model.annotation` · `forge.io.model.document` · `forge.io.model.role` · `forge.io.rules.palette` · `forge.io.tools.model.hole` |
 | `forge/io/exporter.py` | `forge.io.adapters.dxf.layers` · `forge.io.model` · `forge.io.rules.metadata_schema` · `forge.io.tools.detect` |
 | `forge/io/svg.py` | `forge.io.model` · `forge.io.view_model` |
+| `forge/io/text.py` | `forge.io.core.primitives.segments` · `forge.io.core.shape` · `forge.io.model` · `forge.io.model.annotation` |
 | `forge/io/view_model.py` | `forge.io.core.geometry` · `forge.io.model` · `forge.io.model.role` · `forge.io.rules.palette` · `forge.io.tools.detect` |
 | `forge/model/__init__.py` | `forge.annotation` · `forge.cluster` · `forge.contour` · `forge.core.topology.edge` · `forge.document` · `forge.feature` · `forge.result` · `forge.style` |
 | `forge/model/cluster.py` | `forge.model.contour` |

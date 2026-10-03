@@ -2444,6 +2444,46 @@ follow; in the same change the READMEs, `docs/LLM.md`, `docs/ARCHITECTURE.md`
 and `docs/API.md` stop describing forge as laser-cutting preparation and use
 the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
 
+### D84 — `to_text`: a reading for a language model, experimental ✅
+The fourth renderer beside `to_dxf` (machines), `to_svg` (people), `to_json`
+(business systems): `forge.to_text(result)` / `save_text`, Markdown, by
+convention `<name>.forge.md`. Built on 3 October after the probes in the
+open note "forge as the step before an AI reads a drawing" (image only 2/6,
+image + reading 6/6, raw DXF 6/6 at ~3.5× the tokens). **Experimental**:
+importable, outside `__all__`, not in `API.md` beyond a pointer — Federico:
+"è roba in alfa, stiamo provando ma non siamo sicuri del reale valore". Its
+value is tested in snapdraw once detection on islands exists.
+
+- **Ids in forge's terms**: `Cn` = cluster n (its outer), `Cn.k` = k-th
+  closed contour inside it. Not "view": a view is snapdraw's concept.
+  Dimensions and leaders reuse the ids (`-> C1.3`), read from
+  `Dimension.references` / `Leader.target`; the renderer computes no
+  anchoring — the caller runs `anchor_annotations` first.
+- **Shapes**: `contour_shape` kinds circle/rectangle/stadium on one line;
+  anything else segment by segment, or its position and outline are lost.
+- **Splines**: described by ends, bbox and length computed on the curve; the
+  exact data (control points, knots if not clamped-uniform, weights if
+  rational) only with `spline_data=True`. Reason: a reader cannot evaluate a
+  NURBS from its control points (the D42 mistake), so the data costs tokens
+  and gives nothing; measured, it was ~50k of `anch_02`'s 136k. The exact
+  curve stays available in `to_dxf`.
+- **Open edges**: listed with geometry if unclassified and inside some
+  cluster's outer (a thread's 3/4 arc, an axis); counted if they carry a
+  decided role or lie outside every cluster. Nothing silently dropped.
+- **`detected`**: every collection written generically — type name, which
+  contours an item *is*, its scalar fields — the same rule as D70: forge
+  reports what a consumer attached without knowing what it means.
+- **Size is a budget**: `tests/real/test_text_budget.py` holds the character
+  count per `anch_NN` and fails on growth; regenerated only after looking at
+  the new text. Today (o200k): `anch_01` 8.9k tokens vs 82k DXF, `anch_02`
+  82k vs 381k, `anch_07` 31k vs 78k. On sheets of views most of it is the
+  frame, grid ticks and hatching that nobody has classified yet — the large
+  gain arrives when snapdraw labels them, not from forge.
+- **Not done**: abstracting the renderers into a common base. They share no
+  behaviour beyond reading the same model (a DXF writer, a dict builder, a
+  text writer); a base class would be ceremony until a second renderer needs
+  the same id map.
+
 ---
 
 ## Closed questions (history)
@@ -2566,7 +2606,8 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
   dimension with its value, the element it is anchored to, and whether it
   agrees with the measured geometry; texts attached to the nearest element;
   whatever was not understood, listed (nothing silently dropped).
-  **Shape of the renderer (3 October, discussion — proposal, not decided).**
+  **Shape of the renderer (3 October, discussion — built the same day as
+  D84, experimental).**
   A fourth renderer beside `to_dxf` (machines), `to_svg` (people), `to_json`
   (business systems): `to_text(result)` for a reader that is a language
   model. Thin, not a format project: the throwaway prototype of the probe

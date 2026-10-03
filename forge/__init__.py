@@ -89,6 +89,9 @@ from .io.exporter         import (
 from .io.exporter         import to_nester_input
 from .io.view_model       import to_view_model
 from .io.svg              import to_svg, save_svg
+# to_text/save_text: SPERIMENTALI (MAP.md D84) — la lettura per un agente AI.
+# Importabili come forge.to_text, fuori da __all__ finché non c'è un chiamante vero.
+from .io.text             import to_text, save_text
 from .model         import (
     ForgeResult, ForgeCluster, ForgeContour, ForgeDocument,
     Annotation, Note, Dimension, Leader,

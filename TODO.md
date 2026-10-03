@@ -94,15 +94,11 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    (view-model, SVG, la futura lettura per un agente). Non in `to_dxf`, che va
    a una macchina e resta esatto — da confermare con Federico.
    Quando si fa, diventa un `D##` in `MAP.md`.
-10. **`to_text`: la lettura per un agente AI** (proposta del 3 ottobre, non
-   ancora decisa; disegno in `MAP.md`, nota aperta "forge as the step before
-   an AI reads a drawing", paragrafo "Shape of the renderer"). Un renderer
-   sottile come gli altri tre: forme per nome, id corti riusati dalle quote,
-   3 decimali, e ogni collezione di `cluster.detected` scritta in modo
-   generico (come D70 per `to_dxf`), così le feature di snapdraw ci entrano
-   senza che forge sappia cosa sono. Si può fare dopo il punto 9 (stesso
-   terreno: uscite di lettura, archi interi, arrotondamento). La prova del
-   valore si fa in snapdraw, dopo la sua detection.
+10. **`to_text`: la lettura per un agente AI** — ✅ **fatto, sperimentale
+   (D84)**, 3 ottobre. Resta aperto: la prova del valore, in snapdraw dopo la
+   sua detection (è nel TODO di snapdraw); se sopravvive, entra in `__all__` e
+   in `API.md`. Sui fogli di viste il peso è ancora quasi tutto cornice,
+   tacche e retini non classificati: si abbassa quando snapdraw li etichetta.
 
 ---
 

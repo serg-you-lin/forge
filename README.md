@@ -5,7 +5,8 @@
 `forge` turns a messy 2D drawing into a clean, lossless model — healed closed
 contours, their containment hierarchy, the drawing's annotations, and an open
 overlay where detected features are attached — then renders it to DXF (one
-document, or one per part), JSON/XML, SVG, or a view model for a UI. The model is the product; a CAD format is
+document, or one per part), JSON/XML, SVG, a view model for a UI, or (experimental) a compact text reading for
+a language model. The model is the product; a CAD format is
 only a door in or out of it. Today that door is DXF (DWG via ODA), handled by a
 single adapter — everything downstream works on the format-neutral model.
 
@@ -124,6 +125,7 @@ load_dxf(path)  ──►  ForgeDocument   (edges + annotations + source_meta)
    split(result, doc)   ──►  list[Drawing]        render — one per part
    to_svg(result)       ──►  SVG string           render — for a UI / report
    to_view_model(result)  ─►  dict (full geometry) for an external renderer
+   to_text(result)      ──►  Markdown              experimental: a reading for a language model (D84)
    save_json / save_xml                           export the model (metadata)
    inject(result, ...)                            optional enrichment from texts
 ```
