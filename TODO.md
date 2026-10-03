@@ -118,13 +118,9 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    in `RoleStyle` ora solleva), gli omonimi rinominati.
    Limite del controllo: trova solo lo **stesso nome**. Per lo stesso lavoro
    sotto nomi diversi c'è ora `gen_index.py --similar` (punto 12).
-12. **Stesso lavoro con nomi diversi** — ✅ fatto il 3 ottobre (D86) con
-   `gen_index.py --similar`, tranne uno: **resta aperto il merge collineare /
-   cocircolare** in `core/healing/normalizer.py`. D52 li ha fatti "con lo stesso
-   disegno" e si vede: stessa preparazione dei bucket, stessa catena di span,
-   stessa ricostruzione della lista (`--similar` mostra sei frammenti comuni).
-   È il cuore della pulizia della geometria: va fatto in una sessione sua,
-   coi golden sotto gli occhi.
+12. **Stesso lavoro con nomi diversi** — ✅ **chiuso** il 3 ottobre: D86 (pezzi
+   comuni trovati con `gen_index.py --similar`) e D87 (merge collineare e
+   cocircolare su un motore unico, identico al vecchio su 611 disegni).
 
 ---
 
