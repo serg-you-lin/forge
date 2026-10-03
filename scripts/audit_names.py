@@ -161,6 +161,8 @@ ALLOWED: frozenset[str] = frozenset({
     # le cifre in fila dentro il nome di layer che un visualizzatore si scrive
     # da sé (`...ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-note-layer...`)
     "0123456789",
+    # nome della codifica del tokenizer `tiktoken` (`o200k_base`), in MAP.md
+    "o200k",
 })
 """Token che somigliano a un codice pezzo ma non lo sono."""
 
