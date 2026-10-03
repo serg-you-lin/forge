@@ -94,6 +94,33 @@ def _angular_sweep(start: float, end: float, ccw: bool) -> float:
     return sweep
 
 
+def point_on_circle(center: Point, radius: float, angle: float) -> Point:
+    """Punto della circonferenza (`center`, `radius`) all'angolo dato (radianti)."""
+    return (center[0] + radius * math.cos(angle), center[1] + radius * math.sin(angle))
+
+
+def angle_from_start(center: Point, start_angle: float, ccw: bool, pt: Point) -> float:
+    """
+    Angolo, in [0, 2π), da percorrere partendo da `start_angle` nel verso
+    `ccw` per arrivare alla direzione di `pt` vista da `center`.
+    """
+    phi = math.atan2(pt[1] - center[1], pt[0] - center[0])
+    delta = (phi - start_angle) if ccw else (start_angle - phi)
+    return delta % (2 * math.pi)
+
+
+def _sagitta_step(radius: float, tolerance: float) -> Optional[float]:
+    """
+    Angolo massimo di una corda che dista al più `tolerance` dall'arco di
+    raggio `radius`. None se il raggio non supera la tolleranza: lì la formula
+    non ha senso e il chiamante sceglie il suo ripiego.
+    """
+    if radius <= tolerance:
+        return None
+    ratio = max(-1.0, min(1.0, 1.0 - tolerance / radius))
+    return 2.0 * math.acos(ratio)
+
+
 # ---------------------------------------------------------------------------
 # ArcSeg
 # ---------------------------------------------------------------------------
@@ -126,15 +153,9 @@ class ArcSeg:
             start_pt = self._point_at(self.start_angle)
             return [start_pt, start_pt]
         
-        # Calcola angolo per segmento in base alla tolleranza
-        if self.radius <= tolerance:
-            # Raggio molto piccolo: usa angolo fisso
-            angle_per_segment = math.radians(FALLBACK_ANGLE_DEG)
-        else:
-            ratio = 1.0 - tolerance / self.radius
-            ratio = max(-1.0, min(1.0, ratio))
-            angle_per_segment = 2.0 * math.acos(ratio)
-        
+        # Angolo per segmento dalla tolleranza; raggio molto piccolo: angolo fisso
+        angle_per_segment = _sagitta_step(self.radius, tolerance) or math.radians(FALLBACK_ANGLE_DEG)
+
         # Applica il minimo di segmenti
         n_segments = max(MIN_SEGMENTS_ARC, int(math.ceil(total_angle / angle_per_segment)))
         
@@ -152,9 +173,7 @@ class ArcSeg:
 
     def _point_at(self, angle: float) -> Point:
         """Punto sull'arco all'angolo dato (radianti)."""
-        x = self.center[0] + self.radius * math.cos(angle)
-        y = self.center[1] + self.radius * math.sin(angle)
-        return (x, y)
+        return point_on_circle(self.center, self.radius, angle)
 
     def reversed(self) -> "ArcSeg":
         """Stesso arco fisico, percorso al contrario: scambia gli angoli e nega ccw."""
@@ -495,15 +514,7 @@ def segment_endpoints(segment) -> Tuple[Point, Point]:
         return segment.start, segment.end
 
     if isinstance(segment, ArcSeg):
-        start = (
-            segment.center[0] + segment.radius * math.cos(segment.start_angle),
-            segment.center[1] + segment.radius * math.sin(segment.start_angle),
-        )
-        end = (
-            segment.center[0] + segment.radius * math.cos(segment.end_angle),
-            segment.center[1] + segment.radius * math.sin(segment.end_angle),
-        )
-        return start, end
+        return segment._point_at(segment.start_angle), segment._point_at(segment.end_angle)
 
     if isinstance(segment, SplineSeg):
         # approx_points = risultato del flattening: sono i punti reali sulla
@@ -523,16 +534,7 @@ def segment_endpoints(segment) -> Tuple[Point, Point]:
         return pt, pt
 
     if isinstance(segment, EllipseSeg):
-        mx, my = segment.major_axis
-        nx, ny = -my * segment.ratio, mx * segment.ratio
-
-        def _pt(t: float) -> Point:
-            return (
-                segment.center[0] + math.cos(t) * mx + math.sin(t) * nx,
-                segment.center[1] + math.cos(t) * my + math.sin(t) * ny,
-            )
-
-        return _pt(segment.start_param), _pt(segment.end_param)
+        return segment._point_at(segment.start_param), segment._point_at(segment.end_param)
 
     return (0.0, 0.0), (0.0, 0.0)
 
@@ -571,12 +573,10 @@ class CircleSeg:
         Discretizza il cerchio in polilinea chiusa.
         Usa il doppio dei segmenti di un arco con lo stesso raggio.
         """
-        if self.radius <= tolerance:
+        angle_per_segment = _sagitta_step(self.radius, tolerance)
+        if angle_per_segment is None:
             n_segments = 8
         else:
-            ratio = 1.0 - tolerance / self.radius
-            ratio = max(-1.0, min(1.0, ratio))
-            angle_per_segment = 2.0 * math.acos(ratio)
             # Cerchio completo = 2π, quindi il doppio dei segmenti
             n_segments = int(math.ceil(2 * math.pi / angle_per_segment))
         
@@ -587,10 +587,7 @@ class CircleSeg:
         # Genera i punti (chiuso)
         pts = []
         for i in range(n_segments + 1):
-            angle = 2 * math.pi * i / n_segments
-            x = self.center[0] + self.radius * math.cos(angle)
-            y = self.center[1] + self.radius * math.sin(angle)
-            pts.append((x, y))
+            pts.append(point_on_circle(self.center, self.radius, 2 * math.pi * i / n_segments))
 
         return pts
 
@@ -670,12 +667,8 @@ class EllipseSeg:
         semi_major = math.hypot(*self.major_axis)
         min_curvature_radius = semi_major * self.ratio * self.ratio  # b²/a
 
-        if min_curvature_radius <= tolerance:
-            angle_per_segment = math.radians(FALLBACK_ANGLE_DEG)
-        else:
-            c = 1.0 - tolerance / min_curvature_radius
-            c = max(-1.0, min(1.0, c))
-            angle_per_segment = 2.0 * math.acos(c)
+        angle_per_segment = (_sagitta_step(min_curvature_radius, tolerance)
+                             or math.radians(FALLBACK_ANGLE_DEG))
 
         n_initial = max(MIN_SEGMENTS_ARC, int(math.ceil(total_angle / angle_per_segment)))
         t_end = self.start_param + total_angle if self.ccw else self.start_param - total_angle

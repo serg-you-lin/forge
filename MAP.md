@@ -2516,6 +2516,46 @@ The same pass cleared the other names D72 found: `_geometry` (byte-identical in
 duplicate. Its limit stands: it sees the same *name*, not the same *job* under
 two names.
 
+### D86 — `gen_index --similar`, and the shared pieces it found ✅
+D85 closed the same-*name* duplicates; the same *job* under different names
+was still invisible. `gen_index.py --similar` compares bodies instead of names:
+local variables and parameters are renamed `v0, v1, ...` in order of
+appearance (global names, attributes and constants stay — they carry the
+meaning), then it prints identical bodies, bodies ≥ 85% alike, and runs of 2+
+statements repeated in different functions. It prints candidates, not verdicts:
+each one was read before touching it. Not in `INDEX.md`, because a similarity
+list changes with every edit and would make `--check` noisy.
+
+What it found and what became of it:
+- **Point on a circle** (`cx + r·cos θ`) written in five places →
+  `segments.point_on_circle`; `segment_endpoints` now asks `ArcSeg`/`EllipseSeg`
+  for their own `_point_at` instead of repeating the formula; the DXF exporter
+  takes arc ends from `segment_endpoints`.
+- **Chord angle from a tolerance** (the sagitta formula) three times →
+  `segments._sagitta_step`, returning None when the radius does not exceed the
+  tolerance so each caller keeps its own fallback (fixed angle for arc and
+  ellipse, 8 sides for a circle — unchanged).
+- **Angular position of a point along an arc** in `outer_scan` and `noding` →
+  `segments.angle_from_start`.
+- **Segments + styles + polygon of a loop** in `steps`, `island`,
+  `outer_face` → `loop_finder.loop_geometry`.
+- **The node tolerance**: `source_meta.get("tolerance", 0.05)` in four places
+  and `tolerance=0.05` in eight signatures were one concept with no name →
+  `model.document.DEFAULT_NODE_TOLERANCE` and `ForgeDocument.node_tolerance()`.
+  The `0.05` defaults of `to_svg`, `to_view_model` and `bridge_tabs` are a
+  different quantity (drawing precision) that happens to share the number, and
+  stay as they are.
+- Smaller: `gap_solver._gap_endpoints` (free endpoints and endpoints at given
+  nodes were one loop with two filters), `gap_solver._meet_or_bridge` (three
+  solvers ended identically), `_flattened_points`, `_outer_entity`,
+  `_outer_polygons`, `GeometryAdapter._edge`.
+
+Left alone on purpose: `segments_from_loop` / `edge_styles_from_loop` (two
+lists kept 1:1 aligned by design), `view_model._hole_entry` / `Hole.to_dict`
+(different output contracts), and the collinear/cocircular merge in
+`normalizer.py` — the biggest shared piece, but it is the core of healing and
+gets its own session (TODO).
+
 ---
 
 ## Closed questions (history)

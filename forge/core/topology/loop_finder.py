@@ -10,6 +10,12 @@ graph.degenerate_loops — non passano per il walking nel grafo.
 """
 
 import math
+from typing import Optional, Tuple
+
+from shapely.geometry import Polygon
+
+from ..primitives.polygon_builder import build_polygon
+from ..primitives.segments import DEFAULT_TOLERANCE
 from .graph import (
     Graph,
     _edge_coords,
@@ -195,6 +201,16 @@ def edge_styles_from_loop(loop) -> list:
         else:
             out.append(edge.style)
     return out
+
+
+def loop_geometry(loop) -> Optional[Tuple[list, list, Polygon]]:
+    """(segmenti, stili, poligono) di un loop; None se i segmenti non chiudono
+    un poligono valido."""
+    segments = segments_from_loop(loop)
+    polygon = build_polygon(segments, DEFAULT_TOLERANCE)
+    if polygon is None:
+        return None
+    return segments, edge_styles_from_loop(loop), polygon
 
 
 # ---------------------------------------------------------------------------

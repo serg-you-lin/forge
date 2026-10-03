@@ -17,11 +17,12 @@ from typing import Any
 
 from .topology.edge import Edge
 from .geometry import node_decimals_for
+from ..model.document import DEFAULT_NODE_TOLERANCE
 
 
 class ForgeAdapter(ABC):
 
-    def __init__(self, tolerance: float = 0.05):
+    def __init__(self, tolerance: float = DEFAULT_NODE_TOLERANCE):
         self.tolerance = tolerance
         self.node_decimals = node_decimals_for(tolerance)
 

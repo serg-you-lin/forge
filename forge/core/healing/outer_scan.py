@@ -22,6 +22,7 @@ from typing import Dict, Iterable, List, Tuple
 
 from ..topology.edge import Edge
 from ..primitives.segments import (
+    angle_from_start, point_on_circle,
     LineSeg, ArcSeg, CircleSeg, SplineSeg, EllipseSeg, DEFAULT_TOLERANCE,
 )
 
@@ -124,14 +125,11 @@ def _pieces(edge: Edge) -> list:
 
 
 def _on_arc(arc: _Arc, pt: Point) -> bool:
-    phi = math.atan2(pt[1] - arc.center[1], pt[0] - arc.center[0])
-    delta = (phi - arc.start) if arc.ccw else (arc.start - phi)
-    return delta % (2 * math.pi) <= arc.sweep + _EPS
+    return angle_from_start(arc.center, arc.start, arc.ccw, pt) <= arc.sweep + _EPS
 
 
 def _arc_point(arc: _Arc, angle: float) -> Point:
-    return (arc.center[0] + arc.radius * math.cos(angle),
-            arc.center[1] + arc.radius * math.sin(angle))
+    return point_on_circle(arc.center, arc.radius, angle)
 
 
 def _extent(piece, a: int) -> Tuple[float, float]:

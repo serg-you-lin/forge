@@ -25,6 +25,7 @@ from ...model.role_rule import RoleRule, resolve_role
 from ...model.style import EdgeStyle
 
 from .parser import DxfEntityDispatcher
+from ...model.document import DEFAULT_NODE_TOLERANCE
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +238,7 @@ class DxfAdapter(ForgeAdapter):
     def __init__(
         self,
         msp,
-        tolerance: float = 0.05,
+        tolerance: float = DEFAULT_NODE_TOLERANCE,
         exclude_ids: Optional[set] = None,
         ignore_layers: Optional[set] = None,
         role_rules: Sequence[RoleRule] = (),

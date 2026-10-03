@@ -29,11 +29,10 @@ from ..model.document import ForgeDocument
 from ..model.feature import OpenFeature
 from ..model.result import ForgeResult
 from ..model.role import ContourRole, is_structural_role
-from .primitives.polygon_builder import build_polygon
-from .primitives.segments import ArcSeg, CircleSeg, DEFAULT_TOLERANCE, LineSeg, segment_is_closed
+from .primitives.segments import ArcSeg, CircleSeg, LineSeg, segment_is_closed
 from .topology.edge import Edge
 from .topology.graph import build_node_graph
-from .topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
+from .topology.loop_finder import LoopFinder, loop_geometry
 from .topology.noding import NODE_DECIMALS, edge_geometry, renode, split_at_crossings
 from .topology.non_contour_edges import NonContourEdgeDetector
 from .topology.outer_face import OuterFace, outer_face
@@ -94,7 +93,7 @@ def island(doc: ForgeDocument, tolerance: Optional[float] = None,
             "forge.island() richiede un ForgeDocument da forge.load_dxf(); "
             f"ricevuto {type(doc).__name__}"
         )
-    tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
+    tol = doc.node_tolerance(tolerance)
     structural = is_structural or is_structural_role
     labeled = [e for e in doc.edges if e.role != ContourRole.UNKNOWN and not structural(e.role)]
     labeled_ids = {id(e) for e in labeled}
@@ -219,11 +218,9 @@ def _inners(loops, parent: ForgeContour) -> List[ForgeContour]:
     """Un ForgeContour inner per giro chiuso; un giro senza poligono valido no."""
     inners = []
     for loop in loops:
-        segments = segments_from_loop(loop)
-        polygon = build_polygon(segments, DEFAULT_TOLERANCE)
-        if polygon is not None:
-            inners.append(_contour(segments, edge_styles_from_loop(loop), polygon,
-                                   ContourRole.INNER, parent))
+        geometry = loop_geometry(loop)
+        if geometry is not None:
+            inners.append(_contour(*geometry, ContourRole.INNER, parent))
     return inners
 
 

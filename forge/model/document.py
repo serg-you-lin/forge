@@ -22,12 +22,15 @@ prodotti dall'adapter, source_meta è un dizionario di primitivi.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .annotation import Annotation
 
 if TYPE_CHECKING:
     from ..core.topology.edge import Edge
+
+# Distanza sotto cui due estremi sono lo stesso nodo, se il chiamante non la dà
+DEFAULT_NODE_TOLERANCE = 0.05
 
 
 @dataclass
@@ -43,3 +46,9 @@ class ForgeDocument:
     source_meta: Dict[str, Any]      = field(default_factory=dict)
     source_path: str                 = ""
     warnings:    List[str]           = field(default_factory=list)
+
+    def node_tolerance(self, override: Optional[float] = None) -> float:
+        """La tolleranza dei nodi: `override` se dato, altrimenti quella del load."""
+        if override is not None:
+            return override
+        return self.source_meta.get("tolerance", DEFAULT_NODE_TOLERANCE)

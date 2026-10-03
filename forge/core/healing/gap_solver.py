@@ -24,7 +24,7 @@ Funzioni pubbliche:
 from __future__ import annotations
 import math
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 from ..geometry import (
     round_point,
@@ -109,12 +109,7 @@ def _solve_line_line(
     s_b = ep_b.meta['start']
     e_b = ep_b.meta['end']
     ix = _line_intersection(s_a, e_a, s_b, e_b)
-    if ix is None:
-        return [AddSegment(pt_a=ep_a.pt, pt_b=ep_b.pt)]
-    return [
-        MoveEndpoint(ref=ep_a.ref, role=ep_a.role, new_pt=ix),
-        MoveEndpoint(ref=ep_b.ref, role=ep_b.role, new_pt=ix),
-    ]
+    return _meet_or_bridge(ix, ep_a, ep_b)
 
 
 def _solve_arc_line(
@@ -128,12 +123,7 @@ def _solve_arc_line(
     e_l    = ep_line.meta['end']
     candidates = _circle_line_intersections(cx, cy, radius, s_l, e_l)
     ix = _closest_to(candidates, ep_arc.pt)
-    if ix is None:
-        return [AddSegment(pt_a=ep_arc.pt, pt_b=ep_line.pt)]
-    return [
-        MoveEndpoint(ref=ep_arc.ref,  role=ep_arc.role,  new_pt=ix),
-        MoveEndpoint(ref=ep_line.ref, role=ep_line.role, new_pt=ix),
-    ]
+    return _meet_or_bridge(ix, ep_arc, ep_line)
 
 
 def _solve_arc_arc(
@@ -145,12 +135,7 @@ def _solve_arc_arc(
         ep_b.meta['cx'], ep_b.meta['cy'], ep_b.meta['radius'],
     )
     ix = _closest_to(candidates, ep_a.pt)
-    if ix is None:
-        return [AddSegment(pt_a=ep_a.pt, pt_b=ep_b.pt)]
-    return [
-        MoveEndpoint(ref=ep_a.ref, role=ep_a.role, new_pt=ix),
-        MoveEndpoint(ref=ep_b.ref, role=ep_b.role, new_pt=ix),
-    ]
+    return _meet_or_bridge(ix, ep_a, ep_b)
 
 
 def _solve_spline_any(
@@ -263,6 +248,17 @@ def _endpoint_meta(segment) -> dict:
     return {}
 
 
+def _meet_or_bridge(ix: Optional[Point2D], ep_a: GapEndpoint, ep_b: GapEndpoint) -> List[GapFix]:
+    """Se le due geometrie si incontrano in `ix`, porta lì entrambi gli estremi;
+    altrimenti chiudi il gap con un segmento."""
+    if ix is None:
+        return [AddSegment(pt_a=ep_a.pt, pt_b=ep_b.pt)]
+    return [
+        MoveEndpoint(ref=ep_a.ref, role=ep_a.role, new_pt=ix),
+        MoveEndpoint(ref=ep_b.ref, role=ep_b.role, new_pt=ix),
+    ]
+
+
 def free_endpoints_from_edges(edges: List[Edge], graph) -> List[GapEndpoint]:
     """
     Estrae gli endpoint liberi (grado < 2 nel grafo) dagli Edge.
@@ -272,26 +268,7 @@ def free_endpoints_from_edges(edges: List[Edge], graph) -> List[GapEndpoint]:
     Considera solo LINE / ARC / SPLINE — i loop degeneri (CIRCLE, SPLINE chiusa)
     non hanno endpoint liberi per definizione.
     """
-    free: List[GapEndpoint] = []
-
-    for edge in edges:
-        if edge.start == edge.end:
-            continue
-        kind = _KIND_BY_SEGMENT.get(type(edge.segment))
-        if kind is None:
-            continue
-
-        meta = _endpoint_meta(edge.segment)
-        # pt: coordinate reali non arrotondate (il solver ne ha bisogno per
-        # calcolare l'intersezione); il grado si valuta sui nodi arrotondati.
-        raw_start, raw_end = segment_endpoints(edge.segment)
-
-        if graph.degree(edge.start) < 2:
-            free.append(GapEndpoint(pt=raw_start, ref=edge, role="start", kind=kind, meta=meta))
-        if graph.degree(edge.end) < 2:
-            free.append(GapEndpoint(pt=raw_end, ref=edge, role="end", kind=kind, meta=meta))
-
-    return free
+    return _gap_endpoints(edges, lambda node: graph.degree(node) < 2)
 
 
 def gap_endpoints_at_nodes(edges: List[Edge], nodes: set) -> List[GapEndpoint]:
@@ -308,6 +285,13 @@ def gap_endpoints_at_nodes(edges: List[Edge], nodes: set) -> List[GapEndpoint]:
 
     Considera solo LINE / ARC / SPLINE.
     """
+    return _gap_endpoints(edges, lambda node: node in nodes)
+
+
+def _gap_endpoints(edges: List[Edge], keep: Callable[[Point2D], bool]) -> List[GapEndpoint]:
+    """GapEndpoint per gli estremi di LINE / ARC / SPLINE il cui nodo (arrotondato)
+    soddisfa `keep`. `pt` resta la coordinata reale non arrotondata: il solver
+    ne ha bisogno per calcolare l'intersezione."""
     out: List[GapEndpoint] = []
     for edge in edges:
         if edge.start == edge.end:
@@ -317,9 +301,9 @@ def gap_endpoints_at_nodes(edges: List[Edge], nodes: set) -> List[GapEndpoint]:
             continue
         meta = _endpoint_meta(edge.segment)
         raw_start, raw_end = segment_endpoints(edge.segment)
-        if edge.start in nodes:
+        if keep(edge.start):
             out.append(GapEndpoint(pt=raw_start, ref=edge, role="start", kind=kind, meta=meta))
-        if edge.end in nodes:
+        if keep(edge.end):
             out.append(GapEndpoint(pt=raw_end, ref=edge, role="end", kind=kind, meta=meta))
     return out
 
