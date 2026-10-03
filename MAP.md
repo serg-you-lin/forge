@@ -2534,6 +2534,17 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
   corner-hole distance (39.2 / 41.2, not dimensioned on the sheet) computed
   from coordinates. Limits: one sheet, one run each, questions written by
   someone who knew forge, a PNG of modest resolution with rendering artifacts.
+  Third agent, **raw DXF only** (read as text, paged, no scripts): 6/6 and the
+  richest answers — it also found the corner countersinks (Ø6.7), the 2 mm
+  step on the bottom edge and which corners are R3.4, all from coordinates —
+  but at ≈178k tokens and 141 s against ≈45k / 31 s (image) and ≈50k / 47 s
+  (image + reading), on the smallest kind of sheet (33k lines, a third of it
+  an exploded logo it had to skip). So a capable agent *can* read a DXF; the
+  case for forge on DXF is cost and scale (`anch_02` at 445k tokens would not
+  fit most context windows), not "the AI cannot do it". The prototype reading
+  lost one thing the raw file had: the corner countersinks came out as an
+  unnamed half-arc ("other 6.7 × 3.35"), a circle split by its axes that the
+  reading did not recompose.
   Seen in passing: `island()` made the sheet frame the outer and every view an
   inner of it — the reading has no per-view grouping until something
   recognizes the frame.
