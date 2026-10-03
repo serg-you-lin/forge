@@ -23,7 +23,7 @@ from ezdxf.addons import odafc
 from .sanitize import sanitize, _explode_inserts, deduplicate
 from .adapter import DxfAdapter
 from .annotation_extractor import DxfAnnotationExtractor
-from ...model.document import ForgeDocument
+from ...model.document import DEFAULT_NODE_TOLERANCE, ForgeDocument
 from ...model.role_rule import RoleRule
 
 # Percorso dell'eseguibile ODA File Converter. `forge` NON legge i DWG da solo:
@@ -222,7 +222,7 @@ def load_dxf(
     explode_inserts: bool = True,
     flatten_z_flag: bool = True,
     verbose: bool = False,
-    tolerance: float = 0.05,
+    tolerance: float = DEFAULT_NODE_TOLERANCE,
     role_rules: Sequence[RoleRule] = (),
     ignore_layers=None,
 ) -> ForgeDocument:
@@ -342,7 +342,7 @@ def load_dxf(
 
 def document_from_msp(
     msp,
-    tolerance: float = 0.05,
+    tolerance: float = DEFAULT_NODE_TOLERANCE,
     role_rules: Sequence[RoleRule] = (),
     ignore_layers=None,
     source_path: str = "",

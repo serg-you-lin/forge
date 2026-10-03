@@ -30,7 +30,7 @@ from ...core.primitives.segments import (
     LineSeg, ArcSeg, CircleSeg, SplineSeg, EllipseSeg, segment_endpoints,
 )
 from ...core.topology.edge import Edge
-from ...model.document import ForgeDocument
+from ...model.document import DEFAULT_NODE_TOLERANCE, ForgeDocument
 from ...model.role import normalize_role
 
 _SUPPORTED_TYPES = frozenset({"line", "arc", "circle", "polyline", "spline", "ellipse"})
@@ -87,7 +87,7 @@ class GeometryAdapter(ForgeAdapter):
     (1.0 / 0.0 / 2π).
     """
 
-    def __init__(self, entities: List[Dict[str, Any]], tolerance: float = 0.05):
+    def __init__(self, entities: List[Dict[str, Any]], tolerance: float = DEFAULT_NODE_TOLERANCE):
         super().__init__(tolerance)
         self.entities = entities
 
@@ -148,6 +148,10 @@ class GeometryAdapter(ForgeAdapter):
             end_angle=math.radians(float(entity["end_angle"])),
             ccw=bool(entity.get("ccw", True)),
         )
+        return self._edge(seg, role)
+
+    def _edge(self, seg, role: str) -> Edge:
+        """Edge di `seg`, con gli estremi arrotondati alla griglia dei nodi."""
         start, end = segment_endpoints(seg)
         return Edge(role=role, start=self._round(start), end=self._round(end), segment=seg)
 
@@ -168,8 +172,7 @@ class GeometryAdapter(ForgeAdapter):
             fit_points=[tuple(p) for p in fit_points_raw] if fit_points_raw else None,
             closed=bool(entity.get("closed", False)),
         )
-        start, end = segment_endpoints(seg)
-        return Edge(role=role, start=self._round(start), end=self._round(end), segment=seg)
+        return self._edge(seg, role)
 
     def _ellipse_edge(self, entity: Dict[str, Any], role: str) -> Edge:
         seg = EllipseSeg(
@@ -180,8 +183,7 @@ class GeometryAdapter(ForgeAdapter):
             end_param=float(entity.get("end_param", math.tau)),
             ccw=bool(entity.get("ccw", True)),
         )
-        start, end = segment_endpoints(seg)
-        return Edge(role=role, start=self._round(start), end=self._round(end), segment=seg)
+        return self._edge(seg, role)
 
     def _polyline_edges(self, entity: Dict[str, Any], role: str) -> List[Edge]:
         points = [tuple(p) for p in entity["points"]]
@@ -206,7 +208,7 @@ class GeometryAdapter(ForgeAdapter):
 
 def load_geometry(
     entities: List[Dict[str, Any]],
-    tolerance: float = 0.05,
+    tolerance: float = DEFAULT_NODE_TOLERANCE,
     source_path: str = "",
 ) -> ForgeDocument:
     """

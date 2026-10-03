@@ -270,6 +270,18 @@ def to_nester_input(result: ForgeResult) -> list:
 # XDATA DXF
 # ---------------------------------------------------------------------------
 
+def _outer_entity(doc):
+    """L'entità su layer OuterContour che porta gli XDATA: prima una polilinea,
+    altrimenti un cerchio. None se non c'è."""
+    from ..adapters.dxf.layers import LAYER_OUTER
+    msp = doc.modelspace()
+    for query in ("LWPOLYLINE POLYLINE", "CIRCLE"):
+        for entity in msp.query(query):
+            if entity.dxf.layer == LAYER_OUTER:
+                return entity
+    return None
+
+
 def write_metadata_to_dxf(doc, cluster: ForgeCluster, extra: Optional[dict] = None):
     """
     Scrive i metadati come XDATA sull'entità OuterContour.
@@ -279,21 +291,7 @@ def write_metadata_to_dxf(doc, cluster: ForgeCluster, extra: Optional[dict] = No
     `extra`: campi extra del chiamante per questo cluster — vedi `save_json`.
     """
     try:
-        from ..adapters.dxf.layers import LAYER_OUTER
-        msp = doc.modelspace()
-
-        outer_entity = None
-
-        for pline in msp.query('LWPOLYLINE POLYLINE'):
-            if pline.dxf.layer == LAYER_OUTER:
-                outer_entity = pline
-                break
-
-        if outer_entity is None:
-            for circle in msp.query('CIRCLE'):
-                if circle.dxf.layer == LAYER_OUTER:
-                    outer_entity = circle
-                    break
+        outer_entity = _outer_entity(doc)
 
         if outer_entity is None:
             print("  [WARN] write_metadata_to_dxf: nessuna entità su OuterContour.")
@@ -322,21 +320,7 @@ def read_metadata_from_dxf(doc) -> dict:
         dict con i metadati secondo schema — o dict vuoto.
     """
     try:
-        from ..adapters.dxf.layers import LAYER_OUTER
-        msp = doc.modelspace()
-
-        outer_entity = None
-
-        for pline in msp.query('LWPOLYLINE POLYLINE'):
-            if pline.dxf.layer == LAYER_OUTER:
-                outer_entity = pline
-                break
-
-        if outer_entity is None:
-            for circle in msp.query('CIRCLE'):
-                if circle.dxf.layer == LAYER_OUTER:
-                    outer_entity = circle
-                    break
+        outer_entity = _outer_entity(doc)
 
         if outer_entity is None:
             return {}

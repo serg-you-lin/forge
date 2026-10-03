@@ -22,7 +22,7 @@ from ..primitives.polygon_builder import build_polygon
 from ..primitives.segments import DEFAULT_TOLERANCE, SplineSeg
 from ..topology.edge import Edge
 from ..topology.graph import build_node_graph
-from ..topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
+from ..topology.loop_finder import LoopFinder, loop_geometry
 from ..topology.non_contour_edges import NonContourEdgeDetector
 from ...model.cluster import ForgeCluster
 from ...model.feature import ClosedFeature, OpenFeature
@@ -177,12 +177,12 @@ def loops_to_features(loops: List[list]) -> List[ClosedFeature]:
     features = []
     for loop in loops:
         role = loop[0][0].role if loop else ContourRole.UNKNOWN
-        segments = segments_from_loop(loop)
-        polygon = build_polygon(segments, DEFAULT_TOLERANCE)
-        if polygon is None:
+        geometry = loop_geometry(loop)
+        if geometry is None:
             continue
+        segments, styles, polygon = geometry
         feature = loop_to_closed_feature(loop, role=role, polygon=polygon, segments=segments,
-                                         styles=edge_styles_from_loop(loop))
+                                         styles=styles)
         if feature is not None:
             features.append(feature)
     return features

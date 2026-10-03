@@ -415,11 +415,11 @@ def _render_block(entity) -> RenderedGeometry:
         if t == "LINE":
             strokes.append([_xy(v.dxf.start), _xy(v.dxf.end)])
         elif t == "ARC":
-            pts = _arc_points(v)
+            pts = _flattened_points(v)
             if len(pts) >= 2:
                 strokes.append(pts)
         elif t == "CIRCLE":
-            pts = _circle_points(v)
+            pts = _flattened_points(v)
             if pts:
                 fills.append(pts)
         elif t in ("LWPOLYLINE", "POLYLINE"):
@@ -476,16 +476,10 @@ def _xy(p) -> Tuple[float, float]:
     return (float(p[0]), float(p[1]))
 
 
-def _arc_points(arc) -> List[Tuple[float, float]]:
+def _flattened_points(entity) -> List[Tuple[float, float]]:
+    """Punti di un ARC o CIRCLE appiattito alla sagitta `_ARC_SAGITTA`."""
     try:
-        return [(float(p[0]), float(p[1])) for p in arc.flattening(_ARC_SAGITTA)]
-    except Exception:
-        return []
-
-
-def _circle_points(circle) -> List[Tuple[float, float]]:
-    try:
-        return [(float(p[0]), float(p[1])) for p in circle.flattening(_ARC_SAGITTA)]
+        return [(float(p[0]), float(p[1])) for p in entity.flattening(_ARC_SAGITTA)]
     except Exception:
         return []
 

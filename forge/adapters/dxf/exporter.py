@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from typing import List, Optional, Tuple
 
-from ...core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg
+from ...core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg, segment_endpoints
 from ...model.style import EdgeStyle
 
 _STANDARD_LINETYPES = frozenset({"BYLAYER", "BYBLOCK", "CONTINUOUS"})
@@ -90,23 +90,11 @@ def arc_seg_to_bulge(arc: ArcSeg) -> float:
     return bulge
 
 
-def _arc_start_point(arc: ArcSeg) -> tuple:
-    x = arc.center[0] + arc.radius * math.cos(arc.start_angle)
-    y = arc.center[1] + arc.radius * math.sin(arc.start_angle)
-    return (x, y)
-
-
-def _arc_end_point(arc: ArcSeg) -> tuple:
-    x = arc.center[0] + arc.radius * math.cos(arc.end_angle)
-    y = arc.center[1] + arc.radius * math.sin(arc.end_angle)
-    return (x, y)
-
-
 def _seg_end_point(seg) -> Optional[tuple]:
     if isinstance(seg, LineSeg):
         return (seg.end[0], seg.end[1])
     if isinstance(seg, ArcSeg):
-        return _arc_end_point(seg)
+        return segment_endpoints(seg)[1]
     return None
 
 
@@ -116,7 +104,7 @@ def segments_to_pts_with_bulge(segments: list) -> list:
         if isinstance(seg, LineSeg):
             pts.append((seg.start[0], seg.start[1], 0.0, 0.0, 0.0))
         elif isinstance(seg, ArcSeg):
-            start = _arc_start_point(seg)
+            start = segment_endpoints(seg)[0]
             pts.append((start[0], start[1], 0.0, 0.0, arc_seg_to_bulge(seg)))
     return pts
 

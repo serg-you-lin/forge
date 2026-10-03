@@ -268,11 +268,7 @@ def _write_annotations(
     from shapely.geometry import Point
 
     written_set = set(id(p) for p in written_clusters)
-    ref_polys = [
-        (p, p.outer.polygon)
-        for p in all_clusters
-        if p.outer is not None and p.outer.polygon is not None
-    ]
+    ref_polys = _outer_polygons(all_clusters)
 
     for ann in annotations:
         if restrict_to_written and ref_polys:
@@ -391,11 +387,7 @@ def _write_trash(
     from shapely.geometry import Point
 
     written_set = set(id(p) for p in written_clusters)
-    ref_polys = [
-        (p, p.outer.polygon)
-        for p in all_clusters
-        if p.outer is not None and p.outer.polygon is not None
-    ]
+    ref_polys = _outer_polygons(all_clusters)
 
     for trash in result.trash_entities:
         if restrict_to_written and ref_polys:
@@ -508,6 +500,15 @@ def _ensure_layer(doc, name: str) -> None:
     """
     if name and name not in doc.layers:
         doc.layers.new(name).color = color_for_layer(name)
+
+
+def _outer_polygons(clusters) -> list:
+    """(cluster, poligono dell'outer) per ogni cluster che ne ha uno."""
+    return [
+        (c, c.outer.polygon)
+        for c in clusters
+        if c.outer is not None and c.outer.polygon is not None
+    ]
 
 
 def _apply_role_styles(doc, role_styles: Optional[Dict[str, "RoleStyle"]]) -> None:

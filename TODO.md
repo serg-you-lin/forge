@@ -118,29 +118,13 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    in `RoleStyle` ora solleva), gli omonimi rinominati.
    Limite del controllo: trova solo lo **stesso nome**. Per lo stesso lavoro
    sotto nomi diversi c'è ora `gen_index.py --similar` (punto 12).
-12. **Stesso lavoro con nomi diversi — candidati da `gen_index.py --similar`**
-   (3 ottobre, letti a mano). Nessuno ancora toccato. In ordine di valore:
-   - **punto su un arco/cerchio** ricalcolato a mano: `exporter._arc_start_point`
-     / `_arc_end_point` rifanno `ArcSeg._point_at`; lo stesso `cx + r·cos` è in
-     `segments.py:155` e `:591`.
-   - **passo angolare dalla tolleranza** (`ratio = 1 - tol/r`, clamp, `2·acos`)
-     tre volte in `core/primitives/segments.py` (`:134`, `:577`, `:676`): una
-     microfunzione.
-   - **posizione angolare di un punto su un arco**: `outer_scan._on_arc` e
-     `noding._arc_s` sono la stessa formula.
-   - **merge collineare / cocircolare** (`core/healing/normalizer.py`): D52 li
-     ha fatti "con lo stesso disegno" e si vede — stessa preparazione dei bucket,
-     stessa catena di span, stessa ricostruzione della lista. Il pezzo comune è
-     estraibile; è il refactor più grosso della lista.
-   - **poligono di un loop** (`segments_from_loop` + `build_polygon`) in
-     `core/healing/steps.py`, `core/island.py`, `core/topology/outer_face.py`.
-   - **tolleranza di default** `source_meta.get("tolerance", 0.05)` ripetuta in
-     `core/heal.py` e `core/island.py` (il `0.05` scritto due volte).
-   - minori: `gap_solver.free_endpoints_from_edges` ~ `gap_endpoints_at_nodes`;
-     `loop_finder.segments_from_loop` ~ `edge_styles_from_loop`;
-     `annotation_extractor._arc_points` = `_circle_points`;
-     `view_model._hole_entry` ~ `Hole.to_dict`; due ricerche dell'outer in
-     `io/exporter.py` (`:287`, `:330`).
+12. **Stesso lavoro con nomi diversi** — ✅ fatto il 3 ottobre (D86) con
+   `gen_index.py --similar`, tranne uno: **resta aperto il merge collineare /
+   cocircolare** in `core/healing/normalizer.py`. D52 li ha fatti "con lo stesso
+   disegno" e si vede: stessa preparazione dei bucket, stessa catena di span,
+   stessa ricostruzione della lista (`--similar` mostra sei frammenti comuni).
+   È il cuore della pulizia della geometria: va fatto in una sessione sua,
+   coi golden sotto gli occhi.
 
 ---
 

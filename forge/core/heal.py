@@ -60,7 +60,7 @@ def heal(doc: ForgeDocument, tolerance: Optional[float] = None, label: str = "",
             "forge.heal() richiede un ForgeDocument da forge.load_dxf(); "
             f"ricevuto {type(doc).__name__}"
         )
-    tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
+    tol = doc.node_tolerance(tolerance)
     structural = is_structural or is_structural_role
 
     result = ForgeResult(source_file=source_file)

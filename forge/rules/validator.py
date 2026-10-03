@@ -96,7 +96,7 @@ def validate(doc: ForgeDocument) -> ForgeResult:
 
     # --- gli endpoint si toccano? ------------------------------------
     # Alla tolleranza dichiarata: è quello che heal() può davvero sfruttare.
-    tol = doc.source_meta.get("tolerance", 0.05)
+    tol = doc.node_tolerance()
     graph = build_node_graph(edges, epsilon=tol)
     has_junction = any(len(conn) >= 2 for conn in graph.nodes.values())
     has_closed_prim = bool(graph.degenerate_loops)

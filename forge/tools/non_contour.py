@@ -46,7 +46,7 @@ def non_contour_candidates(doc: ForgeDocument, tolerance: Optional[float] = None
                fallback di heal()).
     """
     edges = list(doc.edges)
-    tol = tolerance if tolerance is not None else doc.source_meta.get("tolerance", 0.05)
+    tol = doc.node_tolerance(tolerance)
 
     excluded_ids = find_non_contour_edges(edges, tol)
     return [e for e in edges if id(e) in excluded_ids]

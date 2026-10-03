@@ -25,8 +25,7 @@ from shapely.geometry import Polygon
 
 from .edge import Edge
 from .graph import Graph, build_node_graph
-from .loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
-from ..primitives.polygon_builder import build_polygon
+from .loop_finder import LoopFinder, loop_geometry
 from ..primitives.segments import DEFAULT_TOLERANCE
 
 DIRECTION_SAMPLE = 3.0   # mm — la direzione di un edge a un nodo si legge fin qui (al massimo a metà edge)
@@ -158,8 +157,7 @@ def _largest_loop(edges: List[Edge], epsilon: float):
     graph = build_node_graph(edges, epsilon=epsilon)
     best = None
     for loop in LoopFinder().find(graph):
-        segments = segments_from_loop(loop)
-        polygon = build_polygon(segments, DEFAULT_TOLERANCE)
-        if polygon is not None and (best is None or polygon.area > best[3].area):
-            best = (loop, segments, edge_styles_from_loop(loop), polygon)
+        geometry = loop_geometry(loop)
+        if geometry is not None and (best is None or geometry[2].area > best[3].area):
+            best = (loop, *geometry)
     return best

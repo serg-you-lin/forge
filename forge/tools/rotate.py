@@ -44,7 +44,7 @@ from ..core.geometry import longest_segment, chord_angle_deg, round_point, node_
 from ..core.primitives.segments import segment_endpoints
 from ..model.cluster import ForgeCluster
 from ..model.contour import ForgeContour
-from ..model.document import ForgeDocument
+from ..model.document import DEFAULT_NODE_TOLERANCE, ForgeDocument
 from ..model.feature import OpenFeature
 from ..model.result import ForgeResult
 
@@ -188,7 +188,7 @@ def rotate_document(
     doc: ForgeDocument,
     angle_rad: float,
     origin: Point = (0.0, 0.0),
-    tolerance: float = 0.05,
+    tolerance: float = DEFAULT_NODE_TOLERANCE,
 ) -> ForgeDocument:
     """
     Nuovo `ForgeDocument` con ogni `edge.segment` ruotato di `angle_rad`

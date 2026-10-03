@@ -26,6 +26,7 @@ from typing import Optional, Sequence
 
 from forge.core.geometry import track_points, track_shape_type
 from forge.model.role_rule import RoleRule
+from forge.model.document import DEFAULT_NODE_TOLERANCE
 
 __all__ = [
     "inspect_dxf",
@@ -318,7 +319,7 @@ def _sub_part(i: int, cluster, coords: bool) -> None:
 
 def inspect_file(
     path: str,
-    tolerance: float = 0.05,
+    tolerance: float = DEFAULT_NODE_TOLERANCE,
     role_rules: Sequence[RoleRule] = (),
     run_heal: bool = True,
     run_detect: bool = True,

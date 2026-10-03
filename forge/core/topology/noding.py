@@ -26,7 +26,7 @@ from ..geometry import (
     _line_intersection, _circle_line_intersections, _circle_circle_intersections,
 )
 from ..primitives.segments import (
-    LineSeg, ArcSeg, CircleSeg, DEFAULT_TOLERANCE, segment_endpoints, segment_is_closed,
+    LineSeg, ArcSeg, CircleSeg, DEFAULT_TOLERANCE, angle_from_start, segment_endpoints, segment_is_closed,
 )
 
 NODE_DECIMALS = 3   # griglia dei nodi della rete: tagli e estremi sulla stessa
@@ -88,9 +88,7 @@ def split_at_crossings(edges: List[Edge], tolerance: float,
 # ---------------------------------------------------------------------------
 
 def _arc_s(seg, pt):
-    phi = math.atan2(pt[1] - seg.center[1], pt[0] - seg.center[0])
-    delta = (phi - seg.start_angle) if seg.ccw else (seg.start_angle - phi)
-    return delta % (2 * math.pi)
+    return angle_from_start(seg.center, seg.start_angle, seg.ccw, pt)
 
 
 def _param(seg, pt):

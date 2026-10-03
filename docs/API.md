@@ -1125,6 +1125,11 @@ core: dopo di lui, `ezdxf` non si tocca più.
 | `source_path` | `str` | percorso del file |
 | `warnings` | `list[str]` | diagnostica del loader sul file grezzo |
 
+`node_tolerance(override=None) -> float`: la distanza sotto cui due estremi
+sono lo stesso nodo — `override` se dato, altrimenti `source_meta["tolerance"]`,
+altrimenti `DEFAULT_NODE_TOLERANCE` (0.05, `model/document.py`). È la lettura
+che usano `heal`, `island` e `validate` quando `tolerance` non è passata (D86).
+
 ### `Annotation`
 
 `Note` / `Dimension` / `Leader`. Comuni: `kind` (`"TEXT"` | `"MTEXT"` |
