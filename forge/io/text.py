@@ -200,8 +200,9 @@ def to_text(result: ForgeResult, source_name: str = "", decimals: int = 3,
             out.append(f"C{i}.{j}: {lines[0]}")
             out += lines[1:]
 
-    # una linea aperta dentro un pezzo fa parte della sua lettura (l'arco di una
-    # filettatura, un asse); fuori da tutti i pezzi si conta soltanto
+    # una linea aperta dentro un cluster fa parte della sua lettura (un arco di
+    # 3/4 attorno a un cerchio, una linea che lo attraversa); fuori da tutti i
+    # cluster si conta soltanto
     outers = [prep(c.outer.polygon) for c in result.clusters if getattr(c.outer, "polygon", None) is not None]
     unknown, by_role, outside = [], Counter(), 0
     for feature in result.trash_entities:
