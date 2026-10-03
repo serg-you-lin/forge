@@ -2544,14 +2544,16 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
   fit most context windows), not "the AI cannot do it". The prototype reading
   lost one thing the raw file had: the corner countersinks came out as an
   unnamed half-arc ("other 6.7 × 3.35") for one hole and not at all for the
-  other, and the left Ø7.8 countersink as a half-arc too. In the source all of
-  them are complete `CircleSeg`s (checked): the loss is in `island()`. Likely
-  cause for the corners, **not yet verified**: the Ø6.7 circle is concentric
-  with the plate's R3.4 corner and only 0.05 inside it, well under
-  `max_gap=0.5`, so the two networks get joined. Open in `TODO.md`.
-  Seen in passing: `island()` made the sheet frame the outer and every view an
-  inner of it — the reading has no per-view grouping until something
-  recognizes the frame.
+  other, and the left Ø7.8 countersink as a half-arc too (in the source they
+  are complete `CircleSeg`s). **This is not an `island()` defect** (Federico):
+  `island()` reads loops and an outer face per island, it does not recognize
+  what concentric circles *are*. What makes the difference here — and the
+  missing per-view grouping, since `island()` took the sheet frame as the
+  outer — is detection on islands and combined detection across views, which
+  lives in a consumer, probably snapdraw. So the reading an agent gets is
+  `island()` plus that consumer's detection, not `island()` alone.
+  The serious run must use **anonymized** drawings (the `anonimizzati/` batch),
+  not the `anch_NN` sheets: the result is meant to be shown.
   What the reading should state, in forge's own terms: per view/island the
   closed contours as shapes (circle Ø + centre, arc, slot, rectangle w × h,
   polyline only when nothing shorter is true), coordinates rounded to the
