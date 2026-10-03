@@ -82,6 +82,18 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    `import forge`, i docs, il remoto su GitHub e i consumer. Da decidere se farlo
    prima della 1.0.0 (dopo è un breaking change per chi importa) e se nel
    frattempo `naming_convention.md` entra in git come piano o resta locale.
+9. **Il view-model non discretizza più archi e cerchi** (Federico, 3 ottobre:
+   "è ridicolo") — **riapre D12**, che li appiattiva in polilinee. Un cerchio
+   resta cerchio (centro + raggio), un arco resta arco (centro, raggio, angoli):
+   l'SVG ha `<circle>` e gli archi nei `path`, quindi `to_svg` non perde niente,
+   e un renderer esterno disegna l'entità vera. Misurato: su `anch_07`/`anch_08`
+   la discretizzazione rende `to_view_model` **più grande del DXF sorgente**
+   (≈300k token contro 79k). Le spline restano da decidere: l'SVG ha solo
+   Bézier cubiche, una NURBS qualsiasi non ci entra esatta.
+   **Coordinate arrotondate al terzo decimale** nelle uscite di lettura
+   (view-model, SVG, la futura lettura per un agente). Non in `to_dxf`, che va
+   a una macchina e resta esatto — da confermare con Federico.
+   Quando si fa, diventa un `D##` in `MAP.md`.
 
 ---
 
