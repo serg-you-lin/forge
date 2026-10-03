@@ -2543,8 +2543,12 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
   case for forge on DXF is cost and scale (`anch_02` at 445k tokens would not
   fit most context windows), not "the AI cannot do it". The prototype reading
   lost one thing the raw file had: the corner countersinks came out as an
-  unnamed half-arc ("other 6.7 × 3.35"), a circle split by its axes that the
-  reading did not recompose.
+  unnamed half-arc ("other 6.7 × 3.35") for one hole and not at all for the
+  other, and the left Ø7.8 countersink as a half-arc too. In the source all of
+  them are complete `CircleSeg`s (checked): the loss is in `island()`. Likely
+  cause for the corners, **not yet verified**: the Ø6.7 circle is concentric
+  with the plate's R3.4 corner and only 0.05 inside it, well under
+  `max_gap=0.5`, so the two networks get joined. Open in `TODO.md`.
   Seen in passing: `island()` made the sheet frame the outer and every view an
   inner of it — the reading has no per-view grouping until something
   recognizes the frame.
