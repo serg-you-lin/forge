@@ -82,7 +82,20 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    `import forge`, i docs, il remoto su GitHub e i consumer. Da decidere se farlo
    prima della 1.0.0 (dopo è un breaking change per chi importa) e se nel
    frattempo `naming_convention.md` entra in git come piano o resta locale.
-9. **Il view-model non discretizza più archi e cerchi** (Federico, 3 ottobre:
+9. **Rifare il viewer (`to_view_model` + `to_svg`), in una sessione a parte.**
+   Federico, 3 ottobre: "ora è davvero bruttino e limitato, non scalabile, fa
+   cose che dovrebbe fare il consumer e non fa cose che dovrebbe fare lui".
+   Già visto, da cui partire (l'analisi vera è il lavoro di quella sessione):
+   - **fa cose da consumer**: scrive a mano le tre collezioni di
+     `detect_flat()` (`holes`, `bending_lines`, `engrave_lines`) e il riassunto
+     di `describe_features` — vocabolario di lavorazione dentro un renderer di
+     forge, lo stesso privilegio che D70 ha tolto a `to_dxf`;
+   - **non fa cose sue**: le altre collezioni di `detected` sono solo contate,
+     mai disegnate (D70 per il view-model non c'è); archi e cerchi diventano
+     punti (sotto);
+   - **non scala**: su un foglio di viste pesa più del DXF di partenza.
+   Il resto del punto, scritto prima, vale come parte di questo lavoro:
+   **il view-model non discretizza più archi e cerchi** (Federico, 3 ottobre:
    "è ridicolo") — **riapre D12**, che li appiattiva in polilinee. Un cerchio
    resta cerchio (centro + raggio), un arco resta arco (centro, raggio, angoli):
    l'SVG ha `<circle>` e gli archi nei `path`, quindi `to_svg` non perde niente,

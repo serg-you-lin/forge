@@ -2468,7 +2468,7 @@ value is tested in snapdraw once detection on islands exists.
   and gives nothing; measured, it was ~50k of `anch_02`'s 136k. The exact
   curve stays available in `to_dxf`.
 - **Open edges**: listed with geometry if unclassified and inside some
-  cluster's outer (a thread's 3/4 arc, an axis); counted if they carry a
+  cluster's outer (a 3/4 arc around a circle, a line across it); counted if they carry a
   decided role or lie outside every cluster. Nothing silently dropped.
 - **`detected`**: every collection written generically — type name, which
   contours an item *is*, its scalar fields — the same rule as D70: forge
@@ -2595,7 +2595,7 @@ value is tested in snapdraw once detection on islands exists.
   The serious run must use **anonymized** drawings (the `anonimizzati/` batch),
   not the `anch_NN` sheets: the result is meant to be shown.
   What the reading should state, in forge's own terms: per view/island the
-  closed contours as shapes (circle Ø + centre, arc, slot, rectangle w × h,
+  closed contours as shapes (circle Ø + centre, arc, stadium, rectangle w × h,
   polyline only when nothing shorter is true), coordinates rounded to the
   drawing's precision; names are geometric, never process ("circle Ø8", not
   "hole"); the containment tree (what is inside what); repetitions of *drawn*
