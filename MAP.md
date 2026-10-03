@@ -2556,6 +2556,30 @@ lists kept 1:1 aligned by design), `view_model._hole_entry` / `Hole.to_dict`
 `normalizer.py` — the biggest shared piece, but it is the core of healing and
 gets its own session (TODO).
 
+### D87 — collinear and cocircular merge share one engine ✅
+Done in the same session after all (D86 had deferred it; Federico, rightly:
+deferring the hardest item is how sessions never close). Both merges are the
+same operation on a different carrier: an edge is an interval `[lo, hi]` on its
+line (projection) or its circle (angle); group by carrier, sort, chain the
+intervals that touch or overlap, replace each chain of 2+ with one edge in the
+place of its first member in input order. `normalizer._merge_on_carrier` does
+that once, over a `_Span` dataclass (it replaces anonymous 7-tuples read by
+index). Each merge supplies only what is its own: how a group becomes chains
+(`_line_spans`; `_arc_chains`, which also joins the last chain into the first
+across 0/2π) and what the fused segment is (`_merged_line`; `_merged_arc`, a
+`CircleSeg` when the chain closes the turn).
+
+Proof of equivalence, not only the suite: old (`HEAD`) and new run side by
+side on all 611 DXF under `tests/`, both on the loaded edges and after
+`renode`, comparing the resulting edge lists for equality — 1222 runs, 26 862
+edges absorbed, zero differences.
+
+`--similar` now reports only what is accepted on purpose: the two pairs listed
+in D86 and four 2-statement coincidences (reading kind+layer of an entity;
+`tol`+`structural` at the top of `heal`/`island`; shapely import + written set
+in `io/dxf`; the lower-cased ignore set in the DXF loader) — extracting those
+would be ceremony, not reuse.
+
 ---
 
 ## Closed questions (history)

@@ -44,10 +44,10 @@ Funzioni pubbliche:
 
 from __future__ import annotations
 import math
-from dataclasses import replace
-from typing import Any, Hashable, Iterable, List, Tuple
+from dataclasses import dataclass, replace
+from typing import Any, Callable, Hashable, Iterable, List, Tuple
 
-from ..primitives.segments import LineSeg, ArcSeg, CircleSeg, segment_endpoints
+from ..primitives.segments import LineSeg, ArcSeg, CircleSeg, Point, segment_endpoints
 from ..primitives.fitting import simplify_points
 from ..topology.graph import build_node_graph
 from ..topology.edge import Edge
@@ -201,123 +201,123 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
     a un bivio — probabilmente paritario — in un golden reale,
     `staffa_scarto_doppia`, senza che una sola fusione fosse coinvolta.)
     """
+    return _merge_on_carrier(edges, LineSeg, lambda seg: _line_key(seg.start, seg.end),
+                             _line_spans, _merged_line)
+
+
+def _line_spans(group: List[Edge]) -> List[_Span]:
+    """Span lungo la retta comune: `t` è la proiezione sulla direzione del
+    primo edge, canonica come in `_line_key`, quindi confrontabile fra edge."""
+    s0, e0 = group[0].segment.start, group[0].segment.end
+    ux, uy = e0[0] - s0[0], e0[1] - s0[1]
+    length0 = math.hypot(ux, uy)
+    ux, uy = (ux / length0, uy / length0) if length0 else (1.0, 0.0)
+    if ux < 0 or (ux == 0 and uy < 0):
+        ux, uy = -ux, -uy
+
+    def _t(point):
+        return (point[0] - s0[0]) * ux + (point[1] - s0[1]) * uy
+
+    spans = []
+    for e in group:
+        seg = e.segment
+        t_start, t_end = _t(seg.start), _t(seg.end)
+        if t_start <= t_end:
+            spans.append(_Span(t_start, e.start, t_end, e.end, e, (seg.start, seg.end)))
+        else:
+            spans.append(_Span(t_end, e.end, t_start, e.start, e, (seg.end, seg.start)))
+    return _chain(spans)
+
+
+def _merged_line(lo: _Span, hi: _Span):
+    """Il fuso di una catena collineare: nodi arrotondati, segmento a piena
+    precisione (v. docstring di `merge_collinear_overlaps`)."""
+    return lo.lo_node, hi.hi_node, LineSeg(start=lo.extra[0], end=hi.extra[1])
+
+
+# ---------------------------------------------------------------------------
+# Motore comune: unione di intervalli 1D su un supporto (retta o cerchio)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class _Span:
+    """
+    Un edge come intervallo [lo, hi] sul suo supporto (posizione lungo la
+    retta, o angolo sul cerchio). `lo_node`/`hi_node` sono gli estremi
+    arrotondati dell'Edge — l'identità del nodo nel grafo, che il fuso riusa
+    per riagganciarsi al vicino; `extra` è ciò che serve al chiamante per
+    costruire il segmento fuso a piena precisione.
+    """
+    lo:      float
+    lo_node: Point
+    hi:      float
+    hi_node: Point
+    edge:    Edge
+    extra:   Any
+
+
+def _chain(spans: List[_Span]) -> List[List[_Span]]:
+    """
+    Ordina per `lo` e incatena gli span che si toccano o si sovrappongono:
+    l'unione di intervalli 1D che si toccano è sempre ben definita.
+    `_CHAIN_GAP_EPS` è rumore in virgola mobile, non una tolleranza: un gap
+    vero resta fuori dalla catena.
+    """
+    spans = sorted(spans, key=lambda s: s.lo)
+    chains: List[List[_Span]] = [[spans[0]]]
+    cur_hi = spans[0].hi
+    for span in spans[1:]:
+        if span.lo <= cur_hi + _CHAIN_GAP_EPS:
+            chains[-1].append(span)
+            cur_hi = max(cur_hi, span.hi)
+        else:
+            chains.append([span])
+            cur_hi = span.hi
+    return chains
+
+
+def _merge_on_carrier(
+    edges: Iterable[Edge],
+    segment_type: type,
+    key: Callable[[Any], Hashable],
+    chains_of: Callable[[List[Edge]], List[List[_Span]]],
+    merged: Callable[[_Span, _Span], Tuple[Point, Point, Any]],
+) -> List[Edge]:
+    """
+    Raggruppa per supporto (`key`) gli edge di `segment_type` con ruolo
+    UNKNOWN, divide ogni gruppo in catene (`chains_of`) e sostituisce ogni
+    catena di 2+ con un Edge solo: (start, end, segmento) da `merged(lo, hi)`,
+    role/style del membro che viene prima in input. Il resto della lista
+    resta nell'ordine di input.
+    """
     edges = list(edges)
     original_index = {id(e): i for i, e in enumerate(edges)}
 
     buckets: dict = {}
     for edge in edges:
         seg = edge.segment
-        if not isinstance(seg, LineSeg) or edge.role != ContourRole.UNKNOWN:
+        if not isinstance(seg, segment_type) or edge.role != ContourRole.UNKNOWN:
             continue
-        buckets.setdefault(_line_key(seg.start, seg.end), []).append(edge)
+        buckets.setdefault(key(seg), []).append(edge)
 
     replacement: dict = {}  # id(rappresentante) -> Edge fuso
     drop: set = set()       # id(edge) assorbiti da una fusione
-
     for group in buckets.values():
         if len(group) < 2:
             continue
+        for chain in chains_of(group):
+            if len(chain) < 2:
+                continue
+            lo = min(chain, key=lambda s: s.lo)
+            hi = max(chain, key=lambda s: s.hi)
+            start, end, segment = merged(lo, hi)
+            members = [s.edge for s in chain]
+            representative = min(members, key=lambda e: original_index[id(e)])
+            replacement[id(representative)] = replace(
+                representative, start=start, end=end, segment=segment)
+            drop.update(id(e) for e in members if e is not representative)
 
-        # Direzione unitaria canonica del gruppo, presa dal primo edge —
-        # coerente con `_line_key` (stessa retta = stessa direzione a meno
-        # del verso). Ogni punto del gruppo si proietta su questa unica
-        # retta di riferimento, quindi min/max fra edge diversi sono
-        # confrontabili direttamente.
-        s0, e0 = group[0].segment.start, group[0].segment.end
-        ux, uy = e0[0] - s0[0], e0[1] - s0[1]
-        length0 = math.hypot(ux, uy)
-        ux, uy = (ux / length0, uy / length0) if length0 else (1.0, 0.0)
-        if ux < 0 or (ux == 0 and uy < 0):
-            ux, uy = -ux, -uy
-
-        def _t(point, _ux=ux, _uy=uy, _origin=s0):
-            return (point[0] - _origin[0]) * _ux + (point[1] - _origin[1]) * _uy
-
-        # Ogni span porta DUE coppie di estremi, per due scopi diversi (stesso
-        # principio già in gap_solver.apply_gap_fixes: "il segmento conserva
-        # il punto reale, solo il nodo topologico dell'Edge viene
-        # arrotondato"): `edge.start`/`edge.end` (arrotondati) sono l'identità
-        # del nodo nel grafo — quelli che il fuso deve riusare per riagganciarsi
-        # esattamente al vicino reale (D50: un fuso costruito sulla precisione
-        # piena del segmento può non coincidere col nodo del vicino di un
-        # sub-mm e spezzare il contorno). `seg.start`/`seg.end` (piena
-        # precisione) sono la geometria vera — quella che finisce nel
-        # `LineSeg` fuso, perché è quella che l'export legge: un fuso il cui
-        # SEGMENTO porta il punto arrotondato produce, appena affianca un lato
-        # nativo mai toccato dal merge, un contorno con uno scalino nel punto
-        # che dovrebbe essere lo stesso angolo (trovato su un caso reale,
-        # Caso reale: un lato "verticale" con dx=0.031 invece di 0, lunghezza 0.97
-        # invece di 1 — la firma esatta di due fonti di verità diverse cucite
-        # nello stesso contorno). La proiezione `_t` per ordinamento/
-        # sovrapposizione resta a piena precisione in entrambi i casi.
-        spans = []
-        for e in group:
-            seg = e.segment
-            t_start, t_end = _t(seg.start), _t(seg.end)
-            if t_start <= t_end:
-                spans.append((t_start, e.start, t_end, e.end, e, seg.start, seg.end))
-            else:
-                spans.append((t_end, e.end, t_start, e.start, e, seg.end, seg.start))
-        spans.sort(key=lambda s: s[0])
-
-        chains: List[list] = [[spans[0]]]
-        cur_hi = spans[0][2]
-        for span in spans[1:]:
-            lo, hi = span[0], span[2]
-            # Contatto (lo == cur_hi, due lati consecutivi di una polilinea
-            # esplosa) O sovrapposizione vera (lo < cur_hi): in entrambi i
-            # casi l'unione dei due intervalli è ben definita e corretta,
-            # quindi in entrambi i casi si incatenano. `_CHAIN_GAP_EPS` è
-            # solo rumore in virgola mobile (un contatto vero può risultare
-            # `lo` di un pelo oltre `cur_hi` per errore di proiezione), non
-            # una tolleranza geometrica dell'utente — un gap vero (i due
-            # segmenti non si toccano affatto) resta fuori dalla catena.
-            if lo <= cur_hi + _CHAIN_GAP_EPS:
-                chains[-1].append(span)
-                cur_hi = max(cur_hi, hi)
-            else:
-                chains.append([span])
-                cur_hi = hi
-
-        for chain in chains:
-            _register_merge(chain, original_index, replacement, drop)
-
-    result: List[Edge] = []
-    for edge in edges:
-        if id(edge) in drop:
-            continue
-        result.append(replacement.get(id(edge), edge))
-    return result
-
-
-def _register_merge(chain: List[tuple], original_index: dict, replacement: dict, drop: set) -> None:
-    """
-    Una catena di 2+ span che si toccano/sovrappongono -> registra la
-    fusione. Una catena di 1 (nessun altro membro tocca o si sovrappone)
-    non fa nulla: non c'è niente da fondere.
-    """
-    if len(chain) < 2:
-        return
-
-    lo_span = min(chain, key=lambda s: s[0])
-    hi_span = max(chain, key=lambda s: s[2])
-    lo_start_pt = lo_span[1]   # arrotondato — identità del nodo (Edge.start/end)
-    hi_end_pt   = hi_span[3]
-    lo_native   = lo_span[5]   # piena precisione — geometria vera (nel LineSeg)
-    hi_native   = hi_span[6]
-
-    members = [c[4] for c in chain]
-    representative = min(members, key=lambda e: original_index[id(e)])
-
-    merged_segment = LineSeg(start=lo_native, end=hi_native)
-    # role/style del rappresentante (il primo membro in ordine di input, non
-    # necessariamente il primo nella catena ordinata per t)
-    replacement[id(representative)] = replace(
-        representative, start=lo_start_pt, end=hi_end_pt, segment=merged_segment
-    )
-    for e in members:
-        if e is not representative:
-            drop.add(id(e))
+    return [replacement.get(id(e), e) for e in edges if id(e) not in drop]
 
 
 # ---------------------------------------------------------------------------
@@ -350,115 +350,47 @@ def merge_cocircular_overlaps(edges: Iterable[Edge]) -> List[Edge]:
     estremi conservati, mai il punto ricalcolato a piena precisione;
     preserva l'ordine di input per tutto ciò che non fonde.
     """
-    edges = list(edges)
-    original_index = {id(e): i for i, e in enumerate(edges)}
-
-    buckets: dict = {}
-    for edge in edges:
-        seg = edge.segment
-        if not isinstance(seg, ArcSeg) or edge.role != ContourRole.UNKNOWN:
-            continue
-        buckets.setdefault(_arc_key(seg.center, seg.radius), []).append(edge)
-
-    replacement: dict = {}
-    drop: set = set()
-
-    for group in buckets.values():
-        if len(group) < 2:
-            continue
-        _merge_arc_group(group, original_index, replacement, drop)
-
-    result: List[Edge] = []
-    for edge in edges:
-        if id(edge) in drop:
-            continue
-        result.append(replacement.get(id(edge), edge))
-    return result
+    return _merge_on_carrier(edges, ArcSeg, lambda seg: _arc_key(seg.center, seg.radius),
+                             _arc_chains, _merged_arc)
 
 
-def _merge_arc_group(group: List[Edge], original_index: dict, replacement: dict, drop: set) -> None:
+def _arc_chains(group: List[Edge]) -> List[List[_Span]]:
     """
-    Un gruppo di ArcSeg sullo stesso cerchio -> spezza in catene di
-    contatto/sovrapposizione angolare, ricongiunge l'ultima alla prima se
-    insieme chiudono il giro, registra una fusione per catena di 2+.
+    Catene angolari di un gruppo sullo stesso cerchio. Se l'ultima catena
+    chiude il giro nella prima, le unisce: la prima viene srotolata di +2*pi
+    (solo l'angolo usato per ordinare; i nodi restano quelli reali).
     """
     spans = []
     for e in group:
         seg = e.segment
-        sweep = seg._sweep()
         if seg.ccw:
-            lo_angle, lo_point, hi_point = seg.start_angle % _TWO_PI, e.start, e.end
+            lo, lo_node, hi_node = seg.start_angle % _TWO_PI, e.start, e.end
         else:
-            lo_angle, lo_point, hi_point = seg.end_angle % _TWO_PI, e.end, e.start
-        hi_angle = lo_angle + sweep
-        spans.append((lo_angle, lo_point, hi_angle, hi_point, e, seg.center, seg.radius))
-
-    spans.sort(key=lambda s: s[0])
-
-    chains: List[list] = [[spans[0]]]
-    cur_hi = spans[0][2]
-    for span in spans[1:]:
-        lo, hi = span[0], span[2]
-        if lo <= cur_hi + _CHAIN_GAP_EPS:
-            chains[-1].append(span)
-            cur_hi = max(cur_hi, hi)
-        else:
-            chains.append([span])
-            cur_hi = hi
+            lo, lo_node, hi_node = seg.end_angle % _TWO_PI, e.end, e.start
+        spans.append(_Span(lo, lo_node, lo + seg._sweep(), hi_node, e, (seg.center, seg.radius)))
+    chains = _chain(spans)
 
     if len(chains) > 1:
-        first_lo = chains[0][0][0]
-        last_hi = max(s[2] for s in chains[-1])
+        first_lo = chains[0][0].lo
+        last_hi = max(s.hi for s in chains[-1])
         if last_hi >= first_lo + _TWO_PI - _CHAIN_GAP_EPS:
-            # L'ultima catena chiude il giro nel primo: srotola la prima di
-            # +2*pi (i PUNTI restano quelli reali, solo l'angolo usato per
-            # l'ordinamento si sposta) e appendila in coda, così la catena
-            # unita resta monotona attraverso il taglio 0/2*pi.
-            shifted_first = [
-                (lo + _TWO_PI, lo_pt, hi + _TWO_PI, hi_pt, e, c, r)
-                for (lo, lo_pt, hi, hi_pt, e, c, r) in chains[0]
-            ]
-            chains[-1] = chains[-1] + shifted_first
+            shifted = [replace(s, lo=s.lo + _TWO_PI, hi=s.hi + _TWO_PI) for s in chains[0]]
+            chains[-1] = chains[-1] + shifted
             chains.pop(0)
-
-    for chain in chains:
-        _register_arc_merge(chain, original_index, replacement, drop)
+    return chains
 
 
-def _register_arc_merge(chain: List[tuple], original_index: dict, replacement: dict, drop: set) -> None:
-    if len(chain) < 2:
-        return
-
-    lo_span = min(chain, key=lambda s: s[0])
-    hi_span = max(chain, key=lambda s: s[2])
-    lo_point = lo_span[1]
-    center, radius = lo_span[5], lo_span[6]
-
-    total_sweep = hi_span[2] - lo_span[0]
-    is_full_circle = total_sweep >= _TWO_PI - _CHAIN_GAP_EPS
-
-    members = [c[4] for c in chain]
-    representative = min(members, key=lambda e: original_index[id(e)])
-
-    if is_full_circle:
-        # Un giro intero è un cerchio, non "un ArcSeg che parte da dove
-        # capitava la prima fusione": stesso primitivo di un CIRCLE nativo,
-        # nessuna traccia di quale frammento fosse il primo.
-        merged_segment = CircleSeg(center=center, radius=radius)
-        end_point = lo_point = segment_endpoints(merged_segment)[0]
-    else:
-        end_point = hi_span[3]
-        merged_segment = ArcSeg(
-            center=center, radius=radius,
-            start_angle=lo_span[0], end_angle=hi_span[2], ccw=True,
-        )
-
-    replacement[id(representative)] = replace(
-        representative, start=lo_point, end=end_point, segment=merged_segment
-    )
-    for e in members:
-        if e is not representative:
-            drop.add(id(e))
+def _merged_arc(lo: _Span, hi: _Span):
+    """Il fuso di una catena cocircolare: un arco, o un cerchio se chiude il
+    giro — stesso primitivo di un CIRCLE nativo, nessuna traccia di quale
+    frammento fosse il primo."""
+    center, radius = lo.extra
+    if hi.hi - lo.lo >= _TWO_PI - _CHAIN_GAP_EPS:
+        circle = CircleSeg(center=center, radius=radius)
+        point = segment_endpoints(circle)[0]
+        return point, point, circle
+    arc = ArcSeg(center=center, radius=radius, start_angle=lo.lo, end_angle=hi.hi, ccw=True)
+    return lo.lo_node, hi.hi_node, arc
 
 
 # ---------------------------------------------------------------------------
