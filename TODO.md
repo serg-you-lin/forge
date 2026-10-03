@@ -208,6 +208,15 @@ commessa, il nome di una stampante d'ufficio e cinque codici pezzo come nomi di
 layer e testi di cartiglio: tutto sostituito, suite ferma a 876. Il dettaglio
 sta in MAP.md D76.
 
+**3 ottobre — blocchi definiti e mai usati.** `anch_01…06` portavano ancora la
+*definizione* di un logo cancellato a mano (geometria del logo e nome di una
+ditta nel nome del blocco), invisibile in CAD, leggibile nel testo. `audit_names`
+non l'ha visto perché il nome non ha la forma di un codice. Tolti con il nuovo
+`dxf-anonymize purge` (`heal()` e golden di ancoraggio identici). **Solo
+nell'HEAD:** i commit vecchi li hanno ancora, e Federico ha deciso di **non**
+riscrivere la storia per questo adesso — da riconsiderare nell'audit della
+1.0.0.
+
 Restano due cose:
 
 1. **Mettere in git i 32 disegni che la suite usa e non ha.** Letti e puliti in
