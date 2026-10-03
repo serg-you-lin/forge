@@ -714,7 +714,7 @@ for d, cluster in zip(docs, [p for p in result.clusters if p.outer.polygon.area 
 @dataclass(frozen=True)
 class RoleStyle:
     color:      tuple[int, int, int] | None = None   # RGB 0-255, canonico
-    linetype:   str | None = None                     # nome standard ezdxf, es. "DASHED"
+    linetype:   str | None = None                     # nome standard ezdxf, es. "DASHED"; ignoto → ValueError (D85)
     lineweight: float | None = None                   # mm
     layer_name: str | None = None                     # nome layer/gruppo di output
 ```

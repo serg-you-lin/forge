@@ -65,7 +65,7 @@ def split_at_crossings(edges: List[Edge], tolerance: float,
     I vicini da controllare li dà un STRtree. Primo e ultimo pezzo tengono i
     nodi dell'edge originale; un cerchio con meno di due tagli resta intero.
     """
-    geoms = [_geometry(e) for e in edges]
+    geoms = [edge_geometry(e) for e in edges]
     tree = STRtree(geoms)
     noded = NodedEdges()
     for i, edge in enumerate(edges):
@@ -245,7 +245,8 @@ def _split_circle(edge, near, tol, decimals):
     return _split(start, [p - params[0] for p in params[1:]], decimals)
 
 
-def _geometry(edge):
+def edge_geometry(edge: Edge):
+    """L'edge come geometria shapely: LineString discretizzata, Point se degenere."""
     pts = edge.segment.discretize(DEFAULT_TOLERANCE)
     if len(pts) < 2 or all(p == pts[0] for p in pts):
         return Point(pts[0])

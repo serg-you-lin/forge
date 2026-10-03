@@ -8,7 +8,7 @@ Unico file che tocca ezdxf per il write-back.
 from __future__ import annotations
 
 import math
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from ...core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg
 from ...model.style import EdgeStyle
@@ -20,33 +20,30 @@ _STANDARD_LINETYPES = frozenset({"BYLAYER", "BYBLOCK", "CONTINUOUS"})
 # Aspetto grezzo (linetype/colore) — Cluster E
 # ---------------------------------------------------------------------------
 
-def _ensure_linetype(doc, style: Optional[EdgeStyle]) -> str:
+def ensure_linetype(
+    doc,
+    name: str,
+    pattern: Optional[Tuple[float, ...]] = None,
+    description: str = "",
+) -> Optional[str]:
     """
-    Registra (se serve) il linetype di `style` nel documento di output e ne
-    ritorna il nome da usare in dxfattribs.
-
-    Un documento ezdxf nuovo conosce solo ByLayer/ByBlock/Continuous: un
-    linetype con tratteggio (DASHED, CENTER, ...) non esiste finché non lo si
-    aggiunge alla tabella, col pattern catturato dall'adapter al load
-    (`style.linetype_pattern`). Senza pattern noto non c'è nulla da
-    registrare — meglio BYLAYER esplicito che un riferimento pendente.
+    Garantisce che il linetype `name` esista in `doc` e ne ritorna il nome;
+    None se nessuno sa dirne la forma. Ordine: già nel documento → `pattern`
+    dato dal chiamante (catturato dalla sorgente, vince) → tabella standard
+    ezdxf per nome. Cosa fare con None lo decide il chiamante (MAP.md D85).
     """
-    if style is None:
-        return "BYLAYER"
-    name = style.linetype or "BYLAYER"
-    if name.upper() in _STANDARD_LINETYPES:
+    if name.upper() in _STANDARD_LINETYPES or name in doc.linetypes:
         return name
-    if doc is None:
-        return "BYLAYER"
-    if name not in doc.linetypes:
-        if not style.linetype_pattern:
-            return "BYLAYER"
-        doc.linetypes.add(
-            name,
-            pattern=list(style.linetype_pattern),
-            description=style.linetype_desc or "",
-        )
-    return name
+    if pattern:
+        doc.linetypes.add(name, pattern=list(pattern), description=description)
+        return name
+    from ezdxf.tools.standards import linetypes as standard_linetypes
+
+    for lt_name, desc, std_pattern in standard_linetypes():
+        if lt_name.upper() == name.upper():
+            doc.linetypes.new(lt_name, dxfattribs={"description": desc, "pattern": std_pattern})
+            return lt_name
+    return None
 
 
 def _style_attribs(doc, layer: str, style: Optional[EdgeStyle] = None) -> dict:
@@ -62,8 +59,12 @@ def _style_attribs(doc, layer: str, style: Optional[EdgeStyle] = None) -> dict:
     if style is None:
         return attribs
 
-    linetype = _ensure_linetype(doc, style)
-    if linetype.upper() != "BYLAYER":
+    # Forma ignota: si ripiega sul tratto del layer — la sorgente non la
+    # portava, non è un errore di nessuno.
+    name = style.linetype or "BYLAYER"
+    linetype = None if doc is None else ensure_linetype(
+        doc, name, style.linetype_pattern, style.linetype_desc or "")
+    if linetype is not None and linetype.upper() != "BYLAYER":
         attribs["linetype"] = linetype
 
     return attribs

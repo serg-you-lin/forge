@@ -130,6 +130,19 @@ class TestRoleStyleLinetypeOverride(unittest.TestCase):
         self.assertEqual(layer.dxf.linetype, "DASHED")
 
 
+class TestRoleStyleUnknownLinetypeRaises(unittest.TestCase):
+    """
+    Un linetype che né il documento né la tabella standard sanno definire è
+    un errore di configurazione del consumatore: solleva, mai un DXF con un
+    riferimento pendente (MAP.md D85).
+    """
+
+    def test_001_unknown_name_raises(self):
+        result, doc_in = _rect_with_hole_and_frame()
+        with self.assertRaises(ValueError):
+            forge.to_dxf(result, doc_in, role_styles={"unknown": RoleStyle(linetype="DASHHED")})
+
+
 class TestRoleStyleUnknownRoleCreatesLayerEvenWithoutEntities(unittest.TestCase):
     """
     Un override per un ruolo che non compare in nessuna entità di questo

@@ -22,7 +22,6 @@ import math
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
-from shapely.geometry import LineString, Point
 
 from ..model.cluster import ForgeCluster
 from ..model.contour import ForgeContour
@@ -35,7 +34,7 @@ from .primitives.segments import ArcSeg, CircleSeg, DEFAULT_TOLERANCE, LineSeg, 
 from .topology.edge import Edge
 from .topology.graph import build_node_graph
 from .topology.loop_finder import LoopFinder, segments_from_loop, edge_styles_from_loop
-from .topology.noding import NODE_DECIMALS, renode, split_at_crossings
+from .topology.noding import NODE_DECIMALS, edge_geometry, renode, split_at_crossings
 from .topology.non_contour_edges import NonContourEdgeDetector
 from .topology.outer_face import OuterFace, outer_face
 from .healing.islands import spatial_islands
@@ -173,7 +172,7 @@ def read_island(edges: List[Edge], tolerance: float, max_gap: float = 0.5) -> Is
     rest = [e for e in pieces if id(e) not in taken]
     if face is not None:
         probe = face.polygon.buffer(tolerance)
-        reading.outside = [e for e in rest if not probe.contains(_geometry(e))]
+        reading.outside = [e for e in rest if not probe.contains(edge_geometry(e))]
         outside_ids = {id(e) for e in reading.outside}
         rest = [e for e in rest if id(e) not in outside_ids]
         if reading.outside:
@@ -297,9 +296,3 @@ def _joined(prev, seg):
 def _open(edges: List[Edge]) -> list:
     return [OpenFeature(role=e.role, segments=[e.segment], styles=[e.style]) for e in edges]
 
-
-def _geometry(edge: Edge):
-    pts = edge.segment.discretize(DEFAULT_TOLERANCE)
-    if len(pts) < 2 or all(p == pts[0] for p in pts):
-        return Point(pts[0])
-    return LineString(pts)

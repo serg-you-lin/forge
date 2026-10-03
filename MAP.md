@@ -2484,6 +2484,38 @@ value is tested in snapdraw once detection on islands exists.
   text writer); a base class would be ceremony until a second renderer needs
   the same id map.
 
+### D85 — one rule for registering a linetype in the output; an unknown name in `RoleStyle` raises ✅
+`gen_index.py` (D72) listed `_ensure_linetype` twice: `adapters/dxf/exporter.py`
+(re-registers a source edge's linetype from the pattern captured at load) and
+`io/dxf.py` (registers a `RoleStyle.linetype` from ezdxf's standard table). Same
+job — make a linetype name exist in the output document — with two different
+answers to *where its shape comes from* and *what happens when nobody knows it*.
+
+Now one `exporter.ensure_linetype(doc, name, pattern=None, description="")`,
+in this order: already in the document → the pattern the caller passes (the
+source's own definition is the truth of that drawing, so it wins over a
+standard of the same name) → the standard table by name → `None`. The caller
+decides what `None` means, because the two cases are not the same fact:
+
+- **Source edge**: the file simply did not carry the shape — nobody's mistake.
+  Falls back to the layer's line (BYLAYER), as before. One gain: a standard
+  name with no captured pattern (`DASHED`) now stays dashed instead of turning
+  continuous.
+- **`RoleStyle` from a consumer**: a name neither the document nor the standard
+  table defines is a configuration error (`"DASHHED"`). `to_dxf`/`split` raise
+  `ValueError`. Before, the name was written onto the layer anyway — a dangling
+  reference that ezdxf may refuse at save — which non-negotiable 7 forbids.
+  Nobody uses `RoleStyle.linetype` today (only colours and layer names are set),
+  so nothing breaks.
+
+The same pass cleared the other names D72 found: `_geometry` (byte-identical in
+`core/healing/islands.py`, `core/island.py`, `core/topology/noding.py`) is one
+`noding.edge_geometry`; `tools/anchor._geometry`, `tools/tabs._normalize` and
+`io/view_model._xy` were different jobs sharing a name and were renamed
+(`_item_geometry`, `_unit_vector`, `_round_points`). The index now lists no
+duplicate. Its limit stands: it sees the same *name*, not the same *job* under
+two names.
+
 ---
 
 ## Closed questions (history)

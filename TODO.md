@@ -112,6 +112,12 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    sua detection (è nel TODO di snapdraw); se sopravvive, entra in `__all__` e
    in `API.md`. Sui fogli di viste il peso è ancora quasi tutto cornice,
    tacche e retini non classificati: si abbassa quando snapdraw li etichetta.
+11. **Doppioni trovati da `gen_index.py` (D72)** — ✅ **tutti sistemati** il
+   3 ottobre (D85): `_geometry` fuso in `noding.edge_geometry`,
+   `_ensure_linetype` fuso in `exporter.ensure_linetype` (un linetype ignoto
+   in `RoleStyle` ora solleva), gli omonimi rinominati.
+   Limite del controllo: trova solo lo **stesso nome**; lo stesso lavoro scritto
+   con due nomi diversi non lo vede. Una ricerca per corpo simile resta da fare.
 
 ---
 
