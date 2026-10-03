@@ -29,6 +29,7 @@ primitive geometriche pure.
    PDF (sperim.) ───►   ForgeResult   ├──────►  JSON / XML (save_json, save_xml)
    SVG (futuro) ─────►   il modello   ├──────►  view model JSON (to_view_model)
                     │                 ├──────►  SVG (to_svg, save_svg)
+                    │                 ├──────►  testo per un agente AI (to_text, sperim.)
                     └─────────────────┘
 ```
 
@@ -108,6 +109,7 @@ forge/
 │   ├── dxf.py        to_dxf(), split()       (ex pipeline/write.py)
 │   ├── svg.py        to_svg(), save_svg()
 │   ├── view_model.py to_view_model()
+│   ├── text.py       to_text(), save_text()  (sperimentale, D84)
 │   └── exporter.py   save_json / save_xml / XDATA
 │
 ├── rules/        REGOLE di dominio                     (palette, schema, validazione)

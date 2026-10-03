@@ -968,6 +968,11 @@ forge.to_view_model(
 solo metadati). Lo consuma `to_svg` e lo consumerebbe un front-end esterno
 (dashboard JS che disegna con SVG/Canvas).
 
+> `to_text(result) -> str` / `save_text(result, path)` — la lettura per un
+> modello linguistico (`<nome>.forge.md`) — è **sperimentale**, fuori da
+> `__all__` finché non ha un chiamante vero (MAP.md D84). Firma e sezioni in
+> `docs/LLM.md`, insieme a una tabella di cosa dà ogni uscita.
+
 > `to_nester_input(result) -> list[dict]` esiste ancora (`label`, `bbox`,
 > `outer_coords`, `holes_coords` per parte) ma è **sperimentale**, fuori da
 > `__all__` — scritto per un nester mai realizzato (MAP.md D18). Per serializzare

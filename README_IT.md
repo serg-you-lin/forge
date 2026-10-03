@@ -6,7 +6,8 @@
 perdite — contorni chiusi ricuciti, la loro gerarchia di contenimento, le
 annotazioni del disegno, e un overlay aperto dove si attaccano le feature
 rilevate — poi lo riscrive in DXF (un documento, o uno per pezzo), JSON/XML, SVG,
-o un view model per una UI. Il prodotto è il
+un view model per una UI, o (sperimentale) una lettura testuale compatta per un
+modello linguistico. Il prodotto è il
 modello; un formato CAD è solo una porta di entrata o di uscita. Oggi quella porta
 è il DXF (DWG via ODA), gestita da un solo adapter — tutto ciò che sta a valle
 lavora sul modello neutro rispetto al formato.

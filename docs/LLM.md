@@ -35,6 +35,21 @@ detect_flat(result, features=...)                    →  ForgeResult     (mutat
 to_dxf / split / to_json / save_json / to_svg / to_view_model  →  render from the model (never re-reads source)
 ```
 
+### Which output gives you what
+
+Every `to_*` renders the same model; pick by what you need, not by habit. If
+you are running Python, the `ForgeResult` itself is the richest source: query
+it directly and render only what you hand on.
+
+| output | what is in it | exact curves | coordinates | annotations | `detected` | weight | use it when |
+|---|---|---|---|---|---|---|---|
+| `ForgeResult` (in memory) | everything: contours, segments, roles, trash, annotations with `references`/`target`, `detected` | yes (native primitives) | full precision | yes | yes | — | you can run code: ask the model, don't parse an export |
+| `to_dxf` / `split` | the geometry back as CAD, one layer per role | **yes** (arcs, circles, native `SPLINE`) | full precision | yes (opt.) | written per item (D70) | like a DXF | a machine or a CAD user needs the file |
+| `to_json` / `save_json` / `save_xml` | per-part metadata (counts, areas, bbox, custom fields) | — | **none** | no | counts only | tiny | a business system needs numbers about parts |
+| `to_view_model` | every feature as polylines + role + colour | no (discretized) | full precision | yes | holes/bends/engraving drawn; other collections only counted | can exceed the DXF on sheets of views | an external renderer draws it |
+| `to_svg` | the view model as an image | no (discretized) | full precision | yes | as the view model | like the view model | a person looks at it |
+| `to_text` *(experimental, D84)* | contours named by shape with ids (`C1.3`), unnamed ones side by side, open edges inside clusters, dimensions/leaders by id, texts, `detected` generically, what was not understood | splines described (ends, bbox, length); exact data with `spline_data=True` | rounded (`decimals=3`) | yes, by id | yes, generically | a fraction of the DXF; size watched by `tests/real/test_text_budget.py` | a language model has to answer questions about the drawing |
+
 `heal_and_detect(doc)` = `heal` + `detect_flat(features="all")`, the 90% path.
 `split_to_files(doc, folder)` = `heal_and_detect` + `split` + `.saveas()` per part — the only function that writes to disk on its own.
 
@@ -285,6 +300,7 @@ Not documented in `API.md` until proven by a real caller. Import path shown sinc
 | `rotate_document` | `forge.rotate_document` | `(doc, angle_rad, origin=(0,0), tolerance=0.05) -> ForgeDocument` | rotates a raw pre-heal `ForgeDocument`. |
 | `rotate_to_longest` | `forge.rotate_to_longest` | `(result, include_inners=False, target_angle_deg=0.0, origin=None) -> (ForgeResult, float)` | finds the longest structural segment, rotates the result so it lands at `target_angle_deg`; returns result + angle applied. |
 | `simplify_points` | `forge.simplify_points` (module: `forge.core.primitives.fitting`) | `(points: list[Point], closed=True, angle_threshold_deg=50.0, min_points_for_spline=4, spline_degree=3, duplicate_tolerance=1e-6, arc_fit_tolerance=None) -> list[LineSeg\|ArcSeg\|CircleSeg\|SplineSeg]` | reconstructs primitives from a dense ordered point sequence (corner detection + refit). Feeds `load_geometry`'s `"spline"` entity type. |
+| `to_text` / `save_text` | `forge.to_text` | `(result, source_name="", decimals=3, spline_data=False) -> str` / `(result, path, ...) -> None` | the model as Markdown for a language model (`<name>.forge.md`): header + legend, `## contours` (`Cn` = cluster n, `Cn.k` = k-th closed contour inside; named shapes on one line, others segment by segment), `## open edges` (unclassified, inside a cluster), `## dimensions and leaders` (`-> Cn.k`, from `anchor_annotations` — run it first), `## texts`, `## detected` (any collection, generically), `## not understood` (unanchored annotations, counted edges, warnings, invalid result). Pure renderer: computes no anchoring. D84. |
 | `bridge_tabs` | `forge.tools.tabs.bridge_tabs` | `(parent_points, child_points, anchor_parent, anchor_child, tab_width) -> BridgeTab` | one positioning tab between a nested island and its direct parent contour — geometric construction, returns 2 flank segments + 4 cut points. |
 | `bridge_nested_tabs` | `forge.tools.tabs.bridge_nested_tabs` | `(cluster, tab_width, tab_count=4, discretize_tolerance=0.05) -> list[NestedBridgeResult]` | walks `cluster.inners`, places `tab_count` tabs on every even-depth (≥2) island against its direct parent, in one pass. Scope: line/arc/polyline/circle contours, not spline yet. |
 
