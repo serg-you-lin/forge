@@ -2572,7 +2572,8 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
   model. Thin, not a format project: the throwaway prototype of the probe
   was ~60 lines over `island`/`heal` + `anchor_annotations` +
   `contour_shape`, and already gave 6/6. Rules: one fact per line; every
-  element gets a short stable id (`V1.3`) that annotations then reuse, so
+  element gets a short stable id (`C1.3`: cluster 1, third contour inside it —
+  forge's own terms, not "view", which is snapdraw's) that annotations reuse, so
   "which dimension measures what" is a reference, not a guess; shapes by
   `contour_shape` kind, coordinates at 3 decimals (TODO 9); units stated once;
   a closing section with what was not understood (trash, unanchored
@@ -2588,6 +2589,22 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
   line: no schema versioning, no "standard format", no repetition patterns
   until a reader needs them. Further out, the natural form is a tool an
   agent calls (`read_drawing(path)` → this text), not a file it is handed.
+  Refined the same day on `anch_01`: a contour with no short name (`other`,
+  `polygon`) is written **segment by segment** (line from/to, arc centre R
+  angles), otherwise its position and outline are lost — the plate's step and
+  corner radii were invisible in the first prototype. A spline is written
+  exact, never discretized (degree, control points, knots only if not
+  uniform, weights only if rational: the DXF's own data without its group
+  codes) **plus facts forge computes and a model cannot**: endpoints, bbox,
+  length — a model reading control points tends to treat the control polygon
+  as the curve, the very mistake of D42. Open edges next to a contour (the
+  3/4 arc of a thread around its circle) must be listed with their geometry,
+  not only counted: forge does not know it is a thread, but the reader can
+  recognize it if the arc is there. File: Markdown, `<name>.forge.md`, first
+  line saying what it is and a short legend; the model recognizes it by its
+  content, the extension is for people and tools. With the frame marked by
+  hand (simulating snapdraw), `anch_01` splits into five clusters — front
+  view and four sections — and the contours section is ~830 tokens.
 - **`anonymize`: cleaning a client drawing into a publishable fixture
   (Federico — wanted in forge *and* in every consumer).** Tests are made with
   client files by necessity, so the sanitizing step is a tool, not a habit. Key
