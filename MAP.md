@@ -2489,6 +2489,66 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
   against known truth (the anchoring golden already is one); (3) report energy
   and water only as a range derived from a cited public per-token estimate, said
   to be an estimate — the token saving is the measured fact.
+  **Point (1) measured (3 October)** with `tiktoken` `o200k_base` (OpenAI's
+  tokenizer, runs locally, no account — not Claude's, so absolute counts differ
+  somewhat, the ratios hold). Raw DXF / `to_svg` / `to_view_model` / `to_json` /
+  anchoring golden json: `anch_01` 128k / 14k / 16k / 0.3k / 4.7k;
+  `anch_02` 445k / 158k / 210k / 0.3k / 4.6k; `anch_03` 294k / 105k / 110k /
+  0.3k / 3.0k; `anch_04` 107k / 15k / 18k / 0.3k / 2.3k; `anch_05` 98k / 8.5k /
+  8.1k / 0.3k / 1.8k; `anch_06` 128k / 16k / 27k / 0.3k / 2.5k; `anch_07` 79k /
+  310k / 305k / 0.3k / 1.0k; `anch_08` 202k / 260k / 251k / 0.3k / 2.6k; `F6`
+  85k / 0.5k / 0.6k / 0.3k / –. Findings: bytes / 4 **underestimates** a raw
+  DXF by ~2.3× (group codes, newlines and coordinates tokenize badly), so the
+  raw cost is worse than first said; `to_view_model`/`to_svg` can be **larger**
+  than the source (`anch_07`, `anch_08`: discretizing curves and text into
+  points), confirming they are not the reading for an AI; the anchoring golden —
+  which already says which dimension measures which element — sits at 1–5k,
+  a 25–100× reduction, and is the closest existing thing to the missing
+  renderer. Image tokens were not counted (they depend on the model's image
+  pricing, not on a tokenizer).
+  **Against an image, forge does not win on size** (3 October, discussion): a
+  PNG costs the model roughly a fixed, small budget whatever the drawing holds.
+  What an image cannot give is exactness — numbers misread, sizes guessed from
+  pixels, small features missed, which dimension measures what left to guess.
+  So the image is the human side (what the object is, which view is which) and
+  forge's reading is the exact side; the likely winner is **both together**,
+  which is how a model already inspects a drawing in practice (render a PNG to
+  see it, read the numbers from data). Point (2) therefore needs a fourth
+  condition: image + forge's reading. Not README material yet: the table only
+  proves a raw DXF is expensive; the column that matters is not a forge output
+  until the renderer exists and point (2) shows answers improve.
+  Energy and water therefore stay a secondary argument: real against a raw DXF
+  (tens to hundreds of thousands of tokens down to a few thousand), small
+  against an image. The headline is correct answers; fewer wrong answers also
+  means fewer retries, but that is not measurable and is not claimed.
+  **First point-(2) probe (3 October), one drawing, not a proof.** `anch_01`
+  rendered to PNG (dimensions regenerated, since the file's dimension blocks
+  are empty), six questions with known answers, two fresh agents that had
+  never seen forge: one with the PNG only, one with the PNG plus a throwaway
+  prototype reading (`island` + `anchor_annotations` + `contour_shape`, shapes
+  by name, 3 decimals, ≈2.4k tokens). Image only: size 46 × ~45 (true 46 × 48),
+  thickness 1.8 (true 3 — it read the countersink depth), centre hole called
+  round (it is elongated 7.9 × 4.2), countersinks missed, hole pitch and corner
+  Ø right, distance between corner holes "cannot determine". Image + reading:
+  6/6, each answer cross-checked between coordinates and dimensions; the
+  corner-hole distance (39.2 / 41.2, not dimensioned on the sheet) computed
+  from coordinates. Limits: one sheet, one run each, questions written by
+  someone who knew forge, a PNG of modest resolution with rendering artifacts.
+  Seen in passing: `island()` made the sheet frame the outer and every view an
+  inner of it — the reading has no per-view grouping until something
+  recognizes the frame.
+  What the reading should state, in forge's own terms: per view/island the
+  closed contours as shapes (circle Ø + centre, arc, slot, rectangle w × h,
+  polyline only when nothing shorter is true), coordinates rounded to the
+  drawing's precision; names are geometric, never process ("circle Ø8", not
+  "hole"); the containment tree (what is inside what); repetitions of *drawn*
+  geometry stated once (n × Ø on a pitch) only as an optional later step — a
+  list of the circles is already true; a *notation* that stands for undrawn
+  geometry ("4x Ø8" with one circle drawn) is reported as text anchored to the
+  drawn element, and expanding it is snapdraw's reading, not forge's; each
+  dimension with its value, the element it is anchored to, and whether it
+  agrees with the measured geometry; texts attached to the nearest element;
+  whatever was not understood, listed (nothing silently dropped).
 - **`anonymize`: cleaning a client drawing into a publishable fixture
   (Federico — wanted in forge *and* in every consumer).** Tests are made with
   client files by necessity, so the sanitizing step is a tool, not a habit. Key
