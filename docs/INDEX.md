@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`75` modules · `354` module-level functions · `54` classes · `13816` lines of code.
+`75` modules · `354` module-level functions · `54` classes · `13817` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -348,7 +348,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `sanitize_pdf_geometries` | func | `forge/adapters/pdf/sanitize.py:13` | Prende gli item geometrici grezzi estratti dall'extractor, applica la conversione |
 | `save_json` | func | `forge/io/exporter.py:124` | Salva i metadati in JSON secondo lo schema di metadata_schema.py. |
 | `save_svg` | func | `forge/io/svg.py:171` | Scrive `to_svg(result, **kwargs)` su file. |
-| `save_text` | func | `forge/io/text.py:265` | Scrive `to_text(result)` su `path` (per convenzione `<nome>.forge.md`). |
+| `save_text` | func | `forge/io/text.py:266` | Scrive `to_text(result)` su `path` (per convenzione `<nome>.forge.md`). |
 | `save_xml` | func | `forge/io/exporter.py:177` | Salva i metadati in XML secondo lo schema di metadata_schema.py. |
 | `_scale` | func | `forge/tools/tabs.py:58` |  |
 | `_scan_axis` | func | `forge/core/healing/outer_scan.py:186` |  |
@@ -979,7 +979,7 @@ _io/svg.py_
 - `save_svg(result: ForgeResult, path: str, **kwargs) -> None` — L171 — Scrive `to_svg(result, **kwargs)` su file.
 - `_scan_bbox(vm: dict) -> Optional[list]` — L178 — bbox da tutti i punti del view model — fallback quando vm['bbox'] è None.
 
-#### `forge/io/text.py` — 268 lines
+#### `forge/io/text.py` — 269 lines
 
 _io/text.py_
 
@@ -988,7 +988,7 @@ _io/text.py_
 - `_first_point(s) -> Optional[tuple]` — L153 — Un punto che sta sul segmento, per dire in quale pezzo cade.
 - `_uniform_knots(knots, degree: int) -> bool` — L161 — Nodi bloccati agli estremi e passo interno costante: non serve scriverli.
 - `to_text(result: ForgeResult, source_name: str='', decimals: int=3, spline_data: bool=False) -> str` — L172 — Il `ForgeResult` come testo per un modello linguistico (`.forge.md`).
-- `save_text(result: ForgeResult, path: str \| Path, source_name: str='', decimals: int=3, spline_data: bool=False) -> None` — L265 — Scrive `to_text(result)` su `path` (per convenzione `<nome>.forge.md`).
+- `save_text(result: ForgeResult, path: str \| Path, source_name: str='', decimals: int=3, spline_data: bool=False) -> None` — L266 — Scrive `to_text(result)` su `path` (per convenzione `<nome>.forge.md`).
 
 #### `forge/io/view_model.py` — 209 lines
 
