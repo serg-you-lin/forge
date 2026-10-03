@@ -2566,6 +2566,28 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
   dimension with its value, the element it is anchored to, and whether it
   agrees with the measured geometry; texts attached to the nearest element;
   whatever was not understood, listed (nothing silently dropped).
+  **Shape of the renderer (3 October, discussion — proposal, not decided).**
+  A fourth renderer beside `to_dxf` (machines), `to_svg` (people), `to_json`
+  (business systems): `to_text(result)` for a reader that is a language
+  model. Thin, not a format project: the throwaway prototype of the probe
+  was ~60 lines over `island`/`heal` + `anchor_annotations` +
+  `contour_shape`, and already gave 6/6. Rules: one fact per line; every
+  element gets a short stable id (`V1.3`) that annotations then reuse, so
+  "which dimension measures what" is a reference, not a guess; shapes by
+  `contour_shape` kind, coordinates at 3 decimals (TODO 9); units stated once;
+  a closing section with what was not understood (trash, unanchored
+  annotations). Plain lines rather than JSON because braces, quotes and
+  repeated keys are tokens that carry nothing — to be measured when built,
+  not assumed. The key point is the split, same as D70 for `to_dxf`: forge
+  writes **every collection in `cluster.detected` generically**, item by
+  item, never knowing what a "countersink" or a "view" is; snapdraw fills
+  that overlay (detection on islands, `detect_combined` across views and
+  sections), and its findings appear in the same text for free. So the forge
+  part can be built independently and is small; the value test happens in
+  snapdraw once its detection exists (snapdraw `TODO.md`). Overengineering
+  line: no schema versioning, no "standard format", no repetition patterns
+  until a reader needs them. Further out, the natural form is a tool an
+  agent calls (`read_drawing(path)` → this text), not a file it is handed.
 - **`anonymize`: cleaning a client drawing into a publishable fixture
   (Federico — wanted in forge *and* in every consumer).** Tests are made with
   client files by necessity, so the sanitizing step is a tool, not a habit. Key
