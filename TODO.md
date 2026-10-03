@@ -94,6 +94,13 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    (view-model, SVG, la futura lettura per un agente). Non in `to_dxf`, che va
    a una macchina e resta esatto — da confermare con Federico.
    Quando si fa, diventa un `D##` in `MAP.md`.
+10. **`island()` perde cerchi completi su `anch_01`** (trovato il 3 ottobre dal
+   test "lettura per un agente", MAP.md nota aperta): le svasature Ø6.7 dei due
+   fori d'angolo (una diventa mezzo arco, l'altra sparisce) e la Ø7.8 del foro
+   sinistro su A-A (mezzo arco). Nel DXF sono `CircleSeg` interi. Ipotesi da
+   verificare per gli angoli: il cerchio Ø6.7 è concentrico al raccordo R3.4
+   della piastra e sta a 0.05 da lui, sotto `max_gap=0.5`. Per il foro
+   sinistro nessuna ipotesi ancora.
 
 ---
 
