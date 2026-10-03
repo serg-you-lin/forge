@@ -17,11 +17,17 @@ Uso (da qualsiasi cartella)::
 
     python scripts/gen_index.py            # scrive docs/INDEX.md
     python scripts/gen_index.py --check    # esce 1 se l'indice è obsoleto
+    python scripts/gen_index.py --similar  # corpi simili e frammenti ripetuti
 
 Oltre all'inventario produce due controlli automatici:
     - nomi definiti a livello di modulo in più di un modulo (candidati doppioni)
     - violazioni della regola di dipendenza del package (per forge: `core` e
       `model` non importano `adapters`/`tools`/`io`)
+
+`--similar` non scrive l'indice: confronta i corpi invece dei nomi (variabili
+locali anonimizzate) e stampa funzioni uguali o quasi uguali sotto nomi
+diversi e frammenti di istruzioni ripetuti in più funzioni. Candidati da
+leggere, non verdetti.
 
 Riusabile negli altri progetti della famiglia (snapbend, snapdraw, ...): il file
 si copia in `scripts/` così com'è, trova da sé il package da indicizzare (la
@@ -34,8 +40,10 @@ from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import sys
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
@@ -284,6 +292,214 @@ def find_layer_violations(modules: Iterable[Module],
 
 
 # --------------------------------------------------------------------------- #
+# corpi simili: lo stesso lavoro sotto nomi diversi (`--similar`)
+# --------------------------------------------------------------------------- #
+
+SIMILAR_RATIO = 0.85     # soglia di somiglianza tra due corpi normalizzati
+SIMILAR_MIN_NODES = 40   # sotto, due funzioni corte si somigliano per forza
+WINDOW_STATEMENTS = 2    # istruzioni consecutive di un frammento ripetuto
+WINDOW_MIN_NODES = 15    # nodi minimi del frammento, per scartare gli ovvi
+
+
+@dataclass
+class Body:
+    """Una funzione o un metodo, col corpo normalizzato."""
+
+    name: str                      # `f` o `Classe.f`
+    location: str
+    shape: str                     # dump del corpo normalizzato
+    tokens: list[str]
+    size: int                      # nodi ast del corpo
+
+
+class _Anonymize(ast.NodeTransformer):
+    """Rinomina parametri e variabili locali in `v0, v1, ...` nell'ordine in cui
+    compaiono: due corpi che differiscono solo per quei nomi diventano uguali.
+    Nomi globali, attributi e costanti restano: portano il significato."""
+
+    def __init__(self, local: set[str]) -> None:
+        self.local = local
+        self.names: dict[str, str] = {}
+
+    def _rename(self, name: str) -> str:
+        return self.names.setdefault(name, f"v{len(self.names)}")
+
+    def visit_Name(self, node: ast.Name) -> ast.AST:
+        if node.id in self.local:
+            return ast.copy_location(ast.Name(id=self._rename(node.id), ctx=node.ctx), node)
+        return node
+
+    def visit_arg(self, node: ast.arg) -> ast.AST:
+        node.arg = self._rename(node.arg)
+        node.annotation = None
+        return node
+
+
+def _local_names(nodes: list[ast.AST]) -> set[str]:
+    """Nomi assegnati o ricevuti come parametro dentro `nodes`."""
+    local: set[str] = set()
+    for root in nodes:
+        for node in ast.walk(root):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+                local.add(node.id)
+            elif isinstance(node, ast.arg):
+                local.add(node.arg)
+    return local
+
+
+def _strip_docstring(body: list[ast.stmt]) -> list[ast.stmt]:
+    first = body[0] if body else None
+    if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) \
+            and isinstance(first.value.value, str):
+        return body[1:]
+    return body
+
+
+def _normalize(nodes: list[ast.AST], extra_local: Iterable[str] = ()) -> list[ast.AST]:
+    """Copia di `nodes` con i nomi locali anonimizzati."""
+    nodes = [copy.deepcopy(n) for n in nodes]
+    renamer = _Anonymize(_local_names(nodes) | set(extra_local))
+    return [renamer.visit(n) for n in nodes]
+
+
+def _tokens(nodes: list[ast.AST]) -> list[str]:
+    out: list[str] = []
+    for root in nodes:
+        for node in ast.walk(root):
+            out.append(type(node).__name__)
+            for attr in ("id", "attr", "arg"):
+                if hasattr(node, attr):
+                    out.append(str(getattr(node, attr)))
+    return out
+
+
+def _size(nodes: list[ast.AST]) -> int:
+    return sum(1 for root in nodes for _ in ast.walk(root))
+
+
+def _iter_functions(tree: ast.Module) -> Iterator[tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]]:
+    """Funzioni di modulo e metodi di classe (non le funzioni annidate)."""
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            yield node.name, node
+        elif isinstance(node, ast.ClassDef):
+            for item in node.body:
+                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    yield f"{node.name}.{item.name}", item
+
+
+def read_bodies(path: Path) -> list[Body]:
+    """Le funzioni e i metodi di un file, coi corpi normalizzati."""
+    rel = path.relative_to(ROOT).as_posix()
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    bodies = []
+    for name, fn in _iter_functions(tree):
+        body = _strip_docstring(fn.body)
+        if not body:
+            continue
+        params = [a.arg for a in ast.walk(fn.args) if isinstance(a, ast.arg)]
+        norm = _normalize(body, params)
+        bodies.append(Body(
+            name=name, location=f"{rel}:{fn.lineno}",
+            shape="|".join(ast.dump(n) for n in norm), tokens=_tokens(norm), size=_size(body),
+        ))
+    return bodies
+
+
+def find_same_bodies(bodies: list[Body]) -> list[list[Body]]:
+    """Gruppi di funzioni con corpo identico a meno dei nomi locali."""
+    groups: dict[str, list[Body]] = {}
+    for b in bodies:
+        if b.size >= SIMILAR_MIN_NODES // 2:
+            groups.setdefault(b.shape, []).append(b)
+    return [g for g in groups.values() if len(g) > 1]
+
+
+def find_similar_bodies(bodies: list[Body]) -> list[tuple[float, Body, Body]]:
+    """Coppie di corpi quasi uguali (non identici), dalla più simile."""
+    big = [b for b in bodies if b.size >= SIMILAR_MIN_NODES]
+    pairs = []
+    for i, a in enumerate(big):
+        for b in big[i + 1:]:
+            la, lb = len(a.tokens), len(b.tokens)
+            if a.shape == b.shape or min(la, lb) / max(la, lb) < SIMILAR_RATIO:
+                continue
+            m = SequenceMatcher(None, a.tokens, b.tokens, autojunk=False)
+            if m.quick_ratio() < SIMILAR_RATIO:
+                continue
+            r = m.ratio()
+            if r >= SIMILAR_RATIO:
+                pairs.append((r, a, b))
+    return sorted(pairs, key=lambda t: -t[0])
+
+
+def find_repeated_fragments(paths: list[Path]) -> list[tuple[str, list[str]]]:
+    """Sequenze di WINDOW_STATEMENTS istruzioni consecutive che compaiono, a meno
+    dei nomi locali, in più di una funzione: candidati a una microfunzione.
+    Ritorna (testo del frammento, posizioni `file:riga`)."""
+    seen: dict[str, list[tuple[str, str, str]]] = {}
+    for path in paths:
+        rel = path.relative_to(ROOT).as_posix()
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for name, fn in _iter_functions(tree):
+            for block in ast.walk(fn):
+                for field_name in ("body", "orelse", "finalbody"):
+                    stmts = getattr(block, field_name, None)
+                    if not isinstance(stmts, list) or not stmts or not isinstance(stmts[0], ast.stmt):
+                        continue
+                    stmts = _strip_docstring(stmts)
+                    for i in range(len(stmts) - WINDOW_STATEMENTS + 1):
+                        win = stmts[i:i + WINDOW_STATEMENTS]
+                        if _size(win) < WINDOW_MIN_NODES:
+                            continue
+                        key = "|".join(ast.dump(n) for n in _normalize(win))
+                        seen.setdefault(key, []).append((
+                            f"{rel}:{win[0].lineno}", f"{rel}::{name}",
+                            "\n".join(ast.unparse(n) for n in win)))
+    found = sorted(
+        (occ[0][2], sorted(o[0] for o in occ))
+        for occ in seen.values() if len({o[1] for o in occ}) > 1
+    )
+    found.sort(key=lambda t: t[1])
+    # un frammento più lungo della finestra dà finestre sovrapposte: le fondo
+    merged: list[tuple[str, list[str]]] = []
+    for text, locs in found:
+        if merged and _shifted(merged[-1][1], locs):
+            continue
+        merged.append((text, locs))
+    return sorted(merged, key=lambda t: -len(t[1]))
+
+
+def _shifted(a: list[str], b: list[str]) -> bool:
+    """Le posizioni `b` sono le `a` spostate in avanti di poche righe."""
+    if len(a) != len(b):
+        return False
+    for x, y in zip(a, b):
+        fx, lx = x.rsplit(":", 1)
+        fy, ly = y.rsplit(":", 1)
+        if fx != fy or not 0 < int(ly) - int(lx) <= 8:
+            return False
+    return True
+
+
+def report_similar(package: Path) -> str:
+    """Il testo del rapporto `--similar`."""
+    paths = list(iter_sources(package))
+    bodies = [b for p in paths for b in read_bodies(p)]
+    lines = [f"# corpi analizzati: {len(bodies)}", "", "## stesso corpo (a meno dei nomi locali)"]
+    for g in find_same_bodies(bodies):
+        lines.append("- " + " · ".join(f"{b.name} ({b.location})" for b in g))
+    lines += ["", f"## corpi quasi uguali (>= {SIMILAR_RATIO:.0%})"]
+    for r, a, b in find_similar_bodies(bodies):
+        lines.append(f"- {r:.0%}  {a.name} ({a.location})  ~  {b.name} ({b.location})")
+    lines += ["", f"## frammenti ripetuti ({WINDOW_STATEMENTS}+ istruzioni)"]
+    for text, locs in find_repeated_fragments(paths):
+        lines.append(f"- {len(locs)}x  " + " · ".join(locs))
+        lines += ["      " + t for t in text.splitlines()[:8]]
+    return "\n".join(lines) + "\n"
+
+
+# --------------------------------------------------------------------------- #
 # rendering
 # --------------------------------------------------------------------------- #
 
@@ -443,6 +659,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         description="Genera docs/INDEX.md: l'inventario dei nomi del package.")
     parser.add_argument("--check", action="store_true",
                         help="non scrive: esce 1 se docs/INDEX.md è obsoleto")
+    parser.add_argument("--similar", action="store_true",
+                        help="non scrive: stampa corpi uguali o simili sotto nomi diversi "
+                             "e frammenti ripetuti")
     parser.add_argument("--package", default=None,
                         help="nome della cartella del package (default: trovata da sé)")
     args = parser.parse_args(argv)
@@ -450,6 +669,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     package = (ROOT / args.package) if args.package else find_package(ROOT)
     if not (package / "__init__.py").exists():
         raise SystemExit(f"{package} non è un package (nessun __init__.py)")
+
+    if args.similar:
+        sys.stdout.reconfigure(encoding="utf-8")
+        print(report_similar(package), end="")
+        return 0
 
     text = build(package)
 
