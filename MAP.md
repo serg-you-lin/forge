@@ -2605,6 +2605,17 @@ the scope stated in `CLAUDE.md`: a geometry engine that knows no process.
   content, the extension is for people and tools. With the frame marked by
   hand (simulating snapdraw), `anch_01` splits into five clusters — front
   view and four sections — and the contours section is ~830 tokens.
+  **Does adding detail drift back to DXF size? Measured, no — but the margin
+  shrinks.** Worst case, every edge written one per line with nothing
+  understood (o200k, DXF after the 3 October purge): `anch_01` 82k → 5.9k,
+  `anch_02` 381k → 58.5k (780 splines), `anch_03` 233k → 35.5k, `anch_07`
+  78k → 23.7k, `anch_08` 202k → 47.2k. So dropping the DXF syntax alone is
+  worth 3–14×; the 25–100× comes from *understanding* (named shapes, frame
+  and hatching out, grouping). Rule that follows: every line must be a fact
+  the reader needs and cannot derive cheaply, and the token count on the anch
+  set is a measured budget, watched like a golden. Past a budget, the answer
+  is levels of detail — a summary first, the segments of `C1` on request —
+  which is the agent-tool form, not a longer file.
 - **`anonymize`: cleaning a client drawing into a publishable fixture
   (Federico — wanted in forge *and* in every consumer).** Tests are made with
   client files by necessity, so the sanitizing step is a tool, not a habit. Key
