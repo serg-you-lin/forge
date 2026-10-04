@@ -2764,6 +2764,20 @@ breaking change, which before 1.0 moves the minor number).
 
 ## Federico's notes (open questions, kept until they become decisions)
 
+- **The same hole patterns are read by two consumers (Federico, 4 October —
+  open).** A countersink (two concentric circles) or a threaded hole (circle +
+  concentric ~270° arc) is recognized with the same algorithm by snapbend's
+  `detect_flat` and, to come, by snapdraw's reading of views. Federico: is
+  redoing it identically in snapdraw legitimate? Proposal on the table, not
+  decided: the *geometric* part moves back to forge under geometric names, the
+  way `contour_shape` says "circle" and never "hole" (D68) — e.g. "concentric
+  circles" groups and "arcs around a circle" with their sweep and radius ratio.
+  Thresholds (the 1.6 radius ratio of a metric thread, the 32.1 mm drill limit),
+  names and models (`Hole`, …) stay in each consumer, because the meaning
+  differs: a drilling step for snapbend, a notation for snapdraw. Today all of
+  it is in `snapbend/flat/` (`holes.py`, `model/`); nothing hole-related is left
+  in forge.
+
 - **Should forge have the loader / the load-time `role_rules`? (Federico, 4
   October — open, thinking aloud.)** Seeing `MARK → engrave` turn into an
   `engrave` layer in forge's own output, he doubted that assigning a role at
