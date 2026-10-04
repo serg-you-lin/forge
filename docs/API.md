@@ -604,6 +604,54 @@ di direzione in radianti. I tratti rimasti da soli non compaiono.
 
 ---
 
+### `covered_rectangles`
+
+```python
+forge.covered_rectangles(items, min_side, eps=0.5, cluster_tolerance=1.5, coverage=0.85) -> list[CoveredRectangle]
+```
+
+I rettangoli allineati agli assi i cui quattro lati sono coperti almeno per
+`coverage` da tratti dritti (`items`: oggetti con `start`/`end`, per esempio gli
+`Edge` dritti di un documento), costruiti sulle coordinate dei tratti lunghi
+almeno `min_side`. Non usa `polygonize`: un bordo pieno di tacche resta un
+rettangolo, una cornice a doppio bordo ne dà due. Che un rettangolo sia una
+cornice o un cartiglio lo decide il consumatore (snapdraw, D94).
+
+`CoveredRectangle`: `polygon`, `items` (i tratti sui suoi lati), `bbox`, `area`,
+`long_side`, `short_side`, `ratio`.
+
+**Non muta** niente.
+
+---
+
+### `spanning_lines`
+
+```python
+forge.spanning_lines(bounds, items, coverage=0.85, eps=0.5, cluster_tolerance=1.5) -> (list[float], list[float])
+```
+
+`(ys, xs)`: le linee strettamente interne a `bounds` che lo attraversano per
+almeno `coverage` della larghezza (orizzontali) o dell'altezza (verticali).
+
+**Non muta** niente.
+
+---
+
+### `axis_aligned_share`
+
+```python
+forge.axis_aligned_share(segments, angle_tolerance) -> float | None
+```
+
+Frazione della lunghezza dei `LineSeg` orizzontale o verticale entro
+`angle_tolerance` gradi; `None` senza `LineSeg`. Gli altri fatti del modulo
+(`merge_intervals`, `interval_coverage`, `cluster_values`, `axis_lines`,
+`items_inside`) si importano da `forge.core.axis`.
+
+**Non muta** niente.
+
+---
+
 
 ### `to_dxf`
 

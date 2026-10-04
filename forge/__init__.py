@@ -130,6 +130,9 @@ from .core.shape import concentric_groups, ConcentricGroup, arcs_around, ArcArou
 # Fatti fra rette e poligoni: una corda che divide un poligono, file di tratti
 # collineari unite attraverso dei poligoni. MAP.md D93.
 from .core.lines import splits_polygon, bridged_runs, CollinearRun
+# Fatti su tratti orizzontali e verticali: rettangoli coperti, linee che li
+# attraversano, quota allineata agli assi. MAP.md D94.
+from .core.axis import covered_rectangles, CoveredRectangle, spanning_lines, axis_aligned_share
 # I passi di heal(), uno per funzione: heal() è la loro composizione di
 # default, un consumatore (snapdraw) li compone nell'ordine che gli serve —
 # per esempio senza build_hierarchy, finché non ha deciso da sé cosa
@@ -184,6 +187,10 @@ __all__ = [
     "splits_polygon",
     "bridged_runs",
     "CollinearRun",
+    "covered_rectangles",
+    "CoveredRectangle",
+    "spanning_lines",
+    "axis_aligned_share",
     "split_to_files",
     # Export
     "to_json",

@@ -2833,6 +2833,30 @@ tolerances. Process goldens unchanged (snapbend 462, forge 767).
 
 `main` → **0.9.2** (additive: `splits_polygon`, `bridged_runs`, `CollinearRun`).
 
+### D94 — axis-aligned facts move to `core/axis.py`; snapdraw's frame and title-block reading run on them ✅
+Federico, 4 October, after D93: snapdraw too should keep no geometry of its
+own. Checked function by function. The pure geometry in snapdraw was
+`geometry.py`'s rectangle finder (axis lines, coordinate clustering, interval
+coverage, sides covered, items on the border), its grid dividers and
+containment, `views.classify_view`'s measure and `features._merge` — the
+interval merge written twice (`_merge`, and inside `_coverage`).
+
+`forge/core/axis.py` holds them under geometric names: `merge_intervals`,
+`interval_coverage`, `cluster_values`, `axis_lines` / `AxisLine`,
+`covered_rectangles` / `CoveredRectangle` (the four sides covered by straight
+items — no `polygonize`, so tick marks on a frame border don't break it),
+`spanning_lines`, `items_inside`, `axis_aligned_share`. The four main ones are
+public. snapdraw's `Rect` is gone: it uses `CoveredRectangle` (same fields,
+`items` for `edges`).
+
+snapdraw keeps the meaning and its numbers: a frame side is ≥ 30% of the
+drawing, a title block side ≥ 40 mm, the ISO ratio and formats, "half of the
+line length on the axes = orthographic", the annotation density of a title
+block. Behaviour unchanged: snapdraw 80 passed (frame, title block, views,
+features, regression goldens), forge 778, snapbend 462.
+
+`main` → **0.9.3** (additive).
+
 ---
 
 ## Closed questions (history)

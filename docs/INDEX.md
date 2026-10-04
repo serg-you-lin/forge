@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`67` modules · `331` module-level functions · `54` classes · `12508` lines of code.
+`68` modules · `341` module-level functions · `56` classes · `12761` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -49,6 +49,9 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `are_collinear` | func | `forge/core/lines.py:45` | I tratti `a` e `b` stanno sulla stessa retta infinita: direzioni uguali |
 | `_arrival_direction` | func | `forge/core/topology/graph.py:338` |  |
 | `_assign` | func | `forge/tools/anchor.py:175` |  |
+| `axis_aligned_share` | func | `forge/core/axis.py:231` | Frazione della lunghezza dei `LineSeg` di `segments` orizzontale o |
+| `axis_lines` | func | `forge/core/axis.py:87` | (orizzontali, verticali): i tratti che si scostano dall'asse al più di `eps`; gli altri non compaiono. |
+| `AxisLine` | class | `forge/core/axis.py:73` | Un tratto orizzontale o verticale. |
 | `_bbox_center` | func | `forge/adapters/dxf/annotation_extractor.py:467` |  |
 | `_bbox_of` | func | `forge/io/view_model.py:116` |  |
 | `bridge_nested_tabs` | func | `forge/tools/tabs.py:235` | Cammina `cluster.inners` (che porta `depth`/`parent` per ogni contorno, |
@@ -78,6 +81,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_cluster` | func | `forge/core/island.py:209` |  |
 | `cluster_passes_min_area` | func | `forge/io/dxf.py:157` | True se la parte supera la soglia di area minima (min_area <= 0 = nessun filtro). |
 | `cluster_points` | func | `forge/core/topology/graph.py:191` | Raggruppa punti 2D entro `epsilon` e restituisce {punto -> rappresentante}. |
+| `cluster_values` | func | `forge/core/axis.py:55` | I valori ordinati, tenendo per ogni gruppo il più piccolo: un valore entro |
 | `_collect_inners` | func | `forge/core/healing/hierarchy.py:112` | Appiattisce l'albero di contenimento in `cluster.inners` (ogni discendente |
 | `CollinearRun` | class | `forge/core/lines.py:94` | Tratti sulla stessa retta, in fila lungo di essa. |
 | `color_for_layer` | func | `forge/adapters/dxf/layers.py:58` | Colore DXF canonico per un layer. |
@@ -92,6 +96,9 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `contour_shape` | func | `forge/core/shape.py:64` | Forma di un contorno chiuso (`ForgeContour`, o qualunque oggetto con |
 | `ContourRole` | class | `forge/model/role.py:43` | I tre ruoli che il motore topologico conosce. **Non esaustivo** — un |
 | `ContourShape` | class | `forge/core/shape.py:37` | kind:   circle \| stadium \| rectangle \| polygon \| other |
+| `_covered_at` | func | `forge/core/axis.py:100` |  |
+| `covered_rectangles` | func | `forge/core/axis.py:144` | I rettangoli allineati agli assi con ogni lato coperto almeno per |
+| `CoveredRectangle` | class | `forge/core/axis.py:109` | Un rettangolo allineato agli assi i cui quattro lati sono coperti da tratti. |
 | `_crossings` | func | `forge/core/topology/noding.py:142` | Incroci reali (non sul prolungamento) fra `seg` e un cutter. |
 | `_cumulative_lengths_closed` | func | `forge/tools/tabs.py:157` | `cum[i]` = distanza cumulata da `points[0]` a `points[i]` (lato i-1->i). |
 | `_cutters` | func | `forge/core/topology/noding.py:130` |  |
@@ -190,11 +197,13 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `interior_angle_deg` | func | `forge/core/geometry.py:197` | Angolo interno (gradi) in curr_pt fra i lati verso prev_pt e next_pt. |
 | `interpolate_bspline` | func | `forge/core/geometry.py:311` | B-spline di grado `degree` che passa per tutti i `points` (interpolazione |
 | `_intersections` | func | `forge/core/healing/outer_scan.py:150` | Punti del pezzo con coordinata `a` == level. |
+| `interval_coverage` | func | `forge/core/axis.py:47` | Frazione di [lo, hi] coperta dall'unione degli intervalli. |
 | `is_structural_role` | func | `forge/model/role.py:78` | True se ``role`` è OUTER o INNER per il motore (vedi ``STRUCTURAL_ROLES``). |
 | `Island` | class | `forge/core/healing/islands.py:36` | Gruppo di Edge vicini, con la bbox che li contiene tutti. |
 | `island` | func | `forge/core/island.py:69` | Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno |
 | `IslandReading` | class | `forge/core/island.py:52` | Cosa island() ha deciso su un'isola, pezzo per pezzo. |
 | `_item_geometry` | func | `forge/tools/anchor.py:162` |  |
+| `items_inside` | func | `forge/core/axis.py:221` | I tratti con entrambi i capi dentro `bounds` allargato di `margin`, nell'ordine dato. |
 | `_joined` | func | `forge/core/island.py:286` |  |
 | `_key_for` | func | `forge/adapters/dxf/sanitize.py:154` | Restituisce una chiave hashable che identifica univocamente |
 | `labeled_features` | func | `forge/core/healing/steps.py:228` | Gli Edge messi da parte da split_labeled() come feature col loro ruolo |
@@ -229,6 +238,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_merge_annotations` | func | `forge/adapters/dxf/loader.py:68` | Aggiunge a `base` le annotazioni di `extra` non già presenti (per firma). |
 | `merge_cocircular_overlaps` | func | `forge/core/healing/normalizer.py:339` | `merge_collinear_overlaps` per gli ArcSeg: fonde gruppi co-circolari |
 | `merge_collinear_overlaps` | func | `forge/core/healing/normalizer.py:120` | Fonde gruppi di LineSeg collineari (stessa retta infinita, `_line_key`) |
+| `merge_intervals` | func | `forge/core/axis.py:36` | Unisce gli intervalli che si sovrappongono o distano al più `tolerance`, in ordine. |
 | `_merge_on_carrier` | func | `forge/core/healing/normalizer.py:279` | Raggruppa per supporto (`key`) gli edge di `segment_type` con ruolo |
 | `_merge_runs` | func | `forge/core/island.py:235` | Segmenti consecutivi di un giro chiuso sulla stessa circonferenza (o |
 | `_merged_arc` | func | `forge/core/healing/normalizer.py:383` | Il fuso di una catena cocircolare: un arco, o un cerchio se chiude il |
@@ -250,6 +260,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `Note` | class | `forge/model/annotation.py:99` | Testo libero: TEXT o MTEXT. |
 | `num_segments_for_bulge` | func | `forge/core/geometry.py:46` | Numero di segmenti per discretizzare un arco dato il suo bulge. |
 | `_on_arc` | func | `forge/core/healing/outer_scan.py:127` |  |
+| `_on_border` | func | `forge/core/axis.py:186` |  |
 | `_on_boundary` | func | `forge/tools/anchor.py:119` | L'elemento col bordo più vicino a ``point``, se entro ``distance``. |
 | `_open` | func | `forge/core/island.py:293` |  |
 | `OpenFeature` | class | `forge/model/feature.py:72` | Feature con geometria aperta: ha segmenti ma non un polygon. |
@@ -351,6 +362,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_solve_line_line` | func | `forge/core/healing/gap_solver.py:103` |  |
 | `_solve_spline_any` | func | `forge/core/healing/gap_solver.py:141` |  |
 | `_Span` | class | `forge/core/healing/normalizer.py:243` | Un edge come intervallo [lo, hi] sul suo supporto (posizione lungo la |
+| `spanning_lines` | func | `forge/core/axis.py:199` | (ys, xs): le coordinate delle linee strettamente interne a `bounds` (bordo |
 | `spatial_islands` | func | `forge/core/healing/islands.py:54` | Union-find sulle coppie di Edge a distanza <= gap_tolerance (STRtree, |
 | `SplineSeg` | class | `forge/core/primitives/segments.py:338` |  |
 | `_split` | func | `forge/core/topology/noding.py:200` |  |
@@ -423,7 +435,7 @@ No module-level name is defined in more than one module.
 
 ### `forge/` (root)
 
-#### `forge/__init__.py` — 253 lines
+#### `forge/__init__.py` — 260 lines
 
 _forge_
 
@@ -599,6 +611,24 @@ _Contratto base per gli adapter di input di Forge._
 
 - **class** `ForgeAdapter(ABC)` — L23
   - methods: `__init__`, `to_edges`, `source_context`
+
+#### `forge/core/axis.py` — 246 lines
+
+_forge/core/axis.py_
+
+- `merge_intervals(intervals: Iterable[Interval], tolerance: float=0.0) -> List[Interval]` — L36 — Unisce gli intervalli che si sovrappongono o distano al più `tolerance`, in ordine.
+- `interval_coverage(intervals: Iterable[Interval], lo: float, hi: float) -> float` — L47 — Frazione di [lo, hi] coperta dall'unione degli intervalli.
+- `cluster_values(values: Iterable[float], tolerance: float=CLUSTER_TOLERANCE) -> List[float]` — L55 — I valori ordinati, tenendo per ogni gruppo il più piccolo: un valore entro
+- **class** `AxisLine` — L73 — Un tratto orizzontale o verticale.
+- `axis_lines(items: Iterable, eps: float=AXIS_EPS) -> Tuple[List[AxisLine], List[AxisLine]]` — L87 — (orizzontali, verticali): i tratti che si scostano dall'asse al più di `eps`; gli altri non compaiono.
+- `_covered_at(lines: Sequence[AxisLine], at: float, lo: float, hi: float, tol: float) -> float` — L100
+- **class** `CoveredRectangle` — L109 — Un rettangolo allineato agli assi i cui quattro lati sono coperti da tratti.
+  - methods: `bbox`, `area`, `long_side`, `short_side`, `ratio`
+- `covered_rectangles(items: Sequence, min_side: float, eps: float=AXIS_EPS, cluster_tolerance: float=CLUSTER_TOLERANCE, coverage: float=SIDE_COVERAGE) -> List[CoveredRectangle]` — L144 — I rettangoli allineati agli assi con ogni lato coperto almeno per
+- `_on_border(x_lo, y_lo, x_hi, y_hi, items, tol) -> list` — L186
+- `spanning_lines(bounds: Bounds, items: Iterable, coverage: float=SIDE_COVERAGE, eps: float=AXIS_EPS, cluster_tolerance: float=CLUSTER_TOLERANCE) -> Tuple[List[float], List[float]]` — L199 — (ys, xs): le coordinate delle linee strettamente interne a `bounds` (bordo
+- `items_inside(bounds: Bounds, items: Iterable, margin: float=0.0) -> list` — L221 — I tratti con entrambi i capi dentro `bounds` allargato di `margin`, nell'ordine dato.
+- `axis_aligned_share(segments: Iterable, angle_tolerance: float) -> Optional[float]` — L231 — Frazione della lunghezza dei `LineSeg` di `segments` orizzontale o
 
 #### `forge/core/geometry.py` — 486 lines
 
@@ -1192,7 +1222,7 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 
 | module | imports |
 |---|---|
-| `forge/__init__.py` | `forge.adapters.dxf.loader` · `forge.adapters.geometry.loader` · `forge.adapters.pdf.loader` · `forge.core.heal` · `forge.core.healing.islands` · `forge.core.healing.normalizer` · `forge.core.healing.steps` · `forge.core.island` · `forge.core.lines` · `forge.core.primitives.fitting` · `forge.core.shape` · `forge.core.topology.loop_finder` · `forge.core.topology.noding` · `forge.core.topology.outer_face` · `forge.inspect` · `forge.io.dxf` · `forge.io.exporter` · `forge.io.svg` · `forge.io.text` · `forge.io.view_model` · `forge.model` · `forge.model.role` · `forge.model.role_rule` · `forge.recipes` · `forge.rules.palette` · `forge.rules.validator` · `forge.tools.anchor` · `forge.tools.inject` · `forge.tools.non_contour` · `forge.tools.rotate` |
+| `forge/__init__.py` | `forge.adapters.dxf.loader` · `forge.adapters.geometry.loader` · `forge.adapters.pdf.loader` · `forge.core.axis` · `forge.core.heal` · `forge.core.healing.islands` · `forge.core.healing.normalizer` · `forge.core.healing.steps` · `forge.core.island` · `forge.core.lines` · `forge.core.primitives.fitting` · `forge.core.shape` · `forge.core.topology.loop_finder` · `forge.core.topology.noding` · `forge.core.topology.outer_face` · `forge.inspect` · `forge.io.dxf` · `forge.io.exporter` · `forge.io.svg` · `forge.io.text` · `forge.io.view_model` · `forge.model` · `forge.model.role` · `forge.model.role_rule` · `forge.recipes` · `forge.rules.palette` · `forge.rules.validator` · `forge.tools.anchor` · `forge.tools.inject` · `forge.tools.non_contour` · `forge.tools.rotate` |
 | `forge/adapters/dxf/adapter.py` | `forge.adapters.dxf.parser` · `forge.core.adapter_base` · `forge.core.geometry` · `forge.core.primitives.polygon_builder` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.model.document` · `forge.model.role_rule` · `forge.model.style` |
 | `forge/adapters/dxf/annotation_extractor.py` | `forge.adapters.dxf.mtext` · `forge.model.annotation` |
 | `forge/adapters/dxf/exporter.py` | `forge.core.primitives` · `forge.model.style` |
@@ -1205,6 +1235,7 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 | `forge/adapters/pdf/loader.py` | `forge.adapters.pdf.extractor_adapter` · `forge.adapters.pdf.graph_adapter` · `forge.adapters.pdf.sanitize` |
 | `forge/adapters/pdf/sanitize.py` | `forge.adapters.pdf.geometry_adapter` · `forge.core.geometry` |
 | `forge/core/adapter_base.py` | `forge.core.geometry` · `forge.core.topology.edge` · `forge.model.document` |
+| `forge/core/axis.py` | `forge.core.primitives.segments` |
 | `forge/core/geometry.py` | `forge.core.primitives.segments` |
 | `forge/core/heal.py` | `forge.core.healing.normalizer` · `forge.core.healing.steps` · `forge.core.primitives.segments` · `forge.core.topology.loop_finder` · `forge.model.document` · `forge.model.result` · `forge.model.role` · `forge.rules.validator` |
 | `forge/core/healing/gap_solver.py` | `forge.core.geometry` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.model.role` |
