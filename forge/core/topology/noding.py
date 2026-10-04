@@ -22,7 +22,7 @@ from shapely import STRtree
 from shapely.geometry import LineString, Point
 
 from .edge import Edge
-from ..geometry import (
+from ..geometry.intersections import (
     _line_intersection, _circle_line_intersections, _circle_circle_intersections,
 )
 from ..primitives.segments import (

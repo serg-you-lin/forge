@@ -25,7 +25,7 @@ import math
 from typing import Any, Dict, List, Tuple
 
 from ...core.adapter_base import ForgeAdapter
-from ...core.geometry import round_point
+from ...core.geometry.measure import round_point
 from ...core.primitives.segments import (
     LineSeg, ArcSeg, CircleSeg, SplineSeg, EllipseSeg, segment_endpoints,
 )

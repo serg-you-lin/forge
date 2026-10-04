@@ -11,7 +11,7 @@ reale è sempre un ponte fra DUE contorni distinti.
 Meccanica di `bridge_tabs` (una coppia, una posizione): linea ideale fra un
 punto del figlio e il punto corrispondente del genitore -> offset di
 `±tab_width/2` -> intersezione delle due linee reali coi due contorni (via
-`core.geometry.polyline_line_intersections`) -> due nuovi `LineSeg` (i fianchi
+`core.geometry.intersections.polyline_line_intersections`) -> due nuovi `LineSeg` (i fianchi
 della linguetta) + i punti di taglio su entrambi i contorni. Genitore e figlio
 possono essere linea, arco, polilinea o cerchio, GIA' discretizzati in punti —
 non spline (nessuna intersezione retta-spline in core).
@@ -38,7 +38,8 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 
 from ..core.primitives.segments import LineSeg, Point
-from ..core.geometry import _distance, track_points, polyline_line_intersections
+from ..core.geometry.intersections import _distance, polyline_line_intersections
+from ..core.geometry.measure import track_points
 
 __all__ = ["bridge_tabs", "bridge_nested_tabs", "BridgeTab", "NestedBridgeResult"]
 

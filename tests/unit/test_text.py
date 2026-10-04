@@ -33,7 +33,7 @@ def _plate():
     result = forge.heal(doc)
     # l'ordine degli inners non è garantito: la freccia punta al cerchio, cercato per forma
     circle = next(j for j, c in enumerate(result.clusters[0].inners)
-                  if forge.contour_shape(c).kind == "circle")
+                  if forge.geometry.contour_shape(c).kind == "circle")
     result.annotations = [
         Dimension(position=(50, 60), measured_value=100.0, text_override="100",
                   references=["clusters[0].outer"]),

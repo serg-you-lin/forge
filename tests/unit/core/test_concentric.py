@@ -6,7 +6,7 @@ import unittest
 
 import forge
 from forge.core.primitives.segments import ArcSeg, CircleSeg, LineSeg
-from forge.core.shape import arcs_around, concentric_groups
+from forge.core.geometry.shape import arcs_around, concentric_groups
 
 
 def _circle(c, r):
@@ -45,8 +45,8 @@ class TestConcentricGroups(unittest.TestCase):
         self.assertEqual(group.diameters, (4, 8, 12))
 
     def test_api_pubblica(self):
-        self.assertIs(forge.concentric_groups, concentric_groups)
-        self.assertIs(forge.arcs_around, arcs_around)
+        self.assertIs(forge.geometry.concentric_groups, concentric_groups)
+        self.assertIs(forge.geometry.arcs_around, arcs_around)
 
 
 class TestArcsAround(unittest.TestCase):

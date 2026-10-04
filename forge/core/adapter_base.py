@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from .topology.edge import Edge
-from .geometry import node_decimals_for
+from .geometry.measure import node_decimals_for
 from ..model.document import DEFAULT_NODE_TOLERANCE
 
 

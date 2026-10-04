@@ -154,12 +154,12 @@ class TestDimensionReferences(unittest.TestCase):
         result = self._result(dim)
         self.assertEqual(len(dim.references), 1)
         hole = resolve_target(result, dim.references[0])
-        self.assertAlmostEqual(forge.contour_shape(hole).diameter, 20)
+        self.assertAlmostEqual(forge.geometry.contour_shape(hole).diameter, 20)
 
     def test_raggio_sul_foro(self):
         dim = Dimension(position=(40, 40), dim_type="radius", measured_points=[(20, 29)])
         result = self._result(dim)
-        self.assertAlmostEqual(forge.contour_shape(resolve_target(result, dim.references[0])).diameter, 8)
+        self.assertAlmostEqual(forge.geometry.contour_shape(resolve_target(result, dim.references[0])).diameter, 8)
 
     def test_lineare_fra_due_elementi(self):
         # dal bordo sinistro del pezzo al bordo sinistro del foro Ø8
@@ -167,7 +167,7 @@ class TestDimensionReferences(unittest.TestCase):
         result = self._result(dim)
         self.assertEqual(dim.references[0], "clusters[0].outer")
         self.assertEqual(len(dim.references), 2)
-        self.assertAlmostEqual(forge.contour_shape(resolve_target(result, dim.references[1])).diameter, 8)
+        self.assertAlmostEqual(forge.geometry.contour_shape(resolve_target(result, dim.references[1])).diameter, 8)
 
     def test_punti_fuori_dalla_geometria(self):
         dim = Dimension(position=(0, 0), measured_points=[(-20, -20), (200, 200)])

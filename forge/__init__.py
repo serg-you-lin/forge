@@ -122,17 +122,10 @@ from .core.healing.islands import spatial_islands, Island
 from .core.topology.noding import split_at_crossings, NodedEdges
 from .core.topology.outer_face import outer_face, OuterFace
 from .core.healing.normalizer import refit_tessellations
-# Forma di un contorno chiuso (cerchio, stadio, rettangolo, ...): fatto
-# geometrico, non feature — vale su heal() e island(). MAP.md D68.
-from .core.shape import contour_shape, ContourShape
-# Fatti fra più contorni: cerchi concentrici, archi attorno a un cerchio. MAP.md D91.
-from .core.shape import concentric_groups, ConcentricGroup, arcs_around, ArcAround
-# Fatti fra rette e poligoni: una corda che divide un poligono, file di tratti
-# collineari unite attraverso dei poligoni. MAP.md D93.
-from .core.lines import splits_polygon, bridged_runs, CollinearRun
-# Fatti su tratti orizzontali e verticali: rettangoli coperti, linee che li
-# attraversano, quota allineata agli assi. MAP.md D94.
-from .core.axis import covered_rectangles, CoveredRectangle, spanning_lines, axis_aligned_share
+# La geometria: fatti con nomi geometrici (forma di un contorno, cerchi
+# concentrici, corde, rettangoli coperti, ...), tutti in `forge.geometry`.
+# MAP.md D68, D91, D93-D95.
+from .core import geometry
 # I passi di heal(), uno per funzione: heal() è la loro composizione di
 # default, un consumatore (snapdraw) li compone nell'ordine che gli serve —
 # per esempio senza build_hierarchy, finché non ha deciso da sé cosa
@@ -178,19 +171,7 @@ __all__ = [
     "leader_target",
     "dimension_references",
     "resolve_target",
-    "contour_shape",
-    "ContourShape",
-    "concentric_groups",
-    "ConcentricGroup",
-    "arcs_around",
-    "ArcAround",
-    "splits_polygon",
-    "bridged_runs",
-    "CollinearRun",
-    "covered_rectangles",
-    "CoveredRectangle",
-    "spanning_lines",
-    "axis_aligned_share",
+    "geometry",
     "split_to_files",
     # Export
     "to_json",

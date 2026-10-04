@@ -19,12 +19,13 @@ sys.path.insert(0, str(project_root))
 from shapely.geometry import LineString
 
 from forge.core.primitives.segments import ArcSeg, LineSeg
-from forge.core.lines import are_collinear, group_collinear_lines
-from forge.core.geometry import (
-    track_points, track_length, track_shape_type,
-    interior_angle_deg, detect_corners, drop_duplicate_points,
-    fit_circle_kasa, arc_angles,
-    segment_length, longest_segment, chord_angle_deg,
+from forge.core.geometry.lines import are_collinear, group_collinear_lines
+from forge.core.geometry.measure import (
+    track_points, track_length, track_shape_type, segment_length, longest_segment,
+    chord_angle_deg,
+)
+from forge.core.geometry.points import (
+    interior_angle_deg, detect_corners, drop_duplicate_points, fit_circle_kasa, arc_angles,
 )
 from forge.core.primitives.segments import CircleSeg
 
@@ -341,7 +342,7 @@ class TestInterpolateBspline(unittest.TestCase):
     """La B-spline di fit è matematica di forge, non di una libreria di formato."""
 
     def _check_passes_through(self, pts, degree):
-        from forge.core.geometry import interpolate_bspline
+        from forge.core.geometry.points import interpolate_bspline
         from forge.core.primitives.segments import SplineSeg
         ctrl, knots = interpolate_bspline(pts, degree)
         self.assertEqual(len(ctrl), len(pts))
@@ -362,7 +363,7 @@ class TestInterpolateBspline(unittest.TestCase):
         self._check_passes_through(pts, 2)
 
     def test_troppo_pochi_punti(self):
-        from forge.core.geometry import interpolate_bspline
+        from forge.core.geometry.points import interpolate_bspline
         with self.assertRaises(ValueError):
             interpolate_bspline([(0, 0), (1, 1), (2, 0)], 3)
 

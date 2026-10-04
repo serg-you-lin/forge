@@ -71,6 +71,10 @@ forge/
 │   │                 noding.py (rete piana), outer_face.py (faccia esterna)
 │   ├── healing/      chiusura gap, normalizzazione (+ tassellature), gerarchia,
 │   │                 islands.py (isole per vicinanza), steps.py (i passi di heal)
+│   ├── geometry/     LA GEOMETRIA, `forge.geometry` (D95): fatti con nomi geometrici
+│   │                 — shape (forma, cerchi concentrici, archi attorno), lines
+│   │                 (corde, file collineari), axis (rettangoli coperti) — e i
+│   │                 mattoni measure / points / intersections
 │   ├── heal.py       heal()             — lettura dall'interno: file → modello
 │   └── island.py     island()           — lettura per isole, dall'esterno
 │

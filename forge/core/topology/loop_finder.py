@@ -227,7 +227,7 @@ def edges_to_open_features(edges: list, exclude_ids: set) -> list:
     L'OpenFeature porta solo `role` + `segments` (primitive native). `pts`,
     `length`, `shape_type` sono valori derivati: chi li consuma (detect,
     write._write_trash, inspect) li ricava dai segmenti con gli helper
-    `track_*` di `core.geometry`.
+    `track_*` di `core.geometry.measure`.
 
     Args:
         edges:       lista di Edge prodotta da adapter.to_edges()
@@ -235,7 +235,7 @@ def edges_to_open_features(edges: list, exclude_ids: set) -> list:
     """
     from ...model.feature import OpenFeature
     from ...core.primitives.segments import LineSeg
-    from ...core.geometry import track_points
+    from ...core.geometry.measure import track_points
 
     features = []
     for edge in edges:

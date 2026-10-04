@@ -7,7 +7,7 @@ Funzioni pubbliche:
     sanitize_pdf_geometries — esegue lo snap dei nodi vicini ed elimina i segmenti duplicati o degeneri
 """
 
-from ...core.geometry import round_point
+from ...core.geometry.measure import round_point
 
 
 def sanitize_pdf_geometries(raw_items: list, page_height: float, snap_tolerance: float = 0.15) -> list:

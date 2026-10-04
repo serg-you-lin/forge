@@ -7,7 +7,7 @@ from ...model.feature import ClosedFeature
 from ...model.cluster import ForgeCluster
 from ...model.contour import ForgeContour
 from ...model.role import ContourRole, is_structural_role
-from ...core.geometry import circular_geometry
+from ...core.geometry.measure import circular_geometry
 
 
 MIN_CONTOUR_AREA = 1e-3

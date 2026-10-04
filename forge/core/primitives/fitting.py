@@ -19,7 +19,7 @@ qui c'è solo la ricostruzione geometrica. Le soglie sono SEMPRE parametri del
 chiamante, mai hardcoded (stessa regola di core/primitives/segments.py).
 
 La matematica generica su una sequenza di punti (angolo interno, deduplica,
-fit a cerchio, B-spline di fit, `detect_corners`) vive in `core/geometry.py`
+fit a cerchio, B-spline di fit, `detect_corners`) vive in `core/geometry/`
 (D38) — qui c'è solo l'orchestrazione: spezzare sui corner, decidere linea
 vs arco/cerchio vs spline. Nata in tools/ (D33), scesa in core quando il fit
 spline ha smesso di dipendere da una libreria di formato.
@@ -31,14 +31,9 @@ import math
 from typing import List, Optional, Tuple, Union
 
 from .segments import ArcSeg, CircleSeg, LineSeg, SplineSeg, Point
-from ..geometry import (
-    DEFAULT_ANGLE_THRESHOLD_DEG,
-    DEFAULT_DUPLICATE_TOLERANCE,
-    detect_corners,
-    drop_duplicate_points,
-    fit_circle_kasa,
-    arc_angles,
-    interpolate_bspline,
+from ..geometry.points import (
+    DEFAULT_ANGLE_THRESHOLD_DEG, DEFAULT_DUPLICATE_TOLERANCE, detect_corners,
+    drop_duplicate_points, fit_circle_kasa, arc_angles, interpolate_bspline,
 )
 
 DEFAULT_MIN_POINTS_FOR_SPLINE = 4

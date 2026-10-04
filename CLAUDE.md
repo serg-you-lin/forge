@@ -23,6 +23,7 @@ docstrings/comments, see Conventions).
 | calling the library, need a signature or the pipeline | `docs/LLM.md` — dense reference written for an LLM, **load this one first** |
 | need the full card for a public name | `docs/API.md` |
 | **about to add a function, helper or class** | `docs/INDEX.md` — every module-level name in the package with `file:line`. Check the name *and* the job exist nowhere before writing |
+| **writing geometry** (a measure, a fact between contours, lines, rectangles) | it goes in `forge/core/geometry/` and its public facts in `forge.geometry` (`__init__.py` is the map) — never as a private helper in a reading or in a consumer (D93-D95) |
 | why is it built this way | `docs/ARCHITECTURE.md` |
 | why was X decided | `MAP.md` — decision log `D1…Dn`. Grep for the topic. **A closed decision is not re-decided**; to reopen it, say "reopening D##" out loud |
 | what's missing / planned | `TODO.md`, `ROADMAP.md` |

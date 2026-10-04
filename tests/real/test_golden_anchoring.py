@@ -38,7 +38,7 @@ def _element(result, path):
     """L'elemento agganciato: collezione + forma, senza indice."""
     item = forge.resolve_target(result, path)
     collection = path.split(".")[1].split("[")[0]
-    shape = forge.contour_shape(item) if item is not None else None
+    shape = forge.geometry.contour_shape(item) if item is not None else None
     if shape is None:
         return {"in": collection, "shape": None}
     return {"in": collection, "shape": shape.kind,

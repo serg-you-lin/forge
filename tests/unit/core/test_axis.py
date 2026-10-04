@@ -1,10 +1,10 @@
 # tests/unit/core/test_axis.py
-"""`forge.core.axis`: intervalli, rettangoli coperti, linee che attraversano un rettangolo (D94)."""
+"""`forge.core.geometry.axis`: intervalli, rettangoli coperti, linee che attraversano un rettangolo (D94)."""
 
 import unittest
 
 import forge
-from forge.core.axis import (axis_aligned_share, axis_lines, cluster_values, covered_rectangles,
+from forge.core.geometry.axis import (axis_aligned_share, axis_lines, cluster_values, covered_rectangles,
                              interval_coverage, items_inside, merge_intervals, spanning_lines)
 from forge.core.primitives.segments import ArcSeg, LineSeg
 
@@ -50,7 +50,7 @@ class TestCoveredRectangles(unittest.TestCase):
         self.assertEqual(covered_rectangles(_rect(0, 0, 100, 50)[:3], min_side=10), [])
 
     def test_api_pubblica(self):
-        self.assertIs(forge.covered_rectangles, covered_rectangles)
+        self.assertIs(forge.geometry.covered_rectangles, covered_rectangles)
 
 
 class TestSpanningLines(unittest.TestCase):

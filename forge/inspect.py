@@ -24,7 +24,7 @@ import math
 from collections import Counter
 from typing import Optional, Sequence
 
-from forge.core.geometry import track_points, track_shape_type
+from forge.core.geometry.measure import track_points, track_shape_type
 from forge.model.role_rule import RoleRule
 from forge.model.document import DEFAULT_NODE_TOLERANCE
 

@@ -26,13 +26,10 @@ import math
 from dataclasses import dataclass
 from typing import Any, Callable, List, Optional, Tuple, Union
 
-from ..geometry import (
-    round_point,
-    _distance,
-    _line_intersection,
-    _circle_line_intersections,
-    _circle_circle_intersections,
-    _closest_to,
+from ..geometry.measure import round_point
+from ..geometry.intersections import (
+    _distance, _line_intersection, _circle_line_intersections,
+    _circle_circle_intersections, _closest_to,
 )
 from ..primitives.segments import LineSeg, ArcSeg, SplineSeg, segment_endpoints
 from ..topology.edge import Edge

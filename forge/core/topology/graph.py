@@ -46,7 +46,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field, replace
 from typing import Tuple, List, Dict
 
-from ..geometry import round_point
+from ..geometry.measure import round_point
 from ..primitives.segments import ArcSeg, CircleSeg, segment_endpoints
 from .edge import Edge
 

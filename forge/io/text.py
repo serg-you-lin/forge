@@ -30,7 +30,7 @@ from shapely.geometry import Point
 from shapely.prepared import prep
 
 from ..core.primitives.segments import ArcSeg, CircleSeg, EllipseSeg, LineSeg, SplineSeg
-from ..core.shape import contour_shape
+from ..core.geometry.shape import contour_shape
 from ..model import ForgeResult
 from ..model.annotation import Dimension, Leader
 

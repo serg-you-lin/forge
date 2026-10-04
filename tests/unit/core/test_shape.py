@@ -6,7 +6,7 @@ import unittest
 
 import forge
 from forge.core.primitives.segments import ArcSeg, CircleSeg, LineSeg
-from forge.core.shape import CIRCLE, OTHER, POLYGON, RECTANGLE, STADIUM, contour_shape
+from forge.core.geometry.shape import CIRCLE, OTHER, POLYGON, RECTANGLE, STADIUM, contour_shape
 from forge.core.topology.edge import Edge
 from forge.model.document import ForgeDocument
 

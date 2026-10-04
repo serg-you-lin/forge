@@ -40,7 +40,7 @@ from typing import List, Optional, Tuple
 
 from shapely.affinity import rotate as _shapely_rotate
 
-from ..core.geometry import longest_segment, chord_angle_deg, round_point, node_decimals_for
+from ..core.geometry.measure import longest_segment, chord_angle_deg, round_point, node_decimals_for
 from ..core.primitives.segments import segment_endpoints
 from ..model.cluster import ForgeCluster
 from ..model.contour import ForgeContour

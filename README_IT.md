@@ -57,7 +57,7 @@ doc_out.saveas("pezzo_healed.dxf")
 
 forge.save_json(result, "pezzo.json")                 # metadati
 cerchi = [c for cl in result.clusters for c in cl.inners
-          if forge.contour_shape(c).kind == "circle"]
+          if forge.geometry.contour_shape(c).kind == "circle"]
 print(f"{result.cluster_count} cluster, {len(cerchi)} cerchi interni")
 ```
 
@@ -103,16 +103,16 @@ foro da forare, una sede o il puntino di un logo lo legge un consumatore
 ```python
 for cluster in result.clusters:
     for inner in cluster.inners:
-        shape = forge.contour_shape(inner)     # circle / stadium / rectangle / polygon / other
+        shape = forge.geometry.contour_shape(inner)     # circle / stadium / rectangle / polygon / other
         print(shape.kind, shape.center, shape.length, shape.width)
 
     # cerchi con lo stesso centro, dal più piccolo (anche quelli da soli)
-    for group in forge.concentric_groups(cluster.inners, tolerance=0.1):
+    for group in forge.geometry.concentric_groups(cluster.inners, tolerance=0.1):
         if len(group.items) > 1:
             print("concentrici:", group.center, group.diameters)
 
 # archi concentrici a un cerchio e più grandi: angolo in gradi, rapporto dei raggi
-for found in forge.arcs_around((10, 20), 2.5, result.all_arcs, tolerance=0.1):
+for found in forge.geometry.arcs_around((10, 20), 2.5, result.all_arcs, tolerance=0.1):
     print(found.sweep, found.radius_ratio)
 ```
 

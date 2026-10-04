@@ -18,7 +18,6 @@ Puro: solo Edge, primitive e modello, nessun formato.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
@@ -29,9 +28,10 @@ from ..model.document import ForgeDocument
 from ..model.feature import OpenFeature
 from ..model.result import ForgeResult
 from ..model.role import ContourRole, is_structural_role
-from .primitives.segments import ArcSeg, CircleSeg, LineSeg, segment_is_closed
+from .primitives.segments import segment_is_closed
 from .topology.edge import Edge
 from .topology.graph import build_node_graph
+from .geometry.shape import merge_runs
 from .topology.loop_finder import LoopFinder, loop_geometry
 from .topology.noding import NODE_DECIMALS, edge_geometry, renode, split_at_crossings
 from .topology.non_contour_edges import NonContourEdgeDetector
@@ -226,68 +226,10 @@ def _inners(loops, parent: ForgeContour) -> List[ForgeContour]:
 
 def _contour(segments, styles, polygon, role, parent) -> ForgeContour:
     """Il poligono resta quello dei pezzi della rete piana; i segmenti sono
-    ricomposti dove il taglio li aveva spezzati (`_merge_runs`)."""
-    segments, styles = _merge_runs(list(segments), list(styles))
+    ricomposti dove il taglio li aveva spezzati (`geometry.shape.merge_runs`)."""
+    segments, styles = merge_runs(list(segments), list(styles))
     return ForgeContour(polygon=polygon, role=role, segments=segments,
                         styles=styles, depth=0 if parent is None else 1, parent=parent)
-
-
-def _merge_runs(segments: list, styles: list):
-    """
-    Segmenti consecutivi di un giro chiuso sulla stessa circonferenza (o
-    retta), nello stesso verso e con lo stesso stile, fusi in uno: il merge
-    di `_normalize` toglie i doppioni prima del taglio, questo ricompone
-    dopo quello che `split_at_crossings` ha spezzato. Un giro fatto tutto di
-    archi dello stesso cerchio torna un CircleSeg.
-    """
-    n = len(segments)
-    if n < 2 or len(styles) != n:
-        return segments, styles
-    same = [_continues(segments[i - 1], styles[i - 1], segments[i], styles[i]) for i in range(n)]
-    if all(same):
-        s0 = segments[0]
-        if isinstance(s0, ArcSeg):
-            return [CircleSeg(center=s0.center, radius=s0.radius)], [styles[0]]
-        return segments, styles
-    k = same.index(False)          # il giro riparte da un inizio di tratto
-    segments, styles, same = segments[k:] + segments[:k], styles[k:] + styles[:k], same[k:] + same[:k]
-    out_s, out_st = [], []
-    for seg, st, cont in zip(segments, styles, same):
-        if cont:
-            out_s[-1] = _joined(out_s[-1], seg)
-        else:
-            out_s.append(seg)
-            out_st.append(st)
-    return out_s, out_st
-
-
-_MERGE_EPS = 1e-3   # mm — la griglia dei nodi (NODE_DECIMALS)
-
-
-def _continues(prev, prev_style, seg, style) -> bool:
-    """`seg` prosegue `prev` sulla stessa curva, nello stesso verso?"""
-    if style != prev_style or type(seg) is not type(prev):
-        return False
-    if isinstance(seg, ArcSeg):
-        return (seg.ccw == prev.ccw and abs(seg.radius - prev.radius) < _MERGE_EPS
-                and math.dist(seg.center, prev.center) < _MERGE_EPS)
-    if isinstance(seg, LineSeg):
-        (ax, ay), (bx, by) = prev.start, prev.end
-        length = math.hypot(bx - ax, by - ay)
-        if length < _MERGE_EPS:
-            return False
-        ex, ey = seg.end
-        cross = (bx - ax) * (ey - ay) - (by - ay) * (ex - ax)
-        dot = (bx - ax) * (ex - bx) + (by - ay) * (ey - by)
-        return abs(cross) / length < _MERGE_EPS and dot > 0
-    return False
-
-
-def _joined(prev, seg):
-    if isinstance(prev, ArcSeg):
-        return ArcSeg(center=prev.center, radius=prev.radius, start_angle=prev.start_angle,
-                      end_angle=seg.end_angle, ccw=prev.ccw)
-    return LineSeg(start=prev.start, end=seg.end)
 
 
 def _open(edges: List[Edge]) -> list:

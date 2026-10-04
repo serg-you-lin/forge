@@ -5,7 +5,7 @@ Traduce entità vettoriali sanificate del PDF in Edge topologici per il core.
 """
 
 from ...core.topology.edge import Edge
-from ...core.geometry import round_point
+from ...core.geometry.measure import round_point
 from ...core.primitives.segments import LineSeg, SplineSeg
 from ...model.role import ContourRole
 

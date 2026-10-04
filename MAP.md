@@ -2857,6 +2857,37 @@ features, regression goldens), forge 778, snapbend 462.
 
 `main` → **0.9.3** (additive).
 
+### D95 — one home for geometry: the `forge/core/geometry/` package, public as `forge.geometry` ✅
+Federico, 4 October: with `shape.py`, `lines.py`, `axis.py` and a 500-line
+`geometry.py` side by side in `core/`, a user cannot tell what geometry forge
+offers. Time for a package.
+
+`forge/core/geometry/` holds all of it. The old `geometry.py` drawer is split
+by job: `measure.py` (node rounding, segment length and angle, open tracks,
+"is it circular?"), `points.py` (point sequences: corners, duplicates, circle
+fit, b-spline), `intersections.py`; `shape.py`, `lines.py`, `axis.py` moved in
+unchanged. `__init__.py` is the map, and it exports the public facts —
+`contour_shape`, `concentric_groups`, `arcs_around`, `splits_polygon`,
+`bridged_runs`, `covered_rectangles`, `spanning_lines`, `axis_aligned_share`
+and their result types. Clean break: they are no longer at `forge.<name>`;
+call `forge.geometry.<name>(...)`, import with
+`from forge.core.geometry import <name>`. Building blocks are imported from
+their submodule. CLAUDE.md now says where new geometry goes.
+
+`island.py`'s `_merge_runs` (re-joining consecutive segments of a loop on the
+same line or circle) was geometry used by `contour_shape`; it moved to
+`geometry/shape.py` as `merge_runs`, which also removed an import cycle
+(geometry → island → healing → geometry).
+
+Queryable objects: the facts already return frozen dataclasses
+(`ContourShape`, `ConcentricGroup`, `CoveredRectangle`, ...), computed on
+demand; nothing is precomputed or cached on the model, so the package costs no
+time until a fact is asked for. A "Geometry" object wrapping a drawing was
+not built: it would compute facts nobody asked for.
+
+Suites: forge 778, snapbend 462, snapdraw 80. `main` → **0.10.0** (breaking:
+names left the top level).
+
 ---
 
 ## Closed questions (history)

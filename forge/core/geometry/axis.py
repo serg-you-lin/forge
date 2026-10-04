@@ -1,6 +1,6 @@
 """
-forge/core/axis.py
-------------------
+forge/core/geometry/axis.py
+---------------------------
 Fatti su segmenti orizzontali e verticali: intervalli e loro copertura,
 rettangoli i cui quattro lati sono coperti da segmenti, linee che attraversano
 un rettangolo, quanta parte di un disegno è allineata agli assi. Geometria
@@ -19,7 +19,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 
 from shapely.geometry import box
 
-from .primitives.segments import LineSeg
+from ..primitives.segments import LineSeg
 
 Interval = Tuple[float, float]
 Bounds = Tuple[float, float, float, float]

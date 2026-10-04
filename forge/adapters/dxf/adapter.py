@@ -19,7 +19,7 @@ from ...core.primitives.segments import (
 )
 from ...core.primitives.polygon_builder import build_polygon
 from ...core.adapter_base import ForgeAdapter
-from ...core.geometry import round_point
+from ...core.geometry.measure import round_point
 from ...core.topology.edge import Edge, Segment
 from ...model.role_rule import RoleRule, resolve_role
 from ...model.style import EdgeStyle

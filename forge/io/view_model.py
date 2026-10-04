@@ -25,7 +25,7 @@ from typing import Optional
 from ..model import ForgeResult
 from ..model.role import ContourRole, feature_role, role_str as _role_str
 from ..rules.palette import role_to_hex
-from ..core.geometry import track_points
+from ..core.geometry.measure import track_points
 
 
 def _round_points(seq) -> list:

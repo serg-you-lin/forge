@@ -511,10 +511,20 @@ Nessuna **muta** l'input: ritornano liste/oggetti nuovi.
 
 ---
 
+## La geometria — `forge.geometry`
+
+I fatti geometrici stanno tutti in `forge.geometry` (il package
+`forge/core/geometry/`, D95): si chiamano `forge.geometry.<nome>(...)` e si
+importano con `from forge.core.geometry import <nome>` (`forge.geometry` è un
+attributo, non un percorso di import). Nomi geometrici: "cerchio", mai "foro".
+I mattoni (`measure`, `points`, `intersections`, e gli helper di `lines` /
+`axis`) si importano dal sottomodulo; l'elenco con `file:riga` è in
+`docs/INDEX.md`.
+
 ### `contour_shape`
 
 ```python
-forge.contour_shape(item, tolerance=0.01, angle_tolerance=1.0) -> ContourShape | None
+forge.geometry.contour_shape(item, tolerance=0.01, angle_tolerance=1.0) -> ContourShape | None
 ```
 
 La forma di un contorno chiuso (`ForgeContour`, un oggetto con `.segments`
@@ -537,7 +547,7 @@ ricomposizione), `diameter` (solo cerchio), `.to_dict()`.
 ### `concentric_groups`
 
 ```python
-forge.concentric_groups(items, tolerance=0.1) -> list[ConcentricGroup]
+forge.geometry.concentric_groups(items, tolerance=0.1) -> list[ConcentricGroup]
 ```
 
 I contorni circolari di `items` (come per `contour_shape`) raggruppati per
@@ -556,7 +566,7 @@ come accoppiarli lo decide il consumatore (D91).
 ### `arcs_around`
 
 ```python
-forge.arcs_around(center, radius, arcs, tolerance=0.1) -> list[ArcAround]
+forge.geometry.arcs_around(center, radius, arcs, tolerance=0.1) -> list[ArcAround]
 ```
 
 Gli `ArcSeg` di `arcs` concentrici al cerchio (`center`, `radius`) entro
@@ -574,7 +584,7 @@ lo applica il consumatore (D91).
 ### `splits_polygon`
 
 ```python
-forge.splits_polygon(polygon, start, end, reach=0.0) -> bool
+forge.geometry.splits_polygon(polygon, start, end, reach=0.0) -> bool
 ```
 
 La corda `start`-`end`, prolungata di `reach` ai due capi, divide il poligono
@@ -588,7 +598,7 @@ lo decide il consumatore (snapbend la prolunga di 1 mm, D93).
 ### `bridged_runs`
 
 ```python
-forge.bridged_runs(segments, bridges, tolerance=0.1, angle_tolerance=1e-6) -> list[CollinearRun]
+forge.geometry.bridged_runs(segments, bridges, tolerance=0.1, angle_tolerance=1e-6) -> list[CollinearRun]
 ```
 
 File di due o più tratti sulla stessa retta in cui lo spazio fra un tratto e il
@@ -607,7 +617,7 @@ di direzione in radianti. I tratti rimasti da soli non compaiono.
 ### `covered_rectangles`
 
 ```python
-forge.covered_rectangles(items, min_side, eps=0.5, cluster_tolerance=1.5, coverage=0.85) -> list[CoveredRectangle]
+forge.geometry.covered_rectangles(items, min_side, eps=0.5, cluster_tolerance=1.5, coverage=0.85) -> list[CoveredRectangle]
 ```
 
 I rettangoli allineati agli assi i cui quattro lati sono coperti almeno per
@@ -627,7 +637,7 @@ cornice o un cartiglio lo decide il consumatore (snapdraw, D94).
 ### `spanning_lines`
 
 ```python
-forge.spanning_lines(bounds, items, coverage=0.85, eps=0.5, cluster_tolerance=1.5) -> (list[float], list[float])
+forge.geometry.spanning_lines(bounds, items, coverage=0.85, eps=0.5, cluster_tolerance=1.5) -> (list[float], list[float])
 ```
 
 `(ys, xs)`: le linee strettamente interne a `bounds` che lo attraversano per
@@ -640,13 +650,13 @@ almeno `coverage` della larghezza (orizzontali) o dell'altezza (verticali).
 ### `axis_aligned_share`
 
 ```python
-forge.axis_aligned_share(segments, angle_tolerance) -> float | None
+forge.geometry.axis_aligned_share(segments, angle_tolerance) -> float | None
 ```
 
 Frazione della lunghezza dei `LineSeg` orizzontale o verticale entro
 `angle_tolerance` gradi; `None` senza `LineSeg`. Gli altri fatti del modulo
 (`merge_intervals`, `interval_coverage`, `cluster_values`, `axis_lines`,
-`items_inside`) si importano da `forge.core.axis`.
+`items_inside`) si importano da `forge.core.geometry.axis`.
 
 **Non muta** niente.
 

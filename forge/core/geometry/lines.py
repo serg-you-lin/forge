@@ -1,6 +1,6 @@
 """
-forge/core/lines.py
--------------------
+forge/core/geometry/lines.py
+----------------------------
 Fatti fra rette e poligoni: distanza da una retta, tratti sulla stessa retta,
 file di tratti unite attraverso dei poligoni, una corda che divide un
 poligono. Geometria pura: che quella corda sia una piega lo dice il

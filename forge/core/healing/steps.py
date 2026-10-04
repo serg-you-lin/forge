@@ -16,7 +16,7 @@ from typing import Callable, FrozenSet, List, Optional, Set, Tuple
 from shapely.geometry import LineString, Polygon
 from shapely.ops import polygonize, snap, unary_union
 
-from ..geometry import node_decimals_for, track_points
+from ..geometry.measure import node_decimals_for, track_points
 from ..primitives import LineSeg
 from ..primitives.polygon_builder import build_polygon
 from ..primitives.segments import DEFAULT_TOLERANCE, SplineSeg

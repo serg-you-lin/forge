@@ -332,7 +332,7 @@ def _emit_rendered(msp, ann, attribs: dict) -> None:
 
 def _trash_probe_point(trash) -> Optional[tuple]:
     """Punto rappresentativo di un'entità trash, per assegnarla a una parte."""
-    from ..core.geometry import track_points
+    from ..core.geometry.measure import track_points
 
     poly = getattr(trash, "polygon", None)
     if poly is not None:
