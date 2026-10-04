@@ -248,6 +248,18 @@ a parte (MAP.md D16).
 
 ## Audit dati cliente prima della 1.0.0 — resta il rewrite della history
 
+**4 ottobre — la storia pubblicata cita ancora disegni cliente per nome.**
+`dxf-anonymize repo` (il comando nuovo dello strumento privato), lanciato su
+forge con la mappa locale fatta per snapdraw, trova nel testo **attuale** solo
+un nome di layer in un commento di `tests/integration/test_writeback.py`, ma
+nella **storia già su GitHub** 44 commit aggiungono o tolgono nomi originali di
+disegni e codici pezzo — in `MAP.md`, `split_metadata.json`, script vecchi,
+`tests/real/test_golden_anchoring.py`, `docs/LLM.md`. Il rewrite di D81 non li
+aveva in elenco. Serve una mappa di forge (quella di snapdraw più i nomi che
+`--pattern` scopre), poi `--rewrite-history`; ma lo strumento si rifiuta su una
+storia già pubblicata, e qui va riscritta e ripushata con `--force`: decisione
+di Federico, da prendere una volta sola insieme all'audit della 1.0.
+
 D76 ha rifatto l'audit e il "zero sospetti" di D73/D75 era cieco in tre punti
 (path quotati da git, `\b` che non scatta dentro gli underscore, e il contenuto
 dei disegni mai letto). Ora `python scripts/audit_names.py --strict` controlla
