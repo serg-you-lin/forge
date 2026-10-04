@@ -2580,6 +2580,54 @@ in D86 and four 2-statement coincidences (reading kind+layer of an entity;
 in `io/dxf`; the lower-cased ignore set in the DXF loader) — extracting those
 would be ceremony, not reuse.
 
+### D88 — what stays in forge when process detection leaves ⏳
+Moving `detect_flat()`'s process knowledge out of forge (TODO item 5) was
+listed as blocked by "Problem 2"; it was not — D47 had already solved it
+(`heal(is_structural=...)` takes the caller's predicate, `ContourRole` is only
+UNKNOWN/OUTER/INNER). What was missing was the line between what moves and what
+stays. Federico, 4 October, on the four open points of the "Process detection"
+note:
+
+1. **The load-time lane stays.** `role_rules` (a label → a role) plus the
+   topology cleanup is not process knowledge: forge carries the role as an
+   opaque string the caller chose. It stays in forge under a name that does not
+   say "detect" (name to choose when the move is done).
+2. **Geometric predicates stay, process thresholds leave.** "This contour is a
+   circle", its diameter, edges that are not part of any closed contour, their
+   orientation: geometry, same on any input. The 32.1 mm drill threshold,
+   countersink/threaded, "this non-contour edge is a bend", engraving: process,
+   they go to the consumer.
+3. **Without a consumer's reading, a hole is an inner contour and a bend is a
+   non-structural edge.** That is forge's neutral output, and what D47's
+   injected predicate was built for.
+4. **Output layers for holes/bends leave `to_dxf`.** The runtime style registry
+   (D47) lets the consumer register its own `RoleStyle`s; forge renders roles
+   it is told about, it does not know them in advance.
+
+5. **Splitting stays.** `split()` turns one result into one drawing per
+   cluster (an outer and what it contains): structure, not process.
+   `split_to_files` stays too; only its `detect_flat(features="all")` step
+   leaves, a consumer that wants holes and bends in each file runs its own
+   reading before splitting.
+
+**The boundary, as one rule (same day):** forge reads *structure* — what
+closes, what lies inside what, what is connected to what; consumers read
+*meaning* — hole, bend, view, dimension. So both structural readings stay in
+forge: `heal()` is the engine, not a cutting mode (a closed region with holes
+serves area, nesting, a milling pocket, an engraving fill, an extrusion as much
+as a cut), and `island()` knows no notation (it separates connected groups and
+finds each one's outer face; a sheet with several parts side by side for
+nesting is the same problem as a sheet of views). Moving `island()` to snapdraw
+would only make snapdraw reach into forge's topology internals.
+
+**The consumer keeps its name: `snapbend`.** Rolling is bending with a large
+radius — the development is the same computation (neutral fibre, radius,
+angle) — so "bend" covers it; the cutting file comes out of every process and
+names nothing specific. `snapcut` and `snapsheet` rejected.
+
+Not executed yet. The cost and the golden plan (transform the 48 JSON, do not
+regenerate them) are in the "Process detection" note below.
+
 ---
 
 ## Closed questions (history)

@@ -61,9 +61,15 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    il move.
 4. **Il rewrite della history** — ✅ **fatto (D81)**, 2 ottobre: un force-push,
    albero di oggi identico, `audit_names.py --history` pulito.
-5. **`detect_flat()` → snapbend** — direzione già decisa; bloccata dal flag
-   `structural: bool` al posto di `STRUCTURAL_ROLES` (vedi "Problema 2" in
-   fondo).
+5. **`detect_flat()` → snapbend** — direzione già decisa. Il blocco che
+   citava ("Problema 2", flag `structural` al posto di `STRUCTURAL_ROLES`) è
+   **già risolto da D47**: `heal(is_structural=...)` riceve il predicato dal
+   chiamante, `ContourRole` è solo UNKNOWN/OUTER/INNER, i ruoli di processo
+   stanno in `tools/manufacturing_role.py`. Quello che resta è il costo
+   elencato in MAP.md ("Process detection → snapbend"): `heal_and_detect`,
+   `split_to_files`, writeback, layer fori/pieghe di `to_dxf`, `inspect.py`,
+   golden (piano: trasformare i 48 JSON, non rigenerarli), e i test che
+   importano `manufacturing_role.is_structural`.
 6. **Estrazione dei loop planari (half-edge/DCEL)** — l'unica cosa in lista che
    cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
 7. **Due cose piccole dalla roadmap del preventivo** (step 0 e 1 di
@@ -553,11 +559,8 @@ eventualmente ML/vision.
 
 ## Cosa resta parcheggiato, non toccare senza motivo
 
-- **Problema 2**: dove vive la tassonomia hole/countersink/threaded/engrave/
-  marking (oggi in `model/role.py`, concettualmente di `detect`) — bloccato
-  da `core/heal.py`/`hierarchy.py` che leggono `STRUCTURAL_ROLES` per la
-  topologia. Servirebbe un flag `structural: bool` invece di un elenco
-  fisso, ma nessuno l'ha ancora disegnato.
+- ~~**Problema 2**~~ — risolto da D47 (predicato `is_structural` iniettato in
+  `heal()`, tassonomia di processo in `tools/manufacturing_role.py`).
 - **Idea "detect dovrebbe usare il suo stesso contratto"**: `detect_flat()` ha
   accesso diretto/privilegiato alla tassonomia dei ruoli invece di passare
   dagli stessi ganci (`role`) di un consumatore esterno come snapdraw. Appena
