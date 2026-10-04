@@ -80,10 +80,10 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    controllo quota-vs-geometria misurata **non è di forge** (D69): forge dà già
    `measured_value`, `display_text` e `references`, il confronto col numero
    scritto si fa in snapdraw — da portare nel TODO di snapdraw.
-   `scripts/13_production_splitter.py` importa ancora
-   `extract_forge_texts`, che non esiste più: lo script è rotto e **passerà con
-   ogni probabilità in snapbend** (Federico, 2 ottobre), da riscrivere lì su
-   `inject(snap_distance=...)`.
+   Lo script di produzione dello split (ex `scripts/13_…`) importa ancora
+   `extract_forge_texts`, che non esiste più: è rotto. **Spostato in snapdraw**
+   (Federico, 4 ottobre: `framer/scripts/`, non versionato), da riscrivere lì
+   su `inject(snap_distance=...)` — vedi il TODO di snapdraw.
 8. **Il rename `forge` → `snapforge`** — `naming_convention.md` (non tracciato) è
    un piano scritto e **mai eseguito**: nome umano `SnapForge`, identificatore
    tecnico `snapforge` per repo, cartella, package e `import`, stessa regola per
@@ -295,10 +295,10 @@ Due cose viste di passaggio, da decidere quando capita:
   l'audit non lo segnala, ma non e' neanche un nome inventato. La cartella non
   e' tracciata e nessun test la usa (il `la_104.DXF` che i test usano e' quello
   in `tests/examples/`), quindi non e' un problema di git: e' da guardare.
-- `scripts/13_production_splitter.py` (non versionato, "fuori serie"
-  in SCRIPTS.md) ha un percorso assoluto con un codice pezzo nel `CONFIG`.
-  Finche' resta non versionato non entra in git, ma se un giorno lo si porta
-  alla nuova API quel percorso va via prima.
+- Lo script di produzione dello split (ex `scripts/13_…`, ora in snapdraw, non
+  versionato) ha un percorso assoluto con un codice pezzo. Finche' resta non
+  versionato non entra in git, ma se un giorno lo si porta alla nuova API quel
+  percorso va via prima.
 
 ## RIPARTENZA — stato a fine sessione 2026-09-18 (seconda parte), da qui la prossima chat
 

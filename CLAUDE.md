@@ -33,8 +33,12 @@ docstrings/comments, see Conventions).
 
 ```
 python scripts/gen_index.py            # regenerate after adding/moving code
-python scripts/gen_index.py --check    # exit 1 if stale; also checks the dependency rule
+python scripts/gen_index.py --check    # exit 1 if stale or the dependency rule is broken
 ```
+
+`tests/unit/test_index.py` runs the check in the suite. The rule is in
+`pyproject.toml` (`[tool.gen_index.layers]`); the script is the same file as
+snapbend's `tests/gen_index.py` — change it in one, copy to the other.
 
 ## Non-negotiables
 
@@ -87,6 +91,9 @@ python scripts/gen_index.py --check    # exit 1 if stale; also checks the depend
 - **A decision made is a decision written.** Append it to `MAP.md` with the next
   `D##`, with the *why*. Docstrings stay short; the reasoning and history go in
   `MAP.md`, not in the function.
+- **A large file is filtered, not read**: to find something inside a big file
+  (a drawing, a log, a golden) run a filter (`grep`, `anonymize scan`, a small
+  parser) and read its output only.
 - Refactors are clean breaks: no compatibility aliases kept "just in case".
 
 ## Conventions

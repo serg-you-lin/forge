@@ -14,7 +14,7 @@ license = { text = "All rights reserved" }
 authors = [
     { name = "Federico Sidraschi" }
 ]
-keywords = ["cad", "geometry", "manufacturing", "sheet-metal", "laser-cutting", "cam", "dxf"]
+keywords = ["cad", "geometry", "technical-drawing", "dxf"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -36,6 +36,11 @@ all    = ["forge[raster,pdf]"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["forge*"]
+
+# Regola di dipendenza controllata da scripts/gen_index.py (MAP.md D44)
+[tool.gen_index.layers]
+core  = ["adapters", "tools", "io"]
+model = ["adapters", "tools", "io"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

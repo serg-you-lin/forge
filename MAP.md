@@ -2789,6 +2789,25 @@ spline or ellipse that `circular_geometry` calls circular is not a
 
 `main` → **0.9.1** (additive: four new public names).
 
+### D92 — the code index is one tool for every project, and the suite enforces it ✅
+Federico, 4 October: the guardrails forge has — the index of what exists, the
+dependency rule — should hold in snapbend too, and in general.
+
+`scripts/gen_index.py` is now the same file in every project (snapbend keeps it
+in `tests/`, where its generators live): the project's rule moves to
+`pyproject.toml` under `[tool.gen_index.layers]`, and a forbidden name may be an
+external package as well as an internal layer (snapbend: `core`, `model`,
+`rules` never import `forge`). `--check` now fails on a dependency violation,
+not only on a stale index, and `tests/unit/test_index.py` runs it, so the rule
+is checked on every `pytest` instead of when someone remembers.
+
+Found while porting: relative imports with two or more dots (`from ..model`)
+and those inside an `__init__.py` were resolved one level too deep, so the
+"Internal dependencies" table was wrong for most modules and the layer check
+could not see them. Fixed; forge is clean under the corrected check. The
+keywords in `pyproject.toml` lose "manufacturing", "sheet-metal",
+"laser-cutting", "cam" (CLAUDE.md: forge is not a sheet-metal tool).
+
 ---
 
 ## Closed questions (history)

@@ -1181,58 +1181,58 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 
 | module | imports |
 |---|---|
-| `forge/__init__.py` | `adapters.dxf.loader` · `adapters.geometry.loader` · `adapters.pdf.loader` · `core.heal` · `core.healing.islands` · `core.healing.normalizer` · `core.healing.steps` · `core.island` · `core.primitives.fitting` · `core.shape` · `core.topology.loop_finder` · `core.topology.noding` · `core.topology.outer_face` · `inspect` · `io.dxf` · `io.exporter` · `io.svg` · `io.text` · `io.view_model` · `model` · `model.role` · `model.role_rule` · `recipes` · `rules.palette` · `rules.validator` · `tools.anchor` · `tools.inject` · `tools.non_contour` · `tools.rotate` |
-| `forge/adapters/dxf/adapter.py` | `forge.adapters.core.adapter_base` · `forge.adapters.core.geometry` · `forge.adapters.core.primitives.polygon_builder` · `forge.adapters.core.primitives.segments` · `forge.adapters.core.topology.edge` · `forge.adapters.dxf.parser` · `forge.adapters.model.document` · `forge.adapters.model.role_rule` · `forge.adapters.model.style` |
-| `forge/adapters/dxf/annotation_extractor.py` | `forge.adapters.dxf.mtext` · `forge.adapters.model.annotation` |
-| `forge/adapters/dxf/exporter.py` | `forge.adapters.core.primitives` · `forge.adapters.model.style` |
-| `forge/adapters/dxf/layers.py` | `forge.adapters.model.role` · `forge.adapters.rules.palette` |
-| `forge/adapters/dxf/loader.py` | `forge.adapters.dxf.adapter` · `forge.adapters.dxf.annotation_extractor` · `forge.adapters.dxf.sanitize` · `forge.adapters.model.document` · `forge.adapters.model.role_rule` |
-| `forge/adapters/dxf/parser.py` | `forge.adapters.core.primitives` · `forge.adapters.core.primitives.segments` |
-| `forge/adapters/dxf/sanitize.py` | `forge.adapters.core.healing.normalizer` |
-| `forge/adapters/geometry/loader.py` | `forge.adapters.core.adapter_base` · `forge.adapters.core.geometry` · `forge.adapters.core.primitives.segments` · `forge.adapters.core.topology.edge` · `forge.adapters.model.document` · `forge.adapters.model.role` |
-| `forge/adapters/pdf/graph_adapter.py` | `forge.adapters.core.geometry` · `forge.adapters.core.primitives.segments` · `forge.adapters.core.topology.edge` · `forge.adapters.model.role` |
+| `forge/__init__.py` | `forge.adapters.dxf.loader` · `forge.adapters.geometry.loader` · `forge.adapters.pdf.loader` · `forge.core.heal` · `forge.core.healing.islands` · `forge.core.healing.normalizer` · `forge.core.healing.steps` · `forge.core.island` · `forge.core.primitives.fitting` · `forge.core.shape` · `forge.core.topology.loop_finder` · `forge.core.topology.noding` · `forge.core.topology.outer_face` · `forge.inspect` · `forge.io.dxf` · `forge.io.exporter` · `forge.io.svg` · `forge.io.text` · `forge.io.view_model` · `forge.model` · `forge.model.role` · `forge.model.role_rule` · `forge.recipes` · `forge.rules.palette` · `forge.rules.validator` · `forge.tools.anchor` · `forge.tools.inject` · `forge.tools.non_contour` · `forge.tools.rotate` |
+| `forge/adapters/dxf/adapter.py` | `forge.adapters.dxf.parser` · `forge.core.adapter_base` · `forge.core.geometry` · `forge.core.primitives.polygon_builder` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.model.document` · `forge.model.role_rule` · `forge.model.style` |
+| `forge/adapters/dxf/annotation_extractor.py` | `forge.adapters.dxf.mtext` · `forge.model.annotation` |
+| `forge/adapters/dxf/exporter.py` | `forge.core.primitives` · `forge.model.style` |
+| `forge/adapters/dxf/layers.py` | `forge.model.role` · `forge.rules.palette` |
+| `forge/adapters/dxf/loader.py` | `forge.adapters.dxf.adapter` · `forge.adapters.dxf.annotation_extractor` · `forge.adapters.dxf.sanitize` · `forge.model.document` · `forge.model.role_rule` |
+| `forge/adapters/dxf/parser.py` | `forge.core.primitives` · `forge.core.primitives.segments` |
+| `forge/adapters/dxf/sanitize.py` | `forge.core.healing.normalizer` |
+| `forge/adapters/geometry/loader.py` | `forge.core.adapter_base` · `forge.core.geometry` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.model.document` · `forge.model.role` |
+| `forge/adapters/pdf/graph_adapter.py` | `forge.core.geometry` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.model.role` |
 | `forge/adapters/pdf/loader.py` | `forge.adapters.pdf.extractor_adapter` · `forge.adapters.pdf.graph_adapter` · `forge.adapters.pdf.sanitize` |
-| `forge/adapters/pdf/sanitize.py` | `forge.adapters.core.geometry` · `forge.adapters.pdf.geometry_adapter` |
-| `forge/core/adapter_base.py` | `forge.core.geometry` · `forge.core.model.document` · `forge.core.topology.edge` |
+| `forge/adapters/pdf/sanitize.py` | `forge.adapters.pdf.geometry_adapter` · `forge.core.geometry` |
+| `forge/core/adapter_base.py` | `forge.core.geometry` · `forge.core.topology.edge` · `forge.model.document` |
 | `forge/core/geometry.py` | `forge.core.primitives.segments` |
-| `forge/core/heal.py` | `forge.core.healing.normalizer` · `forge.core.healing.steps` · `forge.core.model.document` · `forge.core.model.result` · `forge.core.model.role` · `forge.core.primitives.segments` · `forge.core.rules.validator` · `forge.core.topology.loop_finder` |
-| `forge/core/healing/gap_solver.py` | `forge.core.healing.geometry` · `forge.core.healing.primitives.segments` · `forge.core.healing.topology.edge` · `forge.core.model.role` |
-| `forge/core/healing/hierarchy.py` | `forge.core.core.geometry` · `forge.core.core.topology.loop_finder` · `forge.core.model.cluster` · `forge.core.model.contour` · `forge.core.model.feature` · `forge.core.model.role` |
-| `forge/core/healing/islands.py` | `forge.core.healing.topology.edge` · `forge.core.healing.topology.noding` |
-| `forge/core/healing/normalizer.py` | `forge.core.healing.primitives.fitting` · `forge.core.healing.primitives.segments` · `forge.core.healing.topology.edge` · `forge.core.healing.topology.graph` · `forge.core.model.role` |
-| `forge/core/healing/outer_scan.py` | `forge.core.healing.primitives.segments` · `forge.core.healing.topology.edge` |
-| `forge/core/healing/steps.py` | `forge.core.healing.gap_solver` · `forge.core.healing.geometry` · `forge.core.healing.hierarchy` · `forge.core.healing.primitives` · `forge.core.healing.primitives.polygon_builder` · `forge.core.healing.primitives.segments` · `forge.core.healing.topology.edge` · `forge.core.healing.topology.graph` · `forge.core.healing.topology.loop_finder` · `forge.core.healing.topology.non_contour_edges` · `forge.core.model.cluster` · `forge.core.model.feature` · `forge.core.model.role` |
-| `forge/core/island.py` | `forge.core.healing.gap_solver` · `forge.core.healing.islands` · `forge.core.healing.normalizer` · `forge.core.model.cluster` · `forge.core.model.contour` · `forge.core.model.document` · `forge.core.model.feature` · `forge.core.model.result` · `forge.core.model.role` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.core.topology.loop_finder` · `forge.core.topology.noding` · `forge.core.topology.non_contour_edges` · `forge.core.topology.outer_face` |
-| `forge/core/primitives/__init__.py` | `forge.core.polygon_builder` · `forge.core.segments` |
-| `forge/core/primitives/fitting.py` | `forge.core.primitives.geometry` · `forge.core.primitives.segments` |
+| `forge/core/heal.py` | `forge.core.healing.normalizer` · `forge.core.healing.steps` · `forge.core.primitives.segments` · `forge.core.topology.loop_finder` · `forge.model.document` · `forge.model.result` · `forge.model.role` · `forge.rules.validator` |
+| `forge/core/healing/gap_solver.py` | `forge.core.geometry` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.model.role` |
+| `forge/core/healing/hierarchy.py` | `forge.core.geometry` · `forge.core.topology.loop_finder` · `forge.model.cluster` · `forge.model.contour` · `forge.model.feature` · `forge.model.role` |
+| `forge/core/healing/islands.py` | `forge.core.topology.edge` · `forge.core.topology.noding` |
+| `forge/core/healing/normalizer.py` | `forge.core.primitives.fitting` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.model.role` |
+| `forge/core/healing/outer_scan.py` | `forge.core.primitives.segments` · `forge.core.topology.edge` |
+| `forge/core/healing/steps.py` | `forge.core.geometry` · `forge.core.healing.gap_solver` · `forge.core.healing.hierarchy` · `forge.core.primitives` · `forge.core.primitives.polygon_builder` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.core.topology.loop_finder` · `forge.core.topology.non_contour_edges` · `forge.model.cluster` · `forge.model.feature` · `forge.model.role` |
+| `forge/core/island.py` | `forge.core.healing.gap_solver` · `forge.core.healing.islands` · `forge.core.healing.normalizer` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.core.topology.loop_finder` · `forge.core.topology.noding` · `forge.core.topology.non_contour_edges` · `forge.core.topology.outer_face` · `forge.model.cluster` · `forge.model.contour` · `forge.model.document` · `forge.model.feature` · `forge.model.result` · `forge.model.role` |
+| `forge/core/primitives/__init__.py` | `forge.core.primitives.polygon_builder` · `forge.core.primitives.segments` |
+| `forge/core/primitives/fitting.py` | `forge.core.geometry` · `forge.core.primitives.segments` |
 | `forge/core/primitives/polygon_builder.py` | `forge.core.primitives` |
 | `forge/core/shape.py` | `forge.core.geometry` · `forge.core.island` · `forge.core.primitives.segments` |
-| `forge/core/topology/edge.py` | `forge.core.model.style` · `forge.core.topology.primitives.segments` |
-| `forge/core/topology/graph.py` | `forge.core.topology.edge` · `forge.core.topology.geometry` · `forge.core.topology.primitives.segments` |
-| `forge/core/topology/loop_finder.py` | `forge.core.core.geometry` · `forge.core.core.primitives.segments` · `forge.core.model.feature` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.core.topology.primitives.polygon_builder` · `forge.core.topology.primitives.segments` |
-| `forge/core/topology/noding.py` | `forge.core.topology.edge` · `forge.core.topology.geometry` · `forge.core.topology.primitives.segments` |
+| `forge/core/topology/edge.py` | `forge.core.primitives.segments` · `forge.model.style` |
+| `forge/core/topology/graph.py` | `forge.core.geometry` · `forge.core.primitives.segments` · `forge.core.topology.edge` |
+| `forge/core/topology/loop_finder.py` | `forge.core.geometry` · `forge.core.primitives.polygon_builder` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.model.feature` |
+| `forge/core/topology/noding.py` | `forge.core.geometry` · `forge.core.primitives.segments` · `forge.core.topology.edge` |
 | `forge/core/topology/non_contour_edges.py` | `forge.core.topology.edge` · `forge.core.topology.graph` |
-| `forge/core/topology/outer_face.py` | `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.core.topology.loop_finder` · `forge.core.topology.primitives.segments` |
+| `forge/core/topology/outer_face.py` | `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.core.topology.loop_finder` |
 | `forge/inspect.py` | `forge.adapters.dxf.loader` · `forge.core.geometry` · `forge.core.heal` · `forge.core.primitives.segments` · `forge.core.topology.graph` · `forge.model.document` · `forge.model.role_rule` |
-| `forge/io/dxf.py` | `forge.io.adapters.dxf.exporter` · `forge.io.adapters.dxf.layers` · `forge.io.core.geometry` · `forge.io.model` · `forge.io.model.annotation` · `forge.io.model.document` · `forge.io.model.role` · `forge.io.rules.palette` |
-| `forge/io/exporter.py` | `forge.io.adapters.dxf.layers` · `forge.io.model` · `forge.io.rules.metadata_schema` |
-| `forge/io/svg.py` | `forge.io.model` · `forge.io.view_model` |
-| `forge/io/text.py` | `forge.io.core.primitives.segments` · `forge.io.core.shape` · `forge.io.model` · `forge.io.model.annotation` |
-| `forge/io/view_model.py` | `forge.io.core.geometry` · `forge.io.model` · `forge.io.model.role` · `forge.io.rules.palette` |
-| `forge/model/__init__.py` | `forge.annotation` · `forge.cluster` · `forge.contour` · `forge.core.topology.edge` · `forge.detected` · `forge.document` · `forge.feature` · `forge.result` · `forge.style` |
+| `forge/io/dxf.py` | `forge.adapters.dxf.exporter` · `forge.adapters.dxf.layers` · `forge.core.geometry` · `forge.model` · `forge.model.annotation` · `forge.model.document` · `forge.model.role` · `forge.rules.palette` |
+| `forge/io/exporter.py` | `forge.adapters.dxf.layers` · `forge.model` · `forge.rules.metadata_schema` |
+| `forge/io/svg.py` | `forge.io.view_model` · `forge.model` |
+| `forge/io/text.py` | `forge.core.primitives.segments` · `forge.core.shape` · `forge.model` · `forge.model.annotation` |
+| `forge/io/view_model.py` | `forge.core.geometry` · `forge.model` · `forge.model.role` · `forge.rules.palette` |
+| `forge/model/__init__.py` | `forge.core.topology.edge` · `forge.model.annotation` · `forge.model.cluster` · `forge.model.contour` · `forge.model.detected` · `forge.model.document` · `forge.model.feature` · `forge.model.result` · `forge.model.style` |
 | `forge/model/cluster.py` | `forge.model.contour` |
 | `forge/model/contour.py` | `forge.model.feature` |
-| `forge/model/document.py` | `forge.model.annotation` · `forge.model.core.topology.edge` |
+| `forge/model/document.py` | `forge.core.topology.edge` · `forge.model.annotation` |
 | `forge/model/feature.py` | `forge.core.primitives.segments` · `forge.model.style` |
 | `forge/model/result.py` | `forge.model.annotation` · `forge.model.cluster` |
 | `forge/model/role_rule.py` | `forge.model.role` · `forge.model.style` |
 | `forge/recipes.py` | `forge.adapters.dxf.layers` · `forge.core.heal` · `forge.io.dxf` · `forge.model.document` · `forge.model.result` |
-| `forge/rules/palette.py` | `forge.rules.model.role` |
-| `forge/rules/validator.py` | `forge.rules.core.primitives.segments` · `forge.rules.core.topology.graph` · `forge.rules.model` · `forge.rules.model.document` |
-| `forge/tools/__init__.py` | `forge.anchor` · `forge.inject` |
-| `forge/tools/anchor.py` | `forge.tools.model.annotation` · `forge.tools.model.result` |
+| `forge/rules/palette.py` | `forge.model.role` |
+| `forge/rules/validator.py` | `forge.core.primitives.segments` · `forge.core.topology.graph` · `forge.model` · `forge.model.document` |
+| `forge/tools/__init__.py` | `forge.tools.anchor` · `forge.tools.inject` |
+| `forge/tools/anchor.py` | `forge.model.annotation` · `forge.model.result` |
 | `forge/tools/inject.py` | `forge.tools.anchor` |
-| `forge/tools/non_contour.py` | `forge.tools.core.healing.steps` · `forge.tools.core.topology.edge` · `forge.tools.model.document` |
-| `forge/tools/rotate.py` | `forge.tools.core.geometry` · `forge.tools.core.primitives.segments` · `forge.tools.model.cluster` · `forge.tools.model.contour` · `forge.tools.model.document` · `forge.tools.model.feature` · `forge.tools.model.result` |
-| `forge/tools/tabs.py` | `forge.tools.core.geometry` · `forge.tools.core.primitives.segments` |
+| `forge/tools/non_contour.py` | `forge.core.healing.steps` · `forge.core.topology.edge` · `forge.model.document` |
+| `forge/tools/rotate.py` | `forge.core.geometry` · `forge.core.primitives.segments` · `forge.model.cluster` · `forge.model.contour` · `forge.model.document` · `forge.model.feature` · `forge.model.result` |
+| `forge/tools/tabs.py` | `forge.core.geometry` · `forge.core.primitives.segments` |
 

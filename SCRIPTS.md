@@ -77,8 +77,9 @@ Non fanno parte della palestra dell'API: non chiamano `forge`, guardano il repo.
 
 ## Fuori serie
 
-- `scripts/13_production_splitter.py` — codice di produzione su file
-  cliente, ancora su API pre-refactor (usa path assoluti propri, non `_paths`).
+- Lo script di produzione per lo split dei file cliente (ex `scripts/13_…`) è
+  passato in snapdraw (`framer/scripts/`, non versionato), ancora su API
+  pre-refactor (usa path assoluti propri, non `_paths`).
   Da portare alla nuova API in una sessione dedicata e collaudare con
   l'overlay-check in SigmaNest. Non versionato.
 - `_archive/old_scripts/` — la vecchia serie numerata (API morte), tenuta come

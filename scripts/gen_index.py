@@ -13,10 +13,10 @@ primo commit successivo.
 Legge i sorgenti con `ast`: non importa `forge`, quindi nessun side effect e
 nessuna dipendenza oltre la standard library.
 
-Uso (da qualsiasi cartella)::
+Uso (da qualsiasi cartella; `scripts/` o `tests/`, dove il progetto tiene i generatori)::
 
     python scripts/gen_index.py            # scrive docs/INDEX.md
-    python scripts/gen_index.py --check    # esce 1 se l'indice è obsoleto
+    python scripts/gen_index.py --check    # esce 1 se l'indice è obsoleto o un layer è violato
     python scripts/gen_index.py --similar  # corpi simili e frammenti ripetuti
 
 Oltre all'inventario produce due controlli automatici:
@@ -29,11 +29,17 @@ locali anonimizzate) e stampa funzioni uguali o quasi uguali sotto nomi
 diversi e frammenti di istruzioni ripetuti in più funzioni. Candidati da
 leggere, non verdetti.
 
-Riusabile negli altri progetti della famiglia (snapbend, snapdraw, ...): il file
-si copia in `scripts/` così com'è, trova da sé il package da indicizzare (la
-cartella con `__init__.py` nella radice del repo). Per avere anche il controllo
-dei layer basta aggiungere una voce a `LAYER_RULES`; senza voce l'indice si
-genera comunque e quella sezione dice che non c'è nessuna regola configurata.
+Uguale in ogni progetto (la copia di riferimento sta nella skill
+`code-guardrails`): si copia in `scripts/` così com'è e trova da sé il package
+da indicizzare (la cartella con `__init__.py` nella radice del repo). La regola
+dei layer è del progetto e sta nel suo `pyproject.toml`; un nome vietato può
+essere un layer interno o un pacchetto esterno (`forge` per snapbend):
+
+    [tool.gen_index.layers]
+    core  = ["adapters", "tools", "io"]
+    model = ["adapters", "tools", "io"]
+
+Senza sezione l'indice si genera comunque e dice che non c'è nessuna regola.
 """
 
 from __future__ import annotations
@@ -42,13 +48,17 @@ import argparse
 import ast
 import copy
 import sys
+import tomllib
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
 ROOT = Path(__file__).resolve().parent.parent
-"""Radice del repo (scripts/ ne è figlia)."""
+"""Radice del repo (la cartella di questo file ne è figlia)."""
+
+SCRIPT = Path(__file__).resolve().relative_to(ROOT).as_posix()
+"""Questo file, relativo alla radice: per il comando scritto nell'indice."""
 
 OUTPUT = ROOT / "docs" / "INDEX.md"
 
@@ -58,15 +68,19 @@ DOC_MAX_CHARS = 110
 NOT_A_PACKAGE = {"dev_tools", "scripts", "tests", "build", "docs", "_archive"}
 """Cartelle che non sono il package da indicizzare, anche se hanno __init__.py."""
 
-# Regola di dipendenza per package: dentro un package, chi sta a sinistra non può
-# importare nessuno dei layer a destra. Per forge è quella di ARCHITECTURE.md /
-# MAP.md D44. Un package senza voce qui salta il controllo.
-LAYER_RULES: dict[str, dict[str, tuple[str, ...]]] = {
-    "forge": {
-        "core": ("adapters", "tools", "io"),
-        "model": ("adapters", "tools", "io"),
-    },
-}
+
+
+def load_layer_rule(root: Path) -> dict[str, tuple[str, ...]]:
+    """La regola di dipendenza del progetto, da `[tool.gen_index.layers]` del suo pyproject."""
+    pyproject = root / "pyproject.toml"
+    if not pyproject.exists():
+        return {}
+    config = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    layers = config.get("tool", {}).get("gen_index", {}).get("layers", {})
+    return {layer: tuple(forbidden) for layer, forbidden in layers.items()}
+
+
+LAYER_RULE = load_layer_rule(ROOT)
 
 
 def find_package(root: Path) -> Path:
@@ -120,12 +134,13 @@ class Module:
     path: str                      # percorso posix relativo alla radice
     doc: str
     symbols: list[Symbol] = field(default_factory=list)
-    imports: set[str] = field(default_factory=set)   # moduli forge importati
+    imports: set[str] = field(default_factory=set)   # moduli interni importati
+    external: set[str] = field(default_factory=set)  # pacchetti esterni, primo livello
     loc: int = 0
 
     @property
     def layer(self) -> str:
-        """Il primo livello sotto `forge/` (`core`, `model`, `tools`...)."""
+        """Il primo livello sotto il package (`core`, `model`, ...); "(root)" per i file in cima."""
         parts = self.path.split("/")
         return parts[1] if len(parts) > 2 else "(root)"
 
@@ -196,17 +211,27 @@ def resolve_import(node: ast.Import | ast.ImportFrom, module_path: str,
             found.add(node.module)
         return found
 
-    # relativo: risale di `level` dal package del modulo corrente
-    parts = module_path.removesuffix(".py").split("/")
-    if parts[-1] == "__init__":
-        parts = parts[:-1]
-    base = parts[: len(parts) - (node.level - 1)] if node.level > 1 else parts[:-1]
+    # relativo: `.` è il package che contiene il file (per un __init__.py, il
+    # package stesso), ogni punto in più risale di un livello
+    package = module_path.removesuffix(".py").split("/")[:-1]
+    base = package[: len(package) - (node.level - 1)]
     target = ".".join(base)
     if node.module:
         target = f"{target}.{node.module}" if target else node.module
     if target:
         found.add(target)
     return found
+
+
+def external_imports(node: ast.Import | ast.ImportFrom, pkg_name: str) -> set[str]:
+    """I pacchetti esterni (primo livello) importati da uno statement assoluto."""
+    if isinstance(node, ast.Import):
+        names = [alias.name for alias in node.names]
+    elif node.level == 0 and node.module:
+        names = [node.module]
+    else:
+        return set()
+    return {n.split(".")[0] for n in names if n.split(".")[0] != pkg_name}
 
 
 def read_module(path: Path, pkg_name: str) -> Module:
@@ -242,6 +267,7 @@ def read_module(path: Path, pkg_name: str) -> Module:
     for node in ast.walk(tree):
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             module.imports |= resolve_import(node, rel, pkg_name)
+            module.external |= external_imports(node, pkg_name)
 
     return module
 
@@ -278,16 +304,17 @@ def find_duplicate_names(modules: Iterable[Module]) -> dict[str, list[Symbol]]:
 def find_layer_violations(modules: Iterable[Module],
                           pkg_name: str) -> list[tuple[str, str]]:
     """Import che violano la regola di dipendenza, come (modulo, import)."""
-    rule = LAYER_RULES.get(pkg_name, {})
     violations: list[tuple[str, str]] = []
     for module in modules:
-        forbidden = rule.get(module.layer)
+        forbidden = LAYER_RULE.get(module.layer)
         if not forbidden:
             continue
         for imported in sorted(module.imports):
             tail = imported.removeprefix(f"{pkg_name}.").split(".")[0]
             if tail in forbidden:
                 violations.append((module.path, imported))
+        for package in sorted(module.external & set(forbidden)):
+            violations.append((module.path, package))
     return violations
 
 
@@ -510,7 +537,7 @@ def render(modules: list[Module], pkg_name: str) -> str:
     classes = [s for s in all_symbols if s.kind == "class"]
     duplicates = find_duplicate_names(modules)
     violations = find_layer_violations(modules, pkg_name)
-    layer_rule = LAYER_RULES.get(pkg_name, {})
+    layer_rule = LAYER_RULE
     total_loc = sum(m.loc for m in modules)
 
     out: list[str] = []
@@ -521,7 +548,7 @@ def render(modules: list[Module], pkg_name: str) -> str:
     w("**Generated file — do not edit by hand.** Regenerate with:")
     w("")
     w("```")
-    w("python scripts/gen_index.py")
+    w(f"python {SCRIPT}")
     w("```")
     w("")
     w("What this is: the lookup table of *what already exists* in the package, "
@@ -576,8 +603,8 @@ def render(modules: list[Module], pkg_name: str) -> str:
     w("## Dependency rule")
     w("")
     if not layer_rule:
-        w(f"No dependency rule configured for `{pkg_name}` — add one to "
-          "`LAYER_RULES` in `scripts/gen_index.py` to have it checked here.")
+        w(f"No dependency rule configured for `{pkg_name}` — add "
+          "`[tool.gen_index.layers]` to `pyproject.toml` to have it checked here.")
     else:
         for layer, forbidden in layer_rule.items():
             forbidden_list = ", ".join(f"`{f}`" for f in forbidden)
@@ -678,6 +705,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     text = build(package)
 
     if args.check:
+        modules = [read_module(path, package.name) for path in iter_sources(package)]
+        violations = find_layer_violations(modules, package.name)
+        for module_path, imported in violations:
+            print(f"dependency rule: {module_path} imports {imported}")
         if not OUTPUT.exists():
             print(f"{OUTPUT.relative_to(ROOT).as_posix()} missing — run gen_index.py")
             return 1
@@ -685,7 +716,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"{OUTPUT.relative_to(ROOT).as_posix()} is stale — run gen_index.py")
             return 1
         print(f"{OUTPUT.relative_to(ROOT).as_posix()} up to date")
-        return 0
+        return 1 if violations else 0
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(text, encoding="utf-8")
