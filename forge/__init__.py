@@ -125,6 +125,8 @@ from .core.healing.normalizer import refit_tessellations
 # Forma di un contorno chiuso (cerchio, stadio, rettangolo, ...): fatto
 # geometrico, non feature — vale su heal() e island(). MAP.md D68.
 from .core.shape import contour_shape, ContourShape
+# Fatti fra più contorni: cerchi concentrici, archi attorno a un cerchio. MAP.md D91.
+from .core.shape import concentric_groups, ConcentricGroup, arcs_around, ArcAround
 # I passi di heal(), uno per funzione: heal() è la loro composizione di
 # default, un consumatore (snapdraw) li compone nell'ordine che gli serve —
 # per esempio senza build_hierarchy, finché non ha deciso da sé cosa
@@ -172,6 +174,10 @@ __all__ = [
     "resolve_target",
     "contour_shape",
     "ContourShape",
+    "concentric_groups",
+    "ConcentricGroup",
+    "arcs_around",
+    "ArcAround",
     "split_to_files",
     # Export
     "to_json",

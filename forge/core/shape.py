@@ -5,6 +5,8 @@ Fatti di forma di un contorno chiuso: cerchio, stadio, rettangolo, poligono.
 Geometria pura, vale uguale su `heal()` e su `island()`. "circle" non vuol
 dire foro: cosa sia quel cerchio lo dice chi legge il disegno o il processo
 (MAP.md D68).
+In coda i fatti fra più contorni: cerchi concentrici, archi attorno a un
+cerchio (MAP.md D91).
 """
 
 from __future__ import annotations
@@ -158,3 +160,78 @@ def _angle_diff(a: float, b: float) -> float:
     """Differenza fra due direzioni modulo 180, in [0, 90]."""
     d = abs(a - b) % 180
     return min(d, 180 - d)
+
+
+# ---------------------------------------------------------------------------
+# Cerchi concentrici, archi attorno a un cerchio (MAP.md D91)
+# ---------------------------------------------------------------------------
+# Fatti geometrici fra più contorni: "questi cerchi hanno lo stesso centro",
+# "questo arco gira attorno a quel cerchio". Cosa siano (svasatura, sede,
+# cresta di un filetto) e con che soglie lo decide il consumatore.
+
+CONCENTRIC_TOLERANCE = 0.1   # distanza massima fra i centri, unità del disegno
+
+
+@dataclass(frozen=True)
+class ConcentricGroup:
+    """
+    Contorni circolari con lo stesso centro, dal raggio minore al maggiore.
+
+    center: centro del cerchio più piccolo (il riferimento del gruppo)
+    items:  i contorni, nell'ordine dei raggi
+    shapes: la `ContourShape` di ciascuno, nello stesso ordine
+    """
+    center: Point
+    items: tuple
+    shapes: Tuple[ContourShape, ...]
+
+    @property
+    def diameters(self) -> Tuple[float, ...]:
+        return tuple(s.length for s in self.shapes)
+
+
+def concentric_groups(items, tolerance: float = CONCENTRIC_TOLERANCE) -> list[ConcentricGroup]:
+    """
+    Partizione dei contorni circolari di `items` per centro: ogni cerchio sta
+    in un solo gruppo, anche da solo. Un cerchio entra nel gruppo il cui
+    centro dista al più `tolerance` dal suo; i non circolari non compaiono.
+    Gruppi ordinati per centro (x, y).
+    """
+    circles = [(item, shape) for item in items
+               if (shape := contour_shape(item)) is not None and shape.kind == CIRCLE]
+    circles.sort(key=lambda c: (c[1].length, c[1].center))
+    groups: list[list] = []
+    for item, shape in circles:
+        group = next((g for g in groups if math.dist(g[0][1].center, shape.center) <= tolerance), None)
+        if group is None:
+            groups.append([(item, shape)])
+        else:
+            group.append((item, shape))
+    out = [ConcentricGroup(tuple(g[0][1].center), tuple(i for i, _ in g), tuple(s for _, s in g))
+           for g in groups]
+    return sorted(out, key=lambda g: g.center)
+
+
+@dataclass(frozen=True)
+class ArcAround:
+    """
+    Un arco concentrico a un cerchio e più grande di lui.
+
+    arc:          l'`ArcSeg`
+    sweep:        angolo spazzato, in gradi
+    radius_ratio: raggio dell'arco / raggio del cerchio (> 1)
+    """
+    arc: ArcSeg
+    sweep: float
+    radius_ratio: float
+
+
+def arcs_around(center: Point, radius: float, arcs,
+                tolerance: float = CONCENTRIC_TOLERANCE) -> list[ArcAround]:
+    """
+    Gli archi di `arcs` col centro entro `tolerance` da `center` e raggio
+    maggiore di `radius`, dal più vicino al cerchio al più lontano.
+    """
+    out = [ArcAround(a, math.degrees(a._sweep()), a.radius / radius) for a in arcs
+           if isinstance(a, ArcSeg) and a.radius > radius and math.dist(a.center, center) <= tolerance]
+    return sorted(out, key=lambda a: a.radius_ratio)

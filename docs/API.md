@@ -534,6 +534,43 @@ ricomposizione), `diameter` (solo cerchio), `.to_dict()`.
 
 ---
 
+### `concentric_groups`
+
+```python
+forge.concentric_groups(items, tolerance=0.1) -> list[ConcentricGroup]
+```
+
+I contorni circolari di `items` (come per `contour_shape`) raggruppati per
+centro: ogni cerchio sta in un solo gruppo, anche da solo; i non circolari non
+compaiono. `tolerance` è la distanza massima fra i centri, in unità del
+disegno. Fatto geometrico: due cerchi concentrici non sono una svasatura,
+come accoppiarli lo decide il consumatore (D91).
+
+`ConcentricGroup`: `center` (del cerchio più piccolo), `items` e `shapes`
+(`ContourShape`) dal raggio minore al maggiore, `diameters`.
+
+**Non muta** niente.
+
+---
+
+### `arcs_around`
+
+```python
+forge.arcs_around(center, radius, arcs, tolerance=0.1) -> list[ArcAround]
+```
+
+Gli `ArcSeg` di `arcs` concentrici al cerchio (`center`, `radius`) entro
+`tolerance` e più grandi di lui, dal più vicino al più lontano. Nessuna soglia
+sull'angolo: "~270°, poco più grande" è come si disegna una cresta di filetto,
+lo applica il consumatore (D91).
+
+`ArcAround`: `arc`, `sweep` (gradi, nel verso dell'arco), `radius_ratio`
+(raggio dell'arco / `radius`).
+
+**Non muta** niente.
+
+---
+
 
 ### `to_dxf`
 

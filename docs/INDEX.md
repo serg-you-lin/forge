@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`66` modules · `327` module-level functions · `51` classes · `12350` lines of code.
+`66` modules · `329` module-level functions · `53` classes · `12433` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -26,7 +26,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_add_spline` | func | `forge/adapters/dxf/exporter.py:116` | Materializza una SplineSeg come SPLINE nativa, ricostruita dalla primitiva |
 | `AddSegment` | class | `forge/core/healing/gap_solver.py:87` | Istruzione: aggiungi un segmento retto tra pt_a e pt_b. |
 | `anchor_annotations` | func | `forge/tools/anchor.py:34` | Assegna ``cluster_ref`` a ogni annotazione di ``result.annotations``. |
-| `_angle_diff` | func | `forge/core/shape.py:157` | Differenza fra due direzioni modulo 180, in [0, 90]. |
+| `_angle_diff` | func | `forge/core/shape.py:159` | Differenza fra due direzioni modulo 180, in [0, 90]. |
 | `angle_from_start` | func | `forge/core/primitives/segments.py:102` | Angolo, in [0, 2π), da percorrere partendo da `start_angle` nel verso |
 | `_angular_deviation` | func | `forge/core/topology/graph.py:347` |  |
 | `_angular_sweep` | func | `forge/core/primitives/segments.py:83` | Angolo spazzato in radianti, sempre positivo, percorrendo da `start` a |
@@ -43,6 +43,8 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_arc_point` | func | `forge/core/healing/outer_scan.py:131` |  |
 | `_arc_s` | func | `forge/core/topology/noding.py:90` |  |
 | `arc_seg_to_bulge` | func | `forge/adapters/dxf/exporter.py:77` |  |
+| `ArcAround` | class | `forge/core/shape.py:216` | Un arco concentrico a un cerchio e più grande di lui. |
+| `arcs_around` | func | `forge/core/shape.py:229` | Gli archi di `arcs` col centro entro `tolerance` da `center` e raggio |
 | `ArcSeg` | class | `forge/core/primitives/segments.py:129` |  |
 | `are_collinear` | func | `forge/core/geometry.py:87` | Restituisce True se due LineString giacciono sulla stessa retta infinita. |
 | `_arrival_direction` | func | `forge/core/topology/graph.py:338` |  |
@@ -61,7 +63,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_build_tree` | func | `forge/core/healing/hierarchy.py:78` |  |
 | `_chain` | func | `forge/core/healing/normalizer.py:259` | Ordina per `lo` e incatena gli span che si toccano o si sovrappongono: |
 | `chord_angle_deg` | func | `forge/core/geometry.py:200` | Angolo (gradi, 0-180°) della corda da `a` a `b`. Modulo 180 perché una |
-| `_circle` | func | `forge/core/shape.py:81` |  |
+| `_circle` | func | `forge/core/shape.py:83` |  |
 | `_circle_as_arc` | func | `forge/core/topology/noding.py:120` | Un cerchio come arco di 360° da `start_angle`: stessa matematica degli archi. |
 | `_circle_circle_intersections` | func | `forge/core/geometry.py:494` | Intersezioni tra due circonferenze. Restituisce 0, 1 o 2 punti. |
 | `_circle_line_intersections` | func | `forge/core/geometry.py:463` | Intersezioni tra la circonferenza (cx, cy, r) e la retta infinita (p1, p2). |
@@ -79,13 +81,15 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `color_for_layer` | func | `forge/adapters/dxf/layers.py:58` | Colore DXF canonico per un layer. |
 | `_color_index` | func | `forge/model/role_rule.py:105` | Intero ACI da intero, stringa numerica ("4") o nome standard ("cyan"). |
 | `compute_gap_fixes` | func | `forge/core/healing/gap_solver.py:177` | Calcola i GapFix per tutti gli endpoint liberi entro tolerance. |
+| `concentric_groups` | func | `forge/core/shape.py:193` | Partizione dei contorni circolari di `items` per centro: ogni cerchio sta |
+| `ConcentricGroup` | class | `forge/core/shape.py:176` | Contorni circolari con lo stesso centro, dal raggio minore al maggiore. |
 | `_configure_odafc` | func | `forge/adapters/dxf/loader.py:107` | Punta l'addon `odafc` all'eseguibile ODA File Converter. |
 | `_continues` | func | `forge/core/island.py:267` | `seg` prosegue `prev` sulla stessa curva, nello stesso verso? |
 | `_contour` | func | `forge/core/island.py:227` | Il poligono resta quello dei pezzi della rete piana; i segmenti sono |
 | `_contour_entry` | func | `forge/io/view_model.py:48` |  |
-| `contour_shape` | func | `forge/core/shape.py:62` | Forma di un contorno chiuso (`ForgeContour`, o qualunque oggetto con |
+| `contour_shape` | func | `forge/core/shape.py:64` | Forma di un contorno chiuso (`ForgeContour`, o qualunque oggetto con |
 | `ContourRole` | class | `forge/model/role.py:43` | I tre ruoli che il motore topologico conosce. **Non esaustivo** — un |
-| `ContourShape` | class | `forge/core/shape.py:35` | kind:   circle \| stadium \| rectangle \| polygon \| other |
+| `ContourShape` | class | `forge/core/shape.py:37` | kind:   circle \| stadium \| rectangle \| polygon \| other |
 | `_crossings` | func | `forge/core/topology/noding.py:142` | Incroci reali (non sul prolungamento) fra `seg` e un cutter. |
 | `_cumulative_lengths_closed` | func | `forge/tools/tabs.py:157` | `cum[i]` = distanza cumulata da `points[0]` a `points[i]` (lato i-1->i). |
 | `_cutters` | func | `forge/core/topology/noding.py:130` |  |
@@ -164,7 +168,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_gap_endpoints` | func | `forge/core/healing/gap_solver.py:291` | GapEndpoint per gli estremi di LINE / ARC / SPLINE il cui nodo (arrotondato) |
 | `gap_endpoints_at_nodes` | func | `forge/core/healing/gap_solver.py:274` | GapEndpoint per gli endpoint che cadono su uno dei `nodes` — tuple di |
 | `GapEndpoint` | class | `forge/core/healing/gap_solver.py:49` | Endpoint libero nel grafo topologico. |
-| `_generic` | func | `forge/core/shape.py:138` |  |
+| `_generic` | func | `forge/core/shape.py:140` |  |
 | `GeometryAdapter` | class | `forge/adapters/geometry/loader.py:47` | Traduce descrizioni geometriche pure (dict) in Edge del dominio forge. |
 | `_get_solver` | func | `forge/core/healing/gap_solver.py:165` |  |
 | `__getattr__` | func | `forge/model/__init__.py:33` |  |
@@ -197,7 +201,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `leader_target` | func | `forge/tools/anchor.py:73` | L'elemento indicato dalla punta (``vertices[0]``) di ``leader``, come |
 | `_leader_vertices` | func | `forge/adapters/dxf/annotation_extractor.py:385` |  |
 | `_leaving_angle` | func | `forge/core/topology/outer_face.py:134` | Direzione con cui `edge` lascia `node`, letta a DIRECTION_SAMPLE (o a |
-| `_length` | func | `forge/core/shape.py:153` |  |
+| `_length` | func | `forge/core/shape.py:155` |  |
 | `_Line` | class | `forge/core/healing/outer_scan.py:97` |  |
 | `_line_direction` | func | `forge/core/geometry.py:57` | Vettore direzione normalizzato di una LineString, orientato canonicamente |
 | `_line_intersection` | func | `forge/core/geometry.py:445` | Intersezione tra retta (p1,p2) e retta (p3,p4). None se parallele. |
@@ -283,7 +287,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `read_island` | func | `forge/core/island.py:153` | Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate, |
 | `read_islands` | func | `forge/core/island.py:131` | `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola |
 | `read_metadata_from_dxf` | func | `forge/io/exporter.py:307` | Legge i metadati FORGE XDATA dall'entità OuterContour. |
-| `_rectangle` | func | `forge/core/shape.py:121` |  |
+| `_rectangle` | func | `forge/core/shape.py:123` |  |
 | `_refine_segment` | func | `forge/core/primitives/segments.py:288` | Suddivide `[t0, t1]` finché il punto medio (valutato con `evaluate(t)`) |
 | `refit_tessellations` | func | `forge/core/healing/normalizer.py:455` | Una catena di almeno `min_run` LineSeg (`role == UNKNOWN`) più corti di |
 | `register_role_style` | func | `forge/rules/palette.py:157` | Registra uno `RoleStyle` per `role`, valido per ogni render successivo |
@@ -356,7 +360,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `split_labeled` | func | `forge/core/healing/steps.py:52` | Separa gli Edge con un ruolo già deciso e non strutturale (cornice, |
 | `_split_params` | func | `forge/core/topology/noding.py:167` |  |
 | `split_to_files` | func | `forge/recipes.py:23` | Pipeline multi-pezzo + salvataggio su disco: heal → split → `.saveas()` per |
-| `_stadium` | func | `forge/core/shape.py:95` |  |
+| `_stadium` | func | `forge/core/shape.py:97` |  |
 | `structural_loops` | func | `forge/core/healing/steps.py:164` | I loop in cui ogni edge con ruolo deciso è strutturale: un solo edge non |
 | `structural_segments` | func | `forge/tools/rotate.py:73` | Segmenti nativi dei contorni strutturali di ogni cluster: sempre |
 | `_style_attribs` | func | `forge/adapters/dxf/exporter.py:49` | dxfattribs per una entità in output: layer + linetype della sorgente, se |
@@ -416,7 +420,7 @@ No module-level name is defined in more than one module.
 
 ### `forge/` (root)
 
-#### `forge/__init__.py` — 241 lines
+#### `forge/__init__.py` — 247 lines
 
 _forge_
 
@@ -797,19 +801,24 @@ _forge/core/primitives/segments.py_
 - **class** `EllipseSeg` — L600 — Ellisse (o arco ellittico) geometrico puro — stessa parametrizzazione del
   - methods: `_sweep`, `_point_at`, `discretize`, `reversed`, `rotated`
 
-#### `forge/core/shape.py` — 160 lines
+#### `forge/core/shape.py` — 237 lines
 
 _forge/core/shape.py_
 
-- **class** `ContourShape` — L35 — kind:   circle \| stadium \| rectangle \| polygon \| other
+- **class** `ContourShape` — L37 — kind:   circle \| stadium \| rectangle \| polygon \| other
   - methods: `diameter`, `to_dict`
-- `contour_shape(item, tolerance: float=SHAPE_TOLERANCE, angle_tolerance: float=ANGLE_TOLERANCE_DEG) -> Optional[ContourShape]` — L62 — Forma di un contorno chiuso (`ForgeContour`, o qualunque oggetto con
-- `_circle(segments, tol, _angle_tol)` — L81
-- `_stadium(segments, tol, angle_tol)` — L95
-- `_rectangle(segments, tol, angle_tol)` — L121
-- `_generic(segments)` — L138
-- `_length(line: LineSeg) -> float` — L153
-- `_angle_diff(a: float, b: float) -> float` — L157 — Differenza fra due direzioni modulo 180, in [0, 90].
+- `contour_shape(item, tolerance: float=SHAPE_TOLERANCE, angle_tolerance: float=ANGLE_TOLERANCE_DEG) -> Optional[ContourShape]` — L64 — Forma di un contorno chiuso (`ForgeContour`, o qualunque oggetto con
+- `_circle(segments, tol, _angle_tol)` — L83
+- `_stadium(segments, tol, angle_tol)` — L97
+- `_rectangle(segments, tol, angle_tol)` — L123
+- `_generic(segments)` — L140
+- `_length(line: LineSeg) -> float` — L155
+- `_angle_diff(a: float, b: float) -> float` — L159 — Differenza fra due direzioni modulo 180, in [0, 90].
+- **class** `ConcentricGroup` — L176 — Contorni circolari con lo stesso centro, dal raggio minore al maggiore.
+  - methods: `diameters`
+- `concentric_groups(items, tolerance: float=CONCENTRIC_TOLERANCE) -> list[ConcentricGroup]` — L193 — Partizione dei contorni circolari di `items` per centro: ogni cerchio sta
+- **class** `ArcAround` — L216 — Un arco concentrico a un cerchio e più grande di lui.
+- `arcs_around(center: Point, radius: float, arcs, tolerance: float=CONCENTRIC_TOLERANCE) -> list[ArcAround]` — L229 — Gli archi di `arcs` col centro entro `tolerance` da `center` e raggio
 
 #### `forge/core/topology/edge.py` — 57 lines
 

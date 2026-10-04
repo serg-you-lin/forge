@@ -2745,6 +2745,50 @@ Suite: 746 passed. `main` → **0.9.0** (minor bump: the public API lost
 `heal_and_detect`/`detect_flat`/`describe_features`/`ALL_FEATURES` — a
 breaking change, which before 1.0 moves the minor number).
 
+### D91 — concentric circles and arcs around a circle are forge facts; their meaning stays in the consumers ✅
+Federico, 4 October: "sono d'accordo su tutto", on the proposal in his notes
+(two consumers reading the same hole patterns). The trigger was concrete:
+snapdraw already read holes in views with its own copy of the concentric
+pairing, and imported `forge.tools.hole_detector`, which D88 had removed —
+snapdraw did not import against 0.9.0.
+
+**Split.** forge gets two geometric facts in `core/shape.py`, next to
+`contour_shape` and under the same rule (D68: "circle", never "hole"):
+- `concentric_groups(items, tolerance)` → `ConcentricGroup`s: a partition of
+  the circular contours by center, each group ordered from the smallest radius
+  up (`items`, `shapes`, `diameters`, `center` = the smallest circle's).
+  Singletons included, so a consumer sees every circle once.
+- `arcs_around(center, radius, arcs, tolerance)` → `ArcAround`s: every arc
+  concentric to the circle and larger, with `sweep` (degrees, from the arc's
+  own direction) and `radius_ratio`, nearest first.
+
+Neither has a threshold beyond center tolerance. "~270°" and "ratio ≤ 1.6" are
+how a metric thread is drawn; "pair with the smallest larger free circle" is
+how a seat is read; the 32.1 mm drill limit is a machine. All of that stays in
+snapbend (`flat/holes.py`, `flat/detect.py`) and snapdraw (`features.py`,
+`THREAD_*` constants), each with its own numbers.
+
+**Models are not shared.** No `Hole` base class in forge: the two consumers'
+holes have only geometry in common, and that geometry is what forge returns.
+A consumer model holds forge's fact (as snapdraw's `Feature.shape` holds a
+`ContourShape`) and adds only its meaning.
+
+Consumers moved in the same session: snapbend's countersink pairing and
+`is_threaded_hole` run on the two functions (its unused `is_countersink_outer`
+is gone); snapdraw's `_pair_concentric` and `_thread_crest` likewise, with
+`DetectedFeatures` imported from `forge.model.detected`. Suites: forge 755,
+snapbend 461 (the 8 `is_countersink_outer` tests removed, goldens with
+countersinks and threaded holes unchanged), snapdraw 78 passed + 1 failure
+that was already there with only the imports fixed (`test_rules`, a view
+bounding box, unrelated to holes). Small behaviour changes, on purpose: the
+sweep follows the arc's direction (the old `(end − start) mod 2π` read a
+clockwise arc as its complement), and among several concentric circles each
+pairs with the next larger one instead of the first in list order. A closed
+spline or ellipse that `circular_geometry` calls circular is not a
+`contour_shape` circle, so it is no longer paired as a countersink in snapbend.
+
+`main` → **0.9.1** (additive: four new public names).
+
 ---
 
 ## Closed questions (history)
@@ -2763,24 +2807,6 @@ breaking change, which before 1.0 moves the minor number).
 ---
 
 ## Federico's notes (open questions, kept until they become decisions)
-
-- **The same hole patterns are read by two consumers (Federico, 4 October —
-  open).** A countersink (two concentric circles) or a threaded hole (circle +
-  concentric ~270° arc) is recognized with the same algorithm by snapbend's
-  `detect_flat` and, to come, by snapdraw's reading of views. Federico: is
-  redoing it identically in snapdraw legitimate? Proposal on the table, not
-  decided: the *geometric* part moves back to forge under geometric names, the
-  way `contour_shape` says "circle" and never "hole" (D68) — e.g. "concentric
-  circles" groups and "arcs around a circle" with their sweep and radius ratio.
-  Thresholds (the 1.6 radius ratio of a metric thread, the 32.1 mm drill limit),
-  names and models (`Hole`, …) stay in each consumer, because the meaning
-  differs: a drilling step for snapbend, a notation for snapdraw. Today all of
-  it is in `snapbend/flat/` (`holes.py`, `model/`); nothing hole-related is left
-  in forge. *Finding, same day:* the second consumer is not "to come" — snapdraw
-  (`framer/snapdraw/features.py`) already reads holes in views, with its own
-  concentric pairing (`_pair_concentric`) and the old
-  `forge.tools.hole_detector.is_threaded_hole`, an import D88 removed: snapdraw
-  does not import against forge 0.9.0.
 
 - **Should forge have the loader / the load-time `role_rules`? (Federico, 4
   October — open, thinking aloud.)** Seeing `MARK → engrave` turn into an
