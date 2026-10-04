@@ -2,7 +2,7 @@
   "parent_file": "cerchi_ciambella.dxf",
   "part_index": 1,
   "area_mm2": 4946.2305,
-  "holes_count": 5,
+  "inners_count": 5,
   "outer_perimeter_mm": 314.1277,
   "inner_perimeter_mm": 251.2814,
   "total_perimeter_mm": 565.4091,
@@ -17,10 +17,9 @@
   "outer_layer": "OuterContour",
   "inners_layers": [
     "InnerContour",
-    "Hole",
-    "Hole",
-    "Hole",
-    "Hole"
-  ],
-  "custom": {}
+    "InnerContour",
+    "InnerContour",
+    "InnerContour",
+    "InnerContour"
+  ]
 }

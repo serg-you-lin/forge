@@ -2,7 +2,7 @@
   "parent_file": "sviluppo_multiparte.dxf",
   "part_index": 4,
   "area_mm2": 38791.1565,
-  "holes_count": 15,
+  "inners_count": 15,
   "outer_perimeter_mm": 1980.0,
   "inner_perimeter_mm": 423.3002,
   "total_perimeter_mm": 2403.3002,
@@ -41,6 +41,5 @@
     "InnerContour",
     "InnerContour",
     "InnerContour"
-  ],
-  "summary": {}
+  ]
 }

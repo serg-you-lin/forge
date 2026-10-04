@@ -2663,10 +2663,22 @@ moved ones: without a process reading, two concentric circles are a ring-shaped
 void with a disc in it. That they are one countersunk hole of Ø10 is the
 process reading, and it stays in its `process/` half (area 19921.59, one hole).
 
-Still assuming forge finds holes and bends, to be done in the next steps of
-D88: `golden_multipli` (`generate_golden_split.py` / `test_golden_split.py`),
-the annotation goldens, `test_layers`, `test_writeback`, the integration tests
-and the recipes (`heal_and_detect`, `split_to_files`, `inspect`).
+**Same day, the other two golden sets.** `golden_multipli` (55 parts) split the
+same way: `golden/` keeps geometry and layers with holes read as inner contours
+(their key `holes_count` already counted holes + inners, renamed
+`inners_count`), `process/` keeps the hole layers and the summary;
+`test_golden_split.py` runs heal → split with no detection, the process half
+joins `test_golden_process.py`. 55/55 geometry halves pass on `heal()` alone;
+the rewritten generator reproduces them with 0 differences. Ten process halves
+carry an empty `custom` from before the `inject()` refactor: their feature
+counts were never checked and still are not — filling them would be
+regenerating a golden, left for Federico to approve (TODO). The annotation
+goldens stored nothing process-specific; their test and generator now use
+`heal()` instead of `heal_and_detect()`, 12/12 unchanged.
+
+Still assuming forge finds holes and bends, for the next steps of D88:
+`test_layers`, `test_writeback`, the integration tests and the recipes
+(`heal_and_detect`, `split_to_files`, `inspect`).
 
 ---
 

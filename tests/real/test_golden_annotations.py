@@ -91,7 +91,7 @@ def _make_test(path: Path):
         doc = forge.load_dxf(
             dxf_path, explode_inserts=True, flatten_z_flag=True, verbose=False
         )
-        result = forge.heal_and_detect(doc, features="all")
+        result = forge.heal(doc)
         anchor_annotations(result)
         anns = result.annotations if result.annotations else doc.annotations
         actual = sorted((_actual_dict(a) for a in anns), key=_sort_key)

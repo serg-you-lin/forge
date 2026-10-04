@@ -2,7 +2,7 @@
   "parent_file": "senza_linea_piega.dxf",
   "part_index": 2,
   "area_mm2": 14763.5484,
-  "holes_count": 3,
+  "inners_count": 3,
   "outer_perimeter_mm": 491.0905,
   "inner_perimeter_mm": 75.3679,
   "total_perimeter_mm": 566.4585,
@@ -14,12 +14,8 @@
   ],
   "outer_layer": "OuterContour",
   "inners_layers": [
-    "Hole",
-    "Hole",
-    "Hole"
-  ],
-  "summary": {
-    "holes_count": 3,
-    "plain_holes_count": 3
-  }
+    "InnerContour",
+    "InnerContour",
+    "InnerContour"
+  ]
 }

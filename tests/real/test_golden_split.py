@@ -1,15 +1,15 @@
 
 
 """
-test_golden_split.py
---------------------
+tests/real/test_golden_split.py
+-------------------------------
 Test di regressione geometrica per i file prodotti dallo splitting.
 
-Per ogni golden in tests/data/multipli_golden/golden/:
-  1. Riprocessa il DXF padre con la pipeline completa (heal → detect → write → split)
-     in una cartella temporanea.
-  2. Riprocessa il figlio corrispondente (heal → detect → write).
-  3. Confronta area, perimetri e geometria WKT contro il golden salvato.
+Per ogni golden in tests/data/golden_multipli/golden/:
+  1. Riprocessa il DXF padre (heal → split) in una cartella temporanea —
+     nessuna lettura di processo: un foro è un contorno interno (MAP.md D88).
+  2. Confronta area, perimetri, geometria WKT e layer di ogni parte contro il
+     golden salvato. Layer dei fori e summary: test_golden_process.py.
 
 Tolleranze:
     TOL_AREA      = 0.1  mm²
@@ -44,7 +44,6 @@ sys.path.insert(0, str(project_root))
 import forge
 from forge.adapters.dxf.layers import role_to_dxf_layer
 from forge.io.dxf import cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
-from forge.tools.detect import describe_features
 
 
 MULTIPLI_DIR = project_root / "tests" / "data" / "golden_multipli"
@@ -144,7 +143,6 @@ def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
     result = forge.heal(doc, tolerance=tolerance)
 
     if result.is_valid and result.clusters:
-        forge.detect_flat(result, features="all")
         drawings = forge.split(
             result,
             doc,
@@ -158,16 +156,16 @@ def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
 
     part_payloads = []
     for cluster in result.clusters if result.is_valid and result.clusters else []:
+        inners = sorted(cluster.inners, key=lambda x: x.area, reverse=True)
         part_payloads.append({
             "area": cluster.area,
-            "holes_count": len(cluster.features("holes") + cluster.inners),
+            "inners_count": len(inners),
             "outer_perimeter": cluster.outer.polygon.exterior.length,
-            "inner_perimeter": sum(h.polygon.exterior.length for h in cluster.features("holes") + cluster.inners),
+            "inner_perimeter": sum(i.polygon.exterior.length for i in inners),
             "outer_wkt": cluster.outer.polygon.wkt,
-            "inners_wkt": [h.polygon.wkt for h in sorted(cluster.features("holes") + cluster.inners, key=lambda x: x.area, reverse=True)],
+            "inners_wkt": [i.polygon.wkt for i in inners],
             "outer_role": cluster.outer.role,
-            "inner_roles": [h.role for h in sorted(cluster.features("holes") + cluster.inners, key=lambda x: x.area, reverse=True)],
-            "summary": {**cluster.summary, **describe_features(cluster)},
+            "inner_roles": [i.role for i in inners],
         })
 
     cached_entry = {
@@ -261,11 +259,11 @@ def _make_split_test(golden_path: Path):
             msg=f"{label}: area {actual_area} != attesa {golden['area_mm2']} (tol={TOL_AREA})",
         )
 
-        # --- Holes count ---
+        # --- Contorni interni ---
         self.assertEqual(
-            part_payload["holes_count"],
-            golden["holes_count"],
-            msg=f"{label}: holes_count {part_payload['holes_count']} != atteso {golden['holes_count']}",
+            part_payload["inners_count"],
+            golden["inners_count"],
+            msg=f"{label}: inners_count {part_payload['inners_count']} != atteso {golden['inners_count']}",
         )
 
         # --- Perimetro esterno ---
@@ -326,33 +324,12 @@ def _make_split_test(golden_path: Path):
             )
 
         if "inners_layers" in golden:
-            # role_to_dxf_layer(), non ROLE_TO_LAYER (statico, solo outer/
-            # inner) — un ruolo manifatturiero come "hole" ha il suo layer
-            # via il registro di rules/palette.py (tools/manufacturing_role.py
-            # lo registra), non nel dict statico del motore (roles out of core).
             actual_layers = [role_to_dxf_layer(h_role) for h_role in part_payload["inner_roles"]]
             self.assertEqual(
                 Counter(actual_layers),
                 Counter(golden["inners_layers"]),
                 msg=f"{label}: inners_layers multiset {actual_layers} != attesi {golden['inners_layers']}",
             )
-
-
-        # --- Summary (conteggi feature; fixture vecchi usano "custom") ---
-        _expected_summary = golden.get("summary", golden.get("custom"))
-        if _expected_summary:
-            for key, expected_val in _expected_summary.items():
-                actual_val = part_payload["summary"].get(key)
-                if isinstance(expected_val, float):
-                    self.assertAlmostEqual(
-                        actual_val, expected_val, delta=TOL_PERIMETER,
-                        msg=f"{label}: custom['{key}'] {actual_val} != atteso {expected_val}",
-                    )
-                else:
-                    self.assertEqual(
-                        actual_val, expected_val,
-                        msg=f"{label}: custom['{key}'] {actual_val} != atteso {expected_val}",
-                    )
 
     test_method.__name__ = f"test_{golden_path.stem}"
     test_method.__doc__  = f"Split golden: {golden_path.name}"

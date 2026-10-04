@@ -1,0 +1,10 @@
+{
+  "parent_file": "example_4_polylines.dxf",
+  "part_index": 2,
+  "area_mm2": 9921.5863,
+  "outer_wkt": "POLYGON ((0 150, 100 150, 100 250, 0 250, 0 150))",
+  "inners_layers": [
+    "Hole"
+  ],
+  "summary": {}
+}

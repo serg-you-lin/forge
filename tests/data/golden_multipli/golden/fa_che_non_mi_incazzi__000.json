@@ -2,7 +2,7 @@
   "parent_file": "fa_che_non_mi_incazzi.dxf",
   "part_index": 0,
   "area_mm2": 44370.0,
-  "holes_count": 13,
+  "inners_count": 13,
   "outer_perimeter_mm": 2100.0,
   "inner_perimeter_mm": 2570.0,
   "total_perimeter_mm": 4670.0,
@@ -37,6 +37,5 @@
     "InnerContour",
     "InnerContour",
     "InnerContour"
-  ],
-  "summary": {}
+  ]
 }

@@ -2,7 +2,7 @@
   "parent_file": "Polylines.dxf",
   "part_index": 0,
   "area_mm2": 96342.1709,
-  "holes_count": 5,
+  "inners_count": 5,
   "outer_perimeter_mm": 2319.5338,
   "inner_perimeter_mm": 538.946,
   "total_perimeter_mm": 2858.4798,
@@ -21,6 +21,5 @@
     "InnerContour",
     "InnerContour",
     "InnerContour"
-  ],
-  "summary": {}
+  ]
 }

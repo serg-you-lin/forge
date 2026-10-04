@@ -5,13 +5,15 @@ La metà di processo dei golden: fori, pieghe, incisioni e summary letti da
 detect_flat(). La geometria (outer, perimetri) è in test_golden.py. Questo
 file e i suoi JSON passano a snapbend insieme a detect_flat (MAP.md D88).
 
-DXF sorgente: tests/data/golden/
-Golden JSON:  tests/data/golden/process/
+DXF sorgente: tests/data/golden/, tests/data/golden_multipli/
+Golden JSON:  tests/data/golden/process/, tests/data/golden_multipli/process/
 """
 
 import unittest
 import json
 import sys
+from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 
 from shapely import wkt as shapely_wkt
@@ -20,6 +22,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
+from forge.adapters.dxf.layers import role_to_dxf_layer
 from forge.tools.detect import describe_features
 
 
@@ -349,6 +352,67 @@ for golden in _load_golden_files():
         f"test_{golden.stem}",
         _make_test(golden),
     )
+
+
+# ---------------------------------------------------------------------------
+# Fogli multipli: per ogni pezzo, area dopo detect_flat, layer dei contorni
+# interni (un foro ha il suo layer) e summary.
+# ---------------------------------------------------------------------------
+MULTIPLI_DIR = project_root / "tests" / "data" / "golden_multipli"
+MULTIPLI_PROC_DIR = MULTIPLI_DIR / "process"
+
+
+@lru_cache(maxsize=None)
+def _multipli_clusters(parent_path: Path, tolerance: float):
+    result = forge.heal(forge.load_dxf(parent_path, explode_inserts=True, tolerance=tolerance),
+                        tolerance=tolerance)
+    if result.is_valid and result.clusters:
+        forge.detect_flat(result, features="all")
+    return result.clusters if result.is_valid else []
+
+
+def _make_multipli_test(path):
+
+    def test(self):
+        golden = json.loads(path.read_text(encoding="utf-8"))
+        parent_path = MULTIPLI_DIR / golden["parent_file"]
+        if not parent_path.exists():
+            self.skipTest(str(parent_path))
+        config_path = MULTIPLI_DIR / "config" / f"{parent_path.stem}.json"
+        config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
+
+        clusters = _multipli_clusters(parent_path, config.get("tolerance", DEFAULT_TOLERANCE))
+        self.assertLess(golden["part_index"], len(clusters), msg=f"{path.stem}: pezzo mancante")
+        cluster = clusters[golden["part_index"]]
+        label = path.stem
+
+        self.assertAlmostEqual(round(cluster.area, 4), golden["area_mm2"], delta=TOL_AREA,
+                               msg=f"{label} area")
+        self.assertLess(cluster.outer.polygon.symmetric_difference(
+            shapely_wkt.loads(golden["outer_wkt"])).area, TOL_SHAPE, msg=f"{label} outer shape")
+
+        layers = [role_to_dxf_layer(c.role) for c in cluster.features("holes") + cluster.inners]
+        self.assertEqual(Counter(layers), Counter(golden["inners_layers"]),
+                         msg=f"{label} inners_layers")
+
+        rich = {**cluster.summary, **describe_features(cluster)}
+        for key, value in golden["summary"].items():
+            if isinstance(value, float):
+                self.assertAlmostEqual(rich.get(key), value, delta=TOL_PERIMETER,
+                                       msg=f"{label} summary {key}")
+            else:
+                self.assertEqual(rich.get(key), value, msg=f"{label} summary {key}")
+
+    test.__name__ = f"test_{path.stem}"
+    return test
+
+
+class TestGoldenProcessMultipli(unittest.TestCase):
+    pass
+
+
+for golden in sorted(MULTIPLI_PROC_DIR.glob("*.json")):
+    setattr(TestGoldenProcessMultipli, f"test_{golden.stem}", _make_multipli_test(golden))
 
 
 if __name__ == "__main__":
