@@ -2776,7 +2776,11 @@ breaking change, which before 1.0 moves the minor number).
   names and models (`Hole`, …) stay in each consumer, because the meaning
   differs: a drilling step for snapbend, a notation for snapdraw. Today all of
   it is in `snapbend/flat/` (`holes.py`, `model/`); nothing hole-related is left
-  in forge.
+  in forge. *Finding, same day:* the second consumer is not "to come" — snapdraw
+  (`framer/snapdraw/features.py`) already reads holes in views, with its own
+  concentric pairing (`_pair_concentric`) and the old
+  `forge.tools.hole_detector.is_threaded_hole`, an import D88 removed: snapdraw
+  does not import against forge 0.9.0.
 
 - **Should forge have the loader / the load-time `role_rules`? (Federico, 4
   October — open, thinking aloud.)** Seeing `MARK → engrave` turn into an
