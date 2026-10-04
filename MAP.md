@@ -2920,6 +2920,26 @@ it reaches into snapbend's cone and section math.
 Suites: forge 787, snapbend 462, snapdraw 80. `main` → **0.11.0** (breaking:
 `"polyline"` is gone from `load_geometry`).
 
+### D97 — the published history rewritten a second time, by the tool this time ✅
+Federico, 4 October: `dxf-anonymize repo` (the new command of the private
+tool) found that forge's published history still named client drawings and
+part codes in 99 commits and 3 commit messages — old MAP entries, an old
+`split_metadata.json`, old scripts, a test, `docs/LLM.md`. D81's rewrite had
+not had them in its list. With Federico's explicit yes the history was
+rewritten with a local map (names plus `regex:` forms for whole code
+families, guarded so they never start inside a number: a float like
+`44.57776200087268` contains a code-shaped run of digits) and force-pushed.
+The tree changed only in `MAP.md` and `TODO.md`; drawings and goldens are
+byte-identical, the suite stays at 787, and a fresh clone from GitHub scans
+clean. A layer name that appears in five tracked drawings was left out of the
+map on purpose: it names a CAD template, not a client, and replacing it would
+have changed the fixtures.
+
+From now on a history rewrite or a force push happens only after Federico
+says yes to that specific step; Claude Code asks for it too
+(`permissions.ask`).
+
+
 ---
 
 ## Closed questions (history)
