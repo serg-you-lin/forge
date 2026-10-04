@@ -143,6 +143,29 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 12. **Stesso lavoro con nomi diversi** — ✅ **chiuso** il 3 ottobre: D86 (pezzi
    comuni trovati con `gen_index.py --similar`) e D87 (merge collineare e
    cocircolare su un motore unico, identico al vecchio su 611 disegni).
+13. **La scala delle isole: forge misura, il dominio sceglie** — proposta
+   discussa il 4 ottobre, **da verificare** prima di scrivere codice.
+   I numeri dentro forge (`island_gap=10.0`, `max_gap`, `tolerance`,
+   `min_area`) sono scelte di dominio indovinate a tavolino; `island()` ha
+   persino un default mentre `islands.py` dice "nessun default di dominio".
+   Idea: invece di ricevere `island_gap`, forge dà la **scala** — tutte le
+   distanze a cui le isole si uniscono (i lati dell'albero di distanza minima
+   fra isole, un passaggio solo): "12 isole fino a 0.4, 5 fino a 18, 1 oltre".
+   Divisione:
+   - **forge**: la scala, fatto geometrico senza default, in
+     `forge/core/geometry/` → `forge.geometry` (D93-D95); più i valori dei
+     parametri usati scritti nel risultato e in `to_text`, così chi legge sa
+     quale manopola girare;
+   - **framer (snapdraw)** sceglie il gradino per i disegni di viste, **bend**
+     per la lamiera, con regole loro sulla stessa scala;
+   - **l'agente** solo quando il consumer trova due gradini simili e non sa
+     decidere; la scelta si registra, così il risultato resta ripetibile.
+   Perché serve a un modello: legge token, non fa conti fra coordinate —
+   forge scrive le relazioni misurate, non le coordinate da confrontare.
+   **Primo passo:** calcolare la scala sui disegni di `tests/examples/` e
+   vedere se i gradini sono netti. Se non lo sono l'idea cade; se lo sono,
+   DXF con le isole colorate a due gradini diversi da giudicare a occhio.
+   Solo dopo si riapre il default di `island_gap`.
 
 ---
 
