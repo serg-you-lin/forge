@@ -67,9 +67,12 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    snapbend) hanno il summary vuoto (era `custom` prima del refactor di
    inject). Per i fori non manca un controllo (sono nei layer `Hole`); restano
    3 pieghe mai controllate: `staffa_scarto_doppia` pezzi 2 e 3 (30 mm) e
-   `quattro_sviluppi_un_foglio` pezzo 2 (8.5 mm, una linea del layer `MARK`:
-   la pipeline dei fogli multipli carica senza `MARK → engrave`). Da guardare
-   nei DXF in `snapbend/tests/data/flat/golden_multipli/detected/`.
+   `quattro_sviluppi_un_foglio` pezzo 2 (8.5 mm). La 8.5 mm non è più una
+   piega: regola nuova "una piega taglia il pezzo" (snapbend MAP D52). Le due
+   da 30 mm restano da guardare nei DXF in
+   `snapbend/tests/data/flat/golden_multipli/detected/`. **Aperto:** un righino
+   messo di traverso in un angolo passa ancora — serve una misura minima, da
+   decidere (snapbend MAP D52).
 6. **Estrazione dei loop planari (half-edge/DCEL)** — l'unica cosa in lista che
    cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
 7. **Due cose piccole dalla roadmap del preventivo** (step 0 e 1 di

@@ -2758,6 +2758,18 @@ appears only in the `golden_multipli` pipeline, which loads without the
 
 ## Federico's notes (open questions, kept until they become decisions)
 
+- **Should forge have the loader / the load-time `role_rules`? (Federico, 4
+  October — open, thinking aloud.)** Seeing `MARK → engrave` turn into an
+  `engrave` layer in forge's own output, he doubted that assigning a role at
+  load makes sense for forge at all, and then that forge should have a loader;
+  but a loader per consumer would be worse. Facts to weigh, not a decision:
+  reading a format into `Edge`s is what every consumer would otherwise
+  duplicate; `role_rules` is the caller's content through forge's mechanism
+  (D63), and it is the way a source fact (a layer name) reaches a consumer
+  without the `Edge` carrying the layer — the non-negotiable "reason in forge's
+  primitives". The alternative would be the loader handing the consumer the
+  source attributes and the consumer assigning roles itself.
+
 - **forge as the step before an AI reads a drawing (Federico, 2 October — a
   direction, not a decision).** People feed whole drawings (DXF, PDF, PNG) to
   an AI and hope for a useful answer: most of what they pay for, in tokens and
