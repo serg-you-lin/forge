@@ -320,7 +320,6 @@ Onestà sullo stato — dettagli e motivazioni sono in `MAP.md` (sezione
 
 - **`load_pdf`** ritorna `list[Edge]` invece di un `ForgeDocument` → non si
   aggancia a `heal()`. Congelato (MAP.md D10).
-- **`detect._detect_engrave`** è ancora un placeholder no-op (MAP.md D13).
 - **`heal()` con solo edge etichettati** (tutti con ruolo non strutturale):
   errore "Nessuna geometria chiusa trovata" e `trash_entities` **vuota** — gli
   etichettati non ci arrivano, a differenza di ogni altro caso invalido.

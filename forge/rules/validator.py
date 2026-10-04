@@ -158,10 +158,10 @@ def validate_result(result: ForgeResult) -> ForgeResult:
             result.errors.append(f"{label}: area outer <= 0.")
             result.is_valid = False
 
-        for j, hole in enumerate(cluster.inners):
-            if not poly.contains(hole.polygon):
+        for j, inner in enumerate(cluster.inners):
+            if not poly.contains(inner.polygon):
                 result.warnings.append(
-                    f"{label}: foro {j} non completamente contenuto nell'outer."
+                    f"{label}: inner {j} non completamente contenuto nell'outer."
                 )
 
     return result

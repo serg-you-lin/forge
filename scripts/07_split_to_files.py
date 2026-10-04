@@ -3,7 +3,7 @@
 ============================================================
 
 API forge usate:
-    split_to_files    heal -> detect -> split -> .saveas() per parte
+    split_to_files    heal -> split -> .saveas() per parte
                       È L'UNICA funzione della pipeline che scrive su disco.
 
 Ritorna il ForgeResult (per poterci fare save_json dopo). Nome file:

@@ -3,13 +3,13 @@ forge/inspect.py
 ----------------
 Strumento di ispezione a tre livelli. Serve a *vedere* cosa succede a un file
 reale senza leggere il codice — pensato per il debug quando si lavora su file
-veri (es. quando si implementerà `detect_engrave`).
+veri.
 
 I tre livelli, in ordine di pipeline:
 
     1. inspect_dxf(path)        → entità DXF grezze        — "cosa c'è nel file"
     2. inspect_document(doc)    → edge + primitive + grafo — "cosa ha capito l'adapter"
-    3. inspect_result(result)  → il modello di fabbricazione — "cosa ha prodotto forge"
+    3. inspect_result(result)  → il modello                 — "cosa ha prodotto forge"
 
 E un orchestratore che li stampa in fila su un file:
 
@@ -223,7 +223,7 @@ def _describe_segment(seg) -> str:
 
 
 # ===========================================================================
-# LIVELLO 3 — ForgeResult: il modello di fabbricazione
+# LIVELLO 3 — ForgeResult: il modello
 # ===========================================================================
 
 def inspect_result(result, coords: bool = False) -> None:
@@ -279,7 +279,7 @@ def _sub_part(i: int, cluster, coords: bool) -> None:
     o = cluster.outer
     print(f"  outer  : role={_role(o.role):<10} area={o.area:.1f}  "
           f"bbox={tuple(round(v, 1) for v in o.bbox)}  segmenti={len(o.segments)}")
-    print(f"  area netta (outer - fori - inner): {cluster.area:.1f}")
+    print(f"  area netta (outer - vuoti - inner): {cluster.area:.1f}")
 
     if cluster.inners:
         print(f"  inners : {len(cluster.inners)}")

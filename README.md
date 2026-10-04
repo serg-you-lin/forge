@@ -53,8 +53,9 @@ doc_out = forge.to_dxf(result, doc)                  # -> ezdxf Drawing
 doc_out.saveas("part_healed.dxf")
 
 forge.save_json(result, "part.json")                 # metadata
-print(f"{result.cluster_count} cluster(s), "
-      f"{sum(len(c.features('holes')) for c in result.clusters)} holes")
+circles = [c for cl in result.clusters for c in cl.inners
+           if forge.contour_shape(c).kind == "circle"]
+print(f"{result.cluster_count} cluster(s), {len(circles)} inner circles")
 ```
 
 ## Multi-part file
@@ -88,6 +89,31 @@ network. Same `ForgeResult` out — see `docs/API.md` (`island`).
 Both are recipes over public steps. `heal()`'s steps (`split_labeled`,
 `close_free_gaps`, `find_loops`, `build_hierarchy`, ...) are exported one by one,
 so a consumer can compose its own order — see `docs/API.md` (the steps of `heal()`).
+
+## Shapes: what a contour is, not what it is for
+
+forge names geometry, never its use. A circle is a circle; whether it is a
+drilled hole, a seat or a logo dot is a consumer's reading (snapbend for the
+part, snapdraw for the drawing notation — D68, D91).
+
+```python
+for cluster in result.clusters:
+    for inner in cluster.inners:
+        shape = forge.contour_shape(inner)     # circle / stadium / rectangle / polygon / other
+        print(shape.kind, shape.center, shape.length, shape.width)
+
+    # circles sharing a center, smallest first (singletons included)
+    for group in forge.concentric_groups(cluster.inners, tolerance=0.1):
+        if len(group.items) > 1:
+            print("concentric:", group.center, group.diameters)
+
+# arcs concentric to a circle and larger: sweep in degrees, radius ratio
+for found in forge.arcs_around((10, 20), 2.5, result.all_arcs, tolerance=0.1):
+    print(found.sweep, found.radius_ratio)
+```
+
+No thresholds of meaning inside: "~270° and a bit larger" is how a drawing
+shows a thread, and that rule lives in the consumer.
 
 ## Bend / engrave lines you already know how to recognize
 
@@ -157,7 +183,7 @@ import forge
 
 forge.inspect_dxf("part.dxf")        # 1 — raw DXF entities: what's in the file
 forge.inspect_document(doc)          # 2 — edges, primitives, node graph: what the adapter understood
-forge.inspect_result(result)         # 3 — the model: clusters, typed holes, bends, engraving, trash
+forge.inspect_result(result)         # 3 — the model: clusters, outer/inner, whatever a consumer attached, trash
 
 forge.inspect_file("part.dxf", role_rules=forge.name_rules({"Piega": "bending"}))   # all three, in order
 ```
@@ -198,10 +224,16 @@ right and you need to see where in the chain it breaks.
 
 ---
 
-## Full API reference
+## Documentation
 
-See [`docs/API.md`](docs/API.md). Architecture and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-For an AI agent writing code against forge, [`docs/LLM.md`](docs/LLM.md) is a dense, token-minimal reference covering the same ground.
+- **[`docs/API.md`](docs/API.md)** — every public function: signature, what it
+  takes, returns, mutates, when it raises. With copyable examples (in Italian).
+- **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — how it is built and why:
+  the layers, the flow, "the model is the product".
+- **`MAP.md`** — the design decisions, in chronological order.
+- **[`docs/LLM.md`](docs/LLM.md)** — a dense, token-minimal reference for an AI
+  agent writing code against forge: same ground as `API.md`.
+- **`SCRIPTS.md`** — the numbered scripts in `scripts/`, one per stage of the pipeline.
 
 ---
 

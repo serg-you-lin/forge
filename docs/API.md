@@ -292,7 +292,7 @@ forge.validate_result(result: ForgeResult) -> ForgeResult
 
 Valida l'**output** dopo `heal()`. **Muta** il `result` passato: aggiunge
 `warnings` / `errors` e può mettere `is_valid = False`. Controlla, per ogni cluster:
-poligono outer valido e non vuoto, area > 0, fori contenuti nell'outer.
+poligono outer valido e non vuoto, area > 0, ogni inner contenuto nell'outer.
 
 Viene **già chiamata automaticamente da `heal()`** — la usi a mano solo se
 costruisci un `ForgeResult` per altre vie.
@@ -514,7 +514,7 @@ Nessuna **muta** l'input: ritornano liste/oggetti nuovi.
 ### `contour_shape`
 
 ```python
-forge.contour_shape(contour, tolerance=0.01, angle_tolerance=1.0) -> ContourShape | None
+forge.contour_shape(item, tolerance=0.01, angle_tolerance=1.0) -> ContourShape | None
 ```
 
 La forma di un contorno chiuso (`ForgeContour`, un oggetto con `.segments`
@@ -636,7 +636,7 @@ forge.split(
     include_annotations=True,
     min_area=50.0,
     exclude_types=None,
-    on_cluster=None,
+    on_part=None,
     annotation_layer="Annotation",
     role_styles: dict[str, RoleStyle] = None,
 ) -> list[ezdxf.document.Drawing]
@@ -650,7 +650,7 @@ il disco. Le parti sotto `min_area` (mm²) vengono scartate (con warning nel
 |---|---|
 | `namer` | `callable(i, cluster) -> str` — assegna `cluster.label`, così il nome file resta `f"{cluster.label}.dxf"` a valle. |
 | `exclude_types` | set di `dxftype` da rimuovere dal documento di ogni parte (es. `{"TEXT"}`). |
-| `on_cluster` | `callable(cluster, doc_out)` — hook per parte, prima che il `Drawing` entri nella lista. |
+| `on_part` | `callable(cluster, doc_out)` — hook per parte, prima che il `Drawing` entri nella lista. |
 
 **Ritorna** la lista dei `Drawing` nell'ordine delle parti tenute.
 **Solleva `ValueError`** se `result.is_valid` è `False`.
@@ -1045,15 +1045,16 @@ grafo dei nodi (nodi totali, loop degeneri, nodi di branching, estremi liberi).
 forge.inspect_result(result, coords=False) -> None
 ```
 **Livello 3** — un `ForgeResult`: validità, warning/errori, e per ogni parte
-outer/inner/holes (tipati)/bending/engrave/custom, più `trash_entities`,
+outer/inner, le collezioni di `cluster.detected` (quello che un consumatore ha
+attaccato), custom, più `trash_entities`,
 `classified_entities`, annotazioni. "Cosa ha prodotto forge."
 
 ```python
 forge.inspect_file(path, tolerance=0.05, role_rules=(),
-                   run_heal=True, run_detect=True, entities=True, coords=False) -> None
+                   run_heal=True, entities=True, coords=False) -> None
 ```
-Orchestratore: apre il file e stampa i tre livelli in fila. `run_heal=False` /
-`run_detect=False` per fermarti a un livello precedente. `role_rules` come in
+Orchestratore: apre il file e stampa i tre livelli in fila. `run_heal=False` per
+fermarti al `ForgeDocument`. `role_rules` come in
 `load_dxf()`.
 
 ```python
@@ -1119,7 +1120,7 @@ Metodo `to_dict()` → dizionario JSON-ready (usato internamente dagli export).
 | campo | tipo | contenuto |
 |---|---|---|
 | `outer` | `ForgeContour` | profilo esterno (ha `polygon`, `segments`, `role`, `area`, `bbox`) |
-| `inners` | `list[ForgeContour]` | aperture interne non classificate come foro |
+| `inners` | `list[ForgeContour]` | contorni chiusi dentro l'outer, senza lettura (un cerchio non è un foro, D15) |
 | `label` | `str` | etichetta, base del nome file |
 | `custom` | `dict` | dati aggiunti da un `data_injector` esterno (materiale, spessore, codice) |
 | `detected` | `Optional[DetectedFeatures]` | overlay di un consumatore — `None` finché nessuno ci ha scritto (D44, D90) |

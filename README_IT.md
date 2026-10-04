@@ -49,24 +49,35 @@ doc    = forge.load_dxf("pezzo.dxf", tolerance=0.5)   # -> ForgeDocument
 result = forge.heal(doc)                              # topologia: contorni chiusi, outer/inner
 #   fori, pieghe, incisioni sono una lettura di processo sopra: snapbend.flat.detect_flat
 
-if not result.is_valid:
-    raise SystemExit(result.errors)
+if not result.is_valid:                              # nessun contorno esterno chiuso
+    print(result.errors)                              # si disegna lo stesso, vedi "Limiti noti"
 
-forge.to_dxf(result, doc).saveas("pezzo_healed.dxf")
-forge.save_json(result, "pezzo.json")
+doc_out = forge.to_dxf(result, doc)                   # -> ezdxf Drawing
+doc_out.saveas("pezzo_healed.dxf")
+
+forge.save_json(result, "pezzo.json")                 # metadati
+cerchi = [c for cl in result.clusters for c in cl.inners
+          if forge.contour_shape(c).kind == "circle"]
+print(f"{result.cluster_count} cluster, {len(cerchi)} cerchi interni")
 ```
 
 ## File multi-pezzo
 
 ```python
+import forge
+
 doc    = forge.load_dxf("batch.dxf")
-result = forge.split_to_files(doc, "output/", label="batch")   # un file per pezzo
+result = forge.split_to_files(doc, "output/", label="batch")
+# scrive output/batch_P1.dxf, output/batch_P2.dxf, ... uno per pezzo
+# (namer=lambda i, cluster: "..." per scegliere i nomi dei file)
 forge.save_json(result, "batch.json")
 ```
 
 ## Un disegno di viste (più viste, isometrica)
 
 ```python
+import forge
+
 doc    = forge.load_dxf("tavola.dxf")       # cornice / cartiglio marcati per ruolo, o tolti
 result = forge.island(doc, island_gap=10.0)
 for cluster in result.clusters:              # una vista (o un pezzo) per isola
@@ -82,6 +93,31 @@ Tutte e due sono ricette su passi pubblici. I passi di `heal()` (`split_labeled`
 `close_free_gaps`, `find_loops`, `build_hierarchy`, ...) sono esportati uno per
 uno, così un consumatore compone il suo ordine — vedi `docs/API.md` (i passi di
 `heal()`).
+
+## Forme: cos'è un contorno, non a cosa serve
+
+forge dà nomi alla geometria, mai al suo uso. Un cerchio è un cerchio; se sia un
+foro da forare, una sede o il puntino di un logo lo legge un consumatore
+(snapbend per il pezzo, snapdraw per la notazione del disegno — D68, D91).
+
+```python
+for cluster in result.clusters:
+    for inner in cluster.inners:
+        shape = forge.contour_shape(inner)     # circle / stadium / rectangle / polygon / other
+        print(shape.kind, shape.center, shape.length, shape.width)
+
+    # cerchi con lo stesso centro, dal più piccolo (anche quelli da soli)
+    for group in forge.concentric_groups(cluster.inners, tolerance=0.1):
+        if len(group.items) > 1:
+            print("concentrici:", group.center, group.diameters)
+
+# archi concentrici a un cerchio e più grandi: angolo in gradi, rapporto dei raggi
+for found in forge.arcs_around((10, 20), 2.5, result.all_arcs, tolerance=0.1):
+    print(found.sweep, found.radius_ratio)
+```
+
+Dentro non ci sono soglie di significato: "~270° e poco più grande" è come un
+disegno mostra un filetto, e quella regola sta nel consumatore.
 
 ## Linee di piega / incisione che sai già riconoscere
 
@@ -100,29 +136,109 @@ doc = forge.load_dxf("pezzo.dxf", role_rules=[
 
 ---
 
-## Ispezionare un file reale
+## La pipeline
 
-```python
-forge.inspect_file("pezzo.dxf", role_rules=forge.name_rules({"Piega": "bending"}))
+```
+load_dxf(path)  ──►  ForgeDocument   (edge + annotazioni + source_meta)
+                          │            l'unico passo che legge con ezdxf
+                          ▼
+     heal(doc)  ──►  ForgeResult      topologia: gap chiusi, giri trovati,
+                          │            albero di contenimento outer / inner
+                          ▼
+  (la lettura di un consumatore)       es. snapbend: tipo di foro, linee di piega, incisioni,
+                          │            attaccate a cluster.detected
+                          ▼
+   to_dxf(result, doc)  ──►  ezdxf Drawing        render — un documento
+   split(result, doc)   ──►  list[Drawing]        render — uno per pezzo
+   to_svg(result)       ──►  stringa SVG          render — per una UI / un report
+   to_view_model(result)  ─►  dict (geometria completa) per un renderer esterno
+   to_text(result)      ──►  Markdown              sperimentale: una lettura per un modello linguistico (D84)
+   save_json / save_xml                           export del modello (metadati)
+   inject(result, ...)                            arricchimento opzionale dai testi
 ```
 
-Stampa tre livelli in fila: entità DXF grezze → cosa ha capito l'adapter → il
-modello prodotto. Serve quando qualcosa su un file vero non esce giusto e devi
-vedere dove si rompe la catena.
+Il prodotto è il modello. `to_dxf` non rilegge mai il file sorgente — ogni renderer
+(DXF, SVG, view model) disegna dallo stesso modello, quindi mostrano tutti la stessa cosa.
+
+---
+
+## Layer del DXF in uscita
+
+| Layer          | Significato                                 |
+|----------------|---------------------------------------------|
+| `OuterContour` | profilo esterno del pezzo                   |
+| `InnerContour` | contorno chiuso dentro l'outer              |
+| `Annotation`   | testi e quote della sorgente (non è un layer di taglio) |
+| *nome del ruolo* | geometria con il ruolo di un consumatore (`frame`, `hole`, `bending`, …): un layer suo, nome e colore da `register_role_style` se il consumatore l'ha registrato |
+| `Trash`        | tutto ciò che `forge` non ha saputo classificare — tenuto, mai buttato |
+
+Niente della sorgente si perde in silenzio: la geometria non classificata va in
+`Trash`, testi e quote in `Annotation`. I tipi di entità che `forge` non modella
+(`HATCH`, `IMAGE`, `TABLE`, …) li segnala `load_dxf` con un warning, non li butta.
+
+---
+
+## Ispezionare un file reale
+
+Tre livelli, come la pipeline:
+
+```python
+import forge
+
+forge.inspect_dxf("pezzo.dxf")       # 1 — entità DXF grezze: cosa c'è nel file
+forge.inspect_document(doc)          # 2 — edge, primitive, grafo dei nodi: cosa ha capito l'adapter
+forge.inspect_result(result)         # 3 — il modello: cluster, outer/inner, quello che un consumatore ha attaccato, trash
+
+forge.inspect_file("pezzo.dxf", role_rules=forge.name_rules({"Piega": "bending"}))   # tutti e tre, in fila
+```
+
+Tutto stampa su stdout. Serve quando qualcosa su un file vero non esce giusto e
+devi vedere dove si rompe la catena.
+
+---
+
+## Geometria in ingresso supportata
+
+- **Come contorni strutturali:** `LWPOLYLINE`, `POLYLINE`, `CIRCLE`, `SPLINE` chiusa, `ELLIPSE` chiusa
+- **Da ricostruire in contorni:** `LINE`, `ARC`, `SPLINE`/`ELLIPSE` aperte collegate ad altre entità
+- **Come annotazioni:** `TEXT`, `MTEXT`, `DIMENSION`, `LEADER`, `MULTILEADER`
+- **Blocchi:** gli `INSERT` si esplodono al caricamento, di default
+- **Legacy:** i file R12/R13/R14 si aggiornano a R2010
+- **DWG:** né `forge` né `ezdxf` leggono il DWG direttamente — passa da
+  [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter)
+  (gratuito). Installalo e indica a `forge` l'eseguibile con la variabile
+  d'ambiente `ODA_PATH` (percorso completo dell'eseguibile), o metti
+  `ODAFileConverter` nel `PATH`. Vedi `docs/API.md` → *load_dxf → DWG* per i
+  singoli sistemi operativi.
+
+---
+
+## Limiti noti
+
+- **Spline ed ellissi** escono native sui layer di taglio (`to_dxf`) ma
+  **discretizzate** in `to_svg` / `to_view_model` (polilinee: usa `to_dxf`
+  quando conta la curva esatta).
+- **`load_pdf`** esiste ma è sperimentale — ritorna edge grezzi, non un
+  `ForgeDocument`, quindi non si aggancia ancora a `heal()`. Non è nell'API pubblica.
+- **Gap arco/arco oltre la tolleranza** non si chiudono da soli — alza `tolerance`.
+- Se non si riesce a formare un contorno esterno chiuso, `result.is_valid` è
+  `False`. `to_dxf` / `to_svg` disegnano comunque quello che c'è (tutto su
+  `Trash`), così vedi cosa ha capito forge; chi manda l'output a una macchina
+  passa `allow_invalid=False` e riceve `ValueError`. `split` solleva sempre:
+  un file per pezzo non ha senso senza pezzi.
 
 ---
 
 ## Documentazione
 
-- **[`docs/API.md`](docs/API.md)** — ogni funzione: firma, cosa prende, cosa
-  ritorna, cosa muta, quando solleva. Con esempi copiabili. È il documento per
-  spiegare `forge` a qualcuno.
+- **[`docs/API.md`](docs/API.md)** — ogni funzione pubblica: firma, cosa prende,
+  cosa ritorna, cosa muta, quando solleva. Con esempi copiabili.
 - **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — com'è fatto dentro e
-  perché: gli strati, il flusso, il principio "il prodotto è il modello".
-- **`MAP.md`** — le decisioni di design prese, in ordine cronologico.
+  perché: gli strati, il flusso, "il prodotto è il modello".
+- **`MAP.md`** — le decisioni di design, in ordine cronologico.
 - **[`docs/LLM.md`](docs/LLM.md)** — riferimento compatto per un'AI che scrive
-  codice contro `forge`: stesso contenuto di `API.md`, densità massima, meno
-  token possibile.
+  codice contro forge: stesso contenuto di `API.md`, meno token possibile.
+- **`SCRIPTS.md`** — gli script numerati in `scripts/`, uno per passo della pipeline.
 
 ---
 
