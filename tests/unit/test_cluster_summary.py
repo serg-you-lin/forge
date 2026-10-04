@@ -117,7 +117,7 @@ class TestSummaryMatchesGoldenFixtures(unittest.TestCase):
         import forge
 
         ex = Path(__file__).resolve().parents[1] / "data"
-        gdir = ex / "golden" / "json"
+        gdir = ex / "golden" / "process"
         if not gdir.exists():
             self.skipTest("golden fixtures assenti")
 

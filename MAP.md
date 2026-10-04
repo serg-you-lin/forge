@@ -2628,6 +2628,46 @@ names nothing specific. `snapcut` and `snapsheet` rejected.
 Not executed yet. The cost and the golden plan (transform the 48 JSON, do not
 regenerate them) are in the "Process detection" note below.
 
+### D89 — the golden split in two halves; `cluster.area` alternates sign with depth ✅
+First step of D88. The 48 golden JSON under `tests/data/golden/json/` are
+split, not regenerated: a one-off script (kept out of the repo on Federico's
+request — used once) moved the already-approved values into two halves.
+
+- **`json/` — geometry, checked by `test_golden.py` with `heal()` alone** (no
+  `is_structural`, no `detect_flat`): cluster count, area, perimeters, outer
+  shape, inner contours. Holes become inner contours (D88 point 3): their wkt
+  joins `inners_wkt`, their area is the area of that approved wkt, role
+  `inner`. The `to_dxf` round-trip runs on the same heal-only pipeline; the only
+  role it re-reads from layers is `engrave`, the one the goldens assign at load.
+- **`process/` — holes, bends, engraving, summary, and the inners left after
+  detection, checked by `test_golden_process.py`** with `heal(is_structural)` +
+  `detect_flat`. Area and outer are kept there only to identify the part. The
+  file and its JSON move to snapbend with `detect_flat`.
+
+Proof that nothing was lost: `heal()` alone reproduces 47 of 48 geometry
+halves exactly; `generate_golden.py`, rewritten to write both halves, reproduces
+all 96 on values (0 differences). Breaking one value on purpose in each half
+fails its test. Suite 956.
+
+**The 48th, `rect_with_countersink`, exposed a real bug, not a moving error.**
+Two concentric circles in a rectangle: `heal()` reads the large one as a void
+(depth 1) and the small one as material inside it (depth 2) — the parity rule
+the hierarchy already uses (D34, D40: even depth is an island). But
+`ForgeCluster.area` subtracted every inner regardless of depth, so the island
+was removed twice. Now odd depths subtract and even depths add back: the area of
+the material is outer − voids + islands − voids inside islands. No other golden
+has depth ≥ 2, so no approved value moved; three unit tests (one, two, three
+nested levels) fail on the old code and pass on the new. The countersink's
+geometry half therefore holds **new** values (area 19372.17, two inners), not
+moved ones: without a process reading, two concentric circles are a ring-shaped
+void with a disc in it. That they are one countersunk hole of Ø10 is the
+process reading, and it stays in its `process/` half (area 19921.59, one hole).
+
+Still assuming forge finds holes and bends, to be done in the next steps of
+D88: `golden_multipli` (`generate_golden_split.py` / `test_golden_split.py`),
+the annotation goldens, `test_layers`, `test_writeback`, the integration tests
+and the recipes (`heal_and_detect`, `split_to_files`, `inspect`).
+
 ---
 
 ## Closed questions (history)

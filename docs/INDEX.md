@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`75` modules · `359` module-level functions · `55` classes · `13687` lines of code.
+`75` modules · `359` module-level functions · `55` classes · `13691` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -1034,7 +1034,7 @@ _forge/model/annotation.py_
 - **class** `Leader(Annotation)` — L147 — Direttrice con testo che punta a una feature.
   - methods: `display_text`
 
-#### `forge/model/cluster.py` — 106 lines
+#### `forge/model/cluster.py` — 110 lines
 
 _model/cluster.py_
 

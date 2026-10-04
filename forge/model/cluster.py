@@ -61,10 +61,14 @@ class ForgeCluster:
 
     @property
     def area(self) -> float:
+        """
+        Area netta: depth dispari è vuoto, depth pari è materiale (isola nel
+        vuoto del padre) — i segni alternano col livello (MAP.md D89).
+        """
         return (
             self.outer.area
             - sum(h.area for h in self.features("holes"))
-            - sum(i.area for i in self.inners)
+            - sum(i.area if i.depth % 2 else -i.area for i in self.inners)
         )
 
     @property

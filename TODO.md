@@ -70,6 +70,11 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    `split_to_files`, writeback, layer fori/pieghe di `to_dxf`, `inspect.py`,
    golden (piano: trasformare i 48 JSON, non rigenerarli), e i test che
    importano `manufacturing_role.is_structural`.
+   **Passo 1 fatto (D89):** i 48 golden divisi in `json/` (geometria, solo
+   `heal()`) e `process/` (fori/pieghe/incisioni, da portare in snapbend);
+   trovato e corretto `cluster.area` sui contorni annidati. Prossimi: golden
+   `golden_multipli` e annotazioni, `test_layers`, `test_writeback`, test di
+   integrazione, ricette.
 6. **Estrazione dei loop planari (half-edge/DCEL)** — l'unica cosa in lista che
    cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
 7. **Due cose piccole dalla roadmap del preventivo** (step 0 e 1 di
