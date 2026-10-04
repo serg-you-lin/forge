@@ -65,9 +65,8 @@ class TestLoadGeometryRectangleWithHole(unittest.TestCase):
     def setUp(self):
         self.doc = load_geometry([
             {
-                "type": "polyline",
+                "type": "polygon",
                 "points": [(0, 0), (100, 0), (100, 50), (0, 50)],
-                "closed": True,
                 "role": "outer",
             },
             {"type": "circle", "center": (20, 25), "radius": 5},

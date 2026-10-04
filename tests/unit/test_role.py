@@ -94,9 +94,9 @@ class TestCustomRoleSurvivesHeal(unittest.TestCase):
         # che forge non conosce: heal lo tiene come geometria non strutturale
         # (trash), ma il ruolo resta quello del chiamante, non "unknown"
         doc = forge.load_geometry([
-            {"type": "polyline", "closed": True, "role": "outer",
+            {"type": "polygon", "role": "outer",
              "points": [(0, 0), (100, 0), (100, 100), (0, 100)]},
-            {"type": "polyline", "closed": True, "role": "title_block",
+            {"type": "polygon", "role": "title_block",
              "points": [(10, 10), (40, 10), (40, 30), (10, 30)]},
         ])
         result = forge.heal(doc)
@@ -119,11 +119,11 @@ class TestConsumerRolesSurviveDetect(unittest.TestCase):
     def _framed_doc(self):
         # cornice grande + due pezzi dentro, tutti geometricamente distinti
         return forge.load_geometry([
-            {"type": "polyline", "closed": True, "role": "frame",
+            {"type": "polygon", "role": "frame",
              "points": [(0, 0), (400, 0), (400, 300), (0, 300)]},
-            {"type": "polyline", "closed": True, "role": "outer",
+            {"type": "polygon", "role": "outer",
              "points": [(20, 20), (120, 20), (120, 120), (20, 120)]},
-            {"type": "polyline", "closed": True, "role": "outer",
+            {"type": "polygon", "role": "outer",
              "points": [(200, 20), (300, 20), (300, 120), (200, 120)]},
         ])
 

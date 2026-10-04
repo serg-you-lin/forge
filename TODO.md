@@ -15,18 +15,11 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
-0. **`load_geometry` parla DXF** (Federico, 4 ottobre: "che cazzo c'entra
-   polyline? 5 mesi a tirare fuori il dxf dalla logica forge"). Lo schema dei
-   dict usa `polyline` e angoli dell'arco in gradi "per convenzione CAD": due
-   parole del formato, non di forge. Proposta, da decidere: (a) lo schema neutro
-   (che resta, perché il calcolo di snapbend non importa forge, D43) usa le
-   parole di forge — `polygon` (punti, chiuso), segmenti come `LineSeg`/`ArcSeg`
-   con angoli in radianti, niente `polyline`; (b) per chi scrive con forge in
-   mano, costruttori in `forge.geometry` che restituiscono segmenti forge
-   (`polygon(punti)`, `rectangle(w, h, at)`, `circle`, `stadium`) e un
-   caricatore che prende segmenti invece di dict. Niente operazioni booleane
-   o buffer: quelle sono di shapely, che forge usa già (`contour.polygon`).
-   Tocca snapbend (generatori, `FlatGeometry`) e snapdraw (`generate.py`).
+0. **`load_geometry`: gli angoli dell'arco sono ancora in gradi** "per
+   convenzione CAD" (resto di D96: `polygon` al posto di `polyline` fatto,
+   costruttori e `load_segments` fatti). `ArcSeg` usa i radianti; passare lo
+   schema ai radianti tocca la matematica di cono e sezione di snapbend
+   (`core/cone.py`, `model/section.py`, lo scambio x/y di `model/geometry.py`).
 1. ✅ **fatto (D93)** — **La geometria rimasta in `snapbend/flat/detect.py` torna in forge**
    (Federico, 4 ottobre: "tutto quello che è calcolo e geometria l'avrei messo
    in forge"). Su 828 righe la geometria pura è poca, ~70 righe; il resto è

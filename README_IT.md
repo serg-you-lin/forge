@@ -94,6 +94,21 @@ Tutte e due sono ricette su passi pubblici. I passi di `heal()` (`split_labeled`
 uno, così un consumatore compone il suo ordine — vedi `docs/API.md` (i passi di
 `heal()`).
 
+## Disegnare con forge
+
+```python
+import forge
+
+fg = forge.geometry
+doc = forge.load_segments(fg.rectangle(200, 100) + fg.rectangle(100, 50))
+result = forge.heal(doc)                # un pezzo: outer 200×100, un inner 100×50
+forge.to_dxf(result, doc).saveas("due_rettangoli.dxf")
+```
+
+I costruttori restituiscono segmenti di forge: `polygon(punti)`, `rectangle`,
+`regular_polygon`, `circle`, `stadium` (con archi veri). Ogni altra forma a lati
+dritti è un `polygon`.
+
 ## Forme: cos'è un contorno, non a cosa serve
 
 forge dà nomi alla geometria, mai al suo uso. Un cerchio è un cerchio; se sia un

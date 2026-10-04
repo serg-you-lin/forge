@@ -14,7 +14,7 @@ from forge.model.annotation import Dimension, Leader, Note
 def _plate():
     """Piastra 100 x 50 con un cerchio Ø10, uno stadio, un contorno a L, una linea aperta e una spline."""
     entities = [
-        {"type": "polyline", "points": [(0, 0), (100, 0), (100, 50), (0, 50)], "closed": True},
+        {"type": "polygon", "points": [(0, 0), (100, 0), (100, 50), (0, 50)]},
         {"type": "circle", "center": (20, 25), "radius": 5},
         # stadio 20 x 8: due semicerchi R4 e due lati paralleli
         {"type": "line", "start": (44, 21), "end": (56, 21)},
@@ -22,8 +22,7 @@ def _plate():
         {"type": "line", "start": (56, 29), "end": (44, 29)},
         {"type": "arc", "center": (44, 25), "radius": 4, "start_angle": 90, "end_angle": 270},
         # contorno a L: nessun nome breve, si scrive lato per lato
-        {"type": "polyline", "points": [(70, 10), (90, 10), (90, 20), (80, 20), (80, 40), (70, 40)],
-         "closed": True},
+        {"type": "polygon", "points": [(70, 10), (90, 10), (90, 20), (80, 20), (80, 40), (70, 40)]},
         # una linea aperta dentro la piastra, e una spline aperta
         {"type": "line", "start": (20, 15), "end": (20, 35)},
         {"type": "spline", "degree": 3, "control_points": [(5, 5), (10, 15), (15, 5), (20, 15)],

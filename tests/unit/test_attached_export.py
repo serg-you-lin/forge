@@ -36,7 +36,7 @@ class _Composite:
 def _plate():
     # piastra 100x50 con due fori concentrici e uno singolo
     doc = forge.load_geometry([
-        {"type": "polyline", "closed": True, "points": [(0, 0), (100, 0), (100, 50), (0, 50)]},
+        {"type": "polygon", "points": [(0, 0), (100, 0), (100, 50), (0, 50)]},
         {"type": "circle", "center": (20, 25), "radius": 3},
         {"type": "circle", "center": (20, 25), "radius": 6},
         {"type": "circle", "center": (70, 25), "radius": 4},

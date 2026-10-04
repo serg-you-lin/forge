@@ -17,6 +17,7 @@ Pubblico da MAP.md D32 — provato da un caso reale (`bendly`, che lo usa in
 
 Funzioni pubbliche:
     load_geometry — traduce una lista di descrizioni geometriche in ForgeDocument
+    load_segments — lo stesso, da segmenti di forge (`forge.geometry.rectangle`, ...)
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ import math
 from typing import Any, Dict, List, Tuple
 
 from ...core.adapter_base import ForgeAdapter
+from ...core.geometry.build import polygon
 from ...core.geometry.measure import round_point
 from ...core.primitives.segments import (
     LineSeg, ArcSeg, CircleSeg, SplineSeg, EllipseSeg, segment_endpoints,
@@ -33,7 +35,7 @@ from ...core.topology.edge import Edge
 from ...model.document import DEFAULT_NODE_TOLERANCE, ForgeDocument
 from ...model.role import normalize_role
 
-_SUPPORTED_TYPES = frozenset({"line", "arc", "circle", "polyline", "spline", "ellipse"})
+_SUPPORTED_TYPES = frozenset({"line", "arc", "circle", "polygon", "spline", "ellipse"})
 
 
 def _role_from(entity: Dict[str, Any]) -> str:
@@ -54,8 +56,8 @@ class GeometryAdapter(ForgeAdapter):
                    "start_angle": gradi, "end_angle": gradi,
                    "ccw": True, "role": "outer"}
         circle:   {"type": "circle", "center": (x,y), "radius": r, "role": "hole"}
-        polyline: {"type": "polyline", "points": [(x,y), ...],
-                   "closed": True, "role": "outer"}
+        polygon:  {"type": "polygon", "points": [(x,y), ...], "role": "outer"}
+                  — sempre chiuso: l'ultimo lato torna al primo punto (D96)
         spline:   {"type": "spline", "control_points": [(x,y), ...], "knots": [...],
                    "degree": 3, "weights": [...], "fit_points": [(x,y), ...],
                    "closed": False, "role": "outer"}
@@ -107,8 +109,8 @@ class GeometryAdapter(ForgeAdapter):
                 edges.append(self._arc_edge(entity, role))
             elif kind == "circle":
                 edges.append(self._circle_edge(entity, role))
-            elif kind == "polyline":
-                edges.extend(self._polyline_edges(entity, role))
+            elif kind == "polygon":
+                edges.extend(self._polygon_edges(entity, role))
             elif kind == "spline":
                 edges.append(self._spline_edge(entity, role))
             elif kind == "ellipse":
@@ -185,21 +187,8 @@ class GeometryAdapter(ForgeAdapter):
         )
         return self._edge(seg, role)
 
-    def _polyline_edges(self, entity: Dict[str, Any], role: str) -> List[Edge]:
-        points = [tuple(p) for p in entity["points"]]
-        closed = bool(entity.get("closed", False))
-        if closed and points and points[0] != points[-1]:
-            points = points + [points[0]]
-
-        edges: List[Edge] = []
-        for a, b in zip(points, points[1:]):
-            edges.append(Edge(
-                role=role,
-                start=self._round(a),
-                end=self._round(b),
-                segment=LineSeg(start=a, end=b),
-            ))
-        return edges
+    def _polygon_edges(self, entity: Dict[str, Any], role: str) -> List[Edge]:
+        return [self._edge(seg, role) for seg in polygon(entity["points"])]
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +207,7 @@ def load_geometry(
     vettorializzati da immagine, ...).
 
     Vedi GeometryAdapter per lo schema di ogni "type" di entità supportato
-    (line / arc / circle / polyline / spline).
+    (line / arc / circle / polygon / spline / ellipse).
 
     Esempio — settore anulare di uno sviluppo di cono:
         doc = forge.load_geometry([
@@ -247,5 +236,35 @@ def load_geometry(
     return ForgeDocument(
         edges=edges,
         source_path=source_path or "<load_geometry>",
+        source_meta={"tolerance": tolerance},
+    )
+
+
+def load_segments(
+    segments,
+    tolerance: float = DEFAULT_NODE_TOLERANCE,
+    role: str = "unknown",
+    source_path: str = "",
+) -> ForgeDocument:
+    """
+    Un ForgeDocument da segmenti di forge (`LineSeg`, `ArcSeg`, `CircleSeg`,
+    ...) o da liste di segmenti, come le restituiscono i costruttori di
+    `forge.geometry` (`rectangle`, `regular_polygon`, `polygon`, `circle`,
+    `stadium`). Tutti gli edge prendono `role`. Stessa tolleranza dei nodi di
+    `load_geometry` (D96).
+
+        fg = forge.geometry
+        doc = forge.load_segments(fg.rectangle(200, 100) + fg.circle(10))
+        result = forge.heal(doc)
+    """
+    adapter = GeometryAdapter([], tolerance=tolerance)
+    role = normalize_role(role)
+    flat = []
+    for item in segments:
+        flat.extend(item if isinstance(item, (list, tuple)) else [item])
+    edges = [adapter._edge(seg, role) for seg in flat]
+    return ForgeDocument(
+        edges=edges,
+        source_path=source_path or "<load_segments>",
         source_meta={"tolerance": tolerance},
     )

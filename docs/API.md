@@ -196,6 +196,25 @@ msp.add_line((0, 0), (100, 0)); msp.add_line((100, 0), (100, 50))
 document = forge.document_from_msp(msp, tolerance=0.5)
 ```
 
+### `load_segments`
+
+```python
+forge.load_segments(segments, tolerance=0.05, role="unknown", source_path="") -> ForgeDocument
+```
+
+Un `ForgeDocument` da segmenti di forge (`LineSeg`, `ArcSeg`, `CircleSeg`, …) o
+da liste di segmenti — quelle che restituiscono i costruttori di
+`forge.geometry`. Tutti gli edge prendono `role`. È il modo per disegnare con
+forge in mano; `load_geometry` resta per chi non importa forge (D96).
+
+```python
+fg = forge.geometry
+doc = forge.load_segments(fg.rectangle(200, 100) + fg.rectangle(100, 50))
+result = forge.heal(doc)     # un pezzo: outer 200×100, un inner 100×50
+```
+
+---
+
 ### `load_geometry`
 
 ```python
@@ -214,7 +233,7 @@ computer vision). Chi chiama non importa nessun tipo interno di forge.
 
 | parametro | significato |
 |---|---|
-| `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polyline` (`points`, `closed`), `spline` (`control_points`, `knots`, `degree`, più `weights`/`fit_points`/`closed` opzionali — stessi campi di `SplineSeg`), `ellipse` (`center`, `major_axis` come **vettore** dal centro, più `ratio`/`start_param`/`end_param`/`ccw` opzionali — stessi campi di `EllipseSeg`, stessa parametrizzazione del gruppo DXF ELLIPSE; default = ellisse piena). `role` è opzionale su ogni entità — stesso vocabolario di `RoleRule.role` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
+| `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polygon` (`points` — sempre chiuso, D96), `spline` (`control_points`, `knots`, `degree`, più `weights`/`fit_points`/`closed` opzionali — stessi campi di `SplineSeg`), `ellipse` (`center`, `major_axis` come **vettore** dal centro, più `ratio`/`start_param`/`end_param`/`ccw` opzionali — stessi campi di `EllipseSeg`, stessa parametrizzazione del gruppo DXF ELLIPSE; default = ellisse piena). `role` è opzionale su ogni entità — stesso vocabolario di `RoleRule.role` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
 | `tolerance` | tolleranza di arrotondamento dei nodi topologici — stesso significato di `load_dxf(tolerance=...)`. |
 | `source_path` | etichetta libera per `ForgeDocument.source_path`; non è un file, serve solo per diagnostica. |
 
@@ -512,6 +531,23 @@ Nessuna **muta** l'input: ritornano liste/oggetti nuovi.
 ---
 
 ## La geometria — `forge.geometry`
+
+**Costruire** (`forge.geometry.<nome>`, restituiscono una lista di segmenti,
+un giro chiuso, da passare a `forge.load_segments`). Gli argomenti sono le
+misure che `contour_shape` restituisce, così `contour_shape(rectangle(80, 30,
+angle=20))` ridà 80, 30, 20 (D96):
+
+| costruttore | forma |
+|---|---|
+| `polygon(points)` | il poligono per i punti dati, chiuso da solo; almeno 3 punti |
+| `rectangle(length, width, center=(0, 0), angle=0)` | rettangolo, lato lungo a `angle` gradi |
+| `regular_polygon(sides, radius, center=(0, 0), angle=0)` | poligono regolare inscritto nel cerchio di raggio `radius`, primo vertice a `angle` |
+| `circle(radius, center=(0, 0))` | un `CircleSeg` |
+| `stadium(length, width, center=(0, 0), angle=0)` | due semicerchi veri (`ArcSeg`) e due lati paralleli; fuori tutto `length` × `width` |
+
+Rombi, trapezi e ogni altra forma con lati dritti sono un `polygon`.
+
+**Leggere**:
 
 I fatti geometrici stanno tutti in `forge.geometry` (il package
 `forge/core/geometry/`, D95): si chiamano `forge.geometry.<nome>(...)` e si

@@ -90,6 +90,20 @@ Both are recipes over public steps. `heal()`'s steps (`split_labeled`,
 `close_free_gaps`, `find_loops`, `build_hierarchy`, ...) are exported one by one,
 so a consumer can compose its own order — see `docs/API.md` (the steps of `heal()`).
 
+## Drawing with forge
+
+```python
+import forge
+
+fg = forge.geometry
+doc = forge.load_segments(fg.rectangle(200, 100) + fg.rectangle(100, 50))
+result = forge.heal(doc)                # one part: outer 200×100, one inner 100×50
+forge.to_dxf(result, doc).saveas("two_rectangles.dxf")
+```
+
+Builders return forge segments: `polygon(points)`, `rectangle`, `regular_polygon`,
+`circle`, `stadium` (with true arcs). Any other straight-sided shape is a `polygon`.
+
 ## Shapes: what a contour is, not what it is for
 
 forge names geometry, never its use. A circle is a circle; whether it is a

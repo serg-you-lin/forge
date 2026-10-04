@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`71` modules · `341` module-level functions · `56` classes · `12789` lines of code.
+`72` modules · `348` module-level functions · `56` classes · `12886` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -67,6 +67,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_build_tree` | func | `forge/core/healing/hierarchy.py:78` |  |
 | `_chain` | func | `forge/core/healing/normalizer.py:259` | Ordina per `lo` e incatena gli span che si toccano o si sovrappongono: |
 | `chord_angle_deg` | func | `forge/core/geometry/measure.py:121` | Angolo (gradi, 0-180°) della corda da `a` a `b`. Modulo 180 perché una |
+| `circle` | func | `forge/core/geometry/build.py:52` | Il cerchio di raggio `radius` in `center`. |
 | `_circle` | func | `forge/core/geometry/shape.py:82` |  |
 | `_circle_as_arc` | func | `forge/core/topology/noding.py:120` | Un cerchio come arco di 360° da `start_angle`: stessa matematica degli archi. |
 | `_circle_circle_intersections` | func | `forge/core/geometry/intersections.py:67` | Intersezioni tra due circonferenze. Restituisce 0, 1 o 2 punti. |
@@ -179,7 +180,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `gap_endpoints_at_nodes` | func | `forge/core/healing/gap_solver.py:271` | GapEndpoint per gli endpoint che cadono su uno dei `nodes` — tuple di |
 | `GapEndpoint` | class | `forge/core/healing/gap_solver.py:46` | Endpoint libero nel grafo topologico. |
 | `_generic` | func | `forge/core/geometry/shape.py:139` |  |
-| `GeometryAdapter` | class | `forge/adapters/geometry/loader.py:47` | Traduce descrizioni geometriche pure (dict) in Edge del dominio forge. |
+| `GeometryAdapter` | class | `forge/adapters/geometry/loader.py:49` | Traduce descrizioni geometriche pure (dict) in Edge del dominio forge. |
 | `_get_solver` | func | `forge/core/healing/gap_solver.py:162` |  |
 | `__getattr__` | func | `forge/model/__init__.py:33` |  |
 | `_graph` | func | `forge/core/healing/steps.py:267` |  |
@@ -220,8 +221,9 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_line_spans` | func | `forge/core/healing/normalizer.py:208` | Span lungo la retta comune: `t` è la proiezione sulla direzione del |
 | `LineSeg` | class | `forge/core/primitives/segments.py:44` |  |
 | `load_dxf` | func | `forge/adapters/dxf/loader.py:219` | Apre un documento DXF o DWG e lo traduce in un ForgeDocument. |
-| `load_geometry` | func | `forge/adapters/geometry/loader.py:209` | Costruisce un ForgeDocument da una lista di descrizioni geometriche pure — |
+| `load_geometry` | func | `forge/adapters/geometry/loader.py:198` | Costruisce un ForgeDocument da una lista di descrizioni geometriche pure — |
 | `load_pdf` | func | `forge/adapters/pdf/loader.py:22` | Apre un documento PDF, estrae le geometrie vettoriali da tutte le pagine, |
+| `load_segments` | func | `forge/adapters/geometry/loader.py:243` | Un ForgeDocument da segmenti di forge (`LineSeg`, `ArcSeg`, `CircleSeg`, |
 | `local_gap_fixes` | func | `forge/core/healing/gap_solver.py:215` | Solo i fix che non spostano un estremo più di `max_move`: due rette quasi |
 | `longest_segment` | func | `forge/core/geometry/measure.py:108` | `(segment, length)` del segmento più lungo in `segments` — `(None, 0.0)` |
 | `longest_structural_segment` | func | `forge/tools/rotate.py:89` | `(segment, length, angle_deg)` del segmento più lungo fra |
@@ -285,11 +287,13 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_perp` | func | `forge/tools/tabs.py:74` | Ruota `v` di 90° (verso arbitrario, coerente fra le due chiamate). |
 | `_piece_length` | func | `forge/core/topology/noding.py:114` |  |
 | `_pieces` | func | `forge/core/healing/outer_scan.py:113` |  |
+| `_place` | func | `forge/core/geometry/build.py:21` | Ruota di `angle` gradi attorno all'origine e trasla in `center`. |
 | `_place` | func | `forge/core/healing/hierarchy.py:69` |  |
 | `point_line_distance` | func | `forge/core/geometry/lines.py:36` | Distanza di `point` dalla retta infinita per `a`, `b`; da `a` se i due coincidono. |
 | `point_on_circle` | func | `forge/core/primitives/segments.py:97` | Punto della circonferenza (`center`, `radius`) all'angolo dato (radianti). |
 | `_point_to_segment_distance` | func | `forge/core/primitives/segments.py:276` | Distanza perpendicolare di `p` dal segmento `a`-`b` (0 se `a == b`). |
 | `_poly_points` | func | `forge/io/view_model.py:36` | Vertici dell'anello esterno di un polygon shapely come lista di [x, y]. |
+| `polygon` | func | `forge/core/geometry/build.py:27` | Il poligono per i `points` dati, chiuso: l'ultimo lato torna al primo punto. Almeno 3 punti. |
 | `polygonize_edges` | func | `forge/core/healing/steps.py:191` | Ultima spiaggia quando nessun grafo chiude: le facce dell'intero disegno |
 | `polygons_to_features` | func | `forge/core/healing/steps.py:207` | Per poligono un ClosedFeature OUTER dal bordo esterno e uno INNER per |
 | `polyline_line_intersections` | func | `forge/core/geometry/intersections.py:98` | Intersezioni fra la retta infinita (p1, p2) e la spezzata `points` (ogni |
@@ -300,11 +304,13 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `read_island` | func | `forge/core/island.py:153` | Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate, |
 | `read_islands` | func | `forge/core/island.py:131` | `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola |
 | `read_metadata_from_dxf` | func | `forge/io/exporter.py:307` | Legge i metadati FORGE XDATA dall'entità OuterContour. |
+| `rectangle` | func | `forge/core/geometry/build.py:37` | Rettangolo `length` × `width` centrato in `center`, lato lungo a `angle` gradi. |
 | `_rectangle` | func | `forge/core/geometry/shape.py:122` |  |
 | `_refine_segment` | func | `forge/core/primitives/segments.py:288` | Suddivide `[t0, t1]` finché il punto medio (valutato con `evaluate(t)`) |
 | `refit_tessellations` | func | `forge/core/healing/normalizer.py:455` | Una catena di almeno `min_run` LineSeg (`role == UNKNOWN`) più corti di |
 | `register_role_style` | func | `forge/rules/palette.py:157` | Registra uno `RoleStyle` per `role`, valido per ogni render successivo |
 | `registered_role_styles` | func | `forge/rules/palette.py:168` | Copia del registro attivo — letta dai renderer, mai mutata da loro. |
+| `regular_polygon` | func | `forge/core/geometry/build.py:43` | Poligono regolare di `sides` lati inscritto nel cerchio di raggio `radius`; il primo vertice a `angle` gradi. |
 | `_remove_excluded_entities` | func | `forge/io/dxf.py:430` |  |
 | `_render_block` | func | `forge/adapters/dxf/annotation_extractor.py:402` | Espande l'immagine dell'entità in strokes/fills/texts puri. |
 | `RenderedGeometry` | class | `forge/model/annotation.py:46` | Immagine di una quota/direttrice già appiattita in primitive pure. |
@@ -316,7 +322,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_result_bbox_center` | func | `forge/tools/rotate.py:231` | Centro del bbox unito degli outer di tutti i cluster — vedi `rotate_to_longest`. |
 | `_ring_segments` | func | `forge/core/healing/steps.py:273` |  |
 | `_role` | func | `forge/inspect.py:53` | Nome del ruolo come stringa piatta ('outer'), non 'ContourRole.OUTER'. |
-| `_role_from` | func | `forge/adapters/geometry/loader.py:39` | work_type stringa (stesso vocabolario di RoleRule.role) → ruolo. Un work_type |
+| `_role_from` | func | `forge/adapters/geometry/loader.py:41` | work_type stringa (stesso vocabolario di RoleRule.role) → ruolo. Un work_type |
 | `role_str` | func | `forge/model/role.py:142` | Valore stringa di un ruolo, che sia una costante ``ContourRole`` o una |
 | `role_to_color` | func | `forge/rules/palette.py:74` | Colore ACI di un ruolo. Ruolo noto → il suo colore semantico; |
 | `role_to_dxf_layer` | func | `forge/adapters/dxf/layers.py:73` | Nome layer DXF per un ruolo. |
@@ -375,6 +381,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_split_params` | func | `forge/core/topology/noding.py:167` |  |
 | `split_to_files` | func | `forge/recipes.py:23` | Pipeline multi-pezzo + salvataggio su disco: heal → split → `.saveas()` per |
 | `splits_polygon` | func | `forge/core/geometry/lines.py:82` | La corda `start`-`end`, prolungata di `reach` ai due capi, divide `polygon` in due o più parti. |
+| `stadium` | func | `forge/core/geometry/build.py:57` | Stadio fuori tutto `length` × `width` (due semicerchi di raggio |
 | `_stadium` | func | `forge/core/geometry/shape.py:96` |  |
 | `structural_loops` | func | `forge/core/healing/steps.py:164` | I loop in cui ogni edge con ruolo deciso è strutturale: un solo edge non |
 | `structural_segments` | func | `forge/tools/rotate.py:73` | Segmenti nativi dei contorni strutturali di ogni cluster: sempre |
@@ -420,7 +427,11 @@ Every module-level name in the package, alphabetically. **Search here before wri
 
 ## Duplicate names
 
-No module-level name is defined in more than one module.
+Same name defined at module level in different modules. Not automatically a bug — but each one is either two implementations of one job (merge them) or two different jobs sharing a name (rename one).
+
+| name | defined in |
+|---|---|
+| `_place` | `forge/core/geometry/build.py:21` · `forge/core/healing/hierarchy.py:69` |
 
 ## Dependency rule
 
@@ -435,7 +446,7 @@ No module-level name is defined in more than one module.
 
 ### `forge/` (root)
 
-#### `forge/__init__.py` — 241 lines
+#### `forge/__init__.py` — 242 lines
 
 _forge_
 
@@ -559,14 +570,15 @@ _adapters/dxf/sanitize.py_
 
 No module-level function or class.
 
-#### `forge/adapters/geometry/loader.py` — 251 lines
+#### `forge/adapters/geometry/loader.py` — 270 lines
 
 _adapters/geometry/loader.py_
 
-- `_role_from(entity: Dict[str, Any]) -> str` — L39 — work_type stringa (stesso vocabolario di RoleRule.role) → ruolo. Un work_type
-- **class** `GeometryAdapter(ForgeAdapter)` — L47 — Traduce descrizioni geometriche pure (dict) in Edge del dominio forge.
-  - methods: `__init__`, `to_edges`, `source_context`, `_round`, `_line_edge`, `_arc_edge`, `_edge`, `_circle_edge`, `_spline_edge`, `_ellipse_edge`, `_polyline_edges`
-- `load_geometry(entities: List[Dict[str, Any]], tolerance: float=DEFAULT_NODE_TOLERANCE, source_path: str='') -> ForgeDocument` — L209 — Costruisce un ForgeDocument da una lista di descrizioni geometriche pure —
+- `_role_from(entity: Dict[str, Any]) -> str` — L41 — work_type stringa (stesso vocabolario di RoleRule.role) → ruolo. Un work_type
+- **class** `GeometryAdapter(ForgeAdapter)` — L49 — Traduce descrizioni geometriche pure (dict) in Edge del dominio forge.
+  - methods: `__init__`, `to_edges`, `source_context`, `_round`, `_line_edge`, `_arc_edge`, `_edge`, `_circle_edge`, `_spline_edge`, `_ellipse_edge`, `_polygon_edges`
+- `load_geometry(entities: List[Dict[str, Any]], tolerance: float=DEFAULT_NODE_TOLERANCE, source_path: str='') -> ForgeDocument` — L198 — Costruisce un ForgeDocument da una lista di descrizioni geometriche pure —
+- `load_segments(segments, tolerance: float=DEFAULT_NODE_TOLERANCE, role: str='unknown', source_path: str='') -> ForgeDocument` — L243 — Un ForgeDocument da segmenti di forge (`LineSeg`, `ArcSeg`, `CircleSeg`,
 
 #### `forge/adapters/pdf/__init__.py` — 0 lines
 
@@ -612,7 +624,7 @@ _Contratto base per gli adapter di input di Forge._
 - **class** `ForgeAdapter(ABC)` — L23
   - methods: `__init__`, `to_edges`, `source_context`
 
-#### `forge/core/geometry/__init__.py` — 34 lines
+#### `forge/core/geometry/__init__.py` — 37 lines
 
 _forge/core/geometry/__init__.py_
 
@@ -635,6 +647,17 @@ _forge/core/geometry/axis.py_
 - `spanning_lines(bounds: Bounds, items: Iterable, coverage: float=SIDE_COVERAGE, eps: float=AXIS_EPS, cluster_tolerance: float=CLUSTER_TOLERANCE) -> Tuple[List[float], List[float]]` — L199 — (ys, xs): le coordinate delle linee strettamente interne a `bounds` (bordo
 - `items_inside(bounds: Bounds, items: Iterable, margin: float=0.0) -> list` — L221 — I tratti con entrambi i capi dentro `bounds` allargato di `margin`, nell'ordine dato.
 - `axis_aligned_share(segments: Iterable, angle_tolerance: float) -> Optional[float]` — L231 — Frazione della lunghezza dei `LineSeg` di `segments` orizzontale o
+
+#### `forge/core/geometry/build.py` — 74 lines
+
+_forge/core/geometry/build.py_
+
+- `_place(points: Sequence[Point], center: Point, angle: float) -> List[Point]` — L21 — Ruota di `angle` gradi attorno all'origine e trasla in `center`.
+- `polygon(points: Sequence[Point]) -> List[LineSeg]` — L27 — Il poligono per i `points` dati, chiuso: l'ultimo lato torna al primo punto. Almeno 3 punti.
+- `rectangle(length: float, width: float, center: Point=(0.0, 0.0), angle: float=0.0) -> List[LineSeg]` — L37 — Rettangolo `length` × `width` centrato in `center`, lato lungo a `angle` gradi.
+- `regular_polygon(sides: int, radius: float, center: Point=(0.0, 0.0), angle: float=0.0) -> List[LineSeg]` — L43 — Poligono regolare di `sides` lati inscritto nel cerchio di raggio `radius`; il primo vertice a `angle` gradi.
+- `circle(radius: float, center: Point=(0.0, 0.0)) -> List[CircleSeg]` — L52 — Il cerchio di raggio `radius` in `center`.
+- `stadium(length: float, width: float, center: Point=(0.0, 0.0), angle: float=0.0) -> list` — L57 — Stadio fuori tutto `length` × `width` (due semicerchi di raggio
 
 #### `forge/core/geometry/intersections.py` — 130 lines
 
@@ -1246,13 +1269,14 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 | `forge/adapters/dxf/loader.py` | `forge.adapters.dxf.adapter` · `forge.adapters.dxf.annotation_extractor` · `forge.adapters.dxf.sanitize` · `forge.model.document` · `forge.model.role_rule` |
 | `forge/adapters/dxf/parser.py` | `forge.core.primitives` · `forge.core.primitives.segments` |
 | `forge/adapters/dxf/sanitize.py` | `forge.core.healing.normalizer` |
-| `forge/adapters/geometry/loader.py` | `forge.core.adapter_base` · `forge.core.geometry.measure` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.model.document` · `forge.model.role` |
+| `forge/adapters/geometry/loader.py` | `forge.core.adapter_base` · `forge.core.geometry.build` · `forge.core.geometry.measure` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.model.document` · `forge.model.role` |
 | `forge/adapters/pdf/graph_adapter.py` | `forge.core.geometry.measure` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.model.role` |
 | `forge/adapters/pdf/loader.py` | `forge.adapters.pdf.extractor_adapter` · `forge.adapters.pdf.graph_adapter` · `forge.adapters.pdf.sanitize` |
 | `forge/adapters/pdf/sanitize.py` | `forge.adapters.pdf.geometry_adapter` · `forge.core.geometry.measure` |
 | `forge/core/adapter_base.py` | `forge.core.geometry.measure` · `forge.core.topology.edge` · `forge.model.document` |
-| `forge/core/geometry/__init__.py` | `forge.core.geometry.axis` · `forge.core.geometry.lines` · `forge.core.geometry.shape` |
+| `forge/core/geometry/__init__.py` | `forge.core.geometry.axis` · `forge.core.geometry.build` · `forge.core.geometry.lines` · `forge.core.geometry.shape` |
 | `forge/core/geometry/axis.py` | `forge.core.primitives.segments` |
+| `forge/core/geometry/build.py` | `forge.core.primitives.segments` |
 | `forge/core/geometry/measure.py` | `forge.core.primitives.segments` |
 | `forge/core/geometry/points.py` | `forge.core.primitives.segments` |
 | `forge/core/geometry/shape.py` | `forge.core.geometry.measure` · `forge.core.primitives.segments` |

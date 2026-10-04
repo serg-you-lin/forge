@@ -2888,6 +2888,38 @@ not built: it would compute facts nobody asked for.
 Suites: forge 778, snapbend 462, snapdraw 80. `main` → **0.10.0** (breaking:
 names left the top level).
 
+### D96 — drawing with forge: shape builders and `load_segments`; the dict schema says `polygon`, not `polyline` ✅
+Federico, 4 October, on an example that drew two rectangles with
+`load_geometry([{"type": "polyline", ...}])`: "che cazzo c'entra polyline? 5
+mesi a tirare fuori il dxf dalla logica forge". The dict schema of
+`load_geometry` had kept DXF's word, and its arcs in degrees "by CAD
+convention".
+
+**Builders** in `forge/core/geometry/build.py`, public in `forge.geometry`:
+`polygon(points)`, `rectangle(length, width, center, angle)`,
+`regular_polygon(sides, radius, center, angle)`, `circle(radius, center)`,
+`stadium(length, width, center, angle)`. They return forge segments — a
+closed loop, the stadium with true `ArcSeg`s — and take the very measures
+`contour_shape` reports, so building and reading round-trip
+(`contour_shape(rectangle(80, 30, angle=20))` gives back 80, 30, 20). Rhombus,
+trapezoid and every other straight-sided shape are a `polygon`: no builder per
+quadrilateral. **`forge.load_segments(segments, tolerance, role)`** turns
+segments (or lists of them) into a `ForgeDocument`, so drawing with forge in
+hand never goes through dicts.
+
+Not shapely again: shapely's polygon has straight sides only (an arc becomes
+a chain of chords), forge keeps exact arcs to the machine. Area booleans and
+buffers stay shapely's, through `contour.polygon`.
+
+**The dict schema** stays — snapbend's calculation imports no forge (D43), so
+it needs a neutral format — but in forge's words: `polyline` becomes
+`polygon`, always closed (every use in forge, snapbend and snapdraw was
+closed). Arc angles are still degrees in the dict schema: left open in TODO,
+it reaches into snapbend's cone and section math.
+
+Suites: forge 787, snapbend 462, snapdraw 80. `main` → **0.11.0** (breaking:
+`"polyline"` is gone from `load_geometry`).
+
 ---
 
 ## Closed questions (history)

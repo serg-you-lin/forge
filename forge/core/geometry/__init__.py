@@ -6,6 +6,7 @@ Fatti con nomi geometrici — "cerchio", mai "foro": cosa significano lo
 decide il consumatore.
 
 Pubblici (qui sotto):
+    build.py          costruire forme come segmenti: polygon, rectangle, regular_polygon, circle, stadium
     shape.py          forma di un contorno chiuso; cerchi concentrici; archi attorno a un cerchio
     lines.py          una corda che divide un poligono; file di tratti collineari unite attraverso dei poligoni
     axis.py           rettangoli coperti da tratti, linee che li attraversano, quota sugli assi
@@ -17,6 +18,7 @@ Mattoni (si importano dal sottomodulo):
     lines.py, axis.py anche: distanza da una retta, collinearità, intervalli, tratti dentro un riquadro
 """
 
+from .build import polygon, rectangle, regular_polygon, circle, stadium
 from .shape import (
     contour_shape, ContourShape,
     concentric_groups, ConcentricGroup,
@@ -26,6 +28,7 @@ from .lines import splits_polygon, bridged_runs, CollinearRun
 from .axis import covered_rectangles, CoveredRectangle, spanning_lines, axis_aligned_share
 
 __all__ = [
+    "polygon", "rectangle", "regular_polygon", "circle", "stadium",
     "contour_shape", "ContourShape",
     "concentric_groups", "ConcentricGroup",
     "arcs_around", "ArcAround",

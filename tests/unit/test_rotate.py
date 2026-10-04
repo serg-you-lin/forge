@@ -32,7 +32,7 @@ def _tall_rect_with_diagonal():
     tests/data/try_for_rotation.dxf, costruita in memoria.
     """
     return forge.load_geometry([
-        {"type": "polyline", "points": [(0, 0), (100, 0), (100, 400), (0, 400)], "closed": True},
+        {"type": "polygon", "points": [(0, 0), (100, 0), (100, 400), (0, 400)]},
         {"type": "line", "start": (0.3, 50), "end": (99.7, 350)},
     ])
 
@@ -46,7 +46,7 @@ def _rect_with_hole():
     forge/tools/rotate.py su `hierarchy._make_inner`).
     """
     return forge.load_geometry([
-        {"type": "polyline", "points": [(0, 0), (100, 0), (100, 50), (0, 50)], "closed": True},
+        {"type": "polygon", "points": [(0, 0), (100, 0), (100, 50), (0, 50)]},
         {"type": "circle", "center": (50, 25), "radius": 5},
     ])
 

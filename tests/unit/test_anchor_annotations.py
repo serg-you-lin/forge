@@ -79,7 +79,7 @@ class TestAnchorAnnotations(unittest.TestCase):
 def _plate_with_holes():
     """Piastra 100x50 con due fori: Ø8 in (20, 25), Ø20 in (70, 25)."""
     return forge.load_geometry([
-        {"type": "polyline", "closed": True, "points": [(0, 0), (100, 0), (100, 50), (0, 50)]},
+        {"type": "polygon", "points": [(0, 0), (100, 0), (100, 50), (0, 50)]},
         {"type": "circle", "center": (20, 25), "radius": 4},
         {"type": "circle", "center": (70, 25), "radius": 10},
     ])

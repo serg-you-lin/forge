@@ -6,12 +6,12 @@ import unittest
 import forge
 from forge.core.geometry.axis import (axis_aligned_share, axis_lines, cluster_values, covered_rectangles,
                              interval_coverage, items_inside, merge_intervals, spanning_lines)
+from forge.core.geometry.build import polygon
 from forge.core.primitives.segments import ArcSeg, LineSeg
 
 
 def _rect(x0, y0, x1, y1):
-    return [LineSeg(start=(x0, y0), end=(x1, y0)), LineSeg(start=(x1, y0), end=(x1, y1)),
-            LineSeg(start=(x1, y1), end=(x0, y1)), LineSeg(start=(x0, y1), end=(x0, y0))]
+    return polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
 
 
 class TestIntervals(unittest.TestCase):

@@ -48,7 +48,7 @@ from .adapters.dxf.loader import load_dxf, document_from_msp
 # Resta importabile come forge.load_pdf per chi ci lavora sopra, ma non è in
 # __all__ e non è documentato: l'API può cambiare o sparire senza preavviso.
 from .adapters.pdf.loader import load_pdf
-from .adapters.geometry.loader import load_geometry
+from .adapters.geometry.loader import load_geometry, load_segments
 # simplify_points: SPERIMENTALE, fuori dal contratto pubblico (vedi MAP.md D33).
 # Ricostruisce linee/spline da una sequenza di punti densa e ordinata (spigoli
 # + refit) — generico, zero dipendenza da immagini. Resta importabile come
@@ -158,6 +158,7 @@ __all__ = [
     "load_dxf",
     "document_from_msp",
     "load_geometry",
+    "load_segments",
     # Validazione
     "validate",
     "validate_result",
