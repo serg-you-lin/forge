@@ -82,18 +82,20 @@ Full detail of every function in `docs/API.md`.
 
 ## Current status
 
-Branch: `main` — `contour_shape` (D68), `Dimension.references` (D69) on top of 0.8.0.
-Suite: 871 passed + 47 subtests as of the latest decision below (D69),
-golden all green.
+Branch: `main` — **0.9.0** (D90). Suite: 746 passed + 8 subtests, golden all
+green (geometry halves on `heal()` alone, D89).
+
+0.9.0 breaks the API on purpose: `heal_and_detect`, `detect_flat`,
+`describe_features`, `ALL_FEATURES` and `forge.tools.manufacturing_role` are
+gone — the process reading lives in `snapbend.flat` (D88, D90). forge reads
+structure; the overlay (`forge.DetectedFeatures`) is rendered by role and
+geometry only. Also since 0.8.0: `contour_shape` (D68), `Dimension.references`
+(D69), `allow_invalid` (D83), `to_text` (D84), `cluster.area` by depth parity
+(D89).
 
 Still genuinely open:
-- `detect_engrave` remains a no-op placeholder (D13) — deferred until
-  Federico gets to it.
-- Where the hole/countersink/threaded/engrave/marking role taxonomy should
-  live (raised alongside D37) — unresolved, needs a redesign (a `structural`
-  flag on the role itself instead of a fixed imported list), not a priority
-  yet.
 - A dashboard is designed as its own repo (D16) but not started.
+- Whether forge keeps load-time `role_rules` (Federico's notes below).
 
 Everything else that used to sit in an old to-do list here has been resolved
 or turned moot: the script rewrite and `to_view_model`/`to_svg` shipped, the
@@ -2738,6 +2740,10 @@ drawings in `snapbend/tests/data/flat/` (ignored by git). Output identical to
 the process goldens; the 8.5 mm "bend" on `quattro_sviluppi_un_foglio` part 2
 appears only in the `golden_multipli` pipeline, which loads without the
 `MARK → engrave` rule — same on this morning's code (TODO).
+
+Suite: 746 passed. `main` → **0.9.0** (minor bump: the public API lost
+`heal_and_detect`/`detect_flat`/`describe_features`/`ALL_FEATURES` — a
+breaking change, which before 1.0 moves the minor number).
 
 ---
 

@@ -56,7 +56,7 @@ scala, vedi la nota sotto: qui la frase originale era imprecisa.
 | **forge** | il pezzo fabbricato: geometria, topologia, feature (fori/pieghe/incisioni), conteggi (`cluster.summary`) | `dxf-forge`, maturo |
 | **snapdraw** | come il disegno è documentato: cornice, cartiglio, callout, raggruppamento viste | `snapdraw`, pre-alpha, un pezzo su cinque fatto |
 | **l'interprete** | nomenclatura privata del cliente, profili, riempimento buchi da ERP | non esiste ancora un repo — e forse non gli serve nemmeno, vedi `INTERPRETER.md` |
-| **bendly** | sviluppo lamiere — direzione opposta (da specifica a DXF), oracolo di verifica in futuro | `unfold_generator`, alpha, già in uso |
+| **snapbend** (ex bendly) | sviluppo lamiere — direzione opposta (da specifica a DXF), oracolo di verifica in futuro | `unfold_generator`, alpha, già in uso |
 
 > **Nota (Federico): "forse non gli serve nemmeno [un repo]" — non ho capito
 > cosa intendi.**
@@ -116,7 +116,8 @@ sotto, non l'ho toccata senza dirtelo.
    interessa — regex/pattern per material/thickness/qty/code. Non va nel
    repo pubblico (`forge-reports-drawing-never-guesses-no-shop-nomenclature`).
 3. **A questo punto hai già un primo Pippo-per-preventivi**, su forge da
-   solo: `heal_and_detect` → controllo quota (step 0, in snapdraw) →
+   solo: `heal` (+ `snapbend.flat.heal_and_detect` per fori e pieghe) →
+   controllo quota (step 0, in snapdraw) →
    `inject(data_injector=...)` → `cluster.summary` per la complessità.
    Nessun modulo nuovo, nessun repo nuovo.
 4. **(snapdraw)** cartiglio — quando ti serve leggere i metadati generali del

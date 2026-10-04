@@ -1,6 +1,6 @@
 # Smoother — da immagine a DXF pulito
 
-`Smoother` è un **repo a sé**, sorella di `snapdraw` e `bendly`, consumatore di
+`Smoother` è un **repo a sé**, sorella di `snapdraw` e `snapbend`, consumatore di
 `forge` via `pip install -e ../dxf-forge` — non un modulo dentro forge (memoria
 `forge-neutral-substrate-agent-layer-above`, `dont-bolt-adapters-onto-forge-for-external-projects`).
 
@@ -19,7 +19,7 @@ Quello che forge dà a Smoother è già pronto:
 - `forge.simplify_points()` (MAP.md D33) — ricostruzione linea/spline da una
   sequenza di punti densa, con soglie parametriche
 - `forge.load_geometry()` (MAP.md D32) — porta i contorni ricostruiti a
-  `ForgeDocument`, pronto per `heal()`/`heal_and_detect()`
+  `ForgeDocument`, pronto per `heal()`
 - `ForgeContour.depth`/`.parent` (MAP.md D34) — l'albero di contenimento, per
   sapere quali contorni sono "nipoti" (annidati a profondità ≥2) e di chi,
   necessario per le linguette
@@ -45,7 +45,7 @@ immagine (PNG/JPG)
 [2] contorni via cv2.findContours
    │
    ▼
-[A] forge.load_geometry("polyline")  → forge.heal_and_detect()
+[A] forge.load_geometry("polyline")  → forge.heal()
    │     → depth/parent per contorno (nessun fit necessario per questo)
    ▼
 [B] Smoother: linguette sui nipoti    → taglia un ponticello nei PUNTI GREZZI
@@ -56,7 +56,7 @@ immagine (PNG/JPG)
 [C] forge.simplify_points()          → LineSeg / SplineSeg per contorno
    │
    ▼
-forge.load_geometry("spline") → forge.heal_and_detect() → forge.to_dxf()
+forge.load_geometry("spline") → forge.heal() → forge.to_dxf()
 
 NON SO SE è CHIARO, IO CARICO L'IMMAGINEE HO GIà LA SPLINE OTTENUTA, RITOCCO A MATITA E LA SPLINE SI AGGIORNA VIA VIA. 
 ON DICO CHE DOBBIAMO AVERE LA POSSIBILITà DI RITOCCAE ANCHE GLI ENDPOINT DELLA LWPLINE, MA SAREBBE BELLO AVERE TUTTO NELL''INTERFACIA. SE è TROPPO, LASCIAMO STARE.

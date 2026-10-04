@@ -151,7 +151,7 @@ To mark geometry before `heal` excludes it from the graph: set `edge.role = forg
 
 ### Building your own role + palette (external-tool recipe)
 
-A tool built on top of forge (snapdraw, bendly, the interpreter, or your own)
+A tool built on top of forge (snapdraw, snapbend, the interpreter, or your own)
 defines its own roles the same way snapbend does for holes and bends — **no
 privileged path exists**, this is the only mechanism. Minimal pattern, one module in your own project:
 

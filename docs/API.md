@@ -248,7 +248,7 @@ doc = forge.load_geometry([
 ])
 ```
 
-Provato da un caso reale (`bendly`, che lo usa per portare gli sviluppi che
+Provato da un caso reale (`snapbend`, ex bendly, che lo usa per portare gli sviluppi che
 genera a `ForgeDocument` senza passare da un file — vedi MAP.md D32; il tipo
 `spline` viene da `smoother`, che vi passa l'output di `simplify_points()` —
 vedi MAP.md D35). Il tipo `ellipse` (MAP.md D45) esiste perché `EllipseSeg`

@@ -95,12 +95,9 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    Federico, 3 ottobre: "ora è davvero bruttino e limitato, non scalabile, fa
    cose che dovrebbe fare il consumer e non fa cose che dovrebbe fare lui".
    Già visto, da cui partire (l'analisi vera è il lavoro di quella sessione):
-   - **fa cose da consumer**: scrive a mano le tre collezioni di
-     `detect_flat()` (`holes`, `bending_lines`, `engrave_lines`) e il riassunto
-     di `describe_features` — vocabolario di lavorazione dentro un renderer di
-     forge, lo stesso privilegio che D70 ha tolto a `to_dxf`;
-   - **non fa cose sue**: le altre collezioni di `detected` sono solo contate,
-     mai disegnate (D70 per il view-model non c'è); archi e cerchi diventano
+   - ~~**fa cose da consumer**~~ e ~~le altre collezioni sono solo contate~~ —
+     risolti da D90: il view-model disegna ogni collezione di `detected` sotto
+     `features`, dal ruolo e dalla geometria, senza nomi privilegiati; archi e cerchi diventano
      punti (sotto);
    - **non scala**: su un foglio di viste pesa più del DXF di partenza.
    Il resto del punto, scritto prima, vale come parte di questo lavoro:
@@ -357,9 +354,9 @@ Resta aperto, discusso ma non affrontato:
   serve, ogni sottoclasse di `Annotation` (`Note`, `Dimension`, `Leader`, ...)
   ha campi diversi da ruotare, non è un'estensione da un rigo.
 - `cluster.detected`/`cluster.custom` non sono ruotati da `rotate_result` —
-  overlay a schema libero (D44), forge non sa cosa contengono. Se hai già
-  fatto `detect_flat()` prima di ruotare, quei dati restano nelle coordinate
-  vecchie — la guida è fare `detect_flat()` DOPO aver ruotato, non prima.
+  overlay a schema libero (D44), forge non sa cosa contengono. Se un
+  consumatore ha già fatto la sua detection prima di ruotare, quei dati restano
+  nelle coordinate vecchie — la detection va fatta DOPO aver ruotato.
 
 **Fitting ellisse da punti grezzi** (generalizzare `arc_fit_tolerance` in
 `core/primitives/fitting.py` a un fit ellittico 5-DOF, per Smoother):
@@ -562,14 +559,12 @@ eventualmente ML/vision.
 
 ## Cosa resta parcheggiato, non toccare senza motivo
 
-- ~~**Problema 2**~~ — risolto da D47 (predicato `is_structural` iniettato in
-  `heal()`, tassonomia di processo in `tools/manufacturing_role.py`).
-- **Idea "detect dovrebbe usare il suo stesso contratto"**: `detect_flat()` ha
-  accesso diretto/privilegiato alla tassonomia dei ruoli invece di passare
-  dagli stessi ganci (`role`) di un consumatore esterno come snapdraw. Appena
-  nata, non ancora messa a fuoco nemmeno da Federico. Collegata al problema
-  2 ma non identica — risolvere il problema 2 potrebbe aiutare come effetto
-  collaterale, non è garantito.
+- ~~**Problema 2**~~ — risolto da D47, poi la tassonomia di processo è uscita
+  da forge (D90, in snapbend).
+- ~~**Idea "detect dovrebbe usare il suo stesso contratto"**~~ — risolta da
+  D90: la detection sta in snapbend e usa gli stessi ganci di qualunque
+  consumatore (`role`, `register_role_style`, `heal(is_structural=...)`,
+  l'overlay).
 - **Meccanismo anti-rotazione pezzo staccato** (diverso da `tab`/`bridge_tabs`):
   un ponticello su un contorno singolo per evitare che un pezzo che si stacca
   giri libero e l'ugello ci sbatta contro — non collega un inner a un inner

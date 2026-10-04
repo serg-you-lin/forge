@@ -2,7 +2,7 @@
 
 `forge` è una libreria **deterministica** che ripulisce la matematica pesante e
 le rotture di coglioni di un file CAD, e restituisce **oggetti già pronti** su
-cui altri lavorano: un agente, un'altra libreria, un nester, bendly (lo
+cui altri lavorano: un agente, un'altra libreria, un nester, snapbend (ex bendly, lo
 sviluppo lamiere), un disegno interpretato.
 
 **Pippo** è il nome del traguardo: un agente capace di leggere un disegno
@@ -136,8 +136,8 @@ la geometria misurata" sia possibile.
 | `to_dxf` / `to_svg` / `save_json` | export fedele dal modello — il risultato consegnato, sia per preventivo che per produzione |
 
 Un consumatore può fermarsi a `heal` e fare tutto il resto a modo suo. Questo
-non è solo teoria: `heal()`/`detect_flat()` sono separati e pubblici apposta
-(MAP.md D2) — forge stesso è già una cassetta degli attrezzi, non una
+non è solo teoria: `heal()` e la lettura di processo sono separati (MAP.md
+D2; la detection oggi sta in snapbend, D90) — forge stesso è già una cassetta degli attrezzi, non una
 pipeline forzata. Un disegno vero non dice in anticipo se va splittato, se ha
 più viste, se ha una cornice: un agente lo scopre passo passo e sceglie lui
 quali strumenti chiamare, non esegue una sequenza scritta a tavolino per "il

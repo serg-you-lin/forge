@@ -12,7 +12,7 @@ Non fa parte di `forge`: `forge` resta neutro e deterministico e non decide cosa
 sia un cartiglio (memoria `forge-neutral-substrate-agent-layer-above`). snapdraw
 usa le primitive di forge per fare il riconoscimento, assegna i ruoli
 (`frame`, `title_block`) e li riporta giù a forge come input — esattamente il
-pattern di `role_rules` e di `detect_flat`.
+pattern di `role_rules` e della detection di snapbend.
 
 Nel disegno d'insieme, snapdraw è un **modulo dell'interprete** (`INTERPRETER.md`),
 sorella di `views.py` e dell'unfolder. È scorporato in un documento suo perché il
@@ -64,7 +64,7 @@ file CAD
 [3]  forge.heal(doc)                 → cluster puliti: frame e title_block fuori
    │                                   dal grafo → in trash_entities, non cluster
    ▼
-[4]  forge.detect_flat(result)            → feature dentro i cluster (forge)
+[4]  (detection del consumatore)      → feature dentro i cluster, su cluster.detected
    │
    ▼
 [5]  snapdraw.read_titleblock(doc)     → legge le celle del cartiglio → metadati
@@ -164,11 +164,11 @@ cartiglio.
 
 L'altra metà dell'interfaccia, rimasta scoperta finché non è servita davvero
 (caso reale: "raggruppamento viste", una vista in pianta con una flangia in
-rilievo — `heal` la esclude dal grafo per topologia, ma solo `detect_flat()` prova
-a dire cosa sia, indovinando sempre "piega"): **come snapdraw trova QUALI edge
+rilievo — `heal` la esclude dal grafo per topologia, ma solo `detect_flat()`
+(allora in forge, oggi in snapbend) provava a dire cosa sia, indovinando sempre "piega"): **come snapdraw trova QUALI edge
 sono ambigui**, prima ancora di decidere il ruolo. `forge.non_contour_candidates(doc)`
 espone lo stesso identico criterio topologico che `heal()` usa internamente
-(branching + centroide fuori dal hull, D49) senza passare da `detect_flat()` e
+(branching + centroide fuori dal hull, D49) senza passare dalla detection e
 senza che snapdraw si riscriva una sua versione del test — stessa fonte di
 verità, mai una seconda che possa divergere. snapdraw filtra quei candidati con
 la sua logica (es. incrocio multi-vista) e assegna `edge.role` solo a quelli
