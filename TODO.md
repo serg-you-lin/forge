@@ -81,9 +81,9 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    `measured_value`, `display_text` e `references`, il confronto col numero
    scritto si fa in snapdraw — da portare nel TODO di snapdraw.
    Lo script di produzione dello split (ex `scripts/13_…`) importa ancora
-   `extract_forge_texts`, che non esiste più: è rotto. **Spostato in snapdraw**
-   (Federico, 4 ottobre: `framer/scripts/`, non versionato), da riscrivere lì
-   su `inject(snap_distance=...)` — vedi il TODO di snapdraw.
+   `extract_forge_texts`, che non esiste più: è rotto. **Spostato in snapbend**
+   (Federico, 4 ottobre: alla radice, non versionato), da riscrivere lì
+   su `inject(snap_distance=...)` — vedi il TODO di snapbend.
 8. **Il rename `forge` → `snapforge`** — `naming_convention.md` (non tracciato) è
    un piano scritto e **mai eseguito**: nome umano `SnapForge`, identificatore
    tecnico `snapforge` per repo, cartella, package e `import`, stessa regola per
@@ -295,7 +295,7 @@ Due cose viste di passaggio, da decidere quando capita:
   l'audit non lo segnala, ma non e' neanche un nome inventato. La cartella non
   e' tracciata e nessun test la usa (il `la_104.DXF` che i test usano e' quello
   in `tests/examples/`), quindi non e' un problema di git: e' da guardare.
-- Lo script di produzione dello split (ex `scripts/13_…`, ora in snapdraw, non
+- Lo script di produzione dello split (ex `scripts/13_…`, ora in snapbend, non
   versionato) ha un percorso assoluto con un codice pezzo. Finche' resta non
   versionato non entra in git, ma se un giorno lo si porta alla nuova API quel
   percorso va via prima.
