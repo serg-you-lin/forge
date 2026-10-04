@@ -21,10 +21,9 @@ import ezdxf
 from ..model import ForgeResult, ForgeCluster
 from ..model.document import ForgeDocument
 from ..model.annotation import Annotation, Note, Dimension, Leader
-from ..tools.model.hole import HOLE_TYPE_COUNTERSINK, HOLE_TYPE_THREADED
-from ..model.role import ContourRole
+from ..model.role import ContourRole, feature_role
 from ..adapters.dxf.exporter import (
-    ensure_linetype, write_segments, write_open_segments, write_engrave_segments,
+    ensure_linetype, write_segments, write_open_segments, write_native_segments,
 )
 from ..adapters.dxf.layers import (
     LAYER_OUTER, LAYER_INNER,
@@ -136,24 +135,7 @@ def to_dxf(
                 styles=inner.styles,
             )
 
-        # Fori
-        for hole in cluster.features("holes"):
-            layer = _work_layer_for_hole(hole) or role_to_dxf_layer(hole.role)
-            write_segments(hole.segments, msp, layer, styles=hole.styles)
-
-        # Bending lines (geometria pura)
-        _write_bending_lines(msp, cluster)
-
-        # Engrave lines — geometria nativa, una entità DXF per primitiva
-        # (LINE / ARC / SPLINE / CIRCLE), mai LWPOLYLINE. `write_segments`
-        # (che chiude il contorno) emetteva una polilinea col solo punto di
-        # start di ogni segmento → in output si vedeva un punto al posto della
-        # linea.
-        for eng in cluster.features("engrave_lines"):
-            layer_name = role_to_dxf_layer("engrave")
-            write_engrave_segments(eng.segments, msp, layer_name, styles=eng.styles)
-
-        # Le altre collezioni attaccate da un consumatore (D70)
+        # L'overlay di un consumatore (fori, pieghe, ...: D70, D90)
         _write_attached_features(msp, cluster)
 
     if include_trash and result.trash_entities:
@@ -414,68 +396,35 @@ def _write_trash(
 # Helpers interni
 # ---------------------------------------------------------------------------
 
-def _work_layer_for_hole(hole) -> Optional[str]:
-    """
-    Restituisce il layer lavorazione corretto per fori speciali.
-    None = layer strutturale standard (quello di `hole.role`, di norma "hole").
-    """
-    if hole.hole_type == HOLE_TYPE_COUNTERSINK:
-        return role_to_dxf_layer("countersink")
-    if hole.hole_type == HOLE_TYPE_THREADED:
-        return role_to_dxf_layer("threaded_hole")
-    return None
-
-
-# Le collezioni che to_dxf scrive già a modo suo, sopra.
-_WRITTEN_COLLECTIONS = frozenset({"holes", "bending_lines", "engrave_lines"})
-
-
 def _write_attached_features(msp, cluster: ForgeCluster) -> None:
     """
-    Ogni altra collezione di `cluster.detected` (D70): un elemento con un
-    `role` si scrive sul layer del suo ruolo — i suoi `contours` (ognuno con
-    `segments`/`styles`) se è fatto di più contorni chiusi, altrimenti i suoi
-    `segments`. Un elemento senza ruolo o senza geometria si salta. Nessun
-    nome privilegiato: è lo stesso overlay di D44, visto dall'exporter.
+    Ogni collezione di `cluster.detected` (D70, D90): forge non sa cosa siano.
+    Di un elemento legge solo `role` e geometria — i suoi `contours`, se li
+    ha, altrimenti l'elemento stesso. Un contorno con `polygon` si scrive
+    chiuso, uno senza come una entità per primitiva. Il ruolo di un contorno
+    vince su quello dell'elemento solo se non è un ruolo del motore
+    (`feature_role`). Un elemento senza ruolo o senza segmenti si salta.
     """
     if cluster.detected is None:
         return
-    for name, items in cluster.detected.items():
-        if name in _WRITTEN_COLLECTIONS:
-            continue
+    for _name, items in cluster.detected.items():
         for item in items:
             role = getattr(item, "role", None)
-            if not role:
-                continue
-            contours = getattr(item, "contours", None) or [item]
+            contours = getattr(item, "contours", None)
+            if contours is None:
+                contours = [item]
             for contour in contours:
+                c_role = feature_role(contour, role)
                 segments = getattr(contour, "segments", None)
-                if segments:
-                    write_segments(segments, msp, role_to_dxf_layer(role), styles=getattr(contour, "styles", None))
-
-
-def _write_bending_lines(msp, cluster: ForgeCluster) -> None:
-    """
-    Materializza le bending lines da geometria pura (bl.geometry).
-    Deduplica per coordinate arrotondate.
-    """
-    layer_name = role_to_dxf_layer("bending")
-    seen: Set[tuple] = set()
-
-    for bl in cluster.features("bending_lines"):
-        if bl.geometry is None:
-            continue
-        coords = list(bl.geometry.coords)
-        if len(coords) < 2:
-            continue
-        start = coords[0]
-        end   = coords[-1]
-        key = (round(start[0], 6), round(start[1], 6),
-               round(end[0],   6), round(end[1],   6))
-        if key in seen:
-            continue
-        seen.add(key)
-        msp.add_line(start, end, dxfattribs={"layer": layer_name, "color": 256})
+                if not c_role or not segments:
+                    continue
+                layer = role_to_dxf_layer(c_role)
+                _ensure_layer(msp.doc, layer)
+                styles = getattr(contour, "styles", None)
+                if getattr(contour, "polygon", None) is not None:
+                    write_segments(segments, msp, layer, styles=styles)
+                else:
+                    write_native_segments(segments, msp, layer, styles=styles)
 
 
 def _remove_excluded_entities(msp, excluded_upper: Set[str]) -> None:

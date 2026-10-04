@@ -65,13 +65,12 @@ class TestIsland(unittest.TestCase):
 
     def test_foro_tagliato_dagli_assi_torna_cerchio(self):
         # gli assi spezzano il cerchio in 4 archi nella rete piana: il giro
-        # interno li ricompone, e detect lo vede come foro
+        # interno li ricompone in un cerchio solo
         edges = _poly((0, 0), (20, 0), (20, 20), (0, 20)) + [_circle((10, 10), 3)]
         edges += [_line((5, 10), (15, 10)), _line((10, 5), (10, 15))]
         result = forge.island(_doc(edges))
         inner = result.clusters[0].inners[0]
         self.assertEqual([type(s).__name__ for s in inner.segments], ["CircleSeg"])
-        self.assertEqual(len(forge.detect_flat(result, "holes").clusters[0].features("holes")), 1)
 
     def test_lato_tagliato_da_un_asse_torna_un_segmento(self):
         # un asse che esce dal contorno lo spezza: il contorno esterno resta di 4 lati

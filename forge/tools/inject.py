@@ -1,7 +1,7 @@
 """
 inject.py
 -----------
-Arricchimento CAM opzionale di un ForgeResult già prodotto da heal() (+ detect_flat()).
+Arricchimento CAM opzionale di un ForgeResult già prodotto da heal() (+ la lettura di un consumatore).
 
 Da MAP.md D8: il conteggio delle feature (fori per tipo, pieghe, incisioni) NON
 si fa più qui — è `cluster.summary`, una property derivata dal modello. `inject()`
@@ -16,7 +16,7 @@ applicato al volo qui perché `inject()` deve funzionare anche se quella fase no
 è stata chiamata.
 
 Contratto:
-    - Opera su un ForgeResult già prodotto da heal() (+ detect_flat()).
+    - Opera su un ForgeResult già prodotto da heal() (+ la lettura di un consumatore).
     - Lavora sul modello: non tocca ezdxf.
     - Il data_injector è opzionale — senza, inject() non fa nulla.
     - Muta result.clusters[i].custom in-place e ritorna il result.
@@ -24,7 +24,7 @@ Contratto:
 Flusso tipico:
 
     doc    = forge.load_dxf("pezzo.dxf", role_rules=forge.name_rules({"Bend": "bending"}))
-    result = forge.heal_and_detect(doc)
+    result = forge.heal(doc)
     forge.inject(result, data_injector=leggi_cartiglio)
     forge.save_json(result, ...)   # i conteggi vengono da cluster.summary
 """
@@ -44,7 +44,7 @@ def inject(result, data_injector: Optional[Callable] = None,
     Muta `result.clusters[i].custom` in-place e ritorna il `result`.
 
     Args:
-        result:        ForgeResult prodotto da heal() (+ detect_flat()).
+        result:        ForgeResult prodotto da heal() (+ la lettura di un consumatore).
         data_injector: `callable(ForgeCluster, list[str]) -> dict`. Riceve i testi
                        contenuti nell'outer della parte, restituisce i campi da
                        mettere in `cluster.custom` (materiale, spessore, codice, ...).

@@ -34,7 +34,7 @@ NAME_ROLES = {"Filettati": "threaded_hole", "Svasati": "countersink",
 # -------------------------------------------------------------------------
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
-result = forge.heal_and_detect(doc, label="P-1024", features="all")
+result = forge.heal(doc, label="P-1024")
 
 # Le annotazioni sono già nel modello, tipate e con posizione. `display_text` è
 # il testo pulito (MTEXT senza codici di formato, quote con il loro valore).

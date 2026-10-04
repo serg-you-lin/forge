@@ -7,7 +7,7 @@ API forge usate:
     validate_result    valida l'OUTPUT (heal la chiama già da solo; qui a scopo didattico)
 
 heal() fa il lavoro difficile: chiude i gap, trova i loop chiusi, costruisce
-l'albero di contenimento. NON classifica i fori (quello è detect_flat(), vedi 03):
+l'albero di contenimento. NON classifica i fori (lettura di processo: snapbend, MAP.md D88):
 consegna ForgeCluster(outer, inners=[ForgeContour...]).
 
     python 02_heal.py
@@ -45,7 +45,6 @@ for i, cluster in enumerate(result.clusters):
           f"perimetro={cluster.outer.polygon.exterior.length:.1f}")
     print(f"   bbox   : {tuple(round(v, 1) for v in cluster.bbox)}")
     print(f"   inners : {len(cluster.inners)}  (contorni interni, non ancora tipati come foro)")
-    print(f"   holes  : {len(cluster.features("holes"))}   (sempre 0 dopo heal — li fa detect)")
     for j, inner in enumerate(cluster.inners):
         print(f"      inner {j}: area={inner.polygon.area:.1f}")
 

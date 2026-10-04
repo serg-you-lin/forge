@@ -6,7 +6,7 @@ Per ogni file `X.dxf` della cartella produce `X_healed.dxf` + `X_healed.json`
 NELLA STESSA cartella. Salta i file già `*_healed` / `*_P<n>` / derivati.
 
 Non è una demo di una singola funzione: è lo strumento batch di sempre, sulla
-pipeline `load_dxf → heal_and_detect → to_dxf`.
+pipeline `load_dxf → heal → to_dxf`.
 
     python 11_batch_heal.py
     python 11_batch_heal.py path/alla/cartella
@@ -73,12 +73,11 @@ def main(argv):
                 tolerance=tol,
                 verbose=False,
             )
-            result = forge.heal_and_detect(
+            result = forge.heal(
                 doc,
                 tolerance=tol,
                 label=src.stem,
                 source_file=src.name,
-                features="all",
             )
             forge.save_json(result, str(out_json))
 

@@ -1,22 +1,16 @@
 """
-tools/model/detected_features.py
----------------------------------
-L'overlay di detect_flat() — vocabolario aperto per nome, stessa mossa già fatta
-per `role` in D27 (branch refactor/detect-overlay, MAP.md D44).
+forge/model/detected.py
+-----------------------
+L'overlay aperto di un cluster (MAP.md D44): `ForgeCluster.detected` è un
+`DetectedFeatures`, un contenitore che si scrive per nome. forge non ci scrive
+niente: lo riempie un consumatore (snapbend: fori, pieghe, incisioni; snapdraw;
+un riconoscitore custom), tutti con lo stesso meccanismo. `cluster.detected is
+None` finché nessuno ci ha scritto.
 
-`ForgeCluster.detected` non ha più campi fissi (`holes`/`bending_lines`/
-`engrave_lines`): è un `DetectedFeatures`, un contenitore che si scrive per
-nome — `detect_flat()` di forge e un tool esterno (un domani snapdraw, bendly, o un
-riconoscitore custom come "quante flange in su") usano lo stesso identico
-meccanismo, nessuno dei due è privilegiato nello schema. `cluster.detected is
-None` finché nessuno ci ha scritto: distingue "non ho ancora fatto detect" da
-"ho fatto detect e non c'è nessuna feature" — l'ambiguità che i 3 campi fissi
-di prima non permettevano di distinguere.
-
-`DetectedFeature` è il contratto minimo che un valore attaccato dovrebbe
-rispettare — non imposto a runtime (MAP.md D5: "convenzione, non gerarchia"),
-solo dichiarato per chi vuole tipizzare. `Hole`/`BendingLine`/`Engraving`/
-`ClassifiedEntity` lo soddisfano già così come sono.
+`DetectedFeature` è il contratto minimo dichiarato per chi vuole tipizzare —
+non imposto a runtime (MAP.md D5: "convenzione, non gerarchia"). I renderer
+leggono di ogni elemento solo `role` e la geometria (`contours`, oppure
+`segments` + `polygon`) — MAP.md D90.
 """
 
 from __future__ import annotations
@@ -28,10 +22,9 @@ from typing import Any, Dict, Iterable, List, Protocol, runtime_checkable
 @runtime_checkable
 class DetectedFeature(Protocol):
     """
-    Contratto minimo di un elemento attaccato a `DetectedFeatures`: la stessa
-    convenzione `source`/`confidence` che `Hole`/`BendingLine`/`Engraving`/
-    `ClassifiedEntity` portano già (MAP.md D5). Un `Protocol`, non un `ABC`:
-    un tipo custom lo soddisfa per forma, senza dover ereditare nulla di forge.
+    Contratto minimo di un elemento attaccato a `DetectedFeatures`: la
+    convenzione `source`/`confidence` (MAP.md D5). Un `Protocol`, non un
+    `ABC`: un tipo custom lo soddisfa per forma, senza ereditare nulla.
     """
     source: str
     confidence: float
@@ -40,8 +33,7 @@ class DetectedFeature(Protocol):
 @dataclass
 class DetectedFeatures:
     """
-    Contenitore aperto per nome. `detect_flat()` scrive sotto `holes`/
-    `bending_lines`/`engrave_lines`; chiunque altro scrive sotto il nome che
+    Contenitore aperto per nome: ogni consumatore scrive sotto il nome che
     vuole, con lo stesso metodo.
     """
     _store: Dict[str, List[Any]] = field(default_factory=dict)
@@ -67,8 +59,7 @@ class DetectedFeatures:
 
     def __getattr__(self, name: str) -> List[Any]:
         # Scatta solo per attributi assenti: `_store` è un campo vero del
-        # dataclass, mai in loop. `cluster.detected.holes`,
-        # `cluster.detected.flange_view_hint` — stesso accesso per entrambi.
+        # dataclass, mai in loop. `cluster.detected.<nome>` per qualunque nome.
         store = self.__dict__.get("_store", {})
         try:
             return store[name]

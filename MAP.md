@@ -2580,7 +2580,7 @@ in D86 and four 2-statement coincidences (reading kind+layer of an entity;
 in `io/dxf`; the lower-cased ignore set in the DXF loader) — extracting those
 would be ceremony, not reuse.
 
-### D88 — what stays in forge when process detection leaves ⏳
+### D88 — what stays in forge when process detection leaves ✅
 Moving `detect_flat()`'s process knowledge out of forge (TODO item 5) was
 listed as blocked by "Problem 2"; it was not — D47 had already solved it
 (`heal(is_structural=...)` takes the caller's predicate, `ContourRole` is only
@@ -2625,8 +2625,7 @@ radius — the development is the same computation (neutral fibre, radius,
 angle) — so "bend" covers it; the cutting file comes out of every process and
 names nothing specific. `snapcut` and `snapsheet` rejected.
 
-Not executed yet. The cost and the golden plan (transform the 48 JSON, do not
-regenerate them) are in the "Process detection" note below.
+Executed the same day: D89 (goldens), D90 (the move and the renderers).
 
 ### D89 — the golden split in two halves; `cluster.area` alternates sign with depth ✅
 First step of D88. The 48 golden JSON under `tests/data/golden/json/` are
@@ -2679,6 +2678,66 @@ goldens stored nothing process-specific; their test and generator now use
 Still assuming forge finds holes and bends, for the next steps of D88:
 `test_layers`, `test_writeback`, the integration tests and the recipes
 (`heal_and_detect`, `split_to_files`, `inspect`).
+
+### D90 — detection moved to snapbend; forge renders the overlay by role only ✅
+Federico, 4 October: "migra quello che c'è da migrare in snapbend". Done in one
+go, both repos green (forge 746, snapbend 464 — including three snapbend tests
+that were already broken on `cluster.bending_lines`, the pre-D44 API).
+
+**What moved** to `snapbend/flat/` (a subpackage: the rest of snapbend still
+imports nothing from forge): `detect.py` (`detect_flat`, `describe_features`,
+`ALL_FEATURES`), `holes.py` (ex `hole_detector`), `roles.py` (ex
+`manufacturing_role`: the six roles, `is_structural`, layer names, the
+`register_role_style` calls), `thresholds.py`, `model/` (`Hole`, `BendingLine`,
+`Engraving`, `ClassifiedEntity`), `pipeline.py` (`heal_and_detect`). Point 1 of
+D88 turned out to have nothing left to keep: the "bare" lane of `detect_flat`
+works only on the six process roles; what is neutral — assigning a role at load
+with `role_rules` — was already in the loader. The tests that read holes, bends
+or engraving moved with it (`snapbend/tests/flat/`, the `process/` golden
+halves, `generate_golden_process.py`), with the drawings they need copied into
+`snapbend/tests/data/flat/` (all already in forge's git, anonymized). Tests that
+only used detection in passing stay in forge on `heal()` alone; one of them ran
+`detect_flat` on `island()` output, which the working agreement forbids — that
+line is gone.
+
+**What forge keeps, made generic.** forge still owns the open overlay
+(`DetectedFeatures`, moved from `tools/model/` to `model/detected.py`, exported
+as `forge.DetectedFeatures`), but no longer knows any name in it:
+
+- **Renderers read `role` + geometry, never a collection name.** `to_dxf` has
+  one writer for all of `cluster.detected` (the D70 one, widened): an item's
+  `contours` if it has them, else the item; a contour with `polygon` is written
+  closed (LWPOLYLINE/CIRCLE), without as one native entity per primitive
+  (`write_native_segments`, ex `write_engrave_segments`). `to_view_model` puts
+  the overlay under `cluster["features"][name]`, one entry per contour plus the
+  scalar fields of the item's `to_dict()`; `to_svg` draws a true circle for any
+  entry with `center` + `diameter` (`holes_as_circles` → `true_circles`).
+  `inspect` prints the overlay generically. The JSON export loses
+  `describe_features` and the "lavorazioni" fields of the default schema (a
+  consumer adds them with `extra_metadata`/`set_schema`).
+- **Which role a contour is drawn with** (`model.role.feature_role`): its own if
+  it is a consumer role, the item's if it carries only an engine role. Why: a
+  consumer may hand forge's own `ForgeContour`s as contours (their `inner` says
+  where the geometry came from, not what it means), while snapbend's
+  countersink must land on the countersink layer though the item's role is
+  `hole` (a golden value).
+- **A void read by a consumer still counts in the area.** `ForgeCluster.area`
+  and `polygon_with_holes` subtracted `features("holes")` by name; now they
+  subtract `overlay_voids` — items with `is_void = True` and a `polygon`. A hole
+  is a region with no material, whoever names it; snapbend's `Hole` says
+  `is_void`. The process goldens (area after detection) are unchanged.
+
+`heal_and_detect` leaves forge's API; `split_to_files` keeps its place without
+the detection step (and gains `is_structural`, passed to `heal`). Scripts
+`03_detect.py`/`04_heal_and_detect.py` removed (in git history). snapbend's own
+code (`to_forge_result`, the demo) calls `snapbend.flat.heal_and_detect`.
+
+To look at it by eye (Federico): a throwaway script runs the detection on every
+golden drawing and writes `<name>_detect.dxf` into `detected/` next to the
+drawings in `snapbend/tests/data/flat/` (ignored by git). Output identical to
+the process goldens; the 8.5 mm "bend" on `quattro_sviluppi_un_foglio` part 2
+appears only in the `golden_multipli` pipeline, which loads without the
+`MARK → engrave` rule — same on this morning's code (TODO).
 
 ---
 
@@ -2901,28 +2960,7 @@ Still assuming forge finds holes and bends, for the next steps of D88:
   names under `tests/examples/golden*` (part numbers); `.gitignore` of
   `tests/examples` with force-added exceptions — make it explicit which
   folders are in and why.
-- **Process detection → snapbend (direction, not a decision — Federico).**
-  Holes (the 32.1 mm drill threshold, countersink/threaded), bends and
-  engraving in `detect_flat` are manufacturing knowledge, not geometry: they
-  belong to snapbend (ex bendly), which already consumes forge through
-  `heal_and_detect`. forge would keep the geometric predicates
-  (`circular_geometry`, `NonContourEdgeDetector`, diameter, orientation) and
-  the open overlay `cluster.detected` (D44), where snapbend writes its
-  features like any external tool. Still to settle: the bare `detect_flat`
-  lane (load-time `role_rules` + topology cleanup) is not sheet-metal and may
-  stay in forge under another name. Cost: `heal_and_detect`,
-  `split_to_files`, writeback, the hole/bending output layers of `to_dxf` and
-  the golden suite (`features="all"`) all assume forge finds holes and bends.
-  Golden plan (not a redo): a script transforms the 48 existing JSON instead
-  of regenerating them — forge's golden keeps geometry (`cluster_count`,
-  areas, perimeters, `outer_wkt`, holes + inners merged as inner contours;
-  `inner_perimeter_mm` already sums both), snapbend's golden takes holes,
-  bends, engraving and `summary`. Same approved values, only moved: forge
-  matching the transformed golden after the move proves nothing broke. The
-  `to_dxf` round-trip test stays in forge (without detection holes come out
-  as inner contours, bends as non-structural edges); it imports
-  `is_structural` from `manufacturing_role`, which must become a neutral,
-  caller-supplied criterion.
+- ~~**Process detection → snapbend**~~ — done: D88, D89, D90.
 - `inspect_file`/`inspect_dxf` (level 1) are hardcoded to DXF. Fine for now —
   it's already the only real format adapter forge has. `inspect_document`
   (level 2) already works on any `ForgeDocument`, including geometry from

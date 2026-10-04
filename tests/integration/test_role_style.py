@@ -17,16 +17,15 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge import RoleStyle
+from forge import RoleStyle, register_role_style
 from forge.adapters.dxf.layers import TRASH_LAYER
-from forge.tools.manufacturing_role import LAYER_HOLE
 
 
 def _rect_with_hole_and_frame():
     """
-    Rettangolo 100x50 con un foro (per il ruolo 'hole', noto a forge) + una
-    LINE su layer FRAME fuori dal rettangolo (diventa trash col ruolo
-    consumatore 'frame', mai visto da forge prima d'ora — D31).
+    Rettangolo 100x50 con un cerchio dentro + una LINE su layer STAMP dentro
+    (ruolo 'stamp_d90', registrato dai test) + una LINE su layer FRAME fuori
+    (ruolo consumatore 'frame', mai registrato — D31).
     """
     doc = ezdxf.new('R2010')
     msp = doc.modelspace()
@@ -37,34 +36,31 @@ def _rect_with_hole_and_frame():
     msp.add_line((0, 50), (0, 0))
     msp.add_circle((50, 25), 5)
 
+    msp.add_line((10, 10), (30, 10), dxfattribs={'layer': 'STAMP'})
     msp.add_line((200, 200), (220, 200), dxfattribs={'layer': 'FRAME'})
 
-    doc_in = forge.document_from_msp(msp, role_rules=forge.name_rules({'FRAME': 'frame'}))
+    doc_in = forge.document_from_msp(
+        msp, role_rules=forge.name_rules({'FRAME': 'frame', 'STAMP': 'stamp_d90'}))
     result = forge.heal(doc_in, tolerance=0.05)
-    forge.detect_flat(result, features="all")
     return result, doc_in
 
 
-class TestRoleStyleDefaultUnchanged(unittest.TestCase):
+class TestRoleStyleRegisteredRole(unittest.TestCase):
     """
-    Senza `role_styles=` passato a to_dxf(), il comportamento visivo di
-    "hole" è identico a prima di D37 (stesso magenta) — ma il MECCANISMO è
-    cambiato ("roles out of core"): non è più una voce hardcoded nella
-    palette del motore, è `tools.manufacturing_role` che si registra il
-    proprio colore con `register_role_style`, lo stesso meccanismo pubblico
-    che userebbe un consumatore esterno. Per questo "hole" HA un
-    `true_color` di default (registrato), mentre un ruolo di consumatore
-    mai registrato (`frame`, qui) non ce l'ha.
+    Un ruolo di consumatore registrato con `register_role_style` ha il suo
+    colore sul layer col nome registrato; uno mai registrato (`frame`) prende
+    il grigio consumatore, senza `true_color` (D31, D37).
     """
 
     def setUp(self):
+        register_role_style("stamp_d90", RoleStyle(color=(255, 0, 255), layer_name="StampD90"))
         self.result, self.doc_in = _rect_with_hole_and_frame()
         self.doc_out = forge.to_dxf(self.result, self.doc_in)
 
-    def test_001_hole_layer_has_registered_true_color(self):
-        layer = self.doc_out.layers.get(LAYER_HOLE)
+    def test_001_registered_layer_has_true_color(self):
+        layer = self.doc_out.layers.get("StampD90")
         self.assertTrue(layer.dxf.hasattr("true_color"))
-        self.assertEqual(layer.rgb, (255, 0, 255))  # magenta, registrato da manufacturing_role
+        self.assertEqual(layer.rgb, (255, 0, 255))
 
     def test_002_frame_layer_created_with_consumer_color(self):
         # Layer creato al volo col nome dello slug (D31), colore di default
@@ -75,17 +71,18 @@ class TestRoleStyleDefaultUnchanged(unittest.TestCase):
 
 
 class TestRoleStyleColorOverride(unittest.TestCase):
-    """role_styles fa override del colore di un ruolo noto a forge."""
+    """role_styles fa override del colore di un ruolo registrato."""
 
     def setUp(self):
+        register_role_style("stamp_d90", RoleStyle(color=(255, 0, 255), layer_name="StampD90"))
         self.result, self.doc_in = _rect_with_hole_and_frame()
         self.doc_out = forge.to_dxf(
             self.result, self.doc_in,
-            role_styles={"hole": RoleStyle(color=(0, 0, 0))},
+            role_styles={"stamp_d90": RoleStyle(color=(0, 0, 0))},
         )
 
-    def test_001_hole_layer_true_color_is_black(self):
-        layer = self.doc_out.layers.get(LAYER_HOLE)
+    def test_001_registered_layer_true_color_is_black(self):
+        layer = self.doc_out.layers.get("StampD90")
         self.assertEqual(layer.rgb, (0, 0, 0))
 
     def test_002_other_layers_untouched(self):

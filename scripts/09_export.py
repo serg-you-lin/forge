@@ -32,7 +32,7 @@ os.makedirs(OUTDIR, exist_ok=True)
 base = os.path.splitext(os.path.basename(INPUT))[0]
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
-result = forge.heal_and_detect(doc, label=base, source_file=base, features="all")
+result = forge.heal(doc, label=base, source_file=base)
 
 # JSON su stdout
 print(forge.to_json(result, indent=2)[:600], "...\n")

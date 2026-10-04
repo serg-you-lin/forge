@@ -1,8 +1,0 @@
-{
-  "parent_file": "two_parts.dxf",
-  "part_index": 0,
-  "area_mm2": 8000.0,
-  "outer_wkt": "POLYGON ((120 0, 220 0, 220 80, 120 80, 120 0))",
-  "inners_layers": [],
-  "summary": {}
-}

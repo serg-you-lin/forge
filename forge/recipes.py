@@ -1,13 +1,12 @@
 """
 forge/recipes.py
 ----------------
-Le scorciatoie della "via del 90%": mettono in fila i passi che stanno altrove
-(``core.heal``, ``tools.detect``, ``io.dxf``) per il caller che non ha bisogno
-di orchestrarli a mano.
+Le scorciatoie: mettono in fila i passi che stanno altrove (``core.heal``,
+``io.dxf``) per il caller che non ha bisogno di orchestrarli a mano.
 
-Non c'è logica nuova qui — solo l'ordine comodo. Un consumatore che vuole solo
-la topologia si ferma a ``forge.heal``; uno che compone i suoi passi usa
-``detect`` / ``split`` direttamente.
+Non c'è logica nuova qui — solo l'ordine comodo. Una lettura di processo
+(fori, pieghe: snapbend) si fa sul result prima di ``split``, non qui
+(MAP.md D88).
 """
 
 from __future__ import annotations
@@ -15,50 +14,10 @@ from __future__ import annotations
 import os
 
 from .core.heal import heal
-from .tools.detect import detect_flat
-from .tools.manufacturing_role import is_structural as _manufacturing_is_structural
 from .io.dxf import split, cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
-from .tools.thresholds import HOLE_DIAMETER_THRESHOLD
 from .adapters.dxf.layers import LAYER_ANNOTATION
 from .model.result import ForgeResult
 from .model.document import ForgeDocument
-
-
-def heal_and_detect(doc: ForgeDocument, tolerance=None, label="", source_file="",
-                    features="all",
-                    max_drill_diameter: float = HOLE_DIAMETER_THRESHOLD,
-                    bending_tolerance: float = 1.0,
-                    engrave_tolerance: float = 1.0) -> ForgeResult:
-    """
-    heal() + detect_flat() in un colpo solo — la via del 90% dei chiamanti.
-
-    Equivale a:
-        result = forge.heal(doc, tolerance=..., label=..., source_file=...)
-        if result.is_valid and result.clusters:
-            forge.detect_flat(result, features="all", ...)
-
-    A differenza di `detect_flat()` nudo (che fa solo la lane dei ruoli assegnati al load + pulizia
-    topologia), qui `features` è `"all"` di default: fori, pieghe e incisioni
-    vengono classificati. Passare `features=None` per la sola topologia pulita.
-
-    `detect_flat()` viene saltato se `heal()` non produce cluster validi (il result
-    torna comunque, con `is_valid=False` e gli errori popolati). I parametri
-    `features` / `max_drill_diameter` / `*_tolerance` sono quelli di `detect_flat()`.
-
-    Restano disponibili `heal()` e `detect_flat()` separati: un renderer o un
-    nesting tool possono volere la sola topologia.
-    """
-    result = heal(doc, tolerance=tolerance, label=label, source_file=source_file,
-                  is_structural=_manufacturing_is_structural)
-
-    if result.is_valid and result.clusters:
-        detect_flat(result,
-               features=features,
-               max_drill_diameter=max_drill_diameter,
-               bending_tolerance=bending_tolerance,
-               engrave_tolerance=engrave_tolerance)
-
-    return result
 
 
 def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
@@ -66,21 +25,20 @@ def split_to_files(doc: ForgeDocument, output_folder, label="", source_file="",
                    include_annotations=True,
                    min_area=DEFAULT_MIN_CLUSTER_AREA,
                    exclude_types=None,
-                   annotation_layer=LAYER_ANNOTATION) -> ForgeResult:
+                   annotation_layer=LAYER_ANNOTATION,
+                   is_structural=None) -> ForgeResult:
     """
-    Pipeline completa multi-pezzo + salvataggio su disco.
-
-    heal → detect → split → `.saveas()` per cluster. È l'unica funzione che
-    tocca il filesystem: `split()` resta puro.
+    Pipeline multi-pezzo + salvataggio su disco: heal → split → `.saveas()` per
+    cluster. È l'unica funzione che tocca il filesystem: `split()` resta puro.
     Il nome file è `f"{cluster.label}.dxf"` (cluster.label lo assegna `namer`).
+    `is_structural` passa a `heal()` (vedi lì).
     """
     result = heal(doc, tolerance=tolerance, label=label, source_file=source_file,
-                  is_structural=_manufacturing_is_structural)
+                  is_structural=is_structural)
 
     if not result.is_valid or not result.clusters:
         return result
 
-    detect_flat(result, features="all")
     drawings = split(result, doc, namer=namer,
                      include_annotations=include_annotations,
                      min_area=min_area, exclude_types=exclude_types,

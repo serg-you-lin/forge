@@ -12,8 +12,8 @@ un adapter DXF davanti. Prende geometria 2D rumorosa e produce un modello
 geometrico consistente e senza perdite: contorni chiusi, gerarchia di
 contenimento, annotazioni, e un overlay aperto per le feature rilevate. Non sa
 cosa sia la lamiera né alcun processo: leggere un contorno come "foro" o una linea
-come "piega" è un'interpretazione — `detect_flat()` ne è una, opzionale, e il
-resto sta nei consumatori (`snapbend`, `snapdraw`).
+come "piega" è un'interpretazione, e sta nei consumatori (`snapbend` per fori,
+pieghe e incisioni; `snapdraw` per la notazione del disegno — MAP.md D88).
 
 Il DXF è solo il primo formato di ingresso implementato. Il core non sa cosa sia
 un DXF, né cosa sia un arco o una spline in quanto entità di CAD — lavora su
@@ -78,7 +78,8 @@ forge/
 │   ├── document.py   ForgeDocument
 │   ├── result.py     ForgeResult
 │   ├── cluster.py    ForgeCluster — il contenitore, `detected` è l'overlay
-│   │                 di detect_flat() (vocabolario aperto per nome — D44)
+│   │                 di un consumatore (vocabolario aperto per nome — D44)
+│   ├── detected.py   DetectedFeatures — il contenitore dell'overlay (D44, D90)
 │   ├── feature.py    Feature → ClosedFeature / OpenFeature
 │   ├── contour.py
 │   ├── annotation.py Annotation → Note / Dimension / Leader
@@ -87,23 +88,13 @@ forge/
 │                      (D47, "roles out of core")
 │
 ├── tools/        STADI opzionali su un ForgeDocument/ForgeResult (il caller sceglie quali e in che ordine)
-│   ├── manufacturing_role.py  hole/countersink/threaded_hole/bending/
-│   │                     engrave/marking — vocabolario di detect, MAI
-│   │                     importato da core/model (D47). `is_structural()`
-│   │                     è quello che heal_and_detect() inietta in
-│   │                     `heal(is_structural=...)`
-│   ├── detect.py         detect_flat() / describe_features() — classifica le
-│   │                     feature nei cluster (`cluster.detected`)
-│   ├── hole_detector.py  euristiche filettato / svasatura usate da detect_flat()
 │   ├── anchor.py         anchor_annotations()   — àncora le annotazioni ai cluster
 │   ├── inject.py         inject()                — testi del cluster → data_injector esterno
 │   ├── non_contour.py    non_contour_candidates() — stesso criterio non-contorno
 │   │                     di heal() (D49), esposto per decidere `edge.role`
 │   │                     PRIMA di heal() (D55) — lavora su ForgeDocument
-│   ├── thresholds.py     soglie di detect_flat() (HOLE_DIAMETER_THRESHOLD...)
-│   └── model/            Hole / BendingLine / Engraving / ClassifiedEntity /
-│                         DetectedFeatures — output di detect_flat(), non
-│                         geometria di heal() (D44): non in `model/` apposta
+│   ├── rotate.py         rotate_*() (sperimentale, D46)
+│   └── tabs.py           bridge_tabs() (D40)
 │
 ├── io/           RENDERER del modello + serializzazione
 │   ├── dxf.py        to_dxf(), split()       (ex pipeline/write.py)
@@ -113,7 +104,7 @@ forge/
 │   └── exporter.py   save_json / save_xml / XDATA
 │
 ├── rules/        REGOLE di dominio                     (palette, schema, validazione)
-├── recipes.py    heal_and_detect(), split_to_files()  — la via del 90%
+├── recipes.py    split_to_files()  — heal + split + salvataggio
 └── inspect.py    strumento di ispezione a 3 livelli
 ```
 
@@ -179,8 +170,8 @@ consumatore (snapdraw) compone gli stessi passi come gli serve.
    entrambi gli endpoint su nodi di branching (grado > 2) e il centroide fuori
    dal convex hull della loro componente sono candidati a non essere contorno
    (D49) — escono dal grafo per non rompere la ricerca dei loop. `heal` non
-   decide cosa siano: resta a `detect_flat()` (che li interpreta come piega) o a un
-   altro consumatore che preferisce decidere da sé
+   decide cosa siano: resta a un consumatore (snapbend li interpreta come
+   piega; snapdraw può decidere da sé)
 5. **ricerca loop** (`find_loops` → `LoopSearch`, che dice quale gradino ha
    chiuso), con una scala di strategie sempre meno esatte:
    - grafo esatto (uguaglianza delle tuple arrotondate)
@@ -231,35 +222,19 @@ come contorno. `island` parte da un fatto globale, cosa sta fuori:
    interno della più esterna che la contiene
 
 Stesso contratto di `heal`: un `ForgeResult`, un `ForgeCluster` per isola, e
-`detect_flat` / `to_dxf` / `split` non sanno quale lettura l'ha prodotto. Cosa sia
+`to_dxf` / `split` non sanno quale lettura l'ha prodotto. Cosa sia
 un'isola (vista, pezzo, cornice) lo decide chi chiama (D21). `island` non
 chiama mai `heal`.
 
-### 3. `detect_flat` (semantica)
+### 3. la lettura di un consumatore (fuori da forge)
 
-Classifica le feature dentro le parti. **Muta il `result` in-place e lo ritorna.**
-`heal_and_detect(doc)` fa il passo 2 e il passo 3 insieme (con `features="all"`);
-restano separati perché un renderer o un nesting tool possono volere la sola
-topologia.
-
-`detect_flat(result)` nudo fa solo la lane dei ruoli assegnati al load + pulizia topologia. Le lane
-geometriche sono opt-in: `detect_flat(result, "holes" | "bending" | "engrave" | "all")`.
-
-- **fori** (`features="holes"`) → un contorno interno circolare con Ø `<
-  max_drill_diameter` (parametro di processo, default 32.1 mm) viene promosso a
-  `Hole`; sopra soglia resta `ForgeContour`. Tipo: `plain` / `countersink`
-  (cerchio piccolo concentrico dentro cerchio grande) / `threaded` (arco a ~270°
-  concentrico, raggio di poco maggiore, rapporto ≤ 1.6).
-- **pieghe** → una traccia da bordo a bordo dell'outer, con il punto medio dentro
-  il poligono, è una `BendingLine` con il suo angolo.
-- **incisioni** → le tracce con ruolo `engrave` finiscono in
-  `cluster.features("engrave_lines")` se contenute in una parte, altrimenti
-  restano in trash.
-
-Ogni feature trovata si scrive su `cluster.detected` (D44), non su campi
-fissi del cluster — `cluster.features(name)` legge una collezione per nome,
-`[]` se `detected` è `None` o quel nome non è stato scritto. Vedi "Due
-concetti che tornano ovunque" più sotto.
+Fori, pieghe, incisioni sono una lettura di processo: le fa snapbend
+(`snapbend.flat.detect_flat`, MAP.md D88) sopra il `ForgeResult`, e le attacca
+a `cluster.detected` (D44) — non a campi fissi del cluster. forge non conosce
+nessun nome dell'overlay: `cluster.features(name)` legge una collezione per
+nome, `[]` se `detected` è `None` o quel nome non è stato scritto. I renderer
+disegnano ogni elemento dal suo `role` e dalla sua geometria (D90), e l'area
+netta toglie gli elementi che si dichiarano vuoti del pezzo (`is_void`).
 
 ### 4. render — `to_dxf` / `split`
 
@@ -269,8 +244,9 @@ segmenti puri del modello, ognuno sul suo layer forge (vedi tabella in
 
 - **le spline** si riemettono come `SPLINE` native, ricostruite da control points
   / knots / weights / degree / tangenti — **mai discretizzate a polilinea**
-- **le incisioni** si emettono come N entità native (`LINE`/`ARC`/`SPLINE`/
-  `CIRCLE`), **mai come `LWPOLYLINE`** — un'incisione è N segmenti separati
+- **l'overlay**: un contorno con `polygon` si scrive chiuso, uno senza come N
+  entità native (`LINE`/`ARC`/`SPLINE`/`CIRCLE`), **mai come `LWPOLYLINE`**
+  (D90) — così esce un'incisione di snapbend
 - **il trash** si materializza sempre sul layer `Trash`
 - **le annotazioni** si riscrivono tutte; in `split` ognuna va nel file della
   parte che la contiene (o della più vicina)
@@ -280,9 +256,8 @@ segmenti puri del modello, ognuno sul suo layer forge (vedi tabella in
 `save_json` / `save_xml` scrivono i metadati per parte secondo lo schema
 (`rules/metadata_schema.py`), fondendo tre livelli (D44): `cluster.summary`
 (conteggio grezzo, generico, sempre disponibile — `{nome}_count` per ogni
-collezione attaccata a `cluster.detected`), `tools.detect.describe_features()`
-(il dettaglio ricco che solo forge sa dare sui suoi tipi noti — fori per tipo,
-pieghe raggruppate, lunghezza incisioni), ed `extra`/`extra_metadata` — un
+collezione attaccata a `cluster.detected`), `cluster.custom`, ed
+`extra`/`extra_metadata` — un
 dizionario o una callback esplicita del chiamante (stesso idioma di
 `data_injector`) per una detection propria che forge non può conoscere.
 `inject` serve solo a passare i testi dentro l'outer a un `data_injector`
@@ -309,7 +284,8 @@ alza `tolerance`.
 
 ### Il doppio binario delle feature (role_rules / inferenza)
 
-Ogni feature manifatturiera è raggiungibile per **due strade**:
+Ogni feature di un consumatore è raggiungibile per **due strade** (oggi la
+seconda è di snapbend, D88):
 
 - **`role_rules`**: il chiamante dice "le linee chiamate `Piega` sono pieghe",
   o "le tratteggiate con `constr` nel nome sono costruzione". Il ruolo è
@@ -318,12 +294,11 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
   passa per `normalize_role` e non è un errore che forge (cioè il motore)
   non lo conosca. Cosa succede in `heal` dipende da `is_structural=...`
   (D47): senza, qualunque work_type — manifatturiero incluso — resta fuori
-  dal grafo, come `frame`/`title_block`; con il predicato che
-  `heal_and_detect()` inietta (`tools.manufacturing_role.is_structural`),
-  `hole`/`countersink`/`threaded_hole` restano DENTRO il grafo (sono vera
-  topologia di pezzo), solo `bending`/`engrave`/`marking` e i ruoli di un
-  consumatore restano fuori. In entrambi i casi `detect_flat` non tocca ciò che
-  non conosce, l'output lo scrive su un layer DXF col nome dello slug (non
+  dal grafo, come `frame`/`title_block`; con il predicato di snapbend
+  (`snapbend.flat.is_structural`), `hole`/`countersink`/`threaded_hole`
+  restano DENTRO il grafo (sono vera topologia di pezzo), solo
+  `bending`/`engrave`/`marking` e i ruoli di altri consumatori restano fuori.
+  L'output lo scrive su un layer DXF col nome dello slug (non
   `Trash` — non è spazzatura), geometria intatta (D27, D30, D31, D47).
   Una regola combina segnali neutri — nome del gruppo sorgente, tratteggio,
   colore — tutti veri insieme; le regole sono in ordine e vince la prima
@@ -333,14 +308,8 @@ Ogni feature manifatturiera è raggiungibile per **due strade**:
   `ByLayer` eredita lo stile dal layer che la contiene, e `DxfAdapter` lo
   risolve prima del confronto. "Tratteggiata" vuol dire che il pattern ha
   almeno un vuoto — un fatto del pattern, non del nome del linetype.
-- **inferenza geometrica**: `forge` riconosce la feature dalla forma
-  (`source="geometric"`, `confidence < 1.0`).
-
-`Hole` è l'implementazione di riferimento (ha `hole_type` + `geometric_hint` +
-`source` + `confidence`). `Engraving` lo segue. Il design resta aperto al binario
-dell'inferenza anche dove non è ancora implementato — es. `detect._detect_engrave`
-è un placeholder con già il parametro `engrave_tolerance` e il posto in
-`detect_flat()`.
+- **inferenza geometrica**: il consumatore riconosce la feature dalla forma
+  (`source="geometric"`, `confidence < 1.0`) — per fori e pieghe, snapbend.
 
 ---
 

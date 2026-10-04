@@ -8,7 +8,7 @@ Funzioni pubbliche:
     load_dxf — apre, audita, upgradia, sanitizza, traduce → ForgeDocument
 
 load_dxf è l'UNICO punto in cui ezdxf viene toccato per la lettura: dopo di essa
-il documento ezdxf sorgente sparisce e heal()/detect_flat()/write() lavorano solo sul
+il documento ezdxf sorgente sparisce e heal()/write() lavorano solo sul
 ForgeDocument restituito.
 """
 

@@ -18,12 +18,9 @@ class ForgeCluster:
     label:         str                                     = ""
     source_file:   str                                     = ""
     custom:        dict                                    = field(default_factory=dict)
-    # Overlay di detect_flat() — o di QUALUNQUE altro tool, `detect_flat()` non è
-    # privilegiato (D44). Tipizzato `Any` di proposito, non
-    # `tools.model.DetectedFeatures`: model/ non nomina tools/ nemmeno sotto
-    # TYPE_CHECKING — `detect_flat()` è solo il primo dei possibili consumatori,
-    # vive dentro forge perché sviluppato insieme, non perché model debba
-    # sapere che esiste. `None` finché nessuno ci ha scritto: distingue "non
+    # Overlay di un consumatore (snapbend, snapdraw, un tool custom), di
+    # norma un `model.detected.DetectedFeatures` (D44, D90). `None` finché
+    # nessuno ci ha scritto: distingue "non
     # ho ancora fatto detect" da "ho fatto detect e non c'è nessuna
     # feature", cosa che i vecchi campi fissi (sempre liste vuote) non
     # permettevano di distinguere. Il solo contratto richiesto, mai imposto
@@ -43,9 +40,24 @@ class ForgeCluster:
         return self.detected.get(name, [])
 
     @property
+    def overlay_voids(self) -> list:
+        """
+        Gli elementi dell'overlay che sono vuoti del pezzo: chi li ha letti
+        dichiara `is_void = True` e porta un `polygon` (MAP.md D90). Un
+        consumatore che toglie un contorno da `inners` per farne un suo
+        elemento (un foro di snapbend) non cambia l'area del pezzo.
+        """
+        if self.detected is None:
+            return []
+        return [
+            item for _name, items in self.detected.items() for item in items
+            if getattr(item, "is_void", False) and getattr(item, "polygon", None) is not None
+        ]
+
+    @property
     def polygon_with_holes(self) -> Polygon:
         all_inners = (
-            [h.polygon for h in self.features("holes")]
+            [v.polygon for v in self.overlay_voids]
             + [i.polygon for i in self.inners]
         )
         if not all_inners:
@@ -67,7 +79,7 @@ class ForgeCluster:
         """
         return (
             self.outer.area
-            - sum(h.area for h in self.features("holes"))
+            - sum(v.polygon.area for v in self.overlay_voids)
             - sum(i.area if i.depth % 2 else -i.area for i in self.inners)
         )
 
@@ -82,11 +94,8 @@ class ForgeCluster:
         prima di questo refactor) e per qualunque nome custom attaccato da un
         tool esterno — forge non ha bisogno di sapere cosa sia.
 
-        Il conteggio **ricco** per i tipi noti di forge (fori per tipo,
-        pieghe raggruppate, lunghezza incisioni — quello che questa property
-        dava per intero prima del refactor) vive ora in
-        `tools.detect.describe_features()`, perché serve le costanti
-        `HOLE_TYPE_*` che `model/` non può importare.
+        Il conteggio ricco per tipo (fori per tipo, pieghe raggruppate) è del
+        consumatore che li ha letti (snapbend `describe_features`, D88).
         """
         if self.detected is None:
             return {}

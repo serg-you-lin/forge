@@ -48,12 +48,10 @@ def heal(doc: ForgeDocument, tolerance: Optional[float] = None, label: str = "",
     is_structural: predicato `Callable[[str], bool]` — "questo ruolo è
                topologia di contorno di pezzo?" — usato per decidere quali
                Edge già etichettati restano nel grafo prima della ricerca
-               loop. Il motore da solo conosce solo outer/inner; passa
-               `tools.manufacturing_role.is_structural` per riconoscere anche
-               hole/countersink/threaded_hole (quello che fa
-               `heal_and_detect()` automaticamente). Senza, un edge etichettato
-               "hole" viene trattato come non strutturale e heal() lo segnala
-               con un warning.
+               loop. Il motore da solo conosce solo outer/inner; un
+               consumatore passa il suo (snapbend: un foro è contorno di
+               pezzo). Senza, un edge etichettato "hole" viene trattato come
+               non strutturale e heal() lo segnala con un warning.
     """
     if not isinstance(doc, ForgeDocument):
         raise TypeError(
@@ -160,10 +158,9 @@ _LABELED_WITHOUT_PREDICATE = (
     "{n} edge con un ruolo diverso da "
     "outer/inner/unknown, trattati come non strutturali di "
     "default (heal() chiamato senza is_structural=...): un "
-    "ruolo manifatturiero come 'hole' non viene riconosciuto "
-    "come contorno di pezzo qui e finisce in trash. Passa "
-    "is_structural=tools.manufacturing_role.is_structural, o "
-    "chiama heal_and_detect() che lo fa automaticamente."
+    "ruolo come 'hole' non viene riconosciuto come contorno "
+    "di pezzo e finisce in trash. Passa a heal() un "
+    "is_structural che lo riconosca."
 )
 
 

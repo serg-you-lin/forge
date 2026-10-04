@@ -37,7 +37,6 @@ forge.inspect_file(
     tolerance=TOLERANCE,
     role_rules=forge.name_rules(NAME_ROLES),
     run_heal=True,
-    run_detect=True,
     entities=True,   # dettaglio entità nel livello 1
     coords=False,    # coordinate nel livello 3 (verboso)
 )
@@ -49,5 +48,5 @@ forge.inspect_file(
 #   doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
 #   forge.inspect_document(doc, graph=True, limit=60)
 #
-#   result = forge.heal_and_detect(doc, features="all")
+#   result = forge.heal(doc)
 #   forge.inspect_result(result, coords=False)

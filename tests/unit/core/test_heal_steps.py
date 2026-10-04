@@ -19,7 +19,6 @@ from forge.model.feature import ClosedFeature, OpenFeature
 from forge.model.role import ContourRole
 from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import LineSeg, CircleSeg, SplineSeg
-from forge.tools.manufacturing_role import is_structural
 
 EXAMPLES = project_root / "tests" / "data"
 
@@ -60,11 +59,13 @@ class TestSplitLabeled(unittest.TestCase):
         self.assertEqual(len(kept), 4)
         self.assertEqual(labeled, [mark])
 
-    def test_002_hole_resta_col_predicato_manifatturiero(self):
-        # D30: senza predicato un "hole" non è strutturale, con il predicato sì
+    def test_002_hole_resta_col_predicato_del_chiamante(self):
+        # D30: senza predicato un "hole" non è strutturale, con il predicato
+        # del chiamante che lo riconosce sì
         hole = _circle((5, 5), 1, role="hole")
         _, labeled = forge.split_labeled(_square(0, 0, 10) + [hole])
         self.assertEqual(labeled, [hole])
+        is_structural = lambda role: forge.is_structural_role(role) or role == "hole"
         kept, labeled = forge.split_labeled(_square(0, 0, 10) + [hole], is_structural)
         self.assertEqual(labeled, [])
         self.assertIn(hole, kept)

@@ -3,7 +3,7 @@ test_geometry_loader.py
 ------------------------
 Test unitari per adapters/geometry/loader.py (forge.load_geometry).
 
-Verifica il contratto: dict puri Python → ForgeDocument → heal_and_detect() →
+Verifica il contratto: dict puri Python → ForgeDocument → heal() →
 to_dxf(), esattamente come load_dxf, ma senza file sorgente. Copre i due casi
 d'uso reali: un rettangolo con foro (polyline + circle) e un settore anulare
 tipo sviluppo di cono (arc + line, con conversione gradi→radianti).
@@ -60,7 +60,7 @@ class TestGeometryAdapter(unittest.TestCase):
 
 
 class TestLoadGeometryRectangleWithHole(unittest.TestCase):
-    """Rettangolo (polyline chiusa) con un foro circolare — caso semplice."""
+    """Rettangolo (polyline chiusa) con un cerchio interno — caso semplice."""
 
     def setUp(self):
         self.doc = load_geometry([
@@ -70,23 +70,23 @@ class TestLoadGeometryRectangleWithHole(unittest.TestCase):
                 "closed": True,
                 "role": "outer",
             },
-            {"type": "circle", "center": (20, 25), "radius": 5, "role": "hole"},
+            {"type": "circle", "center": (20, 25), "radius": 5},
         ])
 
     def test_returns_forge_document(self):
         self.assertIsInstance(self.doc, forge.ForgeDocument)
         self.assertTrue(self.doc.edges)
 
-    def test_heal_and_detect_finds_one_part_with_one_hole(self):
-        result = forge.heal_and_detect(self.doc, label="rect_test")
+    def test_heal_finds_one_part_with_one_inner(self):
+        result = forge.heal(self.doc, label="rect_test")
         self.assertTrue(result.is_valid, result.errors)
         self.assertEqual(result.cluster_count, 1)
         cluster = result.clusters[0]
         self.assertAlmostEqual(cluster.outer.area, 100 * 50, delta=1e-6)
-        self.assertEqual(len(cluster.features("holes")), 1)
+        self.assertEqual(len(cluster.inners), 1)
 
     def test_to_dxf_writes_a_valid_document(self):
-        result = forge.heal_and_detect(self.doc, label="rect_test")
+        result = forge.heal(self.doc, label="rect_test")
         doc_out = forge.to_dxf(result)
         self.assertGreater(len(doc_out.modelspace()), 0)
 
@@ -117,7 +117,7 @@ class TestLoadGeometryConeSector(unittest.TestCase):
         ])
 
     def test_forms_a_single_closed_part_with_correct_area(self):
-        result = forge.heal_and_detect(self.doc, label="cono_sector_test")
+        result = forge.heal(self.doc, label="cono_sector_test")
         self.assertTrue(result.is_valid, result.errors)
         self.assertEqual(result.cluster_count, 1)
         self.assertAlmostEqual(
@@ -125,7 +125,7 @@ class TestLoadGeometryConeSector(unittest.TestCase):
         )
 
     def test_to_dxf_keeps_arcs_native_not_discretized(self):
-        result = forge.heal_and_detect(self.doc, label="cono_sector_test")
+        result = forge.heal(self.doc, label="cono_sector_test")
         doc_out = forge.to_dxf(result)
         msp = doc_out.modelspace()
         # write_segments emette LWPOLYLINE con bulge per un contorno misto
@@ -171,8 +171,8 @@ class TestLoadGeometrySplineFromSimplifyPoints(unittest.TestCase):
         # area del 16-gono che i punti approssimano — riferimento per il test
         self.polygon_area = 0.5 * n * r * r * math.sin(2 * math.pi / n)
 
-    def test_heal_and_detect_finds_one_closed_part(self):
-        result = forge.heal_and_detect(self.doc, label="spline_loop_test")
+    def test_heal_finds_one_closed_part(self):
+        result = forge.heal(self.doc, label="spline_loop_test")
         self.assertTrue(result.is_valid, result.errors)
         self.assertEqual(result.cluster_count, 1)
         self.assertAlmostEqual(
@@ -180,7 +180,7 @@ class TestLoadGeometrySplineFromSimplifyPoints(unittest.TestCase):
         )
 
     def test_to_dxf_keeps_spline_native_not_discretized(self):
-        result = forge.heal_and_detect(self.doc, label="spline_loop_test")
+        result = forge.heal(self.doc, label="spline_loop_test")
         doc_out = forge.to_dxf(result)
         msp = doc_out.modelspace()
         self.assertEqual(len(list(msp.query("SPLINE"))), 1)

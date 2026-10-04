@@ -37,7 +37,7 @@ os.makedirs(OUTDIR, exist_ok=True)
 base = os.path.splitext(os.path.basename(INPUT))[0]
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
-result = forge.heal_and_detect(doc, label=base, features="all")
+result = forge.heal(doc, label=base)
 
 # 1. view model — il JSON per un renderer esterno
 vm = forge.to_view_model(result, tolerance=0.05)
@@ -45,9 +45,7 @@ cluster = vm["clusters"][0]
 print(f"parti          : {vm['cluster_count']}")
 print(f"bbox           : {vm['bbox']}")
 print(f"outer          : {len(cluster['outer']['points'])} punti, colore {cluster['outer']['color']}")
-print(f"fori           : {[(h['hole_type'], round(h['diameter'], 1), h['color']) for h in cluster['holes'][:4]]} …")
-print(f"pieghe         : {len(cluster['bending_lines'])}")
-print(f"incisioni      : {len(cluster['engrave_lines'])}")
+print(f"inner          : {len(cluster['inners'])}")
 print(f"trash          : {len(vm['trash'])}")
 print(f"palette        : {vm['palette']}")
 
@@ -63,7 +61,7 @@ forge.save_svg(
     tolerance=0.05,
     include_trash=True,
     background="#1e1e1e",
-    holes_as_circles=True,
+    true_circles=True,
 )
 
 # variante: sfondo trasparente, senza trash, per incollarlo in un documento

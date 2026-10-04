@@ -5,22 +5,18 @@ Ruolo topologico di una forma — il minimo che il motore (core/) deve sapere
 per costruire l'albero di contenimento: è un contorno esterno, un contorno
 interno, o non ha ancora un ruolo deciso. Punto. **Non vive qui nessuna
 tassonomia manifatturiera** (foro, foro filettato, svasatura, piega,
-incisione, marcatura, ...) — quella è vocabolario di ``tools/detect.py``
-(``forge/tools/manufacturing_role.py``), non del motore: core non sa cosa sia
-un foro, sa solo distinguere un contorno da un altro (MAP.md, "roles out of
-core").
+incisione, marcatura, ...) — quella è vocabolario di un consumatore
+(snapbend, MAP.md D88): forge non sa cosa sia un foro, sa solo distinguere un
+contorno da un altro (MAP.md, "roles out of core").
 
 ``ContourRole`` NON è un universo chiuso: un consumatore (un layer sopra
-forge, l'interprete, un agente, o lo stesso ``detect_flat()`` di forge — nessuno
-dei due è privilegiato) può assegnare un ruolo che core non conosce —
+forge, snapbend, snapdraw, un agente — nessuno è privilegiato) può assegnare un ruolo che core non conosce —
 ``"hole"``, ``"frame"``, ``"title_block"``, qualunque slug — e forge lo
 conserva, lo tratta come non strutturale di default e in output lo scrive su
 un layer col nome dello slug (non su ``Trash``: quella geometria non è
 spazzatura). Chi vuole che un ruolo che core non conosce sia trattato come
 strutturale (un foro è un vero contorno di pezzo, non decorazione) passa il
-proprio predicato a ``heal(doc, is_structural=...)`` — vedi
-``tools.manufacturing_role.is_structural``, usato di default da
-``heal_and_detect()``. Vedi MAP.md D27 e D31.
+proprio predicato a ``heal(doc, is_structural=...)``. Vedi MAP.md D27 e D31.
 
 ``normalize_role()`` è l'unico punto in cui una stringa-ruolo che arriva dal
 chiamante entra nel modello: la ripulisce una volta sola in uno slug sicuro,
@@ -47,7 +43,7 @@ _ROLE_SLUG_RE = re.compile(r"[^a-z0-9_-]+")
 class ContourRole(str, Enum):
     """
     I tre ruoli che il motore topologico conosce. **Non esaustivo** — un
-    consumatore (``tools/detect.py`` incluso: non è privilegiato) assegna
+    consumatore assegna
     qualunque altra stringa a un edge/contorno, vedi ``normalize_role``.
 
     Eredita da str: il valore è già una stringa normale, quindi JSON/repr
@@ -57,13 +53,9 @@ class ContourRole(str, Enum):
     UNKNOWN = "unknown"   # default — nessun ruolo deciso
     OUTER   = "outer"     # profilo esterno della parte, trovato da heal()
     INNER   = "inner"     # loop interno, trovato da heal()
-    # Non c'è altro qui. `hole`/`countersink`/`threaded_hole`/`bending`/
-    # `engrave`/`marking` sono vocabolario manifatturiero — vive in
-    # `tools/manufacturing_role.py`, a fianco di `detect_flat()`, che è l'unico a
-    # saperne il significato. `frame`/`title_block`/... sono slug di un
-    # consumatore esterno (snapdraw, ...) — stesso trattamento, nessuna
-    # eccezione: core non distingue "il ruolo di detect" da "il ruolo di un
-    # consumatore qualunque", sono entrambi fuori da questo enum.
+    # Non c'è altro qui. `hole`/`bending`/`engrave`/... sono vocabolario di
+    # processo (snapbend), `frame`/`title_block`/... di snapdraw: slug di un
+    # consumatore, fuori da questo enum, stesso trattamento.
 
 
 # ---------------------------------------------------------------------------
@@ -73,8 +65,8 @@ class ContourRole(str, Enum):
 # per come l'ha costruito heal(), a prescindere da qualunque significato
 # manifatturiero?". Chi vuole che heal() tratti come strutturale anche un
 # ruolo che core non conosce (un foro assegnato da role_rules, per esempio)
-# passa il proprio predicato a `heal(doc, is_structural=...)` — vedi
-# `tools.manufacturing_role.is_structural`. Senza quel predicato, heal()
+# passa il proprio predicato a `heal(doc, is_structural=...)`. Senza quel
+# predicato, heal()
 # tratta qualunque ruolo fuori da qui come non strutturale di default (esce
 # dal grafo, resta in trash col ruolo intatto — MAP.md, "roles out of core").
 STRUCTURAL_ROLES = frozenset({
@@ -93,6 +85,19 @@ def is_structural_role(role) -> bool:
     reverse-lookup sull'enum (D27 regola A).
     """
     return role in STRUCTURAL_ROLES
+
+
+def feature_role(contour, item_role):
+    """
+    Il ruolo con cui si disegna un contorno di un elemento dell'overlay (D90):
+    il suo, se è di un consumatore; quello dell'elemento, se il contorno porta
+    solo un ruolo del motore (outer/inner/unknown: da dove viene la geometria,
+    non cosa significa).
+    """
+    own = getattr(contour, "role", None)
+    if own and own != ContourRole.UNKNOWN and not is_structural_role(own):
+        return own
+    return item_role or own
 
 
 # ---------------------------------------------------------------------------

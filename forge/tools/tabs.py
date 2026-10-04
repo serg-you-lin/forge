@@ -22,7 +22,7 @@ isola/genitore-diretto trovata (profondità pari, >= 2), con `tab_count`
 linguette equispaziate per coppia.
 
 Va applicata sui punti GREZZI, prima di qualunque fit — il contenimento/
-gerarchia (`heal_and_detect`) va calcolato PRIMA, sugli stessi punti grezzi
+gerarchia (`heal`) va calcolato PRIMA, sugli stessi punti grezzi
 non ancora modificati (vedi smoother/MAP.md D5).
 
 Non è nel contratto pubblico flat di forge (`forge.*`): va importato

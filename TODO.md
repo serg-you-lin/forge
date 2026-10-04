@@ -61,24 +61,15 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    il move.
 4. **Il rewrite della history** — ✅ **fatto (D81)**, 2 ottobre: un force-push,
    albero di oggi identico, `audit_names.py --history` pulito.
-5. **`detect_flat()` → snapbend** — direzione già decisa. Il blocco che
-   citava ("Problema 2", flag `structural` al posto di `STRUCTURAL_ROLES`) è
-   **già risolto da D47**: `heal(is_structural=...)` riceve il predicato dal
-   chiamante, `ContourRole` è solo UNKNOWN/OUTER/INNER, i ruoli di processo
-   stanno in `tools/manufacturing_role.py`. Quello che resta è il costo
-   elencato in MAP.md ("Process detection → snapbend"): `heal_and_detect`,
-   `split_to_files`, writeback, layer fori/pieghe di `to_dxf`, `inspect.py`,
-   golden (piano: trasformare i 48 JSON, non rigenerarli), e i test che
-   importano `manufacturing_role.is_structural`.
-   **Passo 1 fatto (D89):** i 48 golden divisi in `json/` (geometria, solo
-   `heal()`) e `process/` (fori/pieghe/incisioni, da portare in snapbend);
-   trovato e corretto `cluster.area` sui contorni annidati. Fatti anche
-   `golden_multipli` (stessa divisione) e i golden delle annotazioni (solo
-   `heal()`). Prossimi: `test_layers`, `test_writeback`, test di integrazione,
-   ricette. **Da decidere (Federico):** 10 golden `golden_multipli/process/`
-   hanno il summary vuoto (era `custom` prima del refactor di inject): i
-   conteggi lì non sono mai stati controllati; riempirli = rigenerare, va
-   approvato.
+5. **`detect_flat()` → snapbend** — ✅ **fatto (D88, D89, D90)**: golden divisi,
+   detection in `snapbend/flat/`, renderer di forge generici sull'overlay.
+   **Da decidere (Federico):** 10 golden `golden_multipli/process/` (ora in
+   snapbend) hanno il summary vuoto (era `custom` prima del refactor di
+   inject). Per i fori non manca un controllo (sono nei layer `Hole`); restano
+   3 pieghe mai controllate: `staffa_scarto_doppia` pezzi 2 e 3 (30 mm) e
+   `quattro_sviluppi_un_foglio` pezzo 2 (8.5 mm, una linea del layer `MARK`:
+   la pipeline dei fogli multipli carica senza `MARK → engrave`). Da guardare
+   nei DXF in `snapbend/tests/data/flat/golden_multipli/detected/`.
 6. **Estrazione dei loop planari (half-edge/DCEL)** — l'unica cosa in lista che
    cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
 7. **Due cose piccole dalla roadmap del preventivo** (step 0 e 1 di

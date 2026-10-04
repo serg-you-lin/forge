@@ -8,7 +8,7 @@ rinominato (MAP.md D43) perché "interpret" era già usato per tre cose diverse
 interpretazione discusso in MAP.md D39-D42) — pura ricostruzione geometrica,
 zero giudizio, non ha niente a che fare col significato del disegno.
 
-Fase separata e opzionale — NON viene chiamata da heal_and_detect(). `detect_flat()`
+Fase separata e opzionale — NON viene chiamata da heal(). `detect_flat()`
 fa già abbastanza (geometria + feature); l'ancoraggio delle annotazioni è
 un concern a sé, che il chiamante attiva quando gli serve
 (es. prima di split() o di inject(), per sapere quale nota va con quale pezzo).

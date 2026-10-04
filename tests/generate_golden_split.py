@@ -1,15 +1,14 @@
 """
 tests/generate_golden_split.py
 ------------------------------
-Genera i golden file per il test di regressione dello splitting, in due metà
-(MAP.md D88).
+Genera i golden file per il test di regressione dello splitting: geometria e
+layer, un foro è un contorno interno (MAP.md D88). La metà di processo la
+genera snapbend, tests/flat/generate_golden_process.py.
 
 Struttura attesa:
     tests/data/golden_multipli/          ← DXF multiparte sorgente
     tests/data/golden_multipli/config/   ← config opzionali
     tests/data/golden_multipli/golden/   ← geometria (heal → split), uno per parte
-    tests/data/golden_multipli/process/  ← layer dei fori e summary (heal →
-                                           detect_flat); passa a snapbend
 
 Il golden di ogni parte viene costruito direttamente dal result del padre
 (result.clusters[i]) — senza riprocessare il figlio.
@@ -33,11 +32,9 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.adapters.dxf.layers import role_to_dxf_layer
-from forge.tools.detect import describe_features
 
 MULTIPLI_DIR      = project_root / "tests" / "data" / "golden_multipli"
 GOLDEN_DIR        = MULTIPLI_DIR / "golden"
-PROC_DIR          = MULTIPLI_DIR / "process"
 DEFAULT_TOLERANCE = 0.5
 
 
@@ -50,7 +47,6 @@ def _load_config(dxf_path: Path) -> dict:
 
 def generate(force: bool = False, only: str = None):
     GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
-    PROC_DIR.mkdir(parents=True, exist_ok=True)
 
     dxf_files = [
         f for f in MULTIPLI_DIR.glob("*")
@@ -76,15 +72,11 @@ def generate(force: bool = False, only: str = None):
         try:
             doc = forge.load_dxf(parent_path, upgrade=True, explode_inserts=True)
             result = forge.heal(doc, tolerance=tolerance)
-            proc = forge.heal(forge.load_dxf(parent_path, upgrade=True, explode_inserts=True),
-                              tolerance=tolerance)
 
             if not result.is_valid or not result.clusters:
                 print(f"  SKIP (non valido): {parent_path.name}")
                 skipped += 1
                 continue
-
-            forge.detect_flat(proc, features="all")
 
             forge.split(
                 result,
@@ -94,12 +86,11 @@ def generate(force: bool = False, only: str = None):
 
             print(f"  {parent_path.name} → {len(result.clusters)} parti")
 
-            for part_index, (cluster, pcluster) in enumerate(zip(result.clusters, proc.clusters)):
+            for part_index, cluster in enumerate(result.clusters):
                 golden_stem = f"{parent_path.stem}__{part_index:03d}"
                 golden_path = GOLDEN_DIR / f"{golden_stem}.json"
-                proc_path   = PROC_DIR / f"{golden_stem}.json"
 
-                if golden_path.exists() and proc_path.exists() and not force:
+                if golden_path.exists() and not force:
                     print(f"    SKIP (golden esiste): {golden_stem}.json")
                     skipped += 1
                     continue
@@ -122,25 +113,7 @@ def generate(force: bool = False, only: str = None):
                     "outer_layer":   role_to_dxf_layer(cluster.outer.role),
                     "inners_layers": [role_to_dxf_layer(i.role) for i in inners],
                 }
-                process = {
-                    "parent_file":   parent_path.name,
-                    "part_index":    part_index,
-                    # area e outer per agganciare il pezzo
-                    "area_mm2":      round(pcluster.area, 4),
-                    "outer_wkt":     pcluster.outer.polygon.wkt,
-                    # role_to_dxf_layer: un ruolo di processo (es. "hole") ha il
-                    # suo layer solo via il registro di rules/palette.py
-                    "inners_layers": [role_to_dxf_layer(i.role)
-                                      for i in pcluster.features("holes") + pcluster.inners],
-                    "summary":       {
-                        k: v for k, v in
-                        {**pcluster.summary, **describe_features(pcluster)}.items()
-                        if v
-                    },
-                }
-
-                for path, data in ((golden_path, golden), (proc_path, process)):
-                    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+                golden_path.write_text(json.dumps(golden, indent=2, ensure_ascii=False), encoding="utf-8")
                 print(f"    OK: {golden_stem}.json (area={golden['area_mm2']} mm²)")
                 generated += 1
 
@@ -150,7 +123,7 @@ def generate(force: bool = False, only: str = None):
             failed += 1
 
     print(f"\nGenerati: {generated}  Skippati: {skipped}  Errori: {failed}")
-    print(f"Golden salvati in: {GOLDEN_DIR} e {PROC_DIR}")
+    print(f"Golden salvati in: {GOLDEN_DIR}")
 
 
 if __name__ == "__main__":

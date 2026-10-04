@@ -30,15 +30,13 @@ OUTDIR = r"pipeline_output"                   # scritto in <repo>/pipeline_outpu
 | 00 | `00_inspect.py` | `inspect_file`, `inspect_dxf`, `inspect_document`, `inspect_result` | l'ispettore a 3 livelli — il primo strumento su un file che non torna |
 | 01 | `01_load_and_validate.py` | `load_dxf`, `document_from_msp`, `validate` | aprire un file → `ForgeDocument`; validare l'input |
 | 02 | `02_heal.py` | `heal`, `validate_result` | ricostruzione topologia → parti, albero outer/inner (niente fori) |
-| 03 | `03_detect.py` | `detect_flat`, `ALL_FEATURES` | classificazione feature: nudo vs `"holes"`/`"bending"`/`"all"`, `max_drill_diameter` |
-| 04 | `04_heal_and_detect.py` | `heal_and_detect` | la via del 90% — heal + detect in un colpo |
 | 05 | `05_to_dxf.py` | `to_dxf` | render del modello in un DXF nuovo; `filter_cluster`, `include_trash` |
 | 06 | `06_split.py` | `split` | un `Drawing` per parte (puro); `namer`, `on_part`, `exclude_types` |
 | 07 | `07_split_to_files.py` | `split_to_files` | pipeline multi-pezzo completa su disco |
 | 08 | `08_inject.py` | `inject` | arricchimento CAM dai testi del disegno (`result.annotations`, niente ezdxf) |
 | 09 | `09_export.py` | `to_json`, `save_json`, `save_xml`, `to_nester_input` | metadati fuori da forge |
 | 10 | `10_metadata_xdata.py` | `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema` | metadati DENTRO il DXF (XDATA) + schema custom |
-| 11 | `11_batch_heal.py` | `load_dxf` + `heal_and_detect` + `to_dxf` | heal di tutti i DXF di una cartella → `X_healed.dxf` + `.json` a fianco |
+| 11 | `11_batch_heal.py` | `load_dxf` + `heal` + `to_dxf` | heal di tutti i DXF di una cartella → `X_healed.dxf` + `.json` a fianco |
 | 12 | `12_to_svg.py` | `to_view_model`, `to_svg`, `save_svg` | JSON per un renderer esterno + SVG del modello |
 | 14 | `14_style_classification.py` | `RoleRule`, `name_rules`, `load_dxf(role_rules=...)` | assegnare il ruolo da nome, tratteggio, colore o una combinazione (D63) |
 | 18 | `18_outer_scan.py` | `core.healing.outer_scan.outer_candidate_edges` (non esportato) | candidati a bordo esterno per ray casting — idea da cui è nata la lettura per isole, oggi non usata da `island()` |

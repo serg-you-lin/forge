@@ -26,7 +26,7 @@ MIN_AREA  = 50.0
 os.makedirs(OUTDIR, exist_ok=True)
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE)
-result = forge.heal_and_detect(doc, label="batch", features="all")
+result = forge.heal(doc, label="batch")
 if not result.is_valid:
     raise SystemExit(f"non valido: {result.errors}")
 

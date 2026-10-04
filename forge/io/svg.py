@@ -25,11 +25,11 @@ def _fmt(pts) -> str:
     return " ".join(f"{x:.4f},{y:.4f}" for x, y in pts)
 
 
-def _shape(entry: dict, stroke_w: float, holes_as_circles: bool) -> str:
+def _shape(entry: dict, stroke_w: float, true_circles: bool) -> str:
     pts = entry.get("points") or []
     color = entry.get("color", "#ff0000")
 
-    if holes_as_circles and entry.get("diameter", 0) > 0 and entry.get("center"):
+    if true_circles and (entry.get("diameter") or 0) > 0 and entry.get("center"):
         cx, cy = entry["center"]
         r = entry["diameter"] / 2.0
         return (f'<circle cx="{cx:.4f}" cy="{cy:.4f}" r="{r:.4f}" '
@@ -49,7 +49,7 @@ def to_svg(
     include_annotations: bool = True,
     padding: float = 0.03,
     background: Optional[str] = "#1e1e1e",
-    holes_as_circles: bool = True,
+    true_circles: bool = True,
     stroke_width: Optional[float] = None,
     size: Optional[str] = None,
     units: Optional[str] = None,
@@ -64,8 +64,8 @@ def to_svg(
         include_annotations: disegna i testi della sorgente.
         padding:             margine attorno al disegno, frazione del lato bbox.
         background:          colore di sfondo (`None` = trasparente).
-        holes_as_circles:    disegna i fori come `<circle>` vero quando si conosce
-                             Ø/centro, invece del poligono a N lati.
+        true_circles:        disegna come `<circle>` vero una voce dell'overlay
+                             che porta Ø/centro, invece del poligono a N lati.
         stroke_width:        spessore linea in unità disegno; `None` = auto
                              (diagonale bbox / 400).
         size:                attributi `width`/`height` dell'`<svg>`. `None`
@@ -136,12 +136,9 @@ def to_svg(
         out.append(_shape(cluster["outer"], sw, False))
         for inner in cluster["inners"]:
             out.append(_shape(inner, sw, False))
-        for hole in cluster["holes"]:
-            out.append(_shape(hole, sw, holes_as_circles))
-        for bl in cluster["bending_lines"]:
-            out.append(_shape(bl, sw, False))
-        for eng in cluster["engrave_lines"]:
-            out.append(_shape(eng, sw, False))
+        for entries in cluster["features"].values():
+            for entry in entries:
+                out.append(_shape(entry, sw, true_circles))
         out.append("</g>")
 
     for t in vm.get("trash", []):
@@ -185,8 +182,10 @@ def _scan_bbox(vm: dict) -> Optional[list]:
 
     for cluster in vm.get("clusters", []):
         _collect(cluster["outer"])
-        for group in ("inners", "holes", "bending_lines", "engrave_lines"):
-            for e in cluster[group]:
+        for e in cluster["inners"]:
+            _collect(e)
+        for entries in cluster["features"].values():
+            for e in entries:
                 _collect(e)
     for t in vm.get("trash", []):
         _collect(t)

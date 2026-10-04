@@ -29,7 +29,7 @@ class ForgeResult:
     errors:              List[str]              = field(default_factory=list)
     trash_entities:      List[Any]              = field(default_factory=list)
     annotations:         List[Annotation]       = field(default_factory=list)
-    classified_entities: List[ClassifiedEntity] = field(default_factory=list)
+    classified_entities: List[Any]              = field(default_factory=list)  # di un consumatore (D88)
     all_arcs:            List[Any]              = field(default_factory=list)
     _open_shapes:        List[Any]              = field(default_factory=list)
 

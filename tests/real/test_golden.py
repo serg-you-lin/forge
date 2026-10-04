@@ -20,7 +20,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import forge
-from forge.tools.manufacturing_role import LAYER_ENGRAVE
+from forge.adapters.dxf.layers import role_to_dxf_layer
 
 
 EXAMPLES_DIR = project_root / "tests" / "data"
@@ -48,10 +48,9 @@ GLOBAL_NAME_ROLES = {
 }
 
 # L'unico ruolo che i golden assegnano al load (MARK/Signature → engrave):
-# il round-trip lo rilegge dal layer su cui to_dxf l'ha scritto. Gli altri
-# layer di processo nascono solo da detect_flat, che qui non gira.
+# il round-trip lo rilegge dal layer su cui to_dxf l'ha scritto.
 ROUNDTRIP_NAME_ROLES = {
-    LAYER_ENGRAVE: "engrave",
+    role_to_dxf_layer("engrave"): "engrave",
 }
 
 # Contorni misti SplineSeg + linee/archi: materializzati come SPLINE native +

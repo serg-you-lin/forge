@@ -168,7 +168,7 @@ def _add_ellipse(ellipse: EllipseSeg, msp, layer: str,
     In DXF un'ELLIPSE è sempre percorsa CCW da `start_param` a `end_param`
     (nessun flag di verso nel formato): un'EllipseSeg CW copre lo stesso
     luogo geometrico letta CCW da `end_param` a `start_param` — stesso
-    scambio già usato per ArcSeg in `write_engrave_segments`.
+    scambio già usato per ArcSeg in `write_native_segments`.
     """
     if ellipse.ccw:
         sp, ep = ellipse.start_param, ellipse.end_param
@@ -264,16 +264,12 @@ def write_segments(segments: List, msp, layer: str, styles: Optional[List] = Non
 # Write-back — incisioni (engrave / marking)
 # ---------------------------------------------------------------------------
 
-def write_engrave_segments(segments: List, msp, layer: str, styles: Optional[List] = None) -> List[object]:
+def write_native_segments(segments: List, msp, layer: str, styles: Optional[List] = None) -> List[object]:
     """
-    Materializza un'incisione come geometria NATIVA, una entità DXF per
-    primitiva — mai LWPOLYLINE, nemmeno per un run di linee/archi contigui e
-    nemmeno se in ingresso era una polilinea.
-
-    Un'incisione è concettualmente N segmenti separati (scelta di modello,
-    vedi `tools/model/engraving.py`): il rendering fedele è una entità per segmento.
-    È anche coerente con le bending line (emesse come `LINE`) e con quello che
-    un CAM si aspetta di trovare sul layer di marcatura.
+    Materializza segmenti aperti come geometria NATIVA, una entità DXF per
+    primitiva — mai LWPOLYLINE, nemmeno per un run di linee/archi contigui.
+    È come si disegna un elemento dell'overlay senza `polygon` (MAP.md D90):
+    una piega, un'incisione.
 
       - LineSeg    → LINE
       - ArcSeg     → ARC
@@ -281,11 +277,8 @@ def write_engrave_segments(segments: List, msp, layer: str, styles: Optional[Lis
       - CircleSeg  → CIRCLE
       - EllipseSeg → ELLIPSE nativa (mai discretizzata a spline)
 
-    Una entità per primitiva significa anche uno stile per primitiva: il
-    linetype della sorgente (`styles`, allineata a `segments`) è ripristinato
-    esatto per ognuna. Il colore resta BYLAYER — l'incisione è geometria già
-    classificata, il suo colore è semantico (`rules/palette.py`), non quello
-    della sorgente.
+    Il linetype della sorgente (`styles`, allineata a `segments`) è
+    ripristinato per ogni primitiva. Il colore resta BYLAYER.
 
     Restituisce la lista delle entità create.
     """

@@ -2,17 +2,16 @@
 tests/unit/test_attached_export.py
 ----------------------------------
 D70: `to_dxf` scrive ogni collezione attaccata a `cluster.detected` da un
-consumatore, non solo le tre di `detect_flat()`. Un elemento con `role` va
-sul layer del suo ruolo: i suoi `contours` se ne ha, altrimenti i suoi
-`segments`. Senza ruolo o senza geometria si salta. Le tre collezioni di
-detect_flat restano come prima.
+consumatore (D90: tutte, forge non ne conosce nessuna per nome). Un elemento
+con `role` va sul layer del suo ruolo: i suoi `contours` se ne ha, altrimenti
+i suoi `segments`. Senza ruolo o senza geometria si salta.
 """
 
 import unittest
 from dataclasses import dataclass, field
 
 import forge
-from forge.tools.model.detected_features import DetectedFeatures
+from forge.model import DetectedFeatures
 
 
 @dataclass
@@ -77,15 +76,6 @@ class TestAttachedExport(unittest.TestCase):
         cluster.detected.attach("my_marks", [_Mark(role="", segments=cluster.inners[0].segments),
                                              _Mark(role="my_role"), object()])
         self.assertEqual(len(_layers(forge.to_dxf(result, doc))), before)
-
-    def test_i_fori_di_detect_flat_non_sono_scritti_due_volte(self):
-        doc, result = _plate()
-        forge.detect_flat(result, "holes")
-        n_holes = len(result.clusters[0].features("holes"))
-        self.assertGreater(n_holes, 0)
-        # un'entità per foro, sul layer del suo tipo (Hole, Countersink, ThreadHole): nessun doppione
-        layers = _layers(forge.to_dxf(result, doc))
-        self.assertEqual(sum(1 for l in layers if l in ("Hole", "Countersink", "ThreadHole")), n_holes)
 
 
 if __name__ == "__main__":

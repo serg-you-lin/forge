@@ -2,8 +2,11 @@
 test_view_model_svg.py — to_view_model() + to_svg()
 
 Fixture tracciati nel repo:
-    golden/example_4_polylines.dxf  — 4 parti, un foro ciascuna
-    rect_with_special_layers.dxf    — 1 parte, pieghe + incisione
+    golden/example_4_polylines.dxf  — 4 parti, un cerchio interno ciascuna
+
+L'overlay (MAP.md D90) si prova con un elemento di prova attaccato a mano:
+forge lo disegna dal suo ruolo e dalla sua geometria, senza sapere cos'è.
+Fori, pieghe, incisioni veri: snapbend tests/flat/test_view_model_svg.py.
 """
 
 import json
@@ -13,19 +16,37 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import forge
+from forge.model import DetectedFeatures
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "data"
 MULTI_PART   = EXAMPLES / "golden" / "example_4_polylines.dxf"
-SPECIAL      = EXAMPLES / "rect_with_special_layers.dxf"
-MULTIFEATURE = EXAMPLES / "Multifeature.dxf"   # non tracciato — test extra se presente
-
-SPECIAL_LM = {"Piega": "bending", "bend": "bending", "MARK": "engrave",
-              "special": "engrave", "Filettati": "threaded_hole", "Svasati": "countersink"}
 
 
-def _result(path, name_roles=None):
-    doc = forge.load_dxf(str(path), tolerance=0.5, role_rules=forge.name_rules(name_roles or {}))
-    return forge.heal_and_detect(doc, features="all")
+class _Mark:
+    """Elemento di prova dell'overlay: un cerchio interno riletto da un consumatore."""
+    role = "my_circle"
+
+    def __init__(self, contour, center, diameter):
+        self.polygon = contour.polygon
+        self.segments = contour.segments
+        self._center, self._diameter = center, diameter
+
+    def to_dict(self):
+        return {"center": self._center, "diameter": self._diameter, "kind": "test"}
+
+
+def _result(path):
+    doc = forge.load_dxf(str(path), tolerance=0.5)
+    result = forge.heal(doc)
+    for cluster in result.clusters:
+        marks = []
+        for inner in cluster.inners:
+            c = inner.polygon.centroid
+            marks.append(_Mark(inner, (c.x, c.y), 2 * (inner.polygon.area / 3.141592653589793) ** 0.5))
+        cluster.inners = []
+        cluster.detected = DetectedFeatures()
+        cluster.detected.attach("my_circles", marks)
+    return result
 
 
 class TestViewModel(unittest.TestCase):
@@ -51,13 +72,15 @@ class TestViewModel(unittest.TestCase):
         self.assertTrue(cluster["outer"]["closed"])
         self.assertEqual(cluster["outer"]["color"], "#00ff00")  # verde = outer
 
-    def test_hole_carries_circle_metadata(self):
-        holes = [h for p in self.vm["clusters"] for h in p["holes"]]
-        self.assertTrue(holes)
-        h = holes[0]
-        self.assertIn(h["hole_type"], ("plain", "countersink", "threaded"))
-        self.assertGreater(h["diameter"], 0)
-        self.assertEqual(len(h["center"]), 2)
+    def test_overlay_entry_carries_to_dict_fields(self):
+        marks = [m for p in self.vm["clusters"] for m in p["features"]["my_circles"]]
+        self.assertTrue(marks)
+        m = marks[0]
+        self.assertEqual(m["role"], "my_circle")
+        self.assertEqual(m["kind"], "test")
+        self.assertTrue(m["closed"])
+        self.assertGreater(m["diameter"], 0)
+        self.assertEqual(len(m["center"]), 2)
 
     def test_every_point_is_xy_pair(self):
         for cluster in self.vm["clusters"]:
@@ -70,15 +93,6 @@ class TestViewModel(unittest.TestCase):
                                  include_annotations=False)
         self.assertNotIn("trash", vm)
         self.assertNotIn("annotations", vm)
-
-    def test_bending_and_engrave_geometry(self):
-        vm = forge.to_view_model(_result(SPECIAL, SPECIAL_LM))
-        cluster = vm["clusters"][0]
-        self.assertTrue(cluster["bending_lines"])
-        self.assertTrue(cluster["engrave_lines"])
-        for bl in cluster["bending_lines"]:
-            self.assertFalse(bl["closed"])
-            self.assertGreaterEqual(len(bl["points"]), 2)
 
     def test_invalid_result_does_not_raise(self):
         empty = forge.ForgeResult(clusters=[], is_valid=False, errors=["boom"])
@@ -102,11 +116,11 @@ class TestToSvg(unittest.TestCase):
         self.assertIn("viewBox=", self.svg)
         self.assertRegex(self.svg, r"<(polygon|polyline|circle)\b")
 
-    def test_holes_render_as_circles_by_default(self):
+    def test_overlay_circles_render_as_circles_by_default(self):
         self.assertIn("<circle", self.svg)
 
-    def test_holes_as_polygons_when_disabled(self):
-        svg = forge.to_svg(self.result, holes_as_circles=False)
+    def test_overlay_circles_as_polygons_when_disabled(self):
+        svg = forge.to_svg(self.result, true_circles=False)
         self.assertEqual(svg.count("<circle"), 0)
 
     def test_one_group_per_part(self):
@@ -119,23 +133,6 @@ class TestToSvg(unittest.TestCase):
     def test_empty_result_returns_valid_svg(self):
         empty = forge.ForgeResult(clusters=[], is_valid=False)
         ET.fromstring(forge.to_svg(empty))
-
-
-@unittest.skipUnless(MULTIFEATURE.exists(), "Multifeature.dxf non tracciato")
-class TestRichExample(unittest.TestCase):
-    """Copertura extra sul file con tutte le feature (solo in locale)."""
-
-    def test_all_feature_types_render(self):
-        lm = {"Filettati": "threaded_hole", "Svasati": "countersink",
-              "Piega": "bending", "MARK": "engrave"}
-        result = _result(MULTIFEATURE, lm)
-        svg = forge.to_svg(result)
-        ET.fromstring(svg)
-        self.assertIn("#00ff00", svg)                       # outer
-        self.assertTrue("#0000ff" in svg or "#00ffff" in svg)  # foro tipato
-        vm = forge.to_view_model(result)
-        p = vm["clusters"][0]
-        self.assertTrue(p["holes"] and p["bending_lines"] and p["engrave_lines"])
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ os.makedirs(OUTDIR, exist_ok=True)
 base = os.path.splitext(os.path.basename(INPUT))[0]
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
-result = forge.heal_and_detect(doc, label=base, features="all")
+result = forge.heal(doc, label=base)
 
 if not result.is_valid:
     raise SystemExit(f"non valido: {result.errors}")

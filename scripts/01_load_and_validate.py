@@ -7,7 +7,7 @@ API forge usate:
     document_from_msp   costruisce un ForgeDocument da un msp già aperto (test / geometria a mano)
     validate           valida l'INPUT prima di heal() — non modifica niente
 
-Dopo load_dxf il documento ezdxf sorgente sparisce: heal()/detect_flat() lavorano
+Dopo load_dxf il documento ezdxf sorgente sparisce: heal() lavora
 solo su ForgeDocument.edges (primitive pure) e ForgeDocument.annotations.
 
     python 01_load_and_validate.py

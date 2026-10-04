@@ -172,7 +172,7 @@ def rotate_result(result: ForgeResult, angle_rad: float, origin: Point = (0.0, 0
         )
     if any(c.detected is not None for c in result.clusters):
         new_warnings.append(
-            "rotate_result(): detected features non ruotate — richiama detect_flat() DOPO la rotazione"
+            "rotate_result(): detected features non ruotate — rifai la detection DOPO la rotazione"
         )
 
     return replace(

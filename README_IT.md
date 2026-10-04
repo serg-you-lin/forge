@@ -20,10 +20,10 @@ un vecchio file R12 — in contorni chiusi.
 e la piastra sono il contesto in cui forge è nato, e il suo primo consumatore, non
 il suo confine: il motore non conosce materiale, processo né prodotto. Leggere la
 geometria come "un foro da forare" o "una piega" è interpretazione del
-consumatore (`snapbend` per la lamiera, `snapdraw` per la notazione del disegno).
-L'unica lettura di quel tipo inclusa, `detect_flat()`, è opzionale e vive in un
-solo modulo a parte, così un consumatore di un altro dominio ottiene la stessa
-geometria con il proprio vocabolario sopra.
+consumatore (`snapbend` per la lamiera, `snapdraw` per la notazione del disegno):
+forge non ha letture di quel tipo dentro, così un consumatore di qualunque
+dominio ottiene la stessa geometria e ci mette sopra il suo vocabolario
+attraverso un overlay aperto (`cluster.detected`).
 
 > Stato: **alpha**. In produzione, ma l'API si muove ancora. Vedi `MAP.md` per le decisioni di design correnti.
 
@@ -46,10 +46,8 @@ Dipendenze: `ezdxf`, `shapely`, `numpy` (Python ≥ 3.10).
 import forge
 
 doc    = forge.load_dxf("pezzo.dxf", tolerance=0.5)   # -> ForgeDocument
-result = forge.heal_and_detect(doc)                   # topologia + fori/pieghe/incisioni
-#   == forge.heal(doc) poi forge.detect_flat(result, "all"); chiamali separati se ti
-#      serve la sola topologia. forge.detect_flat(result) nudo NON classifica i fori —
-#      passa features ("holes" / "bending" / "engrave" / "all").
+result = forge.heal(doc)                              # topologia: contorni chiusi, outer/inner
+#   fori, pieghe, incisioni sono una lettura di processo sopra: snapbend.flat.detect_flat
 
 if not result.is_valid:
     raise SystemExit(result.errors)

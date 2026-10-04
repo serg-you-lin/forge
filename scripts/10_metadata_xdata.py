@@ -43,7 +43,7 @@ forge.set_schema({
 })
 
 doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
-result = forge.heal_and_detect(doc, label=base, features="all")
+result = forge.heal(doc, label=base)
 forge.inject(result, data_injector=lambda cluster, txt: {"material": "AISI304", "thickness": 3.0})
 
 out = forge.to_dxf(result, doc)

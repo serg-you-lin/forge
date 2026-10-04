@@ -49,11 +49,13 @@ python scripts/gen_index.py --check    # exit 1 if stale; also checks the depend
    `LineSeg`, …), never with `ezdxf` directly. forge exists so that is unnecessary.
 3. **Dependency rule:** `core` and `model` never import `adapters`, `tools` or `io`
    (MAP.md D44). `model` may annotate a `tools` type only under `TYPE_CHECKING`.
-4. **forge knows no process.** `hole`/`bending`/`engrave` vocabulary lives in
-   `tools/manufacturing_role.py` and is owned by `detect_flat()` (D47). forge does
-   not know the part is sheet metal — process-level reading belongs to `snapbend`.
-5. **`detect_flat()` assumes a flat part seen from its face** (cutting file /
-   development). Never run it on `island()` output: it invents bends in isometrics
+4. **forge knows no process.** The `hole`/`bending`/`engrave` vocabulary and
+   `detect_flat()` live in snapbend (`snapbend.flat`, D88). forge reads
+   structure (what closes, what lies inside what, what is connected); meaning
+   (hole, bend, view, dimension) is a consumer's, written to `cluster.detected`
+   and rendered by role (D90).
+5. **snapbend's `detect_flat()` assumes a flat part seen from its face** (cutting
+   file / development). Never run it on `island()` output: it invents bends in isometrics
    and holes in logo letters. `heal()` and `island()` are two *readings*, never two
    steps — never chain them on one document.
 6. **Always check `result.is_valid`** before handing output to a machine.

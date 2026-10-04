@@ -228,7 +228,7 @@ def _describe_segment(seg) -> str:
 
 def inspect_result(result, coords: bool = False) -> None:
     """
-    Stampa un ForgeResult dopo heal() (+ detect_flat()): il prodotto vero di forge.
+    Stampa un ForgeResult dopo heal(): il prodotto vero di forge.
 
     coords : se True stampa anche le coordinate dei contorni
     """
@@ -286,25 +286,12 @@ def _sub_part(i: int, cluster, coords: bool) -> None:
         for inn in cluster.inners:
             print(f"    - role={_role(inn.role):<10} area={inn.area:.1f} segmenti={len(inn.segments)}")
 
-    holes = cluster.features("holes")
-    if holes:
-        print(f"  holes  : {len(holes)}")
-        for hh in holes:
-            print(f"    - {hh.hole_type:<11} Ø{hh.diameter:.2f} @ {_p(hh.center)}  "
-                  f"source={hh.source or 'n/d'} conf={hh.confidence:.2f}")
-
-    bending_lines = cluster.features("bending_lines")
-    if bending_lines:
-        print(f"  bending: {len(bending_lines)}")
-        for bl in bending_lines:
-            print(f"    - len={bl.length:.1f} angle={bl.angle_deg:.1f}°")
-
-    engrave_lines = cluster.features("engrave_lines")
-    if engrave_lines:
-        print(f"  engrave: {len(engrave_lines)}")
-        for en in engrave_lines:
-            print(f"    - {'chiusa' if en.closed else 'aperta'} len={en.length:.2f} "
-                  f"source={en.source} conf={en.confidence:.2f}")
+    if cluster.detected is not None:
+        for name, items in cluster.detected.items():
+            print(f"  {name}: {len(items)}")
+            for item in items:
+                fields = item.to_dict() if callable(getattr(item, "to_dict", None)) else {}
+                print(f"    - role={_role(getattr(item, 'role', '?'))} {fields}")
 
     if cluster.custom:
         print(f"  custom : {cluster.custom}")
@@ -322,7 +309,6 @@ def inspect_file(
     tolerance: float = DEFAULT_NODE_TOLERANCE,
     role_rules: Sequence[RoleRule] = (),
     run_heal: bool = True,
-    run_detect: bool = True,
     entities: bool = True,
     coords: bool = False,
 ) -> None:
@@ -330,7 +316,7 @@ def inspect_file(
     Apre un file e stampa i tre livelli in fila:
     DXF grezzo → ForgeDocument → ForgeResult.
 
-    run_heal / run_detect : disattivali per fermarti a un livello precedente.
+    run_heal              : disattivalo per fermarti al ForgeDocument.
     role_rules            : come in load_dxf().
     """
     from .adapters.dxf.loader import load_dxf
@@ -347,9 +333,5 @@ def inspect_file(
 
     from .core.heal import heal as _heal
     result = _heal(doc, tolerance=tolerance)
-
-    if run_detect and result.is_valid and result.clusters:
-        from .tools.detect import detect_flat as _detect
-        _detect(result)
 
     inspect_result(result, coords=coords)

@@ -125,14 +125,20 @@ class TestLeaderTarget(unittest.TestCase):
         result = self._island(Leader(position=(20, 25), text="M8"))
         self.assertIsNone(result.annotations[0].target)
 
-    def test_feature_di_detect(self):
-        # pezzo piano: detect sposta i fori in `holes`, il target segue
-        result = forge.heal_and_detect(_plate_with_holes())
+    def test_elemento_dell_overlay(self):
+        # un consumatore sposta un contorno in una sua collezione: il target segue
+        from forge.model import DetectedFeatures
+        result = forge.heal(_plate_with_holes())
+        cluster = result.clusters[0]
+        small = min(cluster.inners, key=lambda c: c.polygon.area)
+        cluster.inners = [c for c in cluster.inners if c is not small]
+        cluster.detected = DetectedFeatures()
+        cluster.detected.attach("my_circles", [small])
         result.annotations = [_leader((24, 25), (40, 60))]
         anchor_annotations(result)
-        hole = resolve_target(result, result.annotations[0].target)
-        self.assertIn(".holes[", result.annotations[0].target)
-        self.assertAlmostEqual(hole.polygon.centroid.x, 20, places=1)
+        target = resolve_target(result, result.annotations[0].target)
+        self.assertIn(".my_circles[", result.annotations[0].target)
+        self.assertAlmostEqual(target.polygon.centroid.x, 20, places=1)
 
 
 class TestDimensionReferences(unittest.TestCase):

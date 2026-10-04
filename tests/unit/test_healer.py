@@ -23,7 +23,6 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
-from forge.tools.manufacturing_role import LAYER_HOLE
 from forge.rules.palette import COLOR_OUTER, COLOR_INNER
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -130,7 +129,8 @@ class TestHealerCircleOuter(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# CIRCLE piccolo → HOLE (dopo detect — D15: heal non promuove più i fori)
+# CIRCLE piccolo → contorno interno (un foro è una lettura di processo:
+# snapbend, MAP.md D88)
 # ---------------------------------------------------------------------------
 
 class TestHealerCircleHole(unittest.TestCase):
@@ -138,25 +138,13 @@ class TestHealerCircleHole(unittest.TestCase):
     def setUp(self):
         doc = forge.load_dxf(load("rect_with_circle_hole.dxf"))
         self.result = forge.heal(doc)
-        # heal() consegna solo il contorno interno; la promozione a foro è di
-        # detect_flat(features="holes").
-        self.assertEqual(len(self.result.clusters[0].features("holes")), 0)
-        self.assertEqual(len(self.result.clusters[0].inners), 1)
-        forge.detect_flat(self.result, features="all")
 
     def test_001_finds_one_part(self):
         self.assertEqual(self.result.cluster_count, 1)
 
-    def test_002_has_hole(self):
-        self.assertGreaterEqual(len(self.result.clusters[0].features("holes")), 1)
-
-    def test_003_hole_role(self):
-        from forge.tools.manufacturing_role import HOLE
-        for hole in self.result.clusters[0].features("holes"):
-            self.assertEqual(hole.role, HOLE)
-
-    def test_004_exact_hole_count(self):
-        self.assertEqual(len(self.result.clusters[0].features("holes")), 1)
+    def test_002_circle_is_an_inner(self):
+        self.assertEqual(len(self.result.clusters[0].inners), 1)
+        self.assertEqual(self.result.clusters[0].detected, None)
 
 
 # ---------------------------------------------------------------------------

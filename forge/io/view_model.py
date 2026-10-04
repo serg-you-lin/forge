@@ -2,17 +2,17 @@
 io/view_model.py
 ----------------
 `to_view_model(result)` — serializza un `ForgeResult` in un dizionario JSON
-**orientato al rendering**: coordinate di OGNI feature (outer, inner, fori,
-pieghe, incisioni, trash) + ruolo + colore, pronto da disegnare.
+**orientato al rendering**: coordinate di OGNI feature (outer, inner, overlay
+di un consumatore, trash) + ruolo + colore, pronto da disegnare.
 
 È il pendant di `to_json` (che dà solo metadati, zero geometria) e la versione
-completa di `to_nester_input` (che dà solo outer + fori). Lo consumano `to_svg`
+completa di `to_nester_input` (che dà solo outer + inner). Lo consumano `to_svg`
 e qualunque front-end esterno (una dashboard JS che renderizza con SVG/Canvas).
 
 Tutta la geometria è **discretizzata a polilinee** (liste di punti `[x, y]`):
-archi, cerchi e spline vengono appiattiti (MAP.md D12). Per i fori si riporta
-anche `center` + `diameter`, così un renderer può disegnare un cerchio vero
-invece del poligono a N lati.
+archi, cerchi e spline vengono appiattiti (MAP.md D12). Un elemento
+dell'overlay che porta `center` + `diameter` nel suo `to_dict()` li riporta,
+così un renderer può disegnare un cerchio vero invece del poligono a N lati.
 
 Sistema di coordinate: quello del modello = quello del file sorgente (Y verso
 l'alto). Un renderer SVG deve ribaltare la Y (lo fa `to_svg`).
@@ -23,10 +23,9 @@ from __future__ import annotations
 from typing import Optional
 
 from ..model import ForgeResult
-from ..model.role import ContourRole, role_str as _role_str
+from ..model.role import ContourRole, feature_role, role_str as _role_str
 from ..rules.palette import role_to_hex
 from ..core.geometry import track_points
-from ..tools.detect import describe_features
 
 
 def _round_points(seq) -> list:
@@ -54,55 +53,43 @@ def _contour_entry(contour, tolerance: float) -> dict:
     return {"role": _role_str(role), "color": role_to_hex(role), "points": pts, "closed": True}
 
 
-def _hole_entry(hole, tolerance: float) -> dict:
-    entry = _contour_entry(hole, tolerance)
-    entry.update({
-        "hole_type":  hole.hole_type,
-        "diameter":   round(hole.diameter, 4),
-        "center":     [round(hole.center[0], 4), round(hole.center[1], 4)],
-        "source":     hole.source,
-        "confidence": round(hole.confidence, 4),
-    })
-    if hole.outer_diameter is not None:
-        entry["outer_diameter"] = round(hole.outer_diameter, 4)
-    return entry
+def _feature_entries(item, tolerance: float) -> list:
+    """
+    Un elemento dell'overlay (MAP.md D90) → una voce per contorno: ruolo,
+    colore, punti, `closed` (ha un `polygon`), più i campi scalari del suo
+    `to_dict()` se ne ha uno (un renderer disegna un cerchio vero se trova
+    `center` + `diameter`).
+    """
+    role = getattr(item, "role", None)
+    contours = getattr(item, "contours", None)
+    if contours is None:
+        contours = [item]
+    extra = {}
+    if callable(getattr(item, "to_dict", None)):
+        for key, value in item.to_dict().items():
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                extra[key] = value
+            elif isinstance(value, (tuple, list)) and all(isinstance(v, (int, float)) for v in value):
+                extra[key] = [round(v, 4) for v in value]
+    entries = []
+    for contour in contours:
+        c_role = feature_role(contour, role) or ContourRole.UNKNOWN
+        polygon = getattr(contour, "polygon", None)
+        pts = _poly_points(polygon) if polygon is not None else _track(
+            getattr(contour, "segments", []) or [], tolerance
+        )
+        entries.append({**extra, "role": _role_str(c_role), "color": role_to_hex(c_role),
+                        "points": pts, "closed": polygon is not None})
+    return entries
 
 
-def _bending_entry(bl) -> dict:
-    coords = _round_points(bl.geometry.coords) if bl.geometry else []
+def _features(cluster, tolerance: float) -> dict:
+    """`cluster.detected` per nome → lista di voci disegnabili."""
+    if cluster.detected is None:
+        return {}
     return {
-        # "bending" è vocabolario di detect (tools/manufacturing_role.py),
-        # non del motore — qui è una stringa letterale apposta, non un
-        # ContourRole: view_model non deve importare quel vocabolario per
-        # sapere il nome di un ruolo che sta solo passando (MAP.md, "roles
-        # out of core").
-        "role":       "bending",
-        "color":      role_to_hex("bending"),
-        "points":     coords,
-        "closed":     False,
-        "length":     round(bl.length, 4),
-        "angle_deg":  round(bl.angle_deg, 4),
-        "source":     bl.source,
-        "confidence": round(bl.confidence, 4),
-    }
-
-
-def _engrave_entry(eng, tolerance: float) -> dict:
-    role = getattr(eng, "role", "engrave")  # "engrave" letterale, stesso motivo di _bending_entry
-    if eng.polygon is not None:
-        pts = _poly_points(eng.polygon)
-    elif eng.pts:
-        pts = _round_points(eng.pts)
-    else:
-        pts = _track(getattr(eng, "segments", []), tolerance)
-    return {
-        "role":       _role_str(role),
-        "color":      role_to_hex(role),
-        "points":     pts,
-        "closed":     eng.closed,
-        "length":     round(eng.length or 0.0, 4),
-        "source":     eng.source,
-        "confidence": round(eng.confidence, 4),
+        name: [e for item in items for e in _feature_entries(item, tolerance)]
+        for name, items in cluster.detected.items()
     }
 
 
@@ -167,14 +154,9 @@ def to_view_model(
             "area":   round(cluster.area, 4),
             "outer":  _contour_entry(cluster.outer, tolerance),
             "inners": [_contour_entry(i, tolerance) for i in cluster.inners],
-            "holes":  [_hole_entry(h, tolerance) for h in cluster.features("holes")],
-            "bending_lines": [_bending_entry(b) for b in cluster.features("bending_lines")],
-            "engrave_lines": [_engrave_entry(e, tolerance) for e in cluster.features("engrave_lines")],
-            # summary generico (sempre disponibile) + il dettaglio ricco che
-            # solo forge sa dare sui suoi tipi noti (fori per tipo, pieghe
-            # raggruppate...) — un renderer vuole entrambi (branch
-            # refactor/detect-overlay, MAP.md D44).
-            "summary": {**cluster.summary, **describe_features(cluster)},
+            # l'overlay di un consumatore, per nome (MAP.md D44, D90)
+            "features": _features(cluster, tolerance),
+            "summary": cluster.summary,
             "custom":  cluster.custom,
         })
 

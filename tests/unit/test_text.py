@@ -116,7 +116,7 @@ class TestToText(unittest.TestCase):
         result = _plate()
         cluster = result.clusters[0]
         if cluster.detected is None:
-            from forge.tools.model.detected_features import DetectedFeatures
+            from forge.model import DetectedFeatures
             cluster.detected = DetectedFeatures()
         cluster.detected.add("countersinks", Countersink("test", 0.9, 7.8))
         text = forge.to_text(result)

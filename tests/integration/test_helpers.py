@@ -33,7 +33,6 @@ def run_pipeline(
     dxf_name,
     *,
     tolerance=0.2,
-    do_detect=False,
     do_inject=False,
     do_write=False,
     reload_after_write=False,
@@ -76,11 +75,6 @@ def run_pipeline(
         label=Path(dxf_name).stem,
         source_file=dxf_name,
     )
-
-    if do_detect:
-        forge.detect_flat(
-            result, features="all"
-        )
 
     if do_inject:
         forge.inject(result)
@@ -144,20 +138,3 @@ def get_part(result, index=0):
     return result.clusters[index]
 
 
-def get_custom(result, key, default=None):
-    """
-    Shortcut per i conteggi/metadati di una parte.
-
-    Tre livelli (MAP.md D8, D44): il conteggio grezzo di `cluster.summary`,
-    il dettaglio ricco di `describe_features()` (fori per tipo, pieghe
-    raggruppate...), i dati aggiunti da un data_injector esterno in
-    `cluster.custom`. Si guardano tutti e tre, dal più generico al più
-    specifico.
-    """
-    from forge.tools.detect import describe_features
-
-    cluster = get_part(result)
-    merged = {**cluster.summary, **describe_features(cluster)}
-    if key in merged:
-        return merged[key]
-    return cluster.custom.get(key, default)

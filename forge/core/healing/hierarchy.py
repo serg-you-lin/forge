@@ -151,7 +151,7 @@ class HierarchyBuilder:
         self.label       = label
         self.source_file = source_file
         # Stesso predicato di split_labeled / structural_loops — iniettato dal chiamante
-        # (heal_and_detect → tools.manufacturing_role.is_structural) o, di
+        # (snapbend: un foro è contorno di pezzo) o, di
         # default, solo outer/inner (model.role.is_structural_role).
         self._is_structural = is_structural or is_structural_role
 

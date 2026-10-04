@@ -15,7 +15,7 @@ Struttura METADATA_FIELDS:
                       None = calcolato automaticamente da ForgeResult
 
 Campi calcolati automaticamente (default None):
-    area, holes_count, bbox, outer_perimeter, inner_perimeter, total_perimeter
+    area, bbox, outer_perimeter, inner_perimeter, total_perimeter
 
 Campi che l'utente deve fornire (o restano al default):
     label, source_file, quantity, material, thickness
@@ -28,14 +28,8 @@ METADATA_FIELDS = {
     "quantity"                : ("quantity",                 1,        "custom"),
     "material"                : ("material",                 "S275JR", "custom"),
     "thickness"               : ("thickness_mm",             0.0,      "custom"),
-    # --- lavorazioni ---
-    "bending_lines"           : ("bending_lines",            0,        "custom"),
-    "countersink_count"       : ("countersink_count",        0,        "custom"),  
-    "threaded_holes_count"    : ("threaded_holes_count",     0,        "custom"),  
-    "total_engrave_length"    : ("total_engrave_length_mm",  0.0,      "custom"),
     # --- geometria ---
     "area"                    : ("area_mm2",                 None,     "calculated"),
-    "holes_count"             : ("holes_count",              None,     "calculated"),  
     "inner_contours_count"    : ("inner_contours_count",     None,     "calculated"),  
     "outer_perimeter"         : ("outer_perimeter_mm",       None,     "calculated"),
     "inner_perimeter"         : ("inner_perimeter_mm",       None,     "calculated"),

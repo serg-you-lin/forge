@@ -29,7 +29,7 @@ class TestNormalizeRole(unittest.TestCase):
 
     def test_ruolo_manifatturiero_e_uno_slug_qualunque_qui(self):
         # "hole"/"bending" non sono più costanti di model.role: sono
-        # vocabolario di tools.manufacturing_role, a fianco di detect_flat().
+        # vocabolario di processo, di snapbend (MAP.md D88).
         # Qui passano come uno slug qualunque, non come un ContourRole.
         self.assertEqual(normalize_role("hole"), "hole")
         self.assertNotIsInstance(normalize_role("hole"), ContourRole)
@@ -63,10 +63,8 @@ class TestRoleStr(unittest.TestCase):
 class TestIsStructuralRole(unittest.TestCase):
     """
     Predicato minimo del motore (MAP.md D30, ristretto da "roles out of
-    core"): solo outer/inner. Il predicato ESTESO (+ hole/countersink/
-    threaded_hole) è `tools.manufacturing_role.is_structural`, testato in
-    TestManufacturingIsStructural sotto — non qui, non è vocabolario di
-    model.role.
+    core"): solo outer/inner. Il predicato esteso di processo (+ hole/
+    countersink/threaded_hole) è di snapbend (MAP.md D88).
     """
 
     def test_ruoli_di_contorno(self):
@@ -87,24 +85,6 @@ class TestIsStructuralRole(unittest.TestCase):
         # ContourRole eredita da str: "outer" == ContourRole.OUTER
         self.assertTrue(is_structural_role("outer"))
         self.assertIn(ContourRole.INNER, STRUCTURAL_ROLES)
-
-
-class TestManufacturingIsStructural(unittest.TestCase):
-    """
-    Predicato ESTESO — outer/inner (motore) + hole/countersink/threaded_hole
-    (manifatturiero) — quello che `heal_and_detect()` inietta in
-    `heal(is_structural=...)`. Vive a fianco di detect_flat(), non nel motore.
-    """
-
-    def test_ruoli_manifatturieri_strutturali(self):
-        from forge.tools.manufacturing_role import is_structural
-        for r in ("outer", "inner", "hole", "countersink", "threaded_hole"):
-            self.assertTrue(is_structural(r))
-
-    def test_marcatura_e_arredo_restano_non_strutturali(self):
-        from forge.tools.manufacturing_role import is_structural
-        for r in ("bending", "engrave", "marking", "frame", "unknown"):
-            self.assertFalse(is_structural(r))
 
 
 class TestCustomRoleSurvivesHeal(unittest.TestCase):
@@ -132,9 +112,8 @@ class TestCustomRoleSurvivesHeal(unittest.TestCase):
 class TestConsumerRolesSurviveDetect(unittest.TestCase):
     """
     D30: un ruolo che forge non classifica (cornice, cartiglio, slug di un
-    consumatore) sopravvive TUTTA la pipeline — load → heal → detect — con
-    geometria e ruolo intatti. Prima detect_flat() ne faceva un ClassifiedEntity
-    scollegato che l'exporter non riscriveva → geometria persa.
+    consumatore) sopravvive la pipeline — load → heal — con geometria e ruolo
+    intatti. Lo stesso dopo la detection di snapbend: tests/flat/test_roles.py.
     """
 
     def _framed_doc(self):
@@ -154,23 +133,6 @@ class TestConsumerRolesSurviveDetect(unittest.TestCase):
         for c in result.clusters:
             self.assertEqual(c.outer.role, ContourRole.OUTER)
             self.assertLess(c.outer.polygon.area, 20000)  # non è la cornice
-
-    def test_detect_non_sposta_il_ruolo_custom_fuori_dalla_trash(self):
-        result = forge.heal(self._framed_doc())
-        trash_prima = len(result.trash_entities)
-        frame_prima = sum(1 for t in result.trash_entities
-                          if role_str(getattr(t, "role", "")) == "frame")
-        self.assertGreater(frame_prima, 0)
-
-        forge.detect_flat(result, features="all")
-
-        frame_dopo = sum(1 for t in result.trash_entities
-                         if role_str(getattr(t, "role", "")) == "frame")
-        self.assertEqual(frame_dopo, frame_prima)
-        self.assertEqual(len(result.trash_entities), trash_prima)
-        # niente ClassifiedEntity scollegato, niente warning "non contenuta"
-        self.assertEqual(result.classified_entities, [])
-        self.assertFalse([w for w in result.warnings if "non contenuta" in w])
 
     def test_to_dxf_scrive_il_ruolo_di_consumatore_su_un_layer_suo(self):
         # D31: la cornice non finisce su "Trash" insieme alla spazzatura vera,

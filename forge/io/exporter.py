@@ -14,7 +14,6 @@ from typing import Callable, Optional
 from xml.dom import minidom
 from ..model import ForgeResult, ForgeCluster
 from ..rules.metadata_schema import METADATA_FIELDS
-from ..tools.detect import describe_features
 
 
 # ---------------------------------------------------------------------------
@@ -29,7 +28,7 @@ def build_metadata(cluster: ForgeCluster, schema: dict = None, extra: dict = Non
     Legge la sorgente da ogni campo dello schema:
         "cluster"       → attributo diretto di ForgeCluster (label, source_file)
         "custom"     → cluster.custom (material, thickness, quantity, ecc.)
-        "calculated" → calcolato da Shapely (area, perimetri, bbox, holes_count)
+        "calculated" → calcolato da Shapely (area, perimetri, bbox)
 
     Args:
         cluster:   ForgeCluster da cui estrarre i dati
@@ -44,14 +43,11 @@ def build_metadata(cluster: ForgeCluster, schema: dict = None, extra: dict = Non
         schema = METADATA_FIELDS
 
     d = cluster.to_dict()
-    # Tre livelli, non uno (MAP.md D44):
-    #   - cluster.summary       — conteggio grezzo, sempre disponibile, generico
-    #   - describe_features()   — dettaglio ricco per i tipi NOTI di forge
-    #   - cluster.custom        — ciò che inject()/detect_flat() ci ha scritto sopra
-    # Ordine di merge = priorità: il più specifico vince sul più generico.
+    # cluster.summary (conteggio grezzo dell'overlay, generico) sotto
+    # cluster.custom (ciò che un consumatore o inject() ci ha scritto): il più
+    # specifico vince (MAP.md D44, D90).
     custom = {
         **cluster.summary,
-        **describe_features(cluster),
         **(d.get("custom", {}) or {}),
     }
 
@@ -67,9 +63,6 @@ def build_metadata(cluster: ForgeCluster, schema: dict = None, extra: dict = Non
 
     calculated = {
         "area"            : d.get("area"),
-        # Non più in to_dict() (non garantito senza detect_flat()) — contato qui
-        # direttamente su cluster.detected.
-        "holes_count"     : len(cluster.features("holes")),
         "inner_contours_count" : d.get("inner_contours_count"),
         "bbox"            : d.get("bbox"),
         "outer_perimeter" : outer_perimeter,

@@ -18,9 +18,9 @@ It is **not a DXF library** and **not a sheet-metal tool**. Sheet and plate
 manufacturing is where forge grew up and still its first consumer, not its
 boundary: the engine knows no material, process or product. Reading geometry as
 "a hole to drill" or "a bend" is the consumer's interpretation (`snapbend` for
-sheet metal, `snapdraw` for drawing notation). The one built-in reading of that
-kind, `detect_flat()`, is opt-in and lives in one optional module, so a consumer
-in another domain gets the same geometry with its own vocabulary on top.
+sheet metal, `snapdraw` for drawing notation) — forge has no reading of that
+kind built in, so a consumer in any domain gets the same geometry and puts its
+own vocabulary on top through one open overlay (`cluster.detected`).
 
 > Status: **alpha**. Used in production, but the API still moves. See `MAP.md` for the current design decisions.
 
@@ -43,10 +43,8 @@ Dependencies: `ezdxf`, `shapely`, `numpy` (Python ≥ 3.10).
 import forge
 
 doc    = forge.load_dxf("part.dxf", tolerance=0.5)   # -> ForgeDocument
-result = forge.heal_and_detect(doc)                  # topology + the flat-part reading
-#   == forge.heal(doc) then forge.detect_flat(result, "all"); call them separately if
-#      you only need the topology. Bare forge.detect_flat(result) does not classify
-#      holes — pass features ("holes" / "bending" / "engrave" / "all").
+result = forge.heal(doc)                             # topology: closed contours, outer/inner
+#   holes, bends, engraving are a process reading on top: snapbend.flat.detect_flat
 
 if not result.is_valid:                             # no closed outer contour
     print(result.errors)                             # still renderable, see "Known limits"
@@ -115,11 +113,10 @@ load_dxf(path)  ──►  ForgeDocument   (edges + annotations + source_meta)
                           │            the only step that touches ezdxf for reading
                           ▼
      heal(doc)  ──►  ForgeResult      topology: gaps closed, loops found,
-                          │            outer / inner containment tree (no holes yet)
+                          │            outer / inner containment tree
                           ▼
-  detect_flat(result, "all")               semantics: hole type, bend lines, engraving
-                          │            (mutates result in place, returns it)
-                          │            heal + detect together: heal_and_detect(doc)
+  (a consumer's reading)               e.g. snapbend: hole type, bend lines, engraving,
+                          │            attached to cluster.detected
                           ▼
    to_dxf(result, doc)  ──►  ezdxf Drawing        render — one document
    split(result, doc)   ──►  list[Drawing]        render — one per part
@@ -140,14 +137,9 @@ The model is the product. `to_dxf` never re-reads the source file — every rend
 | Layer          | Meaning                                    |
 |----------------|--------------------------------------------|
 | `OuterContour` | outer profile of the part                  |
-| `InnerContour` | internal opening (slot, pocket)            |
-| `Hole`         | plain circular hole                        |
-| `Countersink`  | countersunk hole                           |
-| `ThreadHole`   | threaded / tapped hole                     |
-| `Bending`      | bend line                                  |
-| `Engrave`      | engraving / marking trace                  |
-| `Marking`      | other marking geometry                     |
+| `InnerContour` | closed contour inside the outer             |
 | `Annotation`   | source texts and dimensions (not a cut layer) |
+| *role name*    | geometry with a consumer's role (`frame`, `hole`, `bending`, …): its own layer, named and coloured by `register_role_style` if the consumer registered one |
 | `Trash`        | everything `forge` could not classify — kept, never dropped |
 
 Nothing from the source is silently lost: unclassified geometry goes to `Trash`,
@@ -197,8 +189,6 @@ right and you need to see where in the chain it breaks.
   the exact curve matters).
 - **`load_pdf`** exists but is experimental — it returns raw edges, not a
   `ForgeDocument`, so it does not plug into `heal()` yet. Not in the public API.
-- **Geometric engraving inference** (`detect_flat` finding engraving without a
-  `role_rules`) is a planned no-op placeholder.
 - **`arc/arc` gaps beyond tolerance** are not auto-closed — raise `tolerance`.
 - If no closed outer contour can be formed, `result.is_valid` is `False`.
   `to_dxf` / `to_svg` still render what is there (everything on `Trash`), so

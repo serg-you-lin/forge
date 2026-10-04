@@ -10,16 +10,14 @@ Workflow consigliato (file singolo):
     import forge
 
     rules = [
-        forge.RoleRule("bending", name="Piega"),
         forge.RoleRule("construction", name_contains="constr", dashed=True),
     ]
     doc = forge.load_dxf("pezzo.dxf", role_rules=rules)
     # regole in ordine, vince la prima che matcha (D63);
-    # forge.name_rules({"Piega": "bending"}) per le sole regole sul nome
+    # forge.name_rules({"Costruzione": "construction"}) per le sole regole sul nome
 
-    result = forge.heal_and_detect(doc, label="pezzo", source_file="pezzo.dxf")
-    # equivale a: result = forge.heal(doc, ...); forge.detect_flat(result, "all")
-    # forge.detect_flat(result) nudo classifica solo i ruoli assegnati al load
+    result = forge.heal(doc, label="pezzo", source_file="pezzo.dxf")
+    # fori, pieghe, incisioni: lettura di processo, in snapbend (MAP.md D88)
 
     doc_out = forge.to_dxf(result, doc)
     forge.inject(result)
@@ -68,10 +66,9 @@ from .core.primitives.fitting import simplify_points
 # accessibili da forge.tools.rotate per chi vuole comporli.
 from .tools.rotate import rotate_result, rotate_cluster, rotate_document, rotate_to_longest
 from .core.heal          import heal
-from .recipes            import heal_and_detect, split_to_files
+from .recipes            import split_to_files
 from .tools.inject       import inject
 from .tools.anchor       import anchor_annotations, dimension_references, leader_target, resolve_target
-from .tools.detect       import detect_flat, ALL_FEATURES, describe_features
 from .io.dxf             import to_dxf, split
 from .rules.validator     import validate, validate_result
 from .io.exporter         import (
@@ -95,6 +92,7 @@ from .io.text             import to_text, save_text
 from .model         import (
     ForgeResult, ForgeCluster, ForgeContour, ForgeDocument,
     Annotation, Note, Dimension, Leader,
+    DetectedFeature, DetectedFeatures,
 )
 # Un consumatore che marca la geometria prima di heal() (snapdraw: cornice /
 # cartiglio) setta `edge.role` sugli Edge di `doc.edges` con uno slug ripulito
@@ -165,10 +163,6 @@ __all__ = [
     # Workflow
     "heal",
     "island",
-    "detect_flat",
-    "ALL_FEATURES",
-    "describe_features",
-    "heal_and_detect",
     "to_dxf",
     "split",
     "inject",
@@ -234,6 +228,8 @@ __all__ = [
     "Note",
     "Dimension",
     "Leader",
+    "DetectedFeature",
+    "DetectedFeatures",
     # Ruoli — aggancio per un consumatore che marca la geometria pre-heal
     "normalize_role",
     "is_structural_role",

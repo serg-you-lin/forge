@@ -4,8 +4,8 @@ adapters/dxf/layers.py
 Nomi layer DXF e mapping semantica→DXF per il formato DXF.
 
 Appartiene all'adapter DXF — NON al core. Conosce solo i tre ruoli del
-motore (outer/inner/unknown); qualunque altro ruolo — manifatturiero
-(`tools/manufacturing_role.py`) o di un consumatore esterno — prende nome e
+motore (outer/inner/unknown); qualunque altro ruolo di un consumatore
+(snapbend, snapdraw, ...) prende nome e
 colore dal registro di `rules/palette.py` (`register_role_style`) se
 qualcuno l'ha registrato, altrimenti dallo slug grezzo e dal grigio
 "consumatore" (D31). Questo file non distingue i due casi: stesso

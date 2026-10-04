@@ -8,6 +8,7 @@ from .cluster import ForgeCluster
 from .result import ForgeResult
 from .feature import Feature, ClosedFeature, OpenFeature
 from .style import EdgeStyle
+from .detected import DetectedFeature, DetectedFeatures
 
 __all__ = [
     "ForgeDocument",
@@ -24,6 +25,8 @@ __all__ = [
     "ClosedFeature",
     "OpenFeature",
     "EdgeStyle",
+    "DetectedFeature",
+    "DetectedFeatures",
 ]
 
 
