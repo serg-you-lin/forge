@@ -127,6 +127,9 @@ from .core.healing.normalizer import refit_tessellations
 from .core.shape import contour_shape, ContourShape
 # Fatti fra più contorni: cerchi concentrici, archi attorno a un cerchio. MAP.md D91.
 from .core.shape import concentric_groups, ConcentricGroup, arcs_around, ArcAround
+# Fatti fra rette e poligoni: una corda che divide un poligono, file di tratti
+# collineari unite attraverso dei poligoni. MAP.md D93.
+from .core.lines import splits_polygon, bridged_runs, CollinearRun
 # I passi di heal(), uno per funzione: heal() è la loro composizione di
 # default, un consumatore (snapdraw) li compone nell'ordine che gli serve —
 # per esempio senza build_hierarchy, finché non ha deciso da sé cosa
@@ -178,6 +181,9 @@ __all__ = [
     "ConcentricGroup",
     "arcs_around",
     "ArcAround",
+    "splits_polygon",
+    "bridged_runs",
+    "CollinearRun",
     "split_to_files",
     # Export
     "to_json",

@@ -15,7 +15,7 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
-0. **La geometria rimasta in `snapbend/flat/detect.py` torna in forge**
+0. ✅ **fatto (D93)** — **La geometria rimasta in `snapbend/flat/detect.py` torna in forge**
    (Federico, 4 ottobre: "tutto quello che è calcolo e geometria l'avrei messo
    in forge"). Su 828 righe la geometria pura è poca, ~70 righe; il resto è
    significato (ruoli, `Hole`, pieghe, incisioni) e lì resta. Ma due pezzi

@@ -2808,6 +2808,31 @@ could not see them. Fixed; forge is clean under the corrected check. The
 keywords in `pyproject.toml` lose "manufacturing", "sheet-metal",
 "laser-cutting", "cam" (CLAUDE.md: forge is not a sheet-metal tool).
 
+### D93 — line facts move to `core/lines.py`; snapbend's bend reading runs on them ✅
+Federico, 4 October, on `snapbend/flat/detect.py` (828 lines): "tutto quello che
+è calcolo e geometria l'avrei messo in forge" — so that another consumer never
+has to rewrite it. Checked function by function: most of the file is meaning
+(roles, `Hole`, bends, engraving) and stays there; about 70 lines were pure
+geometry, and two of them were already copies of forge
+(`_point_line_distance`, `_same_line` ≈ `are_collinear`).
+
+`forge/core/lines.py` now holds the facts about lines and polygons, next to
+`core/shape.py` (facts about one contour): `point_line_distance`,
+`are_collinear` and `group_collinear_lines` (moved from `core/geometry.py`,
+clean break), plus `splits_polygon` (a chord, extended by `reach`, cuts the
+polygon) and `bridged_runs` (collinear segments chained where each gap lies
+inside a given polygon) — the last two public, with `CollinearRun`. A segment
+is a `LineString` or a `(start, end)` pair. `are_collinear` gains
+`angle_tolerance` (default unchanged, 1e-6 rad) and checks both ends of the
+second segment instead of one.
+
+snapbend keeps the meaning and its numbers: a bend is a segment that
+`splits_polygon` with `reach=1 mm` (snapbend D52), or a run that
+`bridged_runs` joins across the part's voids (D53) with its 0.1 mm / 1e-3 rad
+tolerances. Process goldens unchanged (snapbend 462, forge 767).
+
+`main` → **0.9.2** (additive: `splits_polygon`, `bridged_runs`, `CollinearRun`).
+
 ---
 
 ## Closed questions (history)

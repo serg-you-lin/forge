@@ -4,7 +4,7 @@ test_geometry.py
 Test unitari per le funzioni pure di forge.core.geometry.
 
 Copre:
-  - are_collinear         : verifica collinearità di due LineString
+  - are_collinear         : verifica collinearità di due LineString (forge/core/lines.py, D93)
   - group_collinear_lines : raggruppa LineString collineari
 """
 
@@ -19,8 +19,8 @@ sys.path.insert(0, str(project_root))
 from shapely.geometry import LineString
 
 from forge.core.primitives.segments import ArcSeg, LineSeg
+from forge.core.lines import are_collinear, group_collinear_lines
 from forge.core.geometry import (
-    are_collinear, group_collinear_lines,
     track_points, track_length, track_shape_type,
     interior_angle_deg, detect_corners, drop_duplicate_points,
     fit_circle_kasa, arc_angles,

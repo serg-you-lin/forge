@@ -571,6 +571,39 @@ lo applica il consumatore (D91).
 
 ---
 
+### `splits_polygon`
+
+```python
+forge.splits_polygon(polygon, start, end, reach=0.0) -> bool
+```
+
+La corda `start`-`end`, prolungata di `reach` ai due capi, divide il poligono
+(shapely) in due o più parti. Fatto geometrico: che quella corda sia una piega
+lo decide il consumatore (snapbend la prolunga di 1 mm, D93).
+
+**Non muta** niente.
+
+---
+
+### `bridged_runs`
+
+```python
+forge.bridged_runs(segments, bridges, tolerance=0.1, angle_tolerance=1e-6) -> list[CollinearRun]
+```
+
+File di due o più tratti sulla stessa retta in cui lo spazio fra un tratto e il
+successivo sta tutto dentro uno dei poligoni di `bridges` (per esempio i vuoti
+di un pezzo). Un tratto è una `LineString` o una coppia `(start, end)`;
+`tolerance` è la distanza massima dalla retta, `angle_tolerance` la differenza
+di direzione in radianti. I tratti rimasti da soli non compaiono.
+
+`CollinearRun`: `start`, `end` (i capi esterni della fila), `members` (indici in
+`segments`, nell'ordine lungo la retta).
+
+**Non muta** niente.
+
+---
+
 
 ### `to_dxf`
 

@@ -15,7 +15,6 @@ Importato da:
 import math
 from typing import Optional, Tuple, List
 import numpy as np
-from shapely.geometry import LineString
 
 from .primitives.segments import LineSeg, ArcSeg, CircleSeg
 
@@ -48,76 +47,6 @@ def num_segments_for_bulge(bulge: float) -> int:
     """Numero di segmenti per discretizzare un arco dato il suo bulge."""
     angle = 4 * math.atan(abs(bulge))
     return max(8, int(angle / math.pi * 32))
-
-
-# ---------------------------------------------------------------------------
-# Collinearità e distanze — usate da healer e injector
-# ---------------------------------------------------------------------------
-
-def _line_direction(line: 'LineString') -> Tuple[float, float]:
-    """
-    Vettore direzione normalizzato di una LineString, orientato canonicamente
-    (dx >= 0; se dx==0 allora dy > 0).
-    """
-    coords = list(line.coords)
-    dx = coords[-1][0] - coords[0][0]
-    dy = coords[-1][1] - coords[0][1]
-    length = (dx**2 + dy**2) ** 0.5
-    if length == 0:
-        return (0.0, 0.0)
-    dx, dy = dx / length, dy / length
-    if dx < 0 or (dx == 0 and dy < 0):
-        dx, dy = -dx, -dy
-    return (dx, dy)
-
-
-def _point_to_line_distance(px: float, py: float, line: 'LineString') -> float:
-    """Distanza di un punto dalla retta infinita definita da una LineString."""
-    coords = list(line.coords)
-    ax, ay = coords[0]
-    bx, by = coords[-1]
-    dx, dy = bx - ax, by - ay
-    length = (dx**2 + dy**2) ** 0.5
-    if length == 0:
-        return ((px - ax)**2 + (py - ay)**2) ** 0.5
-    cross = abs(dx * (ay - py) - dy * (ax - px))
-    return cross / length
-
-
-def are_collinear(line_a: 'LineString', line_b: 'LineString', tolerance: float = 0.1) -> bool:
-    """
-    Restituisce True se due LineString giacciono sulla stessa retta infinita.
-    """
-    dir_a = _line_direction(line_a)
-    dir_b = _line_direction(line_b)
-    cross = abs(dir_a[0] * dir_b[1] - dir_a[1] * dir_b[0])
-    if cross > 1e-6:
-        return False
-    coords_b = list(line_b.coords)
-    dist = _point_to_line_distance(coords_b[0][0], coords_b[0][1], line_a)
-    return dist <= tolerance
-
-
-def group_collinear_lines(lines: list, tolerance: float = 0.1) -> list:
-    """
-    Raggruppa LINE in gruppi collineari (stessa retta infinita).
-    Restituisce lista di gruppi: [[L1, L2], [L3], ...]
-    """
-    groups   = []
-    assigned = set()
-    for i, line in enumerate(lines):
-        if i in assigned:
-            continue
-        group = [line]
-        assigned.add(i)
-        for j, other in enumerate(lines):
-            if j in assigned:
-                continue
-            if are_collinear(line, other, tolerance):
-                group.append(other)
-                assigned.add(j)
-        groups.append(group)
-    return groups
 
 
 # ---------------------------------------------------------------------------
