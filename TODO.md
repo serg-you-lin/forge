@@ -15,6 +15,17 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
+0. **La geometria rimasta in `snapbend/flat/detect.py` torna in forge**
+   (Federico, 4 ottobre: "tutto quello che è calcolo e geometria l'avrei messo
+   in forge"). Su 828 righe la geometria pura è poca, ~70 righe; il resto è
+   significato (ruoli, `Hole`, pieghe, incisioni) e lì resta. Ma due pezzi
+   sono già doppioni di forge: `_point_line_distance` = `_point_to_line_distance`,
+   `_same_line` = `are_collinear` (`core/geometry.py`). Da portare in forge con
+   nomi geometrici: "una corda, prolungata di `reach`, divide il poligono in
+   due" (`_cuts_part`) e "tratti sulla stessa retta, uniti dove lo spazio fra
+   loro sta dentro un poligono dato" (`_bridged_runs`). La soglia `reach`
+   (1 mm, snapbend D52) resta a snapbend come parametro.
+
 1. **Pushare.** ✅ fatto insieme al rewrite (D81), 2 ottobre.
 2. **`anonymize`** — **si prosegue in snapdraw** (deciso il 2 ottobre): il lavoro
    sul cartiglio e sui loghi è lettura del disegno, quindi è di snapdraw. Lo
