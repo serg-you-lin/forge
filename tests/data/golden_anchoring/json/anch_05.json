@@ -168,12 +168,12 @@
       "anchored": [
         {
           "in": "inners",
-          "shape": "other",
+          "shape": "stadium",
           "center": [
             175.37,
-            272.68
+            266.87
           ],
-          "length": 12.5,
+          "length": 25.0,
           "width": 9.0
         }
       ]
@@ -220,12 +220,12 @@
       "anchored": [
         {
           "in": "inners",
-          "shape": "other",
+          "shape": "stadium",
           "center": [
             175.37,
-            272.68
+            266.87
           ],
-          "length": 12.5,
+          "length": 25.0,
           "width": 9.0
         }
       ]

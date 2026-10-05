@@ -10,8 +10,7 @@ from forge.core.geometry.shape import CIRCLE, OTHER, POLYGON, RECTANGLE, STADIUM
 from forge.core.topology.edge import Edge
 from forge.model.document import ForgeDocument
 
-# island_gap e max_gap non hanno default (D98): i valori di prima, scritti qui
-ISLAND_GAP = 10.0
+# max_gap non ha default (D98); island_gap non esiste più (D99)
 MAX_GAP = 0.5
 
 
@@ -105,7 +104,7 @@ class TestContourShapeSuIsole(unittest.TestCase):
         return sorted(contour_shape(c).kind for c in cluster.inners)
 
     def test_island(self):
-        cluster = forge.island(self._doc(), island_gap=ISLAND_GAP, max_gap=MAX_GAP).clusters[0]
+        cluster = forge.island(self._doc(), max_gap=MAX_GAP).clusters[0]
         self.assertEqual(contour_shape(cluster.outer).kind, RECTANGLE)
         self.assertEqual(self._kinds(cluster), [CIRCLE, STADIUM])
 

@@ -439,7 +439,7 @@ closed = forge.loops_to_features(forge.structural_loops(search.loops, is_structu
 ### `island`
 
 ```python
-forge.island(doc: ForgeDocument, *, island_gap: float, max_gap: float,
+forge.island(doc: ForgeDocument, *, max_gap: float,
              tolerance=None, is_structural=None) -> ForgeResult
 ```
 
@@ -448,44 +448,49 @@ La seconda lettura di un documento, accanto a `heal()`: **per isole**.
 chiudono, chi sta dentro chi) e trova il pezzo per contenimento. `island()`
 legge il disegno dall'esterno:
 
-1. separa le **isole** per vicinanza vera fra segmenti (`spatial_islands`);
-2. per ogni isola normalizza (tassellature rifittate come archi/spline,
+1. separa i **pezzi**: gli edge che si toccano, entro `max_gap` (`spatial_islands`);
+2. per ogni pezzo normalizza (tassellature rifittate come archi/spline,
    merge/weld di `heal`, gap fino a `max_gap`) e rende la rete **piana**
    (`split_at_crossings`);
 3. il **contorno esterno** è il bordo della faccia esterna della rete
    (`outer_face`) — gli edge percorsi andata e ritorno (assi, segni che
    sporgono) non sono contorno;
-4. dentro: i giri chiusi diventano `inners`, il resto va in `trash_entities`
-   col ruolo che aveva (`unknown` se nessuno l'ha deciso).
+4. ogni contorno esterno che non sta dentro un altro è un'**isola** (un
+   cluster); un pezzo che sta dentro un'isola, col suo contorno o senza, è
+   suo per contenimento (D99);
+5. dentro: i giri chiusi diventano `inners`, il resto va in `trash_entities`
+   col ruolo che aveva (`unknown` se nessuno l'ha deciso) e con `cluster_ref`,
+   l'indice dell'isola che lo contiene o che tocca (`None` fuori da tutte).
 
 **Quando usarla invece di `heal()`**: disegni di viste — più viste su un
 foglio, viste isometriche/3D proiettate, sagome con linee quasi coincidenti
 dove il grafo di `heal()` è ambiguo. Per un disegno di sagome piane (uno o più
 pezzi separati, geometria esatta da cucire) resta `heal()`.
 
-Un'isola il cui contorno sta **dentro** quello di un'altra non è un cluster:
-diventa interno (`inners`) dell'isola più esterna che la contiene. Con la
+Un pezzo il cui contorno sta **dentro** quello di un altro non è un cluster:
+diventa interno (`inners`) dell'isola più esterna che lo contiene. Due
+contorni esterni sono due isole per quanto siano vicini: non c'è una distanza
+fra le viste (D99). Con la
 cornice nel disegno, quindi, l'unico cluster è la cornice: toglierla (o dare un
 ruolo a cornice, cartiglio, cerchi di ingrandimento) è compito del chiamante.
 Cosa sia un cluster — vista, pezzo — lo decide chi lo usa (D21).
 
 | parametro | significato |
 |---|---|
-| `island_gap` | **obbligatorio**, per nome. Distanza massima (mm) fra due edge della stessa isola. Dipende da come è impaginato il disegno, non dalla geometria: lo sceglie il chiamante, forge non ha default (D98). |
-| `max_gap` | **obbligatorio**, per nome. Gap (mm) chiusi fra estremi liberi, mai spostando un estremo più di così (D98, come `island_gap`). |
+| `max_gap` | **obbligatorio**, per nome. Due edge più vicini di così (mm) si toccano; gap chiusi fra estremi liberi, mai spostando un estremo più di così. Nessun default (D98). |
 | `tolerance` | se `None`, ripresa da `doc.source_meta["tolerance"]` — come `heal()`. |
 | `is_structural` | come in `heal()` (D30): un `Edge` con un ruolo già deciso e non strutturale (`frame`, `title_block`, ...) resta **fuori** dalla lettura e va in `trash_entities` col suo ruolo. È così che un consumatore toglie cornice e cartiglio prima di leggere le viste. Senza, solo `outer`/`inner` sono strutturali. |
 
-**Ritorna** un `ForgeResult` con un `ForgeCluster` per isola non annidata,
+**Ritorna** un `ForgeResult` con un `ForgeCluster` per isola,
 ordinati per area del contorno esterno. Nessun giro chiuso in nessuna isola →
 `is_valid=False`, `errors` popolato.
 
-**Solleva** `TypeError` se non gli passi un `ForgeDocument`, o se mancano
-`island_gap` o `max_gap`.
+**Solleva** `TypeError` se non gli passi un `ForgeDocument`, o se manca
+`max_gap`.
 
 ```python
 doc = forge.load_dxf("tavola.dxf")
-result = forge.island(doc, island_gap=10.0, max_gap=0.5)
+result = forge.island(doc, max_gap=0.5)
 for cluster in result.clusters:          # una vista / un pezzo per cluster
     print(cluster.outer.polygon.area, len(cluster.inners))
 ```
@@ -496,7 +501,7 @@ Esposti per chi compone la sua ricetta (snapdraw: togliere cornice e cartiglio
 per ruolo, poi leggere le viste) — stessi pezzi, nessun criterio duplicato.
 
 ```python
-forge.read_islands(edges, tolerance, island_gap, max_gap) -> list[IslandReading]
+forge.read_islands(edges, tolerance, max_gap) -> list[IslandReading]
 forge.read_island(edges, tolerance, max_gap) -> IslandReading
 forge.spatial_islands(edges, gap_tolerance) -> list[Island]
 forge.split_at_crossings(edges, tolerance, decimals=3) -> NodedEdges
@@ -507,7 +512,7 @@ forge.refit_tessellations(edges, max_segment=0.1, min_run=10,
 
 | funzione | prende → ritorna | cosa fa |
 |---|---|---|
-| `read_islands` | `list[Edge]` → `list[IslandReading]` | isole + `read_island` per ognuna + annidamento (`nested_in`). È `island()` prima di diventare `ForgeResult`. |
+| `read_islands` | `list[Edge]` → `list[IslandReading]` | pezzi a contatto + `read_island` per ognuno + annidamento (`nested_in`, anche per un pezzo senza contorno tutto dentro un'isola). È `island()` prima di diventare `ForgeResult`. |
 | `read_island` | `list[Edge]` → `IslandReading` | un'isola: normalizza, rete piana, faccia esterna, classificazione dell'interno. |
 | `spatial_islands` | `list[Edge]` → `list[Island]` | union-find sulle coppie di edge a distanza vera `<= gap_tolerance` (STRtree). Nessuna nozione di chiusura. |
 | `split_at_crossings` | `list[Edge]` → `NodedEdges` | spezza `LineSeg`/`ArcSeg`/`CircleSeg` dove incrociano o toccano a T un altro edge; `NodedEdges.parent_of(pezzo)` dà l'`Edge` originale. `SplineSeg`/`EllipseSeg` restano interi. |
@@ -679,6 +684,20 @@ forge.geometry.spanning_lines(bounds, items, coverage=0.85, eps=0.5, cluster_tol
 
 `(ys, xs)`: le linee strettamente interne a `bounds` che lo attraversano per
 almeno `coverage` della larghezza (orizzontali) o dell'altezza (verticali).
+
+**Non muta** niente.
+
+---
+
+### `sides_on_border`
+
+```python
+forge.geometry.sides_on_border(bounds, border, tolerance) -> list[str]
+```
+
+I lati di `bounds` (`"left"`, `"bottom"`, `"right"`, `"top"`) che stanno sul
+lato omologo di `border` entro `tolerance`: un riquadro appoggiato al bordo di
+un altro. Lista vuota se non ne tocca nessuno.
 
 **Non muta** niente.
 

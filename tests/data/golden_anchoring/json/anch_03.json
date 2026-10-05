@@ -306,7 +306,18 @@
         322.16,
         318.84
       ],
-      "anchored": []
+      "anchored": [
+        {
+          "in": "inners",
+          "shape": "other",
+          "center": [
+            319.16,
+            316.69
+          ],
+          "length": 7.998,
+          "width": 7.22
+        }
+      ]
     },
     {
       "type": "Dimension",

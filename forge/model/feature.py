@@ -25,7 +25,7 @@ Note:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from shapely.geometry import Polygon
 
@@ -73,5 +73,6 @@ class OpenFeature(Feature):
     """
     Feature con geometria aperta: ha segmenti ma non un polygon.
     """
-    segments: List[LineSeg | ArcSeg | SplineSeg] = field(default_factory=list)
-    styles:   List[EdgeStyle]                  = field(default_factory=list)
+    segments:    List[LineSeg | ArcSeg | SplineSeg] = field(default_factory=list)
+    styles:      List[EdgeStyle]                  = field(default_factory=list)
+    cluster_ref: Optional[int]                    = None   # indice in result.clusters dell'isola che la contiene (island, D99)

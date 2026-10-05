@@ -511,6 +511,16 @@
           ],
           "length": 1525.0,
           "width": 140.0
+        },
+        {
+          "in": "inners",
+          "shape": "other",
+          "center": [
+            1841.22,
+            1061.42
+          ],
+          "length": 3.3,
+          "width": 1.65
         }
       ]
     },
@@ -522,7 +532,18 @@
         1540.04,
         1075.72
       ],
-      "anchored": []
+      "anchored": [
+        {
+          "in": "inners",
+          "shape": "other",
+          "center": [
+            1841.22,
+            1061.42
+          ],
+          "length": 3.3,
+          "width": 1.65
+        }
+      ]
     },
     {
       "type": "Dimension",
@@ -587,13 +608,13 @@
       "anchored": [
         {
           "in": "inners",
-          "shape": "other",
+          "shape": "circle",
           "center": [
             1734.22,
-            1085.09
+            1083.72
           ],
-          "length": 24.995,
-          "width": 20.49
+          "length": 25.0,
+          "width": 25.0
         }
       ]
     },

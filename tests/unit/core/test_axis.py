@@ -80,5 +80,17 @@ class TestMeasures(unittest.TestCase):
         self.assertEqual(sorted(v.at for v in vert), [0.0, 10.0])
 
 
+
+class TestSidesOnBorder(unittest.TestCase):
+
+    def test_riquadro_nell_angolo(self):
+        # in basso a destra: tocca il lato basso e il destro del bordo
+        self.assertEqual(forge.geometry.sides_on_border((300, 10, 400, 60), (10, 10, 400, 280), 1.0),
+                         ["bottom", "right"])
+
+    def test_riquadro_in_mezzo(self):
+        self.assertEqual(forge.geometry.sides_on_border((150, 100, 250, 125), (10, 10, 400, 280), 1.0), [])
+
+
 if __name__ == "__main__":
     unittest.main()

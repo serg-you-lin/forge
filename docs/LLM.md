@@ -30,7 +30,7 @@ process or product.
 ```
 load_dxf / document_from_msp / load_geometry   →  ForgeDocument   (edges + annotations, zero topology)
 heal(doc)                                       →  ForgeResult     (topology only: closed contours, outer/inner tree — NO hole/bend classification)
-island(doc, island_gap=, max_gap=)              →  ForgeResult     (alternative to heal for drawings of VIEWS: one cluster per island, outer = outer face of its planar network)
+island(doc, max_gap=)                           →  ForgeResult     (alternative to heal for drawings of VIEWS: one cluster per outer contour not inside another, outer = outer face of its planar network)
 (a consumer's reading, e.g. snapbend.flat.detect_flat)  →  writes cluster.detected (the open overlay)
 to_dxf / split / to_json / save_json / to_svg / to_view_model  →  render from the model (never re-reads source)
 ```
@@ -79,8 +79,8 @@ forge.save_json(result, "out.json")
 | `validate` | `(doc: ForgeDocument) -> ForgeResult` | input validation, no mutation. `is_valid=False` = unworkable (no geometry / NaN / all-degenerate). Warnings = workable but flagged. |
 | `validate_result` | `(result: ForgeResult) -> ForgeResult` | output validation, **mutates** `result`. Called automatically by `heal()` — call manually only if you build a `ForgeResult` another way. |
 | `heal` | `(doc, tolerance=None, label="", source_file="", is_structural=None) -> ForgeResult` | topology reconstruction: gap-closing, non-contour edge exclusion (candidates for "something else" — `non_contour_candidates()` exposes the same criterion, see below), loop search, outer/inner containment tree. Does **not** classify holes (D15). `tolerance=None` → reuses `doc.source_meta["tolerance"]`. If no closed outer forms, `result.is_valid=False`. `is_structural(role)->bool` decides which already-labeled edges stay in the graph — `heal()` alone knows only outer/inner; without it a labeled `"hole"` is treated as non-structural (excluded, warned). A consumer passes its own (snapbend: `snapbend.flat.is_structural`). |
-| `island` | `(doc, *, island_gap, max_gap, tolerance=None, is_structural=None) -> ForgeResult` — `island_gap` and `max_gap` required, by name, no default (D98) | the other way to read a document (see "Reading drawings of views" below). Same output contract as `heal()`: one `ForgeCluster` per island (`outer` + `inners` = closed loops inside); an island whose outer lies inside another's becomes interior of the outermost one. Edges with a decided non-structural role (`frame`, `title_block`...) are left out and go to `trash_entities` with their role — same D30 contract as `heal`. No closed outer anywhere → `is_valid=False`. Contour segments come back recomposed where the planar network split them: consecutive pieces on the same circle/line, same direction and style, are one segment — a hole crossed by its axes is one `CircleSeg` (D65; polygons unchanged). A nested island gives its host **all** its closed loops, also those outside the loop chosen as its outer — a group of detached holes in the middle of a view (D71). |
-| `read_islands` | `(edges, tolerance, island_gap, max_gap) -> list[IslandReading]` | `island()` before it becomes a `ForgeResult`: per island what was decided, edge by edge. `IslandReading`: `edges`, `outer: OuterFace\|None`, `inner_loops`, `spurs`, `outside`, `non_contour`, `unclassified`, `nested_in: int\|None`. |
+| `island` | `(doc, *, max_gap, tolerance=None, is_structural=None) -> ForgeResult` — `max_gap` required, by name, no default (D98); no layout distance (D99) | the other way to read a document (see "Reading drawings of views" below). Same output contract as `heal()`: pieces are the edges that touch (within `max_gap`); one `ForgeCluster` per outer contour that is not inside another (`outer` + `inners` = closed loops inside); a piece whose outer lies inside another's becomes interior of the outermost one. Open edges go to `trash_entities` as `OpenFeature` with `cluster_ref` = index of the island that contains or touches them, `None` outside every island (D99). Edges with a decided non-structural role (`frame`, `title_block`...) are left out and go to `trash_entities` with their role — same D30 contract as `heal`. No closed outer anywhere → `is_valid=False`. Contour segments come back recomposed where the planar network split them: consecutive pieces on the same circle/line, same direction and style, are one segment — a hole crossed by its axes is one `CircleSeg` (D65; polygons unchanged). A nested island gives its host **all** its closed loops, also those outside the loop chosen as its outer — a group of detached holes in the middle of a view (D71). |
+| `read_islands` | `(edges, tolerance, max_gap) -> list[IslandReading]` | `island()` before it becomes a `ForgeResult`: per piece (edges that touch) what was decided, edge by edge; `nested_in` also for a piece with no outer whose edges all lie inside an island. `IslandReading`: `edges`, `outer: OuterFace\|None`, `inner_loops`, `spurs`, `outside`, `non_contour`, `unclassified`, `nested_in: int\|None`. |
 | `read_island` | `(edges, tolerance, max_gap) -> IslandReading` | one island: normalize (renode, `refit_tessellations`, heal's merge/weld, gaps up to `max_gap`), `split_at_crossings`, `outer_face`, classify the rest. |
 | `spatial_islands` | `(edges, gap_tolerance) -> list[Island]` | union-find on edge pairs within true segment distance `gap_tolerance` (STRtree). No notion of closure. `Island`: `edges`, `bbox`, `.width`, `.height`. |
 | `split_at_crossings` | `(edges, tolerance, decimals=3) -> NodedEdges` | planar network: `LineSeg`/`ArcSeg`/`CircleSeg` split wherever another edge crosses or touches them (T within `tolerance`). `NodedEdges.pieces`, `.parent_of(piece) -> Edge`. Splines/ellipses stay whole. |
@@ -103,6 +103,7 @@ forge.save_json(result, "out.json")
 | `geometry.bridged_runs` | `(segments, bridges, tolerance=0.1, angle_tolerance=1e-6) -> list[CollinearRun]` | runs of 2+ collinear segments (`LineString` or `(start, end)`) where each gap lies inside one of the `bridges` polygons (e.g. a part's voids). `CollinearRun`: `start`, `end`, `members` (indices into `segments`, ordered along the line). Also in `forge.core.geometry.lines`: `are_collinear`, `group_collinear_lines`, `point_line_distance` (D93). |
 | `geometry.covered_rectangles` | `(items, min_side, eps=0.5, cluster_tolerance=1.5, coverage=0.85) -> list[CoveredRectangle]` | axis-aligned rectangles whose 4 sides are covered ≥ `coverage` by straight items (anything with `start`/`end`), built on items ≥ `min_side`. No polygonize: tick marks on a border don't break it, a double border gives two. `CoveredRectangle`: `polygon`, `items` (on its sides), `bbox`, `area`, `long_side`, `short_side`, `ratio`. "Frame"/"title block" is snapdraw's reading (D94). |
 | `geometry.spanning_lines` | `(bounds, items, coverage=0.85, eps=0.5, cluster_tolerance=1.5) -> (ys, xs)` | lines strictly inside `bounds` crossing ≥ `coverage` of its width (horizontal) / height (vertical). |
+| `geometry.sides_on_border` | `(bounds, border, tolerance) -> list[str]` | sides of `bounds` (`left`/`bottom`/`right`/`top`) lying on the same side of `border` within `tolerance`. |
 | `geometry.axis_aligned_share` | `(segments, angle_tolerance) -> float\|None` | share of `LineSeg` length within `angle_tolerance` degrees of horizontal/vertical; `None` with no `LineSeg`. Also in `forge.core.geometry.axis`: `merge_intervals`, `interval_coverage`, `cluster_values`, `axis_lines`, `items_inside`. |
 | `split_to_files` | `(doc, output_folder, label="", source_file="", tolerance=None, namer=None, include_annotations=True, min_area=50.0, exclude_types=None, annotation_layer="Annotation", is_structural=None) -> ForgeResult` | multi-part flow + disk write: `heal → split → .saveas()`. Filename `f"{cluster.label}.dxf"`. **Only** forge function that writes to disk. |
 | `to_json` / `save_json` | `(result, indent=2, extra_metadata: Callable[[ForgeCluster], dict]=None) -> str / None(writes path)` | per-part metadata per `rules/metadata_schema.py`, no coordinates. `extra_metadata(cluster)` called once per cluster, result merged in outside the schema. |
@@ -232,8 +233,9 @@ instead — see `ForgeCluster` above.
 `heal()` reads from the inside (who touches whom, which loops close, which is
 inside which). On a drawing of views — several views on a sheet, isometric/3D
 projections, near-coincident silhouette lines — that graph is ambiguous.
-`island()` reads from the outside: islands by proximity → planar network →
-outer face → interior. Choose by the drawing:
+`island()` reads from the outside: pieces that touch → planar network →
+outer face → every outer not inside another is an island → interior by
+containment (D99). Choose by the drawing:
 
 | drawing | call |
 |---|---|
@@ -242,8 +244,9 @@ outer face → interior. Choose by the drawing:
 
 What `island()` does **not** know: which island is a view, a part, the frame,
 the title block, a magnifier circle over a view, a break line. Those are
-roles — the caller's job (D21, D30). Nor how far apart two views are:
-`island_gap` and `max_gap` are required arguments, no default (D98). With the frame still in the drawing, the
+roles — the caller's job (D21, D30). There is no distance between views:
+two outer contours are two islands however close (D99); `max_gap` (required,
+no default, D98) only decides which edges touch. With the frame still in the drawing, the
 frame is the only outer and every view becomes its interior.
 
 ### Consumer recipe (snapdraw / a drawing reader)
@@ -259,13 +262,13 @@ for edge in doc.edges:
         edge.role = forge.normalize_role("frame")     # any non-structural slug
 
 # 2. read the rest by islands — marked edges are left out (trash, with their role)
-result = forge.island(doc, island_gap=10.0, max_gap=0.5)
+result = forge.island(doc, max_gap=0.5)
 for cluster in result.clusters:                     # one view (or part) each
     cluster.outer.polygon, cluster.inners
 
 # 3. need the details per edge (what was a spur, what stayed outside)?
 edges = [e for e in doc.edges if e.role == "unknown"]
-for reading in forge.read_islands(edges, tolerance=0.05, island_gap=10.0, max_gap=0.5):
+for reading in forge.read_islands(edges, tolerance=0.05, max_gap=0.5):
     reading.outer, reading.spurs, reading.outside, reading.non_contour, reading.nested_in
 ```
 
@@ -273,10 +276,11 @@ Composing your own reading from the bricks (same pieces `island()` uses, no
 duplicated criteria): `spatial_islands` → `refit_tessellations` →
 `split_at_crossings` → `outer_face`. `island()` never calls `heal()`.
 
-Parameters chosen by the caller, never guessed by forge — both are required,
-no default (D98): `island_gap` (layout spacing between views), `max_gap`
-(drawing gaps closed on a view). The values in the examples above (10 and
-0.5 mm) are what the default used to be, not a recommendation.
+The one parameter is the caller's, never guessed by forge — required, no
+default (D98): `max_gap` (edges closer than this touch; drawing gaps closed on
+a view). 0.5 mm in the examples above is what the default used to be, not a
+recommendation. The layout distance `island_gap` is gone (D99): islands are
+decided by outer contours and containment, not by spacing.
 
 ## Hard rules (violate these = broken output)
 

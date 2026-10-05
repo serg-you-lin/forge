@@ -79,17 +79,18 @@ forge.save_json(result, "batch.json")
 import forge
 
 doc    = forge.load_dxf("tavola.dxf")       # cornice / cartiglio marcati per ruolo, o tolti
-result = forge.island(doc, island_gap=10.0, max_gap=0.5)
+result = forge.island(doc, max_gap=0.5)
 for cluster in result.clusters:              # una vista (o un pezzo) per isola
     print(cluster.outer.polygon.area, len(cluster.inners))
 ```
 
 `heal()` legge un disegno di sagome piane separate dall'interno (quali giri si chiudono, chi sta
-dentro chi). `island()` legge un disegno di viste dall'esterno: isole per
-vicinanza, poi il contorno esterno di ognuna come faccia esterna della sua rete
-piana. Quanto vicino vuol dire "stessa isola" (`island_gap`) e quali buchi del
-disegno chiudere (`max_gap`) dipendono dal disegno, quindi li dice sempre chi
-chiama: forge non ha default. Stesso `ForgeResult` in uscita — vedi `docs/API.md` (`island`).
+dentro chi). `island()` legge un disegno di viste dall'esterno: gli edge che si
+toccano fanno un pezzo, il contorno esterno di ogni pezzo è la faccia esterna
+della sua rete piana, e ogni contorno esterno che non sta dentro un altro è
+un'isola; quello che sta dentro è suo per contenimento. Non c'è una distanza
+fra le viste. Quali buchi del disegno chiudere (`max_gap`) dipende dal disegno,
+quindi lo dice sempre chi chiama: forge non ha default. Stesso `ForgeResult` in uscita — vedi `docs/API.md` (`island`).
 
 Tutte e due sono ricette su passi pubblici. I passi di `heal()` (`split_labeled`,
 `close_free_gaps`, `find_loops`, `build_hierarchy`, ...) sono esportati uno per

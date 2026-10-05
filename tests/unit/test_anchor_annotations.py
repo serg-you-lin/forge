@@ -17,8 +17,7 @@ from forge.model.role import ContourRole
 from forge.model.annotation import Dimension, Leader, Note, RenderedGeometry, RenderedText
 from forge.tools.anchor import anchor_annotations, dimension_references, resolve_target
 
-# island_gap e max_gap non hanno default (D98): i valori di prima, scritti qui
-ISLAND_GAP = 10.0
+# max_gap non ha default (D98); island_gap non esiste più (D99)
 MAX_GAP = 0.5
 
 
@@ -97,7 +96,7 @@ class TestLeaderTarget(unittest.TestCase):
     """`Leader.target`: l'elemento su cui cade la punta della freccia (D66)."""
 
     def _island(self, *leaders):
-        result = forge.island(_plate_with_holes(), island_gap=ISLAND_GAP, max_gap=MAX_GAP)
+        result = forge.island(_plate_with_holes(), max_gap=MAX_GAP)
         result.annotations = list(leaders)
         return anchor_annotations(result)
 
@@ -149,7 +148,7 @@ class TestDimensionReferences(unittest.TestCase):
     """`Dimension.references`: gli elementi fra cui la quota misura (D69)."""
 
     def _result(self, *dims):
-        result = forge.island(_plate_with_holes(), island_gap=ISLAND_GAP, max_gap=MAX_GAP)
+        result = forge.island(_plate_with_holes(), max_gap=MAX_GAP)
         result.annotations = list(dims)
         return anchor_annotations(result)
 
@@ -179,7 +178,7 @@ class TestDimensionReferences(unittest.TestCase):
         self.assertEqual(dim.references, [])
 
     def test_senza_punti(self):
-        result = forge.island(_plate_with_holes(), island_gap=ISLAND_GAP, max_gap=MAX_GAP)
+        result = forge.island(_plate_with_holes(), max_gap=MAX_GAP)
         self.assertEqual(dimension_references(result, Dimension(position=(0, 0))), [])
 
 

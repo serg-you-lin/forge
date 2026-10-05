@@ -94,13 +94,13 @@
       "anchored": [
         {
           "in": "inners",
-          "shape": "circle",
+          "shape": "other",
           "center": [
-            93.69,
-            180.81
+            93.81,
+            180.94
           ],
-          "length": 4.13,
-          "width": 4.13
+          "length": 4.998,
+          "width": 4.558
         }
       ]
     },

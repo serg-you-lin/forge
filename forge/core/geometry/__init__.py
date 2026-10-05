@@ -9,7 +9,7 @@ Pubblici (qui sotto):
     build.py          costruire forme come segmenti: polygon, rectangle, regular_polygon, circle, stadium
     shape.py          forma di un contorno chiuso; cerchi concentrici; archi attorno a un cerchio
     lines.py          una corda che divide un poligono; file di tratti collineari unite attraverso dei poligoni
-    axis.py           rettangoli coperti da tratti, linee che li attraversano, quota sugli assi
+    axis.py           rettangoli coperti da tratti, linee che li attraversano, lati sul bordo di un altro, quota sugli assi
 
 Mattoni (si importano dal sottomodulo):
     measure.py        arrotondamento dei nodi, lunghezza e angolo di un segmento, tracce aperte, "è circolare?"
@@ -25,7 +25,7 @@ from .shape import (
     arcs_around, ArcAround,
 )
 from .lines import splits_polygon, bridged_runs, CollinearRun
-from .axis import covered_rectangles, CoveredRectangle, spanning_lines, axis_aligned_share
+from .axis import covered_rectangles, CoveredRectangle, spanning_lines, sides_on_border, axis_aligned_share
 
 __all__ = [
     "polygon", "rectangle", "regular_polygon", "circle", "stadium",
@@ -33,5 +33,5 @@ __all__ = [
     "concentric_groups", "ConcentricGroup",
     "arcs_around", "ArcAround",
     "splits_polygon", "bridged_runs", "CollinearRun",
-    "covered_rectangles", "CoveredRectangle", "spanning_lines", "axis_aligned_share",
+    "covered_rectangles", "CoveredRectangle", "spanning_lines", "sides_on_border", "axis_aligned_share",
 ]

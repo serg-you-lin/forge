@@ -228,6 +228,13 @@ def items_inside(bounds: Bounds, items: Iterable, margin: float = 0.0) -> list:
     return [i for i in items if inside(i.start) and inside(i.end)]
 
 
+def sides_on_border(bounds: Bounds, border: Bounds, tolerance: float) -> List[str]:
+    """I lati di `bounds` ("left", "bottom", "right", "top") che stanno sul
+    lato omologo di `border`, entro `tolerance`."""
+    names = ("left", "bottom", "right", "top")
+    return [n for n, a, b in zip(names, bounds, border) if abs(a - b) <= tolerance]
+
+
 def axis_aligned_share(segments: Iterable, angle_tolerance: float) -> Optional[float]:
     """
     Frazione della lunghezza dei `LineSeg` di `segments` orizzontale o

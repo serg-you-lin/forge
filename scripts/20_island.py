@@ -3,13 +3,13 @@
 ==================================================================
 
 API forge usate:
-    forge.island(doc, island_gap=, max_gap=)
+    forge.island(doc, max_gap=)
                                 -> ForgeResult, un ForgeCluster per isola
                                    (outer = contorno esterno, inners = giri
                                    chiusi dentro; isole annidate → interno
                                    di quella che le contiene)
-    forge.read_islands(edges, tolerance, island_gap, max_gap)
-                                -> [IslandReading]: per ogni isola cosa è
+    forge.read_islands(edges, tolerance, max_gap)
+                                -> [IslandReading]: per ogni pezzo cosa è
                                    stato deciso, pezzo per pezzo
 
 Per ogni file un DXF con un layer per decisione, per vedere cosa ha fatto
@@ -39,8 +39,7 @@ from forge.model.feature import OpenFeature
 INPUT_DIR = r"tests/examples/islands"          # tutti i .dxf/.dwg qui dentro
 EXCLUDE = ["_healed"]                           # file il cui nome contiene questi pezzi
 TOLERANCE = 0.05
-ISLAND_GAP = 10.0                               # mm — distanza massima fra due edge della stessa isola
-MAX_GAP = 0.5                                   # mm — gap chiusi fra estremi liberi
+MAX_GAP = 0.5                                   # mm — edge che si toccano, gap chiusi fra estremi liberi
 OUTDIR = r"pipeline_output/island"
 # ---------------------------------------------------------------------------
 
@@ -74,8 +73,8 @@ def main():
         t0 = time.time()
         try:
             doc = forge.load_dxf(path, tolerance=TOLERANCE)
-            result = forge.island(doc, tolerance=TOLERANCE, island_gap=ISLAND_GAP, max_gap=MAX_GAP)
-            readings = forge.read_islands(doc.edges, TOLERANCE, island_gap=ISLAND_GAP, max_gap=MAX_GAP)
+            result = forge.island(doc, tolerance=TOLERANCE, max_gap=MAX_GAP)
+            readings = forge.read_islands(doc.edges, TOLERANCE, max_gap=MAX_GAP)
         except Exception as exc:
             print(f"{stem}: ERRORE {type(exc).__name__}: {exc}")
             traceback.print_exc(limit=3)

@@ -212,11 +212,11 @@ come contorno. `island` parte da un fatto globale, cosa sta fuori:
 
 1. **estrae** gli `Edge` con ruolo deciso e non strutturale, come `heal` (D30):
    è così che un consumatore toglie cornice, cartiglio, cerchi di ingrandimento
-2. **isole** per vicinanza vera fra segmenti (`spatial_islands`): nessuna nozione
-   di chiusura, quindi nessuna ambiguità di grafo. La distanza (`island_gap`)
-   la dice il chiamante, senza default: dipende da come è impaginato il
-   disegno, che forge non conosce (D98)
-3. per ogni isola **normalizza** sulla griglia fine della rete: nodi dagli
+2. **pezzi**: gli edge che si toccano entro `max_gap` (`spatial_islands`):
+   nessuna nozione di chiusura, quindi nessuna ambiguità di grafo. Nessuna
+   distanza fra le viste: quella dipendeva da come è impaginato il disegno,
+   che forge non conosce (D99)
+3. per ogni pezzo **normalizza** sulla griglia fine della rete: nodi dagli
    estremi reali, catene tassellate rifittate come archi/spline, merge/weld di
    `heal`, gap fino a `max_gap` senza mai spostare un estremo più di così
    (anche `max_gap` è del chiamante, D98)

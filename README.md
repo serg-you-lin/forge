@@ -76,17 +76,18 @@ forge.save_json(result, "batch.json")
 import forge
 
 doc    = forge.load_dxf("sheet.dxf")        # frame / title block marked by role, or removed
-result = forge.island(doc, island_gap=10.0, max_gap=0.5)
+result = forge.island(doc, max_gap=0.5)
 for cluster in result.clusters:              # one view (or part) per island
     print(cluster.outer.polygon.area, len(cluster.inners))
 ```
 
 `heal()` reads a drawing of separate flat outlines from the inside (which loops close, which is
-inside which). `island()` reads a drawing of views from the outside: islands
-by proximity, then the outer contour of each as the outer face of its planar
-network. How close is "the same island" (`island_gap`) and which drawing gaps
-to close (`max_gap`) depend on the drawing, so the caller always says them:
-forge has no default. Same `ForgeResult` out — see `docs/API.md` (`island`).
+inside which). `island()` reads a drawing of views from the outside: the edges
+that touch form a piece, the outer contour of each piece is the outer face of
+its planar network, and every outer contour not inside another is an island;
+what lies inside is the island's by containment. There is no distance between
+views. Which drawing gaps to close (`max_gap`) depends on the drawing, so the
+caller always says it: forge has no default. Same `ForgeResult` out — see `docs/API.md` (`island`).
 
 Both are recipes over public steps. `heal()`'s steps (`split_labeled`,
 `close_free_gaps`, `find_loops`, `build_hierarchy`, ...) are exported one by one,

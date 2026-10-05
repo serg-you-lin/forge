@@ -5,10 +5,12 @@ Secondo modo di leggere un ForgeDocument, accanto a heal(): per isole.
 
 heal() ricostruisce la topologia dall'interno (chi tocca chi, quali giri si
 chiudono, come stanno uno dentro l'altro) e trova il pezzo per contenimento.
-island() legge il disegno dall'esterno: separa le isole per vicinanza, trova
-il contorno esterno di ognuna come faccia esterna della sua rete piana, poi
-classifica l'interno. È la lettura giusta per un disegno di viste (3D
-proiettato, più viste su un foglio), dove il grafo di heal è ambiguo.
+island() legge il disegno dall'esterno: i pezzi sono gli edge che si
+toccano, il contorno esterno di ognuno è la faccia esterna della sua rete
+piana, e ogni contorno esterno che non sta dentro un altro è un'isola (D99).
+Quello che sta dentro un'isola, chiuso o aperto, è suo per contenimento. È
+la lettura giusta per un disegno di viste (3D proiettato, più viste su un
+foglio), dove il grafo di heal è ambiguo.
 
 Stesso contratto in uscita: un ForgeResult con un ForgeCluster per isola.
 Cosa sia un'isola — vista, pezzo, cornice — lo decide il chiamante (D21).
@@ -21,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
+from shapely.ops import unary_union
 
 from ..model.cluster import ForgeCluster
 from ..model.contour import ForgeContour
@@ -59,30 +62,28 @@ class IslandReading:
     outside_loops:  List[list]             = field(default_factory=list)   # giri chiusi fra gli `outside` (D71)
     non_contour:    List[Edge]             = field(default_factory=list)   # criterio D49
     unclassified:   List[Edge]             = field(default_factory=list)
-    nested_in:      Optional[int]          = None            # indice dell'isola che la contiene
+    nested_in:      Optional[int]          = None            # indice dell'isola che la contiene (anche senza outer)
 
 
 # ---------------------------------------------------------------------------
 # API pubblica
 # ---------------------------------------------------------------------------
 
-def island(doc: ForgeDocument, *, island_gap: float, max_gap: float,
+def island(doc: ForgeDocument, *, max_gap: float,
            tolerance: Optional[float] = None,
            is_structural: Optional[Callable[[str], bool]] = None) -> ForgeResult:
     """
-    Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno
-    esterno, `inners` i giri chiusi dentro. Un'isola il cui contorno sta
-    dentro quello di un'altra non è un cluster: diventa interno dell'isola
-    più esterna che la contiene (con la cornice nel disegno, l'unico
-    contorno esterno è la cornice — toglierla è del chiamante). Tutti i suoi
-    giri chiusi diventano interni, anche quelli fuori dal contorno scelto:
-    un gruppo di fori staccati, vicini fra loro e lontani dal bordo della
-    vista, è un'isola sola fatta di cerchi disgiunti (D71).
+    Legge `doc` per isole. Un ForgeCluster per ogni contorno esterno che non
+    sta dentro un altro: `outer` il contorno, `inners` i giri chiusi dentro.
+    Un pezzo il cui contorno sta dentro quello di un'isola diventa suo
+    interno, con tutti i suoi giri chiusi (con la cornice nel disegno,
+    l'unico contorno esterno è la cornice — toglierla è del chiamante). Gli
+    edge aperti vanno in `trash_entities` con `cluster_ref` = l'isola che li
+    contiene o che toccano; `None` se stanno fuori da ogni isola (D99).
 
-    island_gap: distanza massima fra due edge della stessa isola (mm).
-                Obbligatoria: è una scelta di chi legge il disegno (D98).
-    max_gap:    gap chiusi fra estremi liberi, mai spostando un estremo più
-                di così (mm). Obbligatorio, come island_gap.
+    max_gap:    due edge più vicini di così si toccano; gap chiusi fra
+                estremi liberi, mai spostando un estremo più di così (mm).
+                Obbligatorio (D98).
     tolerance:  come heal() — se None, doc.source_meta['tolerance'].
     is_structural: come heal() (D30): un Edge con un ruolo già deciso e non
                 strutturale (cornice, cartiglio, ...) resta fuori dalla
@@ -99,7 +100,7 @@ def island(doc: ForgeDocument, *, island_gap: float, max_gap: float,
     labeled = [e for e in doc.edges if e.role != ContourRole.UNKNOWN and not structural(e.role)]
     labeled_ids = {id(e) for e in labeled}
     edges = [e for e in doc.edges if id(e) not in labeled_ids]
-    readings = read_islands(edges, tol, island_gap=island_gap, max_gap=max_gap)
+    readings = read_islands(edges, tol, max_gap=max_gap)
 
     result = ForgeResult(source_file=doc.source_path, annotations=list(doc.annotations))
     result.trash_entities += _open(labeled)
@@ -107,10 +108,11 @@ def island(doc: ForgeDocument, *, island_gap: float, max_gap: float,
     for i, r in enumerate(readings):
         if r.outer is not None and r.nested_in is None:
             clusters[i] = _cluster(r, doc.source_path)
+    owned = []   # (OpenFeature, cluster che la contiene)
     for i, r in enumerate(readings):
         host = clusters.get(r.nested_in) if r.nested_in is not None else clusters.get(i)
-        if host is None:
-            result.trash_entities += _open(r.edges)
+        if host is None or r.outer is None:
+            owned += [(f, host) for f in _open(r.edges)]
             continue
         outside = r.outside
         if r.nested_in is not None:
@@ -121,33 +123,38 @@ def island(doc: ForgeDocument, *, island_gap: float, max_gap: float,
             host.inners += _inners(r.outside_loops, host.outer)
             in_loops = {id(e) for loop in r.outside_loops for e, _ in loop}
             outside = [e for e in r.outside if id(e) not in in_loops]
-        result.trash_entities += _open(r.spurs + outside + r.non_contour + r.unclassified)
+        owned += [(f, host) for f in _open(r.spurs + outside + r.non_contour + r.unclassified)]
     result.clusters = sorted(clusters.values(), key=lambda c: c.outer.polygon.area, reverse=True)
+    index = {id(c): k for k, c in enumerate(result.clusters)}
+    for feature, host in owned:
+        feature.cluster_ref = None if host is None else index[id(host)]
+    result.trash_entities += [f for f, _ in owned]
     if not result.clusters:
         result.is_valid = False
         result.errors.append("Nessuna isola con un contorno esterno chiuso.")
     return result
 
 
-def read_islands(edges: List[Edge], tolerance: float, island_gap: float,
-                 max_gap: float) -> List[IslandReading]:
+def read_islands(edges: List[Edge], tolerance: float, max_gap: float) -> List[IslandReading]:
     """
-    `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola
-    il cui contorno sta dentro quello di un'altra porta in `nested_in`
-    l'indice della più esterna che la contiene.
+    I pezzi a contatto (`spatial_islands` a `max_gap`) + `read_island` per
+    ognuno, e l'annidamento: un pezzo che sta dentro il contorno di un altro
+    — col suo contorno, o senza contorno con tutti i suoi edge — porta in
+    `nested_in` l'indice del più esterno che lo contiene.
     """
     readings = [read_island(isl.edges, tolerance, max_gap=max_gap)
-                for isl in spatial_islands(edges, island_gap)]
+                for isl in spatial_islands(edges, max(tolerance, max_gap))]
+    outers = [(j, r.outer.polygon.buffer(tolerance), r.outer.polygon.area)
+              for j, r in enumerate(readings) if r.outer is not None]
     for i, r in enumerate(readings):
-        if r.outer is None:
-            continue
-        small = r.outer.polygon
-        hosts = [j for j, big in enumerate(readings)
-                 if j != i and big.outer is not None
-                 and big.outer.polygon.area > small.area
-                 and big.outer.polygon.buffer(tolerance).contains(small)]
+        if r.outer is not None:
+            small, area = r.outer.polygon, r.outer.polygon.area
+        else:
+            small, area = unary_union([edge_geometry(e) for e in r.edges]), 0.0
+        hosts = [(j, big_area) for j, probe, big_area in outers
+                 if j != i and big_area > area and probe.contains(small)]
         if hosts:
-            r.nested_in = max(hosts, key=lambda j: readings[j].outer.polygon.area)
+            r.nested_in = max(hosts, key=lambda h: h[1])[0]
     return readings
 
 

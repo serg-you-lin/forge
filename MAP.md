@@ -2971,6 +2971,69 @@ distance from it.
 Suite: forge 790. `main` → **0.12.0** (breaking: `island()` without the two
 numbers raises `TypeError`).
 
+### D99 — reopening D59 and D98: islands are outer contours, not distances ✅
+D59 grouped edges into islands by distance (`island_gap`), then kept **one**
+outer contour per group — the largest (`outer_face`). Every other closed
+contour in the group went to `outside_loops` and, for a group not nested in
+another, to the trash. At 10 mm that happened on 9 of the 13 anonymized view
+drawings. And the distance was the one number that described how a sheet is
+laid out, not its geometry: the right value, judged by eye on 5 October, ran
+from 17 to 78 mm, and on 4 drawings no value was right (a long top view with
+small side views: any distance that joins the side view to its symbols also
+joins it to the next view).
+
+Federico's rule: more than one outer contour means more than one island.
+Measured with it, the number of islands barely moves between 5 and 200 mm
+(`anch_01` 5, `anch_05` 3, `regr_01` 3 at every distance; with D59, `anch_01`
+went from 5 to 1 at 50 mm). The distance had stopped deciding anything, so it
+goes:
+
+- **pieces** are the edges that touch — `spatial_islands` at `max_gap`, the
+  same tolerance that closes drawing gaps; it says which edges belong
+  together, not how a sheet is laid out;
+- every **outer contour that is not inside another is an island**; a piece
+  inside it — with its own contour or without one, all its edges inside — is
+  the island's by containment (the hierarchy pass, D71 extended to open
+  pieces);
+- **open edges** stay in `trash_entities` as before (same contract as
+  `heal()`), but each `OpenFeature` carries `cluster_ref`, the island that
+  contains or touches it, like `Annotation.cluster_ref` (`anchor_annotations`).
+  Outside every island: `None` — nothing attaches it by guessing.
+
+Signature: `island(doc, *, max_gap, tolerance=None, is_structural=None)`,
+`read_islands(edges, tolerance, max_gap)`. `island_gap` is gone, no alias.
+
+Why it stays in forge (Federico asked): "separate the closed shapes of a sheet
+and give each what lies inside it" is geometry — a sewing pattern sheet
+(pieces with darts and notches inside), a cutting sheet with many parts. What
+was snapdraw's was the distance, a layout convention, and that is what left.
+A view drawn as several contours that do not touch becomes several islands;
+putting them back together is reading views, snapdraw's job.
+
+Golden: see the suite line below — every change listed and judged before
+regenerating (CLAUDE.md, non-negotiable 9).
+
+Golden changes, shown to Federico before regenerating (the anchoring test reads
+the sheet with the frame and without role rules, so axes count as geometry):
+`anch_05` dimensions "25" and "9" now anchor to the whole 25×9 stadium (before:
+half of it); `anch_02` "Ø25" to the whole circle (before: half); `anch_03`
+"M8", unanchored before, to the 8×8 contour of the threaded hole. Two follow
+from axes read as geometry in this test, not from the rule: `anch_06` "M5"
+now anchors to the crest arc closed by the axes (before: the Ø4.2 circle);
+`anch_02` "10" and "15" also to a half-circle cut by an axis. Text budget:
+`anch_02` +0.6%, `anch_07` +0.07% (more contours found), the others lower.
+
+Not solved, and not caused by D99 (same result before it): on some 3D views
+the outer face is a ring that crosses itself where an arc chain and a line
+cross at a grazing angle (2–6°), so its area collapses (`anch_07`, 104×68 mm
+view: 347 mm², 5% of its box) and nothing nests inside. Open in TODO.
+
+Also here: `forge.geometry.sides_on_border(bounds, border, tolerance)`, the
+sides of a box lying on the same side of another — snapdraw D31 uses it for
+the title block.
+
+Suite: forge 794. `main` → **0.13.0** (breaking: `island_gap` removed).
+
 
 ---
 
