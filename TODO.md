@@ -166,6 +166,19 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    vedere se i gradini sono netti. Se non lo sono l'idea cade; se lo sono,
    DXF con le isole colorate a due gradini diversi da giudicare a occhio.
    Solo dopo si riapre il default di `island_gap`.
+   **Verifica del 4 ottobre** (script nello scratchpad, single linkage
+   esatto sulla distanza vera fra edge, su 8 `anch_*` + 38 disegni locali di
+   viste): i gradini ci sono ma non sempre netti. Il gradino "una isola per
+   vista" (di solito 3-4 isole) è largo da x3 a x16 nella maggior parte dei
+   disegni (es. anch_04: 4 isole da 10.0 a 51.9; anch_07: da 4.2 a 22.0),
+   stretto in circa un terzo (x1.6-2.5, es. anch_06: 4 isole solo da 19.0 a
+   31.1). Due cose viste: (a) il conteggio nudo mescola le viste con i pezzetti
+   (segni di centro, spezzoni d'asse), che fanno gradini larghi a 0.5-2 mm e
+   rubano il primo posto — la scala deve dire anche *quanto è grande* ciò che
+   si unisce, non solo a che distanza; (b) il default 10.0 cade spesso proprio
+   sul bordo di un gradino (anch_04 e anch_05 hanno un'unione a 10.00 esatti),
+   quindi è fragile per costruzione. DXF con le isole colorate ai due gradini
+   più larghi in `pipeline_output/island_scale/`, **da giudicare a occhio**.
 
 ---
 
