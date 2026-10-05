@@ -22,13 +22,17 @@ sys.path.insert(0, str(project_root))
 
 import forge
 
+# island_gap e max_gap non hanno default (D98): i valori di prima, scritti qui
+ISLAND_GAP = 10.0
+MAX_GAP = 0.5
+
 SOURCE_DIR = project_root / "tests" / "data" / "golden_anchoring"
 BUDGET = SOURCE_DIR / "text_budget.json"
 FILES = [f"anch_{i:02d}.dxf" for i in range(1, 9)]
 
 
 def reading(dxf_path: Path) -> str:
-    result = forge.anchor_annotations(forge.island(forge.load_dxf(str(dxf_path))), snap_distance=5.0)
+    result = forge.anchor_annotations(forge.island(forge.load_dxf(str(dxf_path)), island_gap=ISLAND_GAP, max_gap=MAX_GAP), snap_distance=5.0)
     return forge.to_text(result, dxf_path.name)
 
 

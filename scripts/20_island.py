@@ -3,11 +3,13 @@
 ==================================================================
 
 API forge usate:
-    forge.island(doc)           -> ForgeResult, un ForgeCluster per isola
+    forge.island(doc, island_gap=, max_gap=)
+                                -> ForgeResult, un ForgeCluster per isola
                                    (outer = contorno esterno, inners = giri
                                    chiusi dentro; isole annidate → interno
                                    di quella che le contiene)
-    forge.read_islands(edges)   -> [IslandReading]: per ogni isola cosa è
+    forge.read_islands(edges, tolerance, island_gap, max_gap)
+                                -> [IslandReading]: per ogni isola cosa è
                                    stato deciso, pezzo per pezzo
 
 Per ogni file un DXF con un layer per decisione, per vedere cosa ha fatto

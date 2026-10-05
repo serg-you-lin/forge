@@ -179,6 +179,66 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    sul bordo di un gradino (anch_04 e anch_05 hanno un'unione a 10.00 esatti),
    quindi è fragile per costruzione. DXF con le isole colorate ai due gradini
    più larghi in `pipeline_output/island_scale/`, **da giudicare a occhio**.
+   **Giudizio a occhio di Federico** (5 ottobre, sugli `anch_*`): i gradini
+   grandi sono giusti (anch_03 11.4, anch_04 22.8, anch_05 26.1, anch_06 24.3,
+   anch_07 9.6, anch_08 22.0), quelli piccoli (0.9-2.9) sbagliati quasi
+   sempre: separano un foro filettato dalla sua vista, o i simboli di disegno
+   accanto a una vista. Il gap scelto era cieco: centro (geometrico) dei due
+   gradini più larghi. anch_08 a 113.9 non trova niente perché nel test la
+   cornice non era tolta: è un'isola come le altre e i gradini larghi in alto
+   sono le viste che si attaccano a lei. Quindi: la scala delle viste si legge
+   **dopo** aver tolto la cornice, oppure la scala stessa trova la cornice.
+   **Idea per framer (snapdraw), da ragionare:** oggi `find_frame` vuole un
+   rettangolo di proporzione √2 (ISO) che contenga l'80% della geometria. La
+   scala dà un altro indizio, che non ha bisogno di nessun formato: la cornice
+   è l'isola il cui riquadro contiene tutte le altre, e una cornice a doppio
+   bordo è *una* isola al gradino giusto (anch_04: due isole a 2.2, una a
+   22.8). Potrebbe servire per cornici non ISO e non canoniche.
+   **Prova in framer (5 ottobre):** `snapdraw/lab/island_scale.py` (locale)
+   toglie cornice, cartiglio e costruzione con framer, misura la scala sui 13
+   disegni anonimizzati (`anch_*`, `regr_*`) e pubblica una pagina con un
+   cursore sulla distanza (Artifact "Scala delle isole"). Federico sceglie per
+   ogni disegno la distanza giusta e la salva; dalle sue scelte si ricava la
+   regola, invece di indovinarla. Tre regole automatiche provate e scartate
+   prima di vedere i suoi giudizi: tratto più largo con un minimo fisso a
+   0.5; tratto più largo fra unioni di isole grandi; dall'ultimo pezzo
+   piccolo alla prima unione fra isole grandi. Nessuna regge su tutti e 13.
+   **Giudizi di Federico:** 9 disegni su 13 hanno una distanza giusta, tutte
+   fra 17 e 78 mm; l'ultima regola ne indovina 6. I 4 senza distanza buona
+   falliscono perché la grandezza non distingue una vista da un simbolo: una
+   vista laterale piccola presa per pezzetto (`anch_07`, `regr_05`), un pezzo
+   lungo e piatto che fa sembrare piccolo il resto (`anch_02`). A parte,
+   avanzi di cornice non tolti (risolti in framer, snapdraw D28).
+   **Il default 10 era ancora lì** (5 ottobre, tolto con D98): `island()` e `read_islands()`
+   hanno `island_gap=10.0`; lo usano senza dirlo `snapdraw/features.py`,
+   `snapdraw/scripts/01_export.py`, i test `real/test_golden_anchoring`,
+   `real/test_text_budget` e `unit/core/test_island`. Toglierlo è un taglio
+   netto: parametro obbligatorio, e ogni chiamante dice la sua distanza.
+   **Piano deciso con Federico (5 ottobre) — ✅ fatto lo stesso giorno: D98
+   (forge 0.12.0) e snapdraw D29. Resta aperta la scala come fatto
+   geometrico in `forge.geometry` e la regola in `sheet_islands`.**
+   - forge: `island(doc, *, island_gap, max_gap, tolerance=None,
+     is_structural=None)` — i due numeri obbligatori e per nome;
+     `read_islands(edges, tolerance, island_gap, max_gap)` e
+     `read_island(edges, tolerance, max_gap)` senza default. Anche `max_gap`,
+     perché D60 lo giustifica con "a view is not a cutting file", cioè
+     sapere di disegno. `tolerance` resta: viene dal caricamento.
+   - Nuova decisione in `MAP.md` che dice "reopening D59 and D60" solo sul
+     default (D59 dice già che `island_gap` è del chiamante).
+   - forge: test (`unit/core/test_island`, `unit/core/test_shape`,
+     `unit/test_anchor_annotations`, `real/test_golden_anchoring`,
+     `real/test_text_budget`), `scripts/20_island.py` e la documentazione
+     (`docs/LLM.md`, `docs/API.md`, `README.md`, `README_IT.md`) passano
+     i numeri in modo esplicito. Stessi valori 10 e 0.5: nessun risultato
+     deve cambiare, nessun golden si rigenera.
+   - snapdraw: un posto solo dove framer sceglie, `sheet_islands(doc)` in
+     `snapdraw/views.py` con `SHEET_GAP = 10.0` e `SHEET_MAX_GAP = 0.5` (lì
+     entrerà la regola della scala); tutti i `forge.island(...)` di script,
+     test e docstring d'uso passano a `sd.sheet_islands(...)`. In codice di
+     package oggi `forge.island` compare solo nelle docstring.
+   - Indici rigenerati in tutti e due i repo, suite verdi, due commit. Entrambi sono lavoro di framer (snapdraw
+   TODO, "scala delle isole"); per forge resta la scala come fatto
+   geometrico, che regge.
 
 ---
 

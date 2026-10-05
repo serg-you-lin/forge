@@ -1580,7 +1580,7 @@ reading (snapdraw): `read_islands` / `read_island` (→ typed `IslandReading`),
   true segment distance (STRtree `dwithin`). Not bboxes: the bbox of a long
   isometric diagonal covers an empty rectangle touching the next view. No
   notion of closure, so no graph ambiguity. `island_gap` is the caller's
-  (layout convention), default 10 mm.
+  (layout convention), default 10 mm — default removed in D98.
 - **Planar network** (`core/topology/noding.py`): every LineSeg/ArcSeg/CircleSeg
   split where another edge crosses or touches it (T within tolerance), nodes
   recomputed from the real endpoints on one fine grid (`renode`, 3 decimals)
@@ -2938,6 +2938,33 @@ have changed the fixtures.
 From now on a history rewrite or a force push happens only after Federico
 says yes to that specific step; Claude Code asks for it too
 (`permissions.ask`).
+
+### D98 — reopening D59 and D60 on the default only: `island_gap` and `max_gap` are required ✅
+D59 already said `island_gap` is the caller's — a layout convention — and then
+gave it a default of 10 mm; D60 justified `max_gap = 0.5` with "a view is not
+a cutting file", which is knowledge about drawings, not geometry. Both numbers
+were domain choices made at a desk, inside an engine that knows no domain.
+The island scale measured on 4–5 October (TODO thread 13) showed why it
+matters: the right `island_gap` on the anonymized view drawings lies anywhere
+between 17 and 78 mm, and 10.0 sits right on the edge of a step in two of
+them (`anch_04`, `anch_05` have a merge at exactly 10.00). A default that
+works by luck hides the choice from whoever calls `island()`.
+
+So: `island(doc, *, island_gap, max_gap, tolerance=None, is_structural=None)`
+— the two numbers required and by name (a positional `10, 0.5` says nothing
+to the reader); `read_islands(edges, tolerance, island_gap, max_gap)` and
+`read_island(edges, tolerance, max_gap)` with no default either. `tolerance`
+keeps its `None`: it comes from the load, it is not a domain choice.
+
+Every caller in forge (tests, `scripts/20_island.py`, the examples in
+`docs/LLM.md`, `docs/API.md`, `README*.md`) writes 10 and 0.5 explicitly, the
+values the default had: no result changes, no golden regenerated. In snapdraw
+the choice lives in one place, `sheet_islands(doc)` (snapdraw D29), which is
+where a rule read from the island scale will go. The scale itself, as a
+geometric fact in `forge.geometry`, stays open in TODO thread 13.
+
+Suite: forge 790. `main` → **0.12.0** (breaking: `island()` without the two
+numbers raises `TypeError`).
 
 
 ---

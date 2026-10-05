@@ -439,8 +439,8 @@ closed = forge.loops_to_features(forge.structural_loops(search.loops, is_structu
 ### `island`
 
 ```python
-forge.island(doc: ForgeDocument, tolerance=None, island_gap=10.0,
-             max_gap=0.5, is_structural=None) -> ForgeResult
+forge.island(doc: ForgeDocument, *, island_gap: float, max_gap: float,
+             tolerance=None, is_structural=None) -> ForgeResult
 ```
 
 La seconda lettura di un documento, accanto a `heal()`: **per isole**.
@@ -471,9 +471,9 @@ Cosa sia un cluster — vista, pezzo — lo decide chi lo usa (D21).
 
 | parametro | significato |
 |---|---|
+| `island_gap` | **obbligatorio**, per nome. Distanza massima (mm) fra due edge della stessa isola. Dipende da come è impaginato il disegno, non dalla geometria: lo sceglie il chiamante, forge non ha default (D98). |
+| `max_gap` | **obbligatorio**, per nome. Gap (mm) chiusi fra estremi liberi, mai spostando un estremo più di così (D98, come `island_gap`). |
 | `tolerance` | se `None`, ripresa da `doc.source_meta["tolerance"]` — come `heal()`. |
-| `island_gap` | distanza massima (mm) fra due edge della stessa isola. Dipende da come è impaginato il disegno, non dalla geometria. |
-| `max_gap` | gap (mm) chiusi fra estremi liberi, mai spostando un estremo più di così. |
 | `is_structural` | come in `heal()` (D30): un `Edge` con un ruolo già deciso e non strutturale (`frame`, `title_block`, ...) resta **fuori** dalla lettura e va in `trash_entities` col suo ruolo. È così che un consumatore toglie cornice e cartiglio prima di leggere le viste. Senza, solo `outer`/`inner` sono strutturali. |
 
 **Ritorna** un `ForgeResult` con un `ForgeCluster` per isola non annidata,
@@ -484,7 +484,7 @@ ordinati per area del contorno esterno. Nessun giro chiuso in nessuna isola →
 
 ```python
 doc = forge.load_dxf("tavola.dxf")
-result = forge.island(doc, island_gap=10.0)
+result = forge.island(doc, island_gap=10.0, max_gap=0.5)
 for cluster in result.clusters:          # una vista / un pezzo per cluster
     print(cluster.outer.polygon.area, len(cluster.inners))
 ```
@@ -495,8 +495,8 @@ Esposti per chi compone la sua ricetta (snapdraw: togliere cornice e cartiglio
 per ruolo, poi leggere le viste) — stessi pezzi, nessun criterio duplicato.
 
 ```python
-forge.read_islands(edges, tolerance, island_gap=10.0, max_gap=0.5) -> list[IslandReading]
-forge.read_island(edges, tolerance, max_gap=0.5) -> IslandReading
+forge.read_islands(edges, tolerance, island_gap, max_gap) -> list[IslandReading]
+forge.read_island(edges, tolerance, max_gap) -> IslandReading
 forge.spatial_islands(edges, gap_tolerance) -> list[Island]
 forge.split_at_crossings(edges, tolerance, decimals=3) -> NodedEdges
 forge.outer_face(edges, epsilon=0.0) -> OuterFace | None

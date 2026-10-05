@@ -66,8 +66,8 @@ class IslandReading:
 # API pubblica
 # ---------------------------------------------------------------------------
 
-def island(doc: ForgeDocument, tolerance: Optional[float] = None,
-           island_gap: float = 10.0, max_gap: float = 0.5,
+def island(doc: ForgeDocument, *, island_gap: float, max_gap: float,
+           tolerance: Optional[float] = None,
            is_structural: Optional[Callable[[str], bool]] = None) -> ForgeResult:
     """
     Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno
@@ -79,10 +79,11 @@ def island(doc: ForgeDocument, tolerance: Optional[float] = None,
     un gruppo di fori staccati, vicini fra loro e lontani dal bordo della
     vista, è un'isola sola fatta di cerchi disgiunti (D71).
 
-    tolerance:  come heal() — se None, doc.source_meta['tolerance'].
     island_gap: distanza massima fra due edge della stessa isola (mm).
+                Obbligatoria: è una scelta di chi legge il disegno (D98).
     max_gap:    gap chiusi fra estremi liberi, mai spostando un estremo più
-                di così (mm).
+                di così (mm). Obbligatorio, come island_gap.
+    tolerance:  come heal() — se None, doc.source_meta['tolerance'].
     is_structural: come heal() (D30): un Edge con un ruolo già deciso e non
                 strutturale (cornice, cartiglio, ...) resta fuori dalla
                 lettura e va in trash col suo ruolo. Senza, solo outer/inner
@@ -128,8 +129,8 @@ def island(doc: ForgeDocument, tolerance: Optional[float] = None,
     return result
 
 
-def read_islands(edges: List[Edge], tolerance: float, island_gap: float = 10.0,
-                 max_gap: float = 0.5) -> List[IslandReading]:
+def read_islands(edges: List[Edge], tolerance: float, island_gap: float,
+                 max_gap: float) -> List[IslandReading]:
     """
     `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola
     il cui contorno sta dentro quello di un'altra porta in `nested_in`
@@ -150,7 +151,7 @@ def read_islands(edges: List[Edge], tolerance: float, island_gap: float = 10.0,
     return readings
 
 
-def read_island(edges: List[Edge], tolerance: float, max_gap: float = 0.5) -> IslandReading:
+def read_island(edges: List[Edge], tolerance: float, max_gap: float) -> IslandReading:
     """
     Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate,
     merge/weld di heal, gap fino a `max_gap`), rende la rete piana, ne

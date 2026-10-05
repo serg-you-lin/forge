@@ -11,6 +11,10 @@ from forge.core.healing.normalizer import refit_tessellations
 from forge.core.healing.gap_solver import local_gap_fixes, MoveEndpoint, AddSegment
 from forge.core.primitives.segments import ArcSeg
 
+# island_gap e max_gap non hanno default (D98): i valori di prima, scritti qui
+ISLAND_GAP = 10.0
+MAX_GAP = 0.5
+
 
 def _line(p1, p2):
     return Edge(role="unknown", start=p1, end=p2, segment=LineSeg(start=p1, end=p2))
@@ -33,14 +37,14 @@ class TestIsland(unittest.TestCase):
 
     def test_due_viste_separate_due_cluster(self):
         edges = _poly((0, 0), (10, 0), (10, 10), (0, 10)) + _poly((50, 0), (60, 0), (60, 5), (50, 5))
-        result = forge.island(_doc(edges))
+        result = forge.island(_doc(edges), island_gap=ISLAND_GAP, max_gap=MAX_GAP)
         self.assertEqual(len(result.clusters), 2)
         self.assertEqual([round(c.outer.polygon.area) for c in result.clusters], [100, 50])
 
     def test_isola_dentro_un_altra_non_e_un_cluster(self):
         # cornice 100x100 e una vista dentro: l'unico contorno esterno è la cornice
         edges = _poly((0, 0), (100, 0), (100, 100), (0, 100)) + _poly((40, 40), (60, 40), (60, 60), (40, 60))
-        result = forge.island(_doc(edges))
+        result = forge.island(_doc(edges), island_gap=ISLAND_GAP, max_gap=MAX_GAP)
         self.assertEqual(len(result.clusters), 1)
         self.assertAlmostEqual(result.clusters[0].outer.polygon.area, 10000.0)
         self.assertEqual(len(result.clusters[0].inners), 1)
@@ -50,7 +54,7 @@ class TestIsland(unittest.TestCase):
         # sono un'isola a sé fatta di cerchi disgiunti; dentro la vista diventano tutti interni
         edges = _poly((0, 0), (200, 0), (200, 100), (0, 100)) + [
             _circle((90, 50), 3), _circle((100, 50), 5.5), _circle((110, 50), 3)]
-        result = forge.island(_doc(edges))
+        result = forge.island(_doc(edges), island_gap=ISLAND_GAP, max_gap=MAX_GAP)
         self.assertEqual(len(result.clusters), 1)
         self.assertEqual(sorted(round(i.polygon.area) for i in result.clusters[0].inners),
                          sorted(round(math.pi * r * r) for r in (3, 5.5, 3)))
@@ -58,7 +62,7 @@ class TestIsland(unittest.TestCase):
 
     def test_foro_resta_giro_interno(self):
         edges = _poly((0, 0), (20, 0), (20, 20), (0, 20)) + [_circle((10, 10), 3)]
-        cluster = forge.island(_doc(edges)).clusters[0]
+        cluster = forge.island(_doc(edges), island_gap=ISLAND_GAP, max_gap=MAX_GAP).clusters[0]
         self.assertEqual(cluster.outer.role, ContourRole.OUTER)
         self.assertEqual(len(cluster.inners), 1)
         self.assertAlmostEqual(cluster.inners[0].polygon.area, math.pi * 9, delta=0.5)
@@ -68,14 +72,14 @@ class TestIsland(unittest.TestCase):
         # interno li ricompone in un cerchio solo
         edges = _poly((0, 0), (20, 0), (20, 20), (0, 20)) + [_circle((10, 10), 3)]
         edges += [_line((5, 10), (15, 10)), _line((10, 5), (10, 15))]
-        result = forge.island(_doc(edges))
+        result = forge.island(_doc(edges), island_gap=ISLAND_GAP, max_gap=MAX_GAP)
         inner = result.clusters[0].inners[0]
         self.assertEqual([type(s).__name__ for s in inner.segments], ["CircleSeg"])
 
     def test_lato_tagliato_da_un_asse_torna_un_segmento(self):
         # un asse che esce dal contorno lo spezza: il contorno esterno resta di 4 lati
         edges = _poly((0, 0), (20, 0), (20, 20), (0, 20)) + [_line((10, -5), (10, 25))]
-        outer = forge.island(_doc(edges)).clusters[0].outer
+        outer = forge.island(_doc(edges), island_gap=ISLAND_GAP, max_gap=MAX_GAP).clusters[0].outer
         self.assertEqual(len(outer.segments), 4)
 
     def test_cornice_marcata_resta_fuori(self):
@@ -84,18 +88,18 @@ class TestIsland(unittest.TestCase):
         for e in frame:
             e.role = "frame"
         view = _poly((40, 40), (60, 40), (60, 60), (40, 60))
-        result = forge.island(_doc(frame + view))
+        result = forge.island(_doc(frame + view), island_gap=ISLAND_GAP, max_gap=MAX_GAP)
         self.assertEqual(len(result.clusters), 1)
         self.assertAlmostEqual(result.clusters[0].outer.polygon.area, 400.0)
         self.assertEqual(sum(1 for t in result.trash_entities if t.role == "frame"), 4)
 
     def test_niente_di_chiuso_invalido(self):
-        result = forge.island(_doc([_line((0, 0), (5, 0))]))
+        result = forge.island(_doc([_line((0, 0), (5, 0))]), island_gap=ISLAND_GAP, max_gap=MAX_GAP)
         self.assertFalse(result.is_valid)
 
     def test_richiede_un_documento(self):
         with self.assertRaises(TypeError):
-            forge.island([_line((0, 0), (1, 0))])
+            forge.island([_line((0, 0), (1, 0))], island_gap=ISLAND_GAP, max_gap=MAX_GAP)
 
 
 class TestRefitTessellations(unittest.TestCase):

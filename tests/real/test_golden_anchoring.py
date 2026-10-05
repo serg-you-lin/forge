@@ -28,6 +28,10 @@ sys.path.insert(0, str(project_root))
 import forge
 from forge.model.annotation import Dimension, Leader
 
+# island_gap e max_gap non hanno default (D98): i valori di prima, scritti qui
+ISLAND_GAP = 10.0
+MAX_GAP = 0.5
+
 SOURCE_DIR = project_root / "tests" / "data" / "golden_anchoring"
 GOLDEN_DIR = SOURCE_DIR / "json"
 
@@ -47,7 +51,7 @@ def _element(result, path):
 
 
 def snapshot(dxf_path: Path) -> dict:
-    result = forge.anchor_annotations(forge.island(forge.load_dxf(str(dxf_path))))
+    result = forge.anchor_annotations(forge.island(forge.load_dxf(str(dxf_path)), island_gap=ISLAND_GAP, max_gap=MAX_GAP))
     entries = []
     for a in result.annotations:
         if isinstance(a, Dimension):

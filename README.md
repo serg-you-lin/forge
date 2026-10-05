@@ -76,7 +76,7 @@ forge.save_json(result, "batch.json")
 import forge
 
 doc    = forge.load_dxf("sheet.dxf")        # frame / title block marked by role, or removed
-result = forge.island(doc, island_gap=10.0)
+result = forge.island(doc, island_gap=10.0, max_gap=0.5)
 for cluster in result.clusters:              # one view (or part) per island
     print(cluster.outer.polygon.area, len(cluster.inners))
 ```

@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`72` modules · `349` module-level functions · `56` classes · `12900` lines of code.
+`72` modules · `349` module-level functions · `56` classes · `12901` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -79,7 +79,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_close_self_loop` | func | `forge/core/topology/graph.py:254` | ArcSeg il cui sviluppo (raggio*sweep) supera epsilon -> CircleSeg (loop degenere vero). Altrimenti `None` (sl… |
 | `ClosedFeature` | class | `forge/model/feature.py:47` | Feature con geometria chiusa: ha un polygon e una lista di segmenti. |
 | `_closest_to` | func | `forge/core/geometry/intersections.py:91` | Restituisce il punto più vicino a ref tra i candidati. |
-| `_cluster` | func | `forge/core/island.py:209` |  |
+| `_cluster` | func | `forge/core/island.py:210` |  |
 | `cluster_passes_min_area` | func | `forge/io/dxf.py:157` | True se la parte supera la soglia di area minima (min_area <= 0 = nessun filtro). |
 | `cluster_points` | func | `forge/core/topology/graph.py:191` | Raggruppa punti 2D entro `epsilon` e restituisce {punto -> rappresentante}. |
 | `cluster_values` | func | `forge/core/geometry/axis.py:55` | I valori ordinati, tenendo per ogni gruppo il più piccolo: un valore entro |
@@ -92,7 +92,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `ConcentricGroup` | class | `forge/core/geometry/shape.py:175` | Contorni circolari con lo stesso centro, dal raggio minore al maggiore. |
 | `_configure_odafc` | func | `forge/adapters/dxf/loader.py:107` | Punta l'addon `odafc` all'eseguibile ODA File Converter. |
 | `_continues` | func | `forge/core/geometry/shape.py:275` | `seg` prosegue `prev` sulla stessa curva, nello stesso verso? |
-| `_contour` | func | `forge/core/island.py:227` | Il poligono resta quello dei pezzi della rete piana; i segmenti sono |
+| `_contour` | func | `forge/core/island.py:228` | Il poligono resta quello dei pezzi della rete piana; i segmenti sono |
 | `_contour_entry` | func | `forge/io/view_model.py:48` |  |
 | `contour_shape` | func | `forge/core/geometry/shape.py:63` | Forma di un contorno chiuso (`ForgeContour`, o qualunque oggetto con |
 | `ContourRole` | class | `forge/model/role.py:43` | I tre ruoli che il motore topologico conosce. **Non esaustivo** — un |
@@ -190,7 +190,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `heal` | func | `forge/core/heal.py:38` | Legge `doc` dall'interno: un ForgeCluster per contorno esterno chiuso, |
 | `HierarchyBuilder` | class | `forge/core/healing/hierarchy.py:149` |  |
 | `inject` | func | `forge/tools/inject.py:39` | Arricchisce i ForgeCluster con i dati estratti da un `data_injector` esterno. |
-| `_inners` | func | `forge/core/island.py:217` | Un ForgeContour inner per giro chiuso; un giro senza poligono valido no. |
+| `_inners` | func | `forge/core/island.py:218` | Un ForgeContour inner per giro chiuso; un giro senza poligono valido no. |
 | `inspect_document` | func | `forge/inspect.py:141` | Stampa un ForgeDocument prodotto da forge.load_dxf(): cosa ha estratto e |
 | `inspect_dxf` | func | `forge/inspect.py:62` | Apre un DXF/DWG con ezdxf e stampa cosa contiene, senza toccare forge. |
 | `inspect_file` | func | `forge/inspect.py:307` | Apre un file e stampa i tre livelli in fila: |
@@ -257,7 +257,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `NodedEdges` | class | `forge/core/topology/noding.py:39` | La rete piana: i pezzi, e per ognuno l'Edge da cui viene. |
 | `non_contour_candidates` | func | `forge/tools/non_contour.py:40` | Edge di `doc.edges` che l'euristica topologica di `heal()` escluderebbe dal |
 | `NonContourEdgeDetector` | class | `forge/core/topology/non_contour_edges.py:41` |  |
-| `_normalize` | func | `forge/core/island.py:195` | Stessi passi di heal, ma sulla griglia fine della rete piana: prima i |
+| `_normalize` | func | `forge/core/island.py:196` | Stessi passi di heal, ma sulla griglia fine della rete piana: prima i |
 | `normalize_ocs` | func | `forge/adapters/dxf/sanitize.py:19` | Normalizza il vettore di estrusione di tutte le entità OCS nel modelspace. |
 | `normalize_role` | func | `forge/model/role.py:112` | Ripulisce una stringa-ruolo che arriva dal chiamante (``RoleRule``, |
 | `Note` | class | `forge/model/annotation.py:99` | Testo libero: TEXT o MTEXT. |
@@ -265,7 +265,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_on_arc` | func | `forge/core/healing/outer_scan.py:127` |  |
 | `_on_border` | func | `forge/core/geometry/axis.py:186` |  |
 | `_on_boundary` | func | `forge/tools/anchor.py:119` | L'elemento col bordo più vicino a ``point``, se entro ``distance``. |
-| `_open` | func | `forge/core/island.py:235` |  |
+| `_open` | func | `forge/core/island.py:236` |  |
 | `OpenFeature` | class | `forge/model/feature.py:72` | Feature con geometria aperta: ha segmenti ma non un polygon. |
 | `outer_candidate_edges` | func | `forge/core/healing/outer_scan.py:72` | Per ogni asse, una quota rappresentativa (punto medio) fra ogni coppia |
 | `_outer_entity` | func | `forge/io/exporter.py:266` | L'entità su layer OuterContour che porta gli XDATA: prima una polilinea, |
@@ -302,8 +302,8 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_raw_linetype_pattern` | func | `forge/adapters/dxf/adapter.py:52` | Pattern grezzo (lunghezza totale + tratti con segno, `+` = tratto, |
 | `_ray_exit_point` | func | `forge/tools/tabs.py:225` | Punto in cui il raggio da `center` verso `direction` esce dal contorno chiuso `points`. |
 | `_read_dwg` | func | `forge/adapters/dxf/loader.py:148` | Legge un file DWG usando ezdxf.addons.odafc (wrapper di ODA File Converter). |
-| `read_island` | func | `forge/core/island.py:153` | Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate, |
-| `read_islands` | func | `forge/core/island.py:131` | `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola |
+| `read_island` | func | `forge/core/island.py:154` | Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate, |
+| `read_islands` | func | `forge/core/island.py:132` | `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola |
 | `read_metadata_from_dxf` | func | `forge/io/exporter.py:307` | Legge i metadati FORGE XDATA dall'entità OuterContour. |
 | `rectangle` | func | `forge/core/geometry/build.py:37` | Rettangolo `length` × `width` centrato in `center`, lato lungo a `angle` gradi. |
 | `_rectangle` | func | `forge/core/geometry/shape.py:122` |  |
@@ -841,19 +841,19 @@ _core/healing/steps.py_
 - `_graph(edges: List[Edge], exclude_ids: FrozenSet[int], epsilon: float=0.0)` — L267
 - `_ring_segments(coords) -> List[LineSeg]` — L273
 
-#### `forge/core/island.py` — 237 lines
+#### `forge/core/island.py` — 238 lines
 
 _core/island.py_
 
 - **class** `IslandReading` — L52 — Cosa island() ha deciso su un'isola, pezzo per pezzo.
-- `island(doc: ForgeDocument, tolerance: Optional[float]=None, island_gap: float=10.0, max_gap: float=0.5, is_structural: Optional[Callable[[str], bool]]=None) -> ForgeResult` — L69 — Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno
-- `read_islands(edges: List[Edge], tolerance: float, island_gap: float=10.0, max_gap: float=0.5) -> List[IslandReading]` — L131 — `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola
-- `read_island(edges: List[Edge], tolerance: float, max_gap: float=0.5) -> IslandReading` — L153 — Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate,
-- `_normalize(edges: List[Edge], tolerance: float, max_gap: float) -> List[Edge]` — L195 — Stessi passi di heal, ma sulla griglia fine della rete piana: prima i
-- `_cluster(reading: IslandReading, source_file: str) -> ForgeCluster` — L209
-- `_inners(loops, parent: ForgeContour) -> List[ForgeContour]` — L217 — Un ForgeContour inner per giro chiuso; un giro senza poligono valido no.
-- `_contour(segments, styles, polygon, role, parent) -> ForgeContour` — L227 — Il poligono resta quello dei pezzi della rete piana; i segmenti sono
-- `_open(edges: List[Edge]) -> list` — L235
+- `island(doc: ForgeDocument, *, island_gap: float, max_gap: float, tolerance: Optional[float]=None, is_structural: Optional[Callable[[str], bool]]=None) -> ForgeResult` — L69 — Legge `doc` per isole. Un ForgeCluster per isola: `outer` il contorno
+- `read_islands(edges: List[Edge], tolerance: float, island_gap: float, max_gap: float) -> List[IslandReading]` — L132 — `spatial_islands` + `read_island` per ognuna, e l'annidamento: un'isola
+- `read_island(edges: List[Edge], tolerance: float, max_gap: float) -> IslandReading` — L154 — Un'isola: normalizza (nodi dagli estremi reali, tassellature rifittate,
+- `_normalize(edges: List[Edge], tolerance: float, max_gap: float) -> List[Edge]` — L196 — Stessi passi di heal, ma sulla griglia fine della rete piana: prima i
+- `_cluster(reading: IslandReading, source_file: str) -> ForgeCluster` — L210
+- `_inners(loops, parent: ForgeContour) -> List[ForgeContour]` — L218 — Un ForgeContour inner per giro chiuso; un giro senza poligono valido no.
+- `_contour(segments, styles, polygon, role, parent) -> ForgeContour` — L228 — Il poligono resta quello dei pezzi della rete piana; i segmenti sono
+- `_open(edges: List[Edge]) -> list` — L236
 
 #### `forge/core/primitives/__init__.py` — 11 lines
 
