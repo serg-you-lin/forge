@@ -22,6 +22,7 @@ docstrings/comments, see Conventions).
 |---|---|
 | calling the library, need a signature or the pipeline | `docs/LLM.md` — dense reference written for an LLM, **load this one first** |
 | need the full card for a public name | `docs/API.md` |
+| **need to know what exists or what a function does** | `docs/INDEX.md` and `docs/LLM.md` first, then only the lines they point to. Never read a whole module to understand it: the index exists to save tokens |
 | **about to add a function, helper or class** | `docs/INDEX.md` — every module-level name in the package with `file:line`. Check the name *and* the job exist nowhere before writing |
 | **writing geometry** (a measure, a fact between contours, lines, rectangles) | it goes in `forge/core/geometry/` and its public facts in `forge.geometry` (`__init__.py` is the map) — never as a private helper in a reading or in a consumer (D93-D95) |
 | why is it built this way | `docs/ARCHITECTURE.md` |
