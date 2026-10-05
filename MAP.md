@@ -3078,6 +3078,8 @@ rewrite creates or drops (precision, four doubled lines merged on reload) —
 the golden is what forge reads from its own fixture. Suite: forge 807.
 Later the same day: `drw_0011` added (a broken view, from the 33 anonymized
 sheets Federico judged; one is enough, the rest are duplicates). Suite 808.
+`drw_0001` added after snapdraw D33 (frame with reference ticks). Suite 809.
+`main` → **0.13.1** (D100 and the island golden; no API change since 0.13.0).
 
 
 ---
