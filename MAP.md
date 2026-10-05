@@ -3076,6 +3076,8 @@ cannot swap. On 11 sheets forge alone gives exactly the framer's islands; on
 `regr_01` and `regr_04` one view differs by two sub-millimetre loops that the
 rewrite creates or drops (precision, four doubled lines merged on reload) —
 the golden is what forge reads from its own fixture. Suite: forge 807.
+Later the same day: `drw_0011` added (a broken view, from the 33 anonymized
+sheets Federico judged; one is enough, the rest are duplicates). Suite 808.
 
 
 ---
