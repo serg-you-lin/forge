@@ -151,6 +151,10 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
    detection delle isole". Non si porta in `forge.geometry`. Le misure e i
    giudizi a occhio del 4-5 ottobre sono riassunti in D98.
 
+14. **Isole: D99-D100 chiusi il 5 ottobre.** Il punto della situazione e i
+   prossimi passi (detection sulle isole, lettura delle viste) stanno nel TODO
+   di snapdraw, "Dove siamo". Golden delle isole: `tests/real/test_golden_islands.py`.
+
 ---
 
 ## `anonymize` — ripulire un disegno cliente per farne un fixture
