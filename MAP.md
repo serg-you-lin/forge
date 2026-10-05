@@ -3066,6 +3066,17 @@ and the principal view changes; two small symbols on `anch_03`/`regr_02` and
 regenerated after Federico checked the pages; text budgets of `anch_03`,
 `anch_06`, `anch_08` updated (more contours).
 
+**Island golden in forge** (`tests/real/test_golden_islands.py`, Federico: "sono
+roba di forge, perché sono puro riconoscimento geometrico"): the 13 view sheets
+he judged right (`anch_01`–`08`, `regr_01`–`05`) as geometry-only copies in
+`tests/data/golden_islands/` — snapdraw removed frame, title block and
+construction lines once, forge wrote the rest (layer `geometry`: forge does not
+read back its own `Trash` layer). Islands sorted by box, so two of equal area
+cannot swap. On 11 sheets forge alone gives exactly the framer's islands; on
+`regr_01` and `regr_04` one view differs by two sub-millimetre loops that the
+rewrite creates or drops (precision, four doubled lines merged on reload) —
+the golden is what forge reads from its own fixture. Suite: forge 807.
+
 
 ---
 
