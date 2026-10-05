@@ -2944,11 +2944,11 @@ D59 already said `island_gap` is the caller's — a layout convention — and th
 gave it a default of 10 mm; D60 justified `max_gap = 0.5` with "a view is not
 a cutting file", which is knowledge about drawings, not geometry. Both numbers
 were domain choices made at a desk, inside an engine that knows no domain.
-The island scale measured on 4–5 October (TODO thread 13) showed why it
-matters: the right `island_gap` on the anonymized view drawings lies anywhere
-between 17 and 78 mm, and 10.0 sits right on the edge of a step in two of
-them (`anch_04`, `anch_05` have a merge at exactly 10.00). A default that
-works by luck hides the choice from whoever calls `island()`.
+Measured on 4–5 October on the anonymized view drawings: the distance
+Federico judged right by eye lies anywhere between 17 and 78 mm, and two
+drawings (`anch_04`, `anch_05`) have two islands exactly 10.00 mm apart, so the
+default sat on an edge by luck. A default like that hides the choice from
+whoever calls `island()`.
 
 So: `island(doc, *, island_gap, max_gap, tolerance=None, is_structural=None)`
 — the two numbers required and by name (a positional `10, 0.5` says nothing
@@ -2959,9 +2959,14 @@ keeps its `None`: it comes from the load, it is not a domain choice.
 Every caller in forge (tests, `scripts/20_island.py`, the examples in
 `docs/LLM.md`, `docs/API.md`, `README*.md`) writes 10 and 0.5 explicitly, the
 values the default had: no result changes, no golden regenerated. In snapdraw
-the choice lives in one place, `sheet_islands(doc)` (snapdraw D29), which is
-where a rule read from the island scale will go. The scale itself, as a
-geometric fact in `forge.geometry`, stays open in TODO thread 13.
+the choice lives in one place, `sheet_islands(doc)` (snapdraw D29).
+
+**Dropped: the island scale.** TODO thread 13 had proposed that forge publish
+the "scale" of a drawing — every distance at which its islands merge — and
+that consumers pick `island_gap` from its steps. Federico, 5 October: the
+scale has nothing to do with island detection and never will. It is not
+added to `forge.geometry`, and no consumer is expected to choose its
+distance from it.
 
 Suite: forge 790. `main` → **0.12.0** (breaking: `island()` without the two
 numbers raises `TypeError`).

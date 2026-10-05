@@ -480,7 +480,8 @@ Cosa sia un cluster — vista, pezzo — lo decide chi lo usa (D21).
 ordinati per area del contorno esterno. Nessun giro chiuso in nessuna isola →
 `is_valid=False`, `errors` popolato.
 
-**Solleva** `TypeError` se non gli passi un `ForgeDocument`.
+**Solleva** `TypeError` se non gli passi un `ForgeDocument`, o se mancano
+`island_gap` o `max_gap`.
 
 ```python
 doc = forge.load_dxf("tavola.dxf")

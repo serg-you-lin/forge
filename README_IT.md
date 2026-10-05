@@ -87,7 +87,9 @@ for cluster in result.clusters:              # una vista (o un pezzo) per isola
 `heal()` legge un disegno di sagome piane separate dall'interno (quali giri si chiudono, chi sta
 dentro chi). `island()` legge un disegno di viste dall'esterno: isole per
 vicinanza, poi il contorno esterno di ognuna come faccia esterna della sua rete
-piana. Stesso `ForgeResult` in uscita — vedi `docs/API.md` (`island`).
+piana. Quanto vicino vuol dire "stessa isola" (`island_gap`) e quali buchi del
+disegno chiudere (`max_gap`) dipendono dal disegno, quindi li dice sempre chi
+chiama: forge non ha default. Stesso `ForgeResult` in uscita — vedi `docs/API.md` (`island`).
 
 Tutte e due sono ricette su passi pubblici. I passi di `heal()` (`split_labeled`,
 `close_free_gaps`, `find_loops`, `build_hierarchy`, ...) sono esportati uno per

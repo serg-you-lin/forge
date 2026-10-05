@@ -242,7 +242,8 @@ outer face → interior. Choose by the drawing:
 
 What `island()` does **not** know: which island is a view, a part, the frame,
 the title block, a magnifier circle over a view, a break line. Those are
-roles — the caller's job (D21, D30). With the frame still in the drawing, the
+roles — the caller's job (D21, D30). Nor how far apart two views are:
+`island_gap` and `max_gap` are required arguments, no default (D98). With the frame still in the drawing, the
 frame is the only outer and every view becomes its interior.
 
 ### Consumer recipe (snapdraw / a drawing reader)

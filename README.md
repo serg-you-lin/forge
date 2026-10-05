@@ -84,7 +84,9 @@ for cluster in result.clusters:              # one view (or part) per island
 `heal()` reads a drawing of separate flat outlines from the inside (which loops close, which is
 inside which). `island()` reads a drawing of views from the outside: islands
 by proximity, then the outer contour of each as the outer face of its planar
-network. Same `ForgeResult` out — see `docs/API.md` (`island`).
+network. How close is "the same island" (`island_gap`) and which drawing gaps
+to close (`max_gap`) depend on the drawing, so the caller always says them:
+forge has no default. Same `ForgeResult` out — see `docs/API.md` (`island`).
 
 Both are recipes over public steps. `heal()`'s steps (`split_labeled`,
 `close_free_gaps`, `find_loops`, `build_hierarchy`, ...) are exported one by one,
