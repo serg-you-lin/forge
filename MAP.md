@@ -3034,6 +3034,38 @@ the title block.
 
 Suite: forge 794. `main` → **0.13.0** (breaking: `island_gap` removed).
 
+### D100 — the outer face is the boundary of the union of the closed faces ✅
+On the 3D view of `anch_07` (an isometric lever with rounded ends) the walk of
+D59 went down the top edge and came back along the parallel thickness line,
+~3 mm away, instead of going round the end arc and the lower profile: the ring
+enclosed a 347 mm² band, and the lever's holes ended up outside it, as islands
+of their own. The view with only corners (`anch_02`) closed fine — Federico's
+clue. Where a straight edge is tangent to an end arc, the two cross at 2–6°
+in two points 0.13 mm apart, and the network's nodes there match only to the
+micron.
+
+Federico's fix: union the closed parts and drop the passage in the middle,
+which is not outer. Per component, `outer_face` now also polygonizes the
+network on a grid of `epsilon` (`shapely.unary_union(grid_size=)`), unions the
+faces and takes the edges lying on the union's exterior as the outer loop; when
+the walk encloses less than that union, the union wins. Measured on the lever:
+1476 mm² at grid 0.001, 0.01 and 0.05 mm alike (not a threshold effect), all 3
+holes inside. `anch_07` 7 → 4 islands, `anch_08` 8 → 4, `regr_05` 6 → 3.
+
+The union is taken over the **whole piece**, not per graph component — on
+`regr_04` the 3D view is one piece but three components in the graph (curves of
+the isometric, splines and ellipses, are not split where they cross), and the
+union per component kept only the biggest, losing the two small holes below
+(Federico: "potrebbero essere 3 o più le unioni da fare"). When the edges on
+the union's rim do not close a loop in the graph, the outer polygon is the
+union itself and the outer edges are the rim edges as found. After it:
+`regr_04` 6 → 4 islands, 3D view 311×320 mm with its holes; `regr_01` reads its
+long view whole (630–1810, before half of it), so it now matches its partner
+and the principal view changes; two small symbols on `anch_03`/`regr_02` and
+`anch_06` take in an attached closed face. Island and regression goldens
+regenerated after Federico checked the pages; text budgets of `anch_03`,
+`anch_06`, `anch_08` updated (more contours).
+
 
 ---
 

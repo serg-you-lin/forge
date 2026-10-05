@@ -11,6 +11,9 @@ prende l'edge che gira meno in senso antiorario rispetto a quello da cui si
 arriva. Un edge percorso andata e ritorno è una sporgenza (asse, segno, quota
 attaccata): non è contorno. Il contorno della rete è la faccia esterna di
 area massima fra i componenti (e i loop chiusi da soli, come un cerchio).
+Se il giro racchiude meno dell'unione delle facce chiuse del componente
+(nodi che non coincidono al millesimo, archi tangenti a linee), il contorno
+è il bordo di quell'unione (D100).
 
 Puro: solo Edge, grafo e primitive, nessun formato.
 """
@@ -21,9 +24,12 @@ import math
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+import shapely
 from shapely.geometry import Polygon
+from shapely.ops import polygonize, unary_union
 
 from .edge import Edge
+from .noding import edge_geometry
 from .graph import Graph, build_node_graph
 from .loop_finder import LoopFinder, loop_geometry
 from ..primitives.segments import DEFAULT_TOLERANCE
@@ -69,6 +75,12 @@ def outer_face(edges: List[Edge], epsilon: float = 0.0) -> Optional[OuterFace]:
     alone = _largest_loop(graph.degenerate_loops, epsilon)
     if alone is not None and (best is None or alone[3].area > best[3].area):
         best = alone
+    # D100: la faccia esterna è il bordo dell'unione delle facce chiuse di
+    # tutta la rete, anche se il grafo la vede in più componenti scollegati;
+    # se il giro ne racchiude meno, vale l'unione
+    united = _faces_union_loop(edges, epsilon)
+    if united is not None and (best is None or united[3].area > best[3].area * (1 + 1e-6)):
+        best = united
     if best is None:
         return None
     loop, segments, styles, polygon = best
@@ -150,6 +162,29 @@ def _leaving_angle(edge: Edge, node, graph: Graph) -> float:
             break
         walked += step
     return math.atan2(target[1] - pts[0][1], target[0] - pts[0][0])
+
+
+def _faces_union_loop(edges: List[Edge], epsilon: float):
+    """(loop, segments, styles, polygon) sul bordo dell'unione delle facce
+    chiuse della rete, coi nodi sulla griglia `epsilon` (D100); None se la
+    rete non chiude nessuna faccia. Se gli edge del bordo non si chiudono in
+    un giro del grafo (componenti scollegati), il poligono è l'unione e il
+    giro sono gli edge che ci stanno sopra, nell'ordine dato."""
+    faces = list(polygonize(shapely.unary_union([edge_geometry(e) for e in edges],
+                                                grid_size=max(epsilon, 1e-6))))
+    if not faces:
+        return None
+    union = unary_union(faces)
+    region = max(getattr(union, "geoms", [union]), key=lambda g: g.area)
+    rim = region.exterior.buffer(2 * max(epsilon, 1e-6))
+    on_rim = [e for e in edges if rim.contains(edge_geometry(e))]
+    found = _largest_loop(on_rim, epsilon) if on_rim else None
+    if found is not None and found[3].area >= region.area * 0.99:
+        return found
+    if not on_rim:
+        return None
+    outer = Polygon(region.exterior)
+    return [(e, False) for e in on_rim], [e.segment for e in on_rim], [e.style for e in on_rim], outer
 
 
 def _largest_loop(edges: List[Edge], epsilon: float):

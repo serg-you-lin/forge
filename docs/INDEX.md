@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`72` modules · `350` module-level functions · `56` classes · `12916` lines of code.
+`72` modules · `351` module-level functions · `56` classes · `12951` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -152,6 +152,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `extract_drawings_from_page` | func | `forge/adapters/pdf/extractor_adapter.py:23` | Estrae i disegni vettoriali dalla pagina PDF e normalizza l'output. |
 | `extract_keyed_entities` | func | `forge/adapters/dxf/sanitize.py:201` | Produce la lista (key, entity) per tutte le entità del msp. |
 | `_f` | func | `forge/adapters/dxf/annotation_extractor.py:540` |  |
+| `_faces_union_loop` | func | `forge/core/topology/outer_face.py:167` | (loop, segments, styles, polygon) sul bordo dell'unione delle facce |
 | `_fallback_anchor` | func | `forge/adapters/dxf/annotation_extractor.py:133` | Cerca un qualsiasi attributo-punto usabile. |
 | `Feature` | class | `forge/model/feature.py:37` | Radice della gerarchia. Porta solo identità semantica e traceability. |
 | `_feature_entries` | func | `forge/io/view_model.py:56` | Un elemento dell'overlay (MAP.md D90) → una voce per contorno: ruolo, |
@@ -162,7 +163,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `find_non_contour_edges` | func | `forge/core/healing/steps.py:93` | id(edge) degli Edge che non chiudono un contorno (branching + centroide |
 | `_first_coord` | func | `forge/core/topology/graph.py:331` |  |
 | `_first_point` | func | `forge/io/text.py:153` | Un punto che sta sul segmento, per dire in quale pezzo cade. |
-| `_first_step` | func | `forge/core/topology/outer_face.py:112` | L'edge che contiene il punto più a sinistra del componente, percorso |
+| `_first_step` | func | `forge/core/topology/outer_face.py:124` | L'edge che contiene il punto più a sinistra del componente, percorso |
 | `fit_circle_kasa` | func | `forge/core/geometry/points.py:89` | Fit algebrico (Kasa) ai minimi quadrati di un cerchio su `points`: minimizza |
 | `fit_primitives` | func | `forge/core/primitives/fitting.py:132` | Spezza `points` sui corner marcati in `is_corner` e rifitta ogni tratto: un |
 | `_fit_spline` | func | `forge/core/primitives/fitting.py:111` | Un solo SplineSeg passante per `points` (curva di fit globale, non ai |
@@ -208,12 +209,12 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_joined` | func | `forge/core/geometry/shape.py:294` |  |
 | `_key_for` | func | `forge/adapters/dxf/sanitize.py:154` | Restituisce una chiave hashable che identifica univocamente |
 | `labeled_features` | func | `forge/core/healing/steps.py:228` | Gli Edge messi da parte da split_labeled() come feature col loro ruolo |
-| `_largest_loop` | func | `forge/core/topology/outer_face.py:155` | (loop, segments, styles, polygon) del giro di area massima. |
+| `_largest_loop` | func | `forge/core/topology/outer_face.py:190` | (loop, segments, styles, polygon) del giro di area massima. |
 | `Leader` | class | `forge/model/annotation.py:147` | Direttrice con testo che punta a una feature. |
 | `_leader_annotation` | func | `forge/adapters/dxf/annotation_extractor.py:348` |  |
 | `leader_target` | func | `forge/tools/anchor.py:73` | L'elemento indicato dalla punta (``vertices[0]``) di ``leader``, come |
 | `_leader_vertices` | func | `forge/adapters/dxf/annotation_extractor.py:385` |  |
-| `_leaving_angle` | func | `forge/core/topology/outer_face.py:134` | Direzione con cui `edge` lascia `node`, letta a DIRECTION_SAMPLE (o a |
+| `_leaving_angle` | func | `forge/core/topology/outer_face.py:146` | Direzione con cui `edge` lascia `node`, letta a DIRECTION_SAMPLE (o a |
 | `_length` | func | `forge/core/geometry/shape.py:154` |  |
 | `length_inside` | func | `forge/core/geometry/measure.py:110` | Quanta parte di `segment` (qualunque primitiva nativa) sta dentro il |
 | `_Line` | class | `forge/core/healing/outer_scan.py:97` |  |
@@ -269,11 +270,11 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `OpenFeature` | class | `forge/model/feature.py:72` | Feature con geometria aperta: ha segmenti ma non un polygon. |
 | `outer_candidate_edges` | func | `forge/core/healing/outer_scan.py:72` | Per ogni asse, una quota rappresentativa (punto medio) fra ogni coppia |
 | `_outer_entity` | func | `forge/io/exporter.py:266` | L'entità su layer OuterContour che porta gli XDATA: prima una polilinea, |
-| `outer_face` | func | `forge/core/topology/outer_face.py:52` | Contorno esterno della rete `edges` (già piana: split_at_crossings). I |
-| `_outer_face_walk` | func | `forge/core/topology/outer_face.py:82` | [(edge, dal nodo, al nodo)] lungo il bordo della faccia esterna. |
+| `outer_face` | func | `forge/core/topology/outer_face.py:58` | Contorno esterno della rete `edges` (già piana: split_at_crossings). I |
+| `_outer_face_walk` | func | `forge/core/topology/outer_face.py:94` | [(edge, dal nodo, al nodo)] lungo il bordo della faccia esterna. |
 | `_outer_polygons` | func | `forge/io/dxf.py:454` | (cluster, poligono dell'outer) per ogni cluster che ne ha uno. |
 | `OuterCandidates` | class | `forge/core/healing/outer_scan.py:54` | Edge candidati a bordo esterno, con i raggi che li hanno scelti. |
-| `OuterFace` | class | `forge/core/topology/outer_face.py:35` | Il contorno esterno trovato, e cosa il percorso ha scartato. |
+| `OuterFace` | class | `forge/core/topology/outer_face.py:41` | Il contorno esterno trovato, e cosa il percorso ha scartato. |
 | `OuterHit` | class | `forge/core/healing/outer_scan.py:45` | Un raggio per cui l'Edge è stato l'estremo. |
 | `_p` | func | `forge/inspect.py:46` | Formatta un punto (x, y) con nd decimali. |
 | `_palette_dict` | func | `forge/io/view_model.py:180` | role (stringa) → colore hex, per la legenda di un renderer. |
@@ -963,17 +964,18 @@ _non_contour_edges.py_
 - **class** `NonContourEdgeDetector` — L41
   - methods: `__init__`, `detect`
 
-#### `forge/core/topology/outer_face.py` — 163 lines
+#### `forge/core/topology/outer_face.py` — 198 lines
 
 _core/topology/outer_face.py_
 
-- **class** `OuterFace` — L35 — Il contorno esterno trovato, e cosa il percorso ha scartato.
+- **class** `OuterFace` — L41 — Il contorno esterno trovato, e cosa il percorso ha scartato.
   - methods: `edges`
-- `outer_face(edges: List[Edge], epsilon: float=0.0) -> Optional[OuterFace]` — L52 — Contorno esterno della rete `edges` (già piana: split_at_crossings). I
-- `_outer_face_walk(graph: Graph, component, n_edges: int) -> list` — L82 — [(edge, dal nodo, al nodo)] lungo il bordo della faccia esterna.
-- `_first_step(graph: Graph, component)` — L112 — L'edge che contiene il punto più a sinistra del componente, percorso
-- `_leaving_angle(edge: Edge, node, graph: Graph) -> float` — L134 — Direzione con cui `edge` lascia `node`, letta a DIRECTION_SAMPLE (o a
-- `_largest_loop(edges: List[Edge], epsilon: float)` — L155 — (loop, segments, styles, polygon) del giro di area massima.
+- `outer_face(edges: List[Edge], epsilon: float=0.0) -> Optional[OuterFace]` — L58 — Contorno esterno della rete `edges` (già piana: split_at_crossings). I
+- `_outer_face_walk(graph: Graph, component, n_edges: int) -> list` — L94 — [(edge, dal nodo, al nodo)] lungo il bordo della faccia esterna.
+- `_first_step(graph: Graph, component)` — L124 — L'edge che contiene il punto più a sinistra del componente, percorso
+- `_leaving_angle(edge: Edge, node, graph: Graph) -> float` — L146 — Direzione con cui `edge` lascia `node`, letta a DIRECTION_SAMPLE (o a
+- `_faces_union_loop(edges: List[Edge], epsilon: float)` — L167 — (loop, segments, styles, polygon) sul bordo dell'unione delle facce
+- `_largest_loop(edges: List[Edge], epsilon: float)` — L190 — (loop, segments, styles, polygon) del giro di area massima.
 
 ### `forge/` (root)
 
@@ -1300,7 +1302,7 @@ Which `forge` modules each module imports — "what works with what". Modules wi
 | `forge/core/topology/loop_finder.py` | `forge.core.geometry.measure` · `forge.core.primitives.polygon_builder` · `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.model.feature` |
 | `forge/core/topology/noding.py` | `forge.core.geometry.intersections` · `forge.core.primitives.segments` · `forge.core.topology.edge` |
 | `forge/core/topology/non_contour_edges.py` | `forge.core.topology.edge` · `forge.core.topology.graph` |
-| `forge/core/topology/outer_face.py` | `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.core.topology.loop_finder` |
+| `forge/core/topology/outer_face.py` | `forge.core.primitives.segments` · `forge.core.topology.edge` · `forge.core.topology.graph` · `forge.core.topology.loop_finder` · `forge.core.topology.noding` |
 | `forge/inspect.py` | `forge.adapters.dxf.loader` · `forge.core.geometry.measure` · `forge.core.heal` · `forge.core.primitives.segments` · `forge.core.topology.graph` · `forge.model.document` · `forge.model.role_rule` |
 | `forge/io/dxf.py` | `forge.adapters.dxf.exporter` · `forge.adapters.dxf.layers` · `forge.core.geometry.measure` · `forge.model` · `forge.model.annotation` · `forge.model.document` · `forge.model.role` · `forge.rules.palette` |
 | `forge/io/exporter.py` | `forge.adapters.dxf.layers` · `forge.model` · `forge.rules.metadata_schema` |
