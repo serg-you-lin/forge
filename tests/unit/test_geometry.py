@@ -22,7 +22,7 @@ from forge.core.primitives.segments import ArcSeg, LineSeg
 from forge.core.geometry.lines import are_collinear, group_collinear_lines
 from forge.core.geometry.measure import (
     track_points, track_length, track_shape_type, segment_length, longest_segment,
-    chord_angle_deg,
+    chord_angle_deg, length_inside,
 )
 from forge.core.geometry.points import (
     interior_angle_deg, detect_corners, drop_duplicate_points, fit_circle_kasa, arc_angles,
@@ -290,6 +290,21 @@ class TestPointSequenceMath(unittest.TestCase):
 # Nate dalla discussione "funzioni geometriche" (TODO.md): dato un elenco di
 # segmenti nativi, qual è il più lungo e che angolo ha — usate da
 # forge.tools.rotate per allineare il lato OUTER più lungo di un disegno.
+
+class TestLengthInside(unittest.TestCase):
+
+    def test_linea_tagliata_dal_rettangolo(self):
+        # 20 mm di linea, ne entrano 8 nel rettangolo
+        seg = LineSeg(start=(-12, 5), end=(8, 5))
+        self.assertAlmostEqual(length_inside(seg, (0, 0, 10, 10)), 8.0, places=9)
+
+    def test_linea_fuori(self):
+        self.assertEqual(length_inside(LineSeg(start=(20, 0), end=(30, 0)), (0, 0, 10, 10)), 0.0)
+
+    def test_cerchio_tutto_dentro(self):
+        seg = CircleSeg(center=(5, 5), radius=2)
+        self.assertAlmostEqual(length_inside(seg, (0, 0, 10, 10)), segment_length(seg), places=1)
+
 
 class TestSegmentLength(unittest.TestCase):
 

@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`72` modules · `348` module-level functions · `56` classes · `12886` lines of code.
+`72` modules · `349` module-level functions · `56` classes · `12900` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -66,14 +66,14 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `build_polygon` | func | `forge/core/primitives/polygon_builder.py:19` | Costruisce un Polygon shapely da una lista di primitive geometriche. |
 | `_build_tree` | func | `forge/core/healing/hierarchy.py:78` |  |
 | `_chain` | func | `forge/core/healing/normalizer.py:259` | Ordina per `lo` e incatena gli span che si toccano o si sovrappongono: |
-| `chord_angle_deg` | func | `forge/core/geometry/measure.py:121` | Angolo (gradi, 0-180°) della corda da `a` a `b`. Modulo 180 perché una |
+| `chord_angle_deg` | func | `forge/core/geometry/measure.py:135` | Angolo (gradi, 0-180°) della corda da `a` a `b`. Modulo 180 perché una |
 | `circle` | func | `forge/core/geometry/build.py:52` | Il cerchio di raggio `radius` in `center`. |
 | `_circle` | func | `forge/core/geometry/shape.py:82` |  |
 | `_circle_as_arc` | func | `forge/core/topology/noding.py:120` | Un cerchio come arco di 360° da `start_angle`: stessa matematica degli archi. |
 | `_circle_circle_intersections` | func | `forge/core/geometry/intersections.py:67` | Intersezioni tra due circonferenze. Restituisce 0, 1 o 2 punti. |
 | `_circle_line_intersections` | func | `forge/core/geometry/intersections.py:36` | Intersezioni tra la circonferenza (cx, cy, r) e la retta infinita (p1, p2). |
 | `CircleSeg` | class | `forge/core/primitives/segments.py:554` | Cerchio geometrico puro. |
-| `circular_geometry` | func | `forge/core/geometry/measure.py:143` | (diameter, center) se il contorno è ~circolare, altrimenti (None, None). |
+| `circular_geometry` | func | `forge/core/geometry/measure.py:157` | (diameter, center) se il contorno è ~circolare, altrimenti (None, None). |
 | `clean_mtext` | func | `forge/adapters/dxf/mtext.py:18` | Testo semplice da una stringa MTEXT grezza: rimuove i codici di |
 | `close_free_gaps` | func | `forge/core/healing/steps.py:69` | Chiude i gap fra estremi liberi entro `tolerance` col gap solver |
 | `_close_self_loop` | func | `forge/core/topology/graph.py:254` | ArcSeg il cui sviluppo (raggio*sweep) supera epsilon -> CircleSeg (loop degenere vero). Altrimenti `None` (sl… |
@@ -215,6 +215,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_leader_vertices` | func | `forge/adapters/dxf/annotation_extractor.py:385` |  |
 | `_leaving_angle` | func | `forge/core/topology/outer_face.py:134` | Direzione con cui `edge` lascia `node`, letta a DIRECTION_SAMPLE (o a |
 | `_length` | func | `forge/core/geometry/shape.py:154` |  |
+| `length_inside` | func | `forge/core/geometry/measure.py:110` | Quanta parte di `segment` (qualunque primitiva nativa) sta dentro il |
 | `_Line` | class | `forge/core/healing/outer_scan.py:97` |  |
 | `_line_intersection` | func | `forge/core/geometry/intersections.py:18` | Intersezione tra retta (p1,p2) e retta (p3,p4). None se parallele. |
 | `_line_key` | func | `forge/core/healing/normalizer.py:93` | Chiave della retta infinita per p1->p2: (angolo canonico, offset). |
@@ -225,7 +226,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `load_pdf` | func | `forge/adapters/pdf/loader.py:22` | Apre un documento PDF, estrae le geometrie vettoriali da tutte le pagine, |
 | `load_segments` | func | `forge/adapters/geometry/loader.py:243` | Un ForgeDocument da segmenti di forge (`LineSeg`, `ArcSeg`, `CircleSeg`, |
 | `local_gap_fixes` | func | `forge/core/healing/gap_solver.py:215` | Solo i fix che non spostano un estremo più di `max_move`: due rette quasi |
-| `longest_segment` | func | `forge/core/geometry/measure.py:108` | `(segment, length)` del segmento più lungo in `segments` — `(None, 0.0)` |
+| `longest_segment` | func | `forge/core/geometry/measure.py:122` | `(segment, length)` del segmento più lungo in `segments` — `(None, 0.0)` |
 | `longest_structural_segment` | func | `forge/tools/rotate.py:89` | `(segment, length, angle_deg)` del segmento più lungo fra |
 | `loop_geometry` | func | `forge/core/topology/loop_finder.py:206` | (segmenti, stili, poligono) di un loop; None se i segmenti non chiudono |
 | `loop_to_closed_feature` | func | `forge/core/healing/hierarchy.py:21` |  |
@@ -252,7 +253,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `name_rules` | func | `forge/model/role_rule.py:96` | Scorciatoia: {nome: ruolo} → una RoleRule(name=...) per voce. |
 | `_nearest_within` | func | `forge/tools/anchor.py:184` | L'indice della parte più vicina a ``probe``, se entro ``snap_distance`` (> 0). |
 | `NestedBridgeResult` | class | `forge/tools/tabs.py:208` | Risultato per UNA coppia isola/genitore-diretto trovata nella gerarchia. |
-| `node_decimals_for` | func | `forge/core/geometry/measure.py:24` | Numero di decimali a cui arrotondare gli endpoint per la topologia. |
+| `node_decimals_for` | func | `forge/core/geometry/measure.py:26` | Numero di decimali a cui arrotondare gli endpoint per la topologia. |
 | `NodedEdges` | class | `forge/core/topology/noding.py:39` | La rete piana: i pezzi, e per ognuno l'Edge da cui viene. |
 | `non_contour_candidates` | func | `forge/tools/non_contour.py:40` | Edge di `doc.edges` che l'euristica topologica di `heal()` escluderebbe dal |
 | `NonContourEdgeDetector` | class | `forge/core/topology/non_contour_edges.py:41` |  |
@@ -260,7 +261,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `normalize_ocs` | func | `forge/adapters/dxf/sanitize.py:19` | Normalizza il vettore di estrusione di tutte le entità OCS nel modelspace. |
 | `normalize_role` | func | `forge/model/role.py:112` | Ripulisce una stringa-ruolo che arriva dal chiamante (``RoleRule``, |
 | `Note` | class | `forge/model/annotation.py:99` | Testo libero: TEXT o MTEXT. |
-| `num_segments_for_bulge` | func | `forge/core/geometry/measure.py:38` | Numero di segmenti per discretizzare un arco dato il suo bulge. |
+| `num_segments_for_bulge` | func | `forge/core/geometry/measure.py:40` | Numero di segmenti per discretizzare un arco dato il suo bulge. |
 | `_on_arc` | func | `forge/core/healing/outer_scan.py:127` |  |
 | `_on_border` | func | `forge/core/geometry/axis.py:186` |  |
 | `_on_boundary` | func | `forge/tools/anchor.py:119` | L'elemento col bordo più vicino a ``point``, se entro ``distance``. |
@@ -335,7 +336,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_rotate_point` | func | `forge/core/primitives/segments.py:71` | Ruota `pt` di `angle` radianti (CCW) attorno a `origin`. |
 | `rotate_result` | func | `forge/tools/rotate.py:147` | Nuovo `ForgeResult` con ogni cluster (`rotate_cluster`), `trash_entities` |
 | `rotate_to_longest` | func | `forge/tools/rotate.py:247` | Ruota `result` (già sano, da un `heal()` già fatto dal chiamante) in modo |
-| `round_point` | func | `forge/core/geometry/measure.py:20` |  |
+| `round_point` | func | `forge/core/geometry/measure.py:22` |  |
 | `_round_points` | func | `forge/io/view_model.py:31` | Lista di punti (2D o 3D) → lista di [x, y] arrotondati. |
 | `_sagitta_step` | func | `forge/core/primitives/segments.py:112` | Angolo massimo di una corda che dista al più `tolerance` dall'arco di |
 | `sample_bezier_cubic` | func | `forge/adapters/pdf/geometry_adapter.py:37` | Campiona una curva di Bezier cubica in un set di punti lineari (poligonale). |
@@ -353,7 +354,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `segment_endpoints` | func | `forge/core/primitives/segments.py:506` | (start, end) di un segmento primitivo, in coordinate XY non arrotondate. |
 | `segment_is_closed` | func | `forge/core/primitives/segments.py:542` | True se gli endpoint del segmento coincidono entro ``tolerance``. |
 | `_segment_key` | func | `forge/adapters/dxf/adapter.py:161` | Chiave univoca per deduplicazione. |
-| `segment_length` | func | `forge/core/geometry/measure.py:91` | Lunghezza reale di una primitiva nativa singola (`LineSeg`/`ArcSeg`/ |
+| `segment_length` | func | `forge/core/geometry/measure.py:93` | Lunghezza reale di una primitiva nativa singola (`LineSeg`/`ArcSeg`/ |
 | `segments_from_loop` | func | `forge/core/topology/loop_finder.py:161` | Segmenti nativi di un loop, orientati nel verso di percorrenza. |
 | `segments_to_pts_with_bulge` | func | `forge/adapters/dxf/exporter.py:101` |  |
 | `set_schema` | func | `forge/io/exporter.py:100` | Imposta uno schema esterno come schema attivo. |
@@ -399,9 +400,9 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `to_text` | func | `forge/io/text.py:172` | Il `ForgeResult` come testo per un modello linguistico (`.forge.md`). |
 | `to_view_model` | func | `forge/io/view_model.py:128` | `ForgeResult` → dizionario JSON-ready con la geometria di ogni feature. |
 | `_track` | func | `forge/io/view_model.py:43` | Traccia aperta (lista di segmenti nativi) discretizzata a lista di [x, y]. |
-| `track_length` | func | `forge/core/geometry/measure.py:72` | Lunghezza totale di una polilinea (somma delle corde). |
-| `track_points` | func | `forge/core/geometry/measure.py:53` | Vertici di una traccia aperta come catena di segmenti nativi. |
-| `track_shape_type` | func | `forge/core/geometry/measure.py:80` | `"line"` se la traccia è un solo segmento retto (2 vertici), altrimenti `"curve"`. |
+| `track_length` | func | `forge/core/geometry/measure.py:74` | Lunghezza totale di una polilinea (somma delle corde). |
+| `track_points` | func | `forge/core/geometry/measure.py:55` | Vertici di una traccia aperta come catena di segmenti nativi. |
+| `track_shape_type` | func | `forge/core/geometry/measure.py:82` | `"line"` se la traccia è un solo segmento retto (2 vertici), altrimenti `"curve"`. |
 | `transform_point` | func | `forge/adapters/pdf/geometry_adapter.py:27` | Converte un punto da punti PDF (pt) a millimetri (mm) |
 | `_trash_entry` | func | `forge/io/view_model.py:96` |  |
 | `_trash_probe_point` | func | `forge/io/dxf.py:333` | Punto rappresentativo di un'entità trash, per assegnarla a una parte. |
@@ -682,20 +683,21 @@ _forge/core/geometry/lines.py_
 - **class** `CollinearRun` — L94 — Tratti sulla stessa retta, in fila lungo di essa.
 - `bridged_runs(segments: Sequence, bridges: Sequence, tolerance: float=COLLINEAR_TOLERANCE, angle_tolerance: float=COLLINEAR_ANGLE_TOLERANCE) -> list[CollinearRun]` — L106 — File di due o più tratti sulla stessa retta in cui lo spazio fra un tratto
 
-#### `forge/core/geometry/measure.py` — 172 lines
+#### `forge/core/geometry/measure.py` — 186 lines
 
 _forge/core/geometry/measure.py_
 
-- `round_point(pt, decimals: int=1) -> Tuple` — L20
-- `node_decimals_for(tolerance: float) -> int` — L24 — Numero di decimali a cui arrotondare gli endpoint per la topologia.
-- `num_segments_for_bulge(bulge: float) -> int` — L38 — Numero di segmenti per discretizzare un arco dato il suo bulge.
-- `track_points(segments, tolerance: Optional[float]=None) -> List[Point]` — L53 — Vertici di una traccia aperta come catena di segmenti nativi.
-- `track_length(pts) -> float` — L72 — Lunghezza totale di una polilinea (somma delle corde).
-- `track_shape_type(pts) -> str` — L80 — `"line"` se la traccia è un solo segmento retto (2 vertici), altrimenti `"curve"`.
-- `segment_length(segment) -> float` — L91 — Lunghezza reale di una primitiva nativa singola (`LineSeg`/`ArcSeg`/
-- `longest_segment(segments) -> Tuple[Optional[object], float]` — L108 — `(segment, length)` del segmento più lungo in `segments` — `(None, 0.0)`
-- `chord_angle_deg(a: Point, b: Point) -> float` — L121 — Angolo (gradi, 0-180°) della corda da `a` a `b`. Modulo 180 perché una
-- `circular_geometry(polygon, segments=None)` — L143 — (diameter, center) se il contorno è ~circolare, altrimenti (None, None).
+- `round_point(pt, decimals: int=1) -> Tuple` — L22
+- `node_decimals_for(tolerance: float) -> int` — L26 — Numero di decimali a cui arrotondare gli endpoint per la topologia.
+- `num_segments_for_bulge(bulge: float) -> int` — L40 — Numero di segmenti per discretizzare un arco dato il suo bulge.
+- `track_points(segments, tolerance: Optional[float]=None) -> List[Point]` — L55 — Vertici di una traccia aperta come catena di segmenti nativi.
+- `track_length(pts) -> float` — L74 — Lunghezza totale di una polilinea (somma delle corde).
+- `track_shape_type(pts) -> str` — L82 — `"line"` se la traccia è un solo segmento retto (2 vertici), altrimenti `"curve"`.
+- `segment_length(segment) -> float` — L93 — Lunghezza reale di una primitiva nativa singola (`LineSeg`/`ArcSeg`/
+- `length_inside(segment, bounds: Tuple[float, float, float, float]) -> float` — L110 — Quanta parte di `segment` (qualunque primitiva nativa) sta dentro il
+- `longest_segment(segments) -> Tuple[Optional[object], float]` — L122 — `(segment, length)` del segmento più lungo in `segments` — `(None, 0.0)`
+- `chord_angle_deg(a: Point, b: Point) -> float` — L135 — Angolo (gradi, 0-180°) della corda da `a` a `b`. Modulo 180 perché una
+- `circular_geometry(polygon, segments=None)` — L157 — (diameter, center) se il contorno è ~circolare, altrimenti (None, None).
 
 #### `forge/core/geometry/points.py` — 201 lines
 

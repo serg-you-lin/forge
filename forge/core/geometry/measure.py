@@ -8,6 +8,8 @@ un segmento, vertici e tipo di una traccia aperta, "è circolare?".
 import math
 from typing import Optional, Tuple, List
 
+from shapely.geometry import LineString, box
+
 from ..primitives.segments import LineSeg, ArcSeg, CircleSeg
 
 Point = Tuple[float, float]
@@ -103,6 +105,18 @@ def segment_length(segment) -> float:
     if isinstance(segment, CircleSeg):
         return 2 * math.pi * segment.radius
     return track_length(segment.discretize())
+
+
+def length_inside(segment, bounds: Tuple[float, float, float, float]) -> float:
+    """
+    Quanta parte di `segment` (qualunque primitiva nativa) sta dentro il
+    rettangolo `bounds` = (xmin, ymin, xmax, ymax), bordo compreso. Le curve
+    sulla polilinea di `discretize()`.
+    """
+    pts = segment.discretize()
+    if len(pts) < 2:
+        return 0.0
+    return LineString(pts).intersection(box(*bounds)).length
 
 
 def longest_segment(segments) -> Tuple[Optional[object], float]:
