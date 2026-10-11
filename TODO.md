@@ -15,6 +15,39 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
+## RIPARTENZA — D101 (nodo a T / quasi-tangenza), branch `topology/t-junction-noding`
+
+**Fatto, verde** (MAP.md D101): `_split_params` (`noding.py`) fonde due tagli
+entro `tolerance` in un nodo solo, non due — la causa isolata di D100. Suite
+810 (809 verdi). Nuovo test: `test_noding.py::test_quasi_tangenza_e_un_nodo_
+solo_non_due`. Branch creato da `main` a `108b74c` (prima dello stash del
+lavoro PDF in corso, sotto).
+
+**Resta da chiudere prima di mergiare:**
+
+1. **`regr_04` — golden da far giudicare a Federico, non ancora rigenerato.**
+   `island[0].inners` passa da 4 a 2: i due persi hanno area 1.85e-15 /
+   1.88e-15 mm² alla stessa posizione — loop fantasma da zero area, non buchi
+   veri (vedi MAP.md D101 per i numeri). Prima di rigenerare: fargli vedere
+   (un DXF della zona, se lo vuole) e fargli confermare — non rigenerare da
+   solo nemmeno con la prova in mano (CLAUDE.md non-negoziabile 9).
+2. **Collisione di numerazione `D##` con `main`.** Questo branch numera la
+   nuova decisione **D101** da `108b74c` (l'ultimo commit prima di questa
+   sessione). Nella working tree di `main`, però, c'è ancora stashato (non
+   committato) il lavoro dell'adapter PDF della sessione precedente, che
+   numerava le sue decisioni **D101–D103** dallo stesso punto (vedi lo stash
+   `"WIP pre topology-noding branch (pdf adapter circle-fit + naming note)"`
+   su `main`, o `git stash list`). Quando l'uno o l'altro lavoro arriva a
+   `main` per primo, il secondo deve rinumerare le proprie decisioni per non
+   avere due D101 diversi nella storia. Non toccato qui: i due lavori sono
+   indipendenti e nessuno dei due è stato fuso.
+3. Non ancora valutato se il patch D100 (`_faces_union_loop`, union delle
+   facce chiuse) sia reso ridondante dal criterio generale di D101 su qualche
+   file — non è stato rimosso, D100 resta una decisione chiusa (va riaperta
+   esplicitamente se si vuole toglierlo, non assunto qui).
+
+---
+
 0. **`load_geometry`: gli angoli dell'arco sono ancora in gradi** "per
    convenzione CAD" (resto di D96: `polygon` al posto di `polyline` fatto,
    costruttori e `load_segments` fatti). `ArcSeg` usa i radianti; passare lo

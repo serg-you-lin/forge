@@ -53,6 +53,24 @@ class TestSplitAtCrossings(unittest.TestCase):
         noded = split_at_crossings([c, _line((5, 0), (6, 0))], tolerance=0.05)
         self.assertIn(c, noded.pieces)
 
+    def test_quasi_tangenza_e_un_nodo_solo_non_due(self):
+        """Una retta quasi tangente a un arco incrocia in due radici
+        matematicamente distinte ma vicinissime (D100, D101): entro
+        `tolerance` sono lo stesso contatto, non due nodi con uno sliver
+        in mezzo."""
+        radius, tol, gap = 10.0, 0.05, 0.02   # gap scelto < tol, >> _MIN_PIECE
+        sink = (gap / 2) ** 2 / (2 * radius)  # affondamento che produce quel gap
+        x = radius - sink
+        half = math.sqrt(2 * radius * sink - sink * sink)
+        arc = Edge(role="unknown", start=(0, -radius), end=(0, radius),
+                   segment=ArcSeg(center=(0, 0), radius=radius,
+                                  start_angle=-math.pi / 2, end_angle=math.pi / 2, ccw=True))
+        line = _line((x, -half - 1), (x, half + 1))
+        noded = split_at_crossings([arc, line], tolerance=tol)
+        pieces_of = lambda parent: [p for p in noded.pieces if noded.parent_of(p) is parent]
+        self.assertEqual(len(pieces_of(arc)), 2)
+        self.assertEqual(len(pieces_of(line)), 2)
+
 
 class TestRenode(unittest.TestCase):
 

@@ -515,7 +515,7 @@ forge.refit_tessellations(edges, max_segment=0.1, min_run=10,
 | `read_islands` | `list[Edge]` → `list[IslandReading]` | pezzi a contatto + `read_island` per ognuno + annidamento (`nested_in`, anche per un pezzo senza contorno tutto dentro un'isola). È `island()` prima di diventare `ForgeResult`. |
 | `read_island` | `list[Edge]` → `IslandReading` | un'isola: normalizza, rete piana, faccia esterna, classificazione dell'interno. |
 | `spatial_islands` | `list[Edge]` → `list[Island]` | union-find sulle coppie di edge a distanza vera `<= gap_tolerance` (STRtree). Nessuna nozione di chiusura. |
-| `split_at_crossings` | `list[Edge]` → `NodedEdges` | spezza `LineSeg`/`ArcSeg`/`CircleSeg` dove incrociano o toccano a T un altro edge; `NodedEdges.parent_of(pezzo)` dà l'`Edge` originale. `SplineSeg`/`EllipseSeg` restano interi. |
+| `split_at_crossings` | `list[Edge]` → `NodedEdges` | spezza `LineSeg`/`ArcSeg`/`CircleSeg` dove incrociano o toccano a T un altro edge, entro `tolerance`; due tagli entro `tolerance` l'uno dall'altro sono lo stesso nodo, non due (D101 — una quasi-tangenza incrocia in due radici matematicamente distinte ma vicinissime). `NodedEdges.parent_of(pezzo)` dà l'`Edge` originale. `SplineSeg`/`EllipseSeg` restano interi. |
 | `outer_face` | `list[Edge]` (rete piana) → `OuterFace \| None` | bordo della faccia esterna, per componente, quella di area massima; `spurs` = edge percorsi andata e ritorno. |
 | `refit_tessellations` | `list[Edge]` → `list[Edge]` | catene di `LineSeg` corti (curva scritta a punti) rifittate come arco/cerchio/spline; estremi della catena sui nodi originali. |
 

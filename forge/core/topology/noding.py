@@ -6,6 +6,16 @@ un altro edge, così che due edge si incontrino solo nei nodi. È la premessa
 per percorrere la faccia esterna (outer_face.py): su una rete non piana un
 incrocio a metà di due edge non è un nodo e il percorso ci passa sopra.
 
+Criterio di nodo, lo stesso indipendentemente dal formato di origine (D101):
+un punto è un nodo se un estremo (di questo edge o di un altro) giace entro
+`tolerance` su una curva — non solo estremo-su-estremo, anche estremo-su-
+curva (un vero contatto a T). Due tagli entro `tolerance` l'uno dall'altro
+sono lo stesso contatto, non due: una retta quasi tangente a un arco incrocia
+in due radici matematicamente distinte ma a pochi decimi di millimetro, e
+trattarle come due nodi separati crea uno sliver fra loro (MAP.md D100, D101)
+che spacca la faccia esterna. `_split_params` applica questa fusione per
+edge; `build_node_graph(epsilon=tolerance)` la applica fra edge diversi.
+
 SplineSeg/EllipseSeg restano interi (nessun taglio esatto semplice): fanno da
 coltello per gli altri, discretizzati.
 
@@ -182,7 +192,10 @@ def _split_params(edge, near, tol):
     params.sort()
     dedup = []
     for p in params:
-        if not dedup or _piece_length(seg, dedup[-1], p) > _MIN_PIECE:
+        # due tagli entro tolerance sono lo stesso contatto — un nodo, non due
+        # (es. retta e arco quasi tangenti: due radici matematicamente distinte
+        # a pochi decimi di millimetro, non due T-junction separate, D101)
+        if not dedup or _piece_length(seg, dedup[-1], p) > tol:
             dedup.append(p)
     return dedup
 

@@ -3081,6 +3081,68 @@ sheets Federico judged; one is enough, the rest are duplicates). Suite 808.
 `drw_0001` added after snapdraw D33 (frame with reference ticks). Suite 809.
 `main` → **0.13.1** (D100 and the island golden; no API change since 0.13.0).
 
+### D101 — one node criterion, not two: a cut within `tolerance` of another is the same node ✅
+Federico's reframing of D100, generalized: "an endpoint that lies exactly on
+another edge's curve, within tolerance, is a node (a T-junction) — not only
+endpoint-endpoint but endpoint-on-curve." Checked against forge's own test
+(CLAUDE.md non-negotiable 1, "would this rule make sense from any adapter?"):
+yes — it is about geometry, not about which format drew the line.
+
+**The actual bug D100 patched around, isolated.** `_split_params`
+(`noding.py`) already turned a crossing or an other-edge endpoint landing on
+a segment into a split point, filtered by `dist <= tolerance` — that part was
+right. But its own *dedup* of nearby split points on the same edge used
+`_MIN_PIECE` (1e-4 mm, a "don't create a zero-length piece" floor, not a node
+identity threshold). A line nearly tangent to an arc crosses it at two
+mathematically distinct roots a few hundredths to a few tenths of a mm apart
+— near-tangency is numerically ill-conditioned, a tiny perturbation of the
+source coordinates moves the crossing point a lot when the angle is small —
+and both roots clear `_MIN_PIECE` easily, so both became real split points.
+The sliver edge between them (short, but very real, `_MIN_PIECE`-sized is
+micrometers, this is hundredths of a mm) is exactly what let D100's outer-face
+walk go down one side and back up the other instead of around.
+
+**Fix, in one place:** `_split_params`'s dedup now merges two candidate cuts
+when they are closer than `tolerance` (the same tolerance that decided each
+one counts as a contact in the first place), not `_MIN_PIECE`. One tolerance,
+one criterion, applied symmetrically to every `LineSeg`/`ArcSeg` pair —
+`_split_circle` inherits it for free since it calls `_split_params`
+internally. Proven with a constructed case (`tests/unit/core/test_noding.py
+::test_quasi_tangenza_e_un_nodo_solo_non_due`): a line built to cross an arc
+at two roots 0.02 mm apart (`tolerance=0.05`) — confirmed failing on the old
+`_MIN_PIECE` threshold before the fix (reverted it, reran, watched it fail,
+restored it), green after.
+
+**What did *not* work, tried and rejected:** raising `GRAPH_EPSILON`
+(`core/island.py`, the separate 0.01 mm epsilon fed to `build_node_graph`
+after noding) to `tolerance`, on the theory that the two edges' independently
+-rounded node points also need merging downstream. It does fix the same
+cases, but it is a *global* epsilon over every node in the network, not
+scoped to the specific near-tangent contact — `graph.py`'s own docstring
+already warns clustering is transitive and can percolate. Measured: it
+merges real, separate nodes elsewhere and drops legitimate holes (`anch_01`,
+`anch_08` anchoring and text-budget goldens regressed, a hole lost on
+`anch_02`'s island reading). Reverted; `GRAPH_EPSILON` stays untouched. The
+per-edge fix in `noding.py` alone is sufficient — it already resolves the
+contact at the one specific place it happens, before the network-wide graph
+ever sees it.
+
+**Result, full suite:** `anch_02/03/06/07/08`, `drw_0011`, `regr_01/02/05`
+island goldens — all affected by D100's symptom — now pass through the
+general mechanism alone, no union-of-faces special case needed to get them
+right (D100's `_faces_union_loop` patch in `outer_face.py` is untouched; it
+may now be partially redundant on some files, not re-examined — reopening
+D100 is a separate decision, not taken here). One golden regressed:
+`regr_04`'s island[0] drops from 4 inners to 2. Checked before accepting it
+as a fix, not a break (CLAUDE.md non-negotiable 9): the two "lost" inners
+have area 1.85e-15 mm² and 1.88e-15 mm², at the same location — phantom
+zero-area loops from the exact bug this decision fixes, not real holes. The
+golden was generated from the old, buggy reading; it has not been
+regenerated here — Federico judges by eye first (TODO.md).
+
+Suite: forge 810 (809 green + `regr_04`, flagged, not regenerated).
+Branch: `topology/t-junction-noding` (not yet merged — see TODO.md for the
+`D##` numbering collision with the PDF-adapter WIP stashed on `main`).
 
 ---
 

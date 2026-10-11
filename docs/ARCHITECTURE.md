@@ -278,12 +278,23 @@ esterno che restituisce codice / materiale / spessore, e a metterli in
 ### La tolleranza
 
 `tolerance` (default 0.05, i golden usano 0.5) è la distanza sotto la quale due
-punti sono "lo stesso nodo". Serve in due modi:
+punti sono "lo stesso nodo". Serve in tre modi:
 
 1. **arrotondamento**: ogni endpoint viene quantizzato su una griglia di lato
    `tolerance` prima di entrare nel grafo
 2. **chiusura gap**: due endpoint liberi entro `tolerance` vengono congiunti
    prolungando i segmenti
+3. **nodo per contatto** (`split_at_crossings`, D101): un estremo che giace
+   entro `tolerance` sulla curva di un altro edge è un nodo — non solo
+   estremo-su-estremo, anche estremo-su-curva (un vero contatto a T), format-
+   agnostico, indipendente da come il file è stato disegnato. E due tagli
+   entro `tolerance` l'uno dall'altro sono lo stesso nodo, non due: una retta
+   quasi tangente a un arco incrocia in due radici matematicamente distinte
+   ma vicinissime (una quasi-tangenza è numericamente instabile: una
+   perturbazione minima dei dati di origine sposta parecchio il punto
+   d'incrocio quando l'angolo è piccolo). Trattarle come due nodi lascia uno
+   sliver fra loro che può spaccare in due una faccia che doveva restare una
+   sola (MAP.md D100, la causa isolata e risolta alla radice da D101).
 
 Un gap 4× la tolleranza **non** viene chiuso — è una scelta, non un bug: se il
 file ha buchi grossi, o sono voluti o l'unità di misura è sbagliata. Workaround:
