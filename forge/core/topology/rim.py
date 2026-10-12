@@ -41,7 +41,7 @@ def face_segments(edges: List[Edge], polygon: Polygon, band: float):
     geoms = [edge_geometry(e) for e in edges]
     runs = _rim_runs(pts, geoms, _side_cover(pts, geoms, band))
     segments, styles = [], []
-    for j, first, last in runs:
+    for (j, _), first, last in runs:
         edge = edges[j]
         a, b = pts[first % n], pts[last % n]
         via = pts[(first + 1) % n] if last - first > 1 else ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
@@ -58,21 +58,35 @@ def face_segments(edges: List[Edge], polygon: Polygon, band: float):
 
 
 def _side_cover(pts: list, geoms: list, band: float) -> List[set]:
-    """Per ogni lato dell'anello, gli edge che distano meno di `band` dal suo
-    punto medio (almeno il più vicino)."""
+    """Per ogni lato dell'anello, gli (edge, verso) che distano meno di `band`
+    dal suo punto medio (almeno il più vicino): il verso dice se il lato
+    percorre l'edge come lui (+1) o al contrario (-1). Un tratto tiene un
+    verso solo — dove l'anello torna indietro lungo lo stesso edge (la
+    punta di una faccia fra due curve quasi tangenti) il tratto finisce."""
     tree = STRtree(geoms)
     cover = []
     for i in range(len(pts)):
         p, q = pts[i], pts[(i + 1) % len(pts)]
         mid = ShapelyPoint((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
-        near = {int(j) for j in tree.query(mid, predicate="dwithin", distance=band)}
-        cover.append(near or {int(tree.query_nearest(mid)[0])})
+        near = [int(j) for j in tree.query(mid, predicate="dwithin", distance=band)]
+        near = near or [int(tree.query_nearest(mid)[0])]
+        cover.append({(j, _sense(geoms[j], mid, p, q, band)) for j in near})
     return cover
+
+
+def _sense(geom, mid, p, q, step: float) -> int:
+    """+1 se il lato p→q va nel verso di `geom` vicino a `mid`, -1 se contro."""
+    if geom.length == 0:
+        return 1
+    d = geom.project(mid)
+    a = geom.interpolate(max(d - step, 0.0))
+    b = geom.interpolate(min(d + step, geom.length))
+    return 1 if (b.x - a.x) * (q[0] - p[0]) + (b.y - a.y) * (q[1] - p[1]) >= 0 else -1
 
 
 def _rim_runs(pts: list, geoms: list, cover: List[set]) -> list:
     """
-    [(edge, primo vertice, ultimo vertice)] lungo l'anello: copertura greedy
+    [((edge, verso), primo vertice, ultimo vertice)] lungo l'anello: copertura greedy
     a portata massima — si tiene l'edge finché copre, poi si passa a quello
     che copre più avanti — che dà il minor numero di tratti; dove due edge
     coprono entrambi (sovrapposti, o quasi tangenti) il taglio cade sul
@@ -81,13 +95,13 @@ def _rim_runs(pts: list, geoms: list, cover: List[set]) -> list:
     """
     n = len(cover)
 
-    def reach(j: int, k: int) -> int:
+    def reach(j: tuple, k: int) -> int:
         m = 0
         while m < n and j in cover[(k + m) % n]:
             m += 1
         return m
 
-    def best(k: int) -> int:
+    def best(k: int) -> tuple:
         return max(sorted(cover[k % n]), key=lambda j: reach(j, k))
 
     s = min(range(n), key=lambda i: (len(cover[i]), i))
@@ -118,7 +132,7 @@ def _rim_runs(pts: list, geoms: list, cover: List[set]) -> list:
 
         def gap(v: int) -> float:
             at = ShapelyPoint(pts[v % n])
-            return geoms[before].distance(at) + geoms[after].distance(at)
+            return geoms[before[0]].distance(at) + geoms[after[0]].distance(at)
 
         cuts.append(min(range(lo, hi + 1), key=lambda v: (gap(v), abs(v - starts[i]))))
     return [(owners[i], cuts[i], cuts[i + 1] if i + 1 < count else cuts[0] + n)

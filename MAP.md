@@ -3665,3 +3665,34 @@ were already red at `06b89b1` and stay red with the same first assertion;
 not regenerated (TODO: not until D103's doubts are settled). This change
 moves `regr_04` islands[1] 1 → 2 inners and `anch_02`'s text +2% (the 4
 strips above).
+
+### D107 — two more permanent invariants; the first one caught a silent drop D106 had introduced
+
+Added to `tests/unit/core/test_island_invariants.py`, same nature as D104's
+(never regenerated, true by definition):
+
+- `TestNothingDropped` — every piece of input geometry lies within
+  `max_gap` of some output (a contour's segments or the trash). `max_gap`,
+  not the tolerance, because the gap-fix may move an endpoint up to there by
+  contract (D98): measured at the tolerance, `anch_03`/`anch_08` show
+  0.2–0.8 mm "missing" that is exactly that, endpoints moved ≤ 0.5.
+- `TestInnersDontCross` — two inners of one island are disjoint or one
+  contains the other; a *partial* overlap (beyond a band of
+  `BOUNDS_TOLERANCE` along the smaller one's outline) is two cycles that
+  aren't faces. Red on purpose on `anch_03`/`regr_02` (22 pairs each) — the
+  thread left open in D106, inside D103's doubts.
+
+Writing the first one exposed two defects in D106 itself, both on
+`regr_04`'s tangent crescents, both fixed:
+- **Pieces of a loop no face uses were dropped.** Splitting the figure-8 into
+  lobes leaves the ~5 mm of the two arcs in the tangency zone (closer than
+  the tolerance: no face) in neither lobe. Now `island._off_faces` trims
+  those stretches out of their edges (`sub_segment`) and they go to the
+  trash with the island (`IslandReading.off_faces`) — non-negotiable 7.
+- **A run folded back on its own edge.** At a lobe's tip the same arc is
+  within `band` of both legs, so the min-switch cover gave it a run that
+  goes down to the tip and back; trimming between the run's two ends keeps
+  only the net span and lost the tip (1.25 mm). A run now keeps one
+  direction along its edge: the cover is over (edge, sense) pairs, sense =
+  sign of the side's direction against the edge's tangent at that point
+  (`rim._sense`); where the ring turns back, the run ends — at the tip.

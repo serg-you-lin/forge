@@ -12,6 +12,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from shapely.geometry import LineString, Point
+from shapely.ops import unary_union
+
 import forge
 from forge.core.island import GRAPH_EPSILON
 from forge.core.primitives.segments import DEFAULT_TOLERANCE
@@ -98,6 +101,67 @@ def _make_roundtrip_test(dxf: Path):
 
 for _dxf in sorted(SOURCE_DIR.glob("*.dxf")):
     setattr(TestRoundtripStable, f"test_{_dxf.stem}", _make_roundtrip_test(_dxf))
+
+
+def _geometry(segment):
+    pts = segment.discretize(DEFAULT_TOLERANCE)
+    if len(pts) < 2 or all(p == pts[0] for p in pts):
+        return Point(pts[0])
+    return LineString(pts)
+
+
+class TestNothingDropped(unittest.TestCase):
+    """Ogni pezzo di geometria in ingresso finisce in uscita — nei segmenti
+    di un contorno o nel trash — entro `max_gap`: il gap-fix può spostare un
+    estremo fino a lì, non oltre (D98). Trovato così (D106) il tratto di due
+    archi tangenti che, diviso un giro in lobi, non stava in nessun lobo."""
+
+
+def _make_dropped_test(dxf: Path):
+    def test(self):
+        doc = forge.load_dxf(str(dxf))
+        result = forge.island(doc, max_gap=MAX_GAP)
+        out = [_geometry(s) for c in result.clusters for ct in [c.outer] + c.inners
+               for s in ct.segments]
+        out += [_geometry(s) for f in result.trash_entities for s in f.segments]
+        covered = unary_union(out).buffer(MAX_GAP)
+        lost = unary_union([_geometry(e.segment) for e in doc.edges]).difference(covered)
+        self.assertLessEqual(lost.length, GRAPH_EPSILON,
+                             f"{dxf.stem}: {lost.length:.3f} mm di geometria in ingresso "
+                             f"non stanno in nessuna uscita (vicino a {lost.representative_point()})")
+    return test
+
+
+for _dxf in sorted(SOURCE_DIR.glob("*.dxf")):
+    setattr(TestNothingDropped, f"test_{_dxf.stem}", _make_dropped_test(_dxf))
+
+
+class TestInnersDontCross(unittest.TestCase):
+    """Due inner della stessa isola o sono disgiunti o uno contiene l'altro
+    (un foro dentro un foro): sovrapposti in parte sono due cicli che non
+    sono facce. Margine: una fascia larga BOUNDS_TOLERANCE lungo il bordo
+    del più piccolo. Rosso apposta su anch_03/regr_02 (TODO, dubbi D103)."""
+
+
+def _make_cross_test(dxf: Path):
+    def test(self):
+        result = forge.island(forge.load_dxf(str(dxf)), max_gap=MAX_GAP)
+        crossing = []
+        for ci, cluster in enumerate(result.clusters):
+            polygons = [inner.polygon for inner in cluster.inners]
+            for i in range(len(polygons)):
+                for j in range(i + 1, len(polygons)):
+                    small = min(polygons[i], polygons[j], key=lambda p: p.area)
+                    band = small.length * BOUNDS_TOLERANCE
+                    shared = polygons[i].intersection(polygons[j]).area
+                    if shared > band and small.area - shared > band:
+                        crossing.append(f"cluster[{ci}].inner[{i}]/inner[{j}]")
+        self.assertEqual(crossing, [], f"{dxf.stem}: inner sovrapposti in parte")
+    return test
+
+
+for _dxf in sorted(SOURCE_DIR.glob("*.dxf")):
+    setattr(TestInnersDontCross, f"test_{_dxf.stem}", _make_cross_test(_dxf))
 
 
 if __name__ == "__main__":

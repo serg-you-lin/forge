@@ -27,6 +27,11 @@ banda li recupera. Coerenza verde su 15/15, round-trip su 13/15. DXF prima/dopo
 da guardare a occhio: `_debug/*_D106_prima.dxf` / `*_D106_dopo.dxf`
 (anch_02, anch_03, anch_06, drw_0011, regr_01, regr_02, regr_04).
 
+Due invarianti nuove (D107): `TestNothingDropped` (verde 15/15) e
+`TestInnersDontCross` (rosso apposta su anch_03/regr_02, il filo qui sotto).
+Golden delle isole: **si rigenerano tutti insieme quando i dubbi D103 sono
+chiariti**, guardando prima i DXF — deciso con Federico il 12 ottobre.
+
 **Filo rimasto, lasciato apposta (è territorio D103, sotto):** round-trip di
 `anch_03`/`regr_02`, l'isola da 5806 mm² passa da 28 a 15 inner. Già rosso
 su `06b89b1`. Causa: giri inner che si **sovrappongono in parte** fra loro
