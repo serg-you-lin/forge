@@ -3485,3 +3485,52 @@ Branch: `topology/t-junction-noding` (not yet merged).
   casi: è il contratto comune di `ForgeCluster` (D21) e rinominarlo tocca
   `heal()`, `detect()`, golden e layer di output — un refactor a sé, da
   decidere dopo.
+
+### D104 — `.polygon` and `.segments` can diverge for a union-of-faces outer face; two permanent invariants added, the DXF-fidelity gap deprioritized
+
+For a contour whose outer face comes from D100's union-of-faces fallback (the
+walk couldn't close ≥99% of the union), `_faces_union_loop` (`outer_face.py`)
+returns the raw edges on the union's rim in graph order, not in walk order.
+`.polygon` (built straight from the union — read by SVG, view_model, and any
+datum/feature reading off a boundary) is unaffected and stays correct.
+`.segments` (built from that same raw list — read only by `to_dxf`) is not:
+`build_polygon(contour.segments)` self-intersects and its area collapses by
+sign cancellation — not missing edges, wrong order. Measured on
+`regr_04.cluster[2].outer`: true area 44668.84, from segments 7945.34 (92%
+off). 6 of 15 `golden_islands` fixtures hit this (`anch_03`, `anch_06`,
+`drw_0011`, `regr_01`, `regr_02`, `regr_04`); a 7th shape
+(`regr_04.cluster[0].inner[0]`) has a related but separate cause, in
+`merge_runs` finding two near-duplicate arc families instead of one.
+
+Two fixes attempted and reverted the same day, both trading some of the 6 for
+others: sorting the rim edges by projection onto the union's exterior ring
+fixed the big cases (`regr_04` cluster[2]: 92%→1.8%, `regr_01`: 84%→6.8%) but
+broke 3 small ones (`anch_03`/`regr_02` cluster[7] stopped forming a valid
+polygon at all; `anch_06` cluster[3] went from 50% to 86% off) — projection
+onto a short ring with few edges is ambiguous. A nearest-neighbour chaining
+variant was written but never verified before the session's scope changed.
+Neither landed: `outer_face.py` is untouched, back to `c076045`.
+
+Decision: not fixing this now. Nobody calls `to_dxf()` on an `island()`
+3D/multi-face view today — checked, no caller in forge, snapdraw or snapbend.
+The two things actually needed from `island()` right now — splitting a sheet
+into islands, and reading a datum or a feature off an island's boundary —
+only ever read `.polygon`, never `.segments`, and `.polygon` is correct in
+every one of these 6 cases. So the gap blocks nothing real yet; it stays
+open and documented (TODO.md) instead of forced, and is now guarded so it
+can't regress silently:
+
+- `tests/unit/core/test_island_segments_consistency.py` — `.polygon` and
+  `build_polygon(.segments)` must describe the same shape (symmetric
+  difference ≤1% of area) for every contour in every `golden_islands`
+  fixture.
+- `tests/unit/core/test_island_invariants.py` — `TestPolygonValidity` (every
+  `.polygon` is a simple, positive-area shape — 15/15 pass today) and
+  `TestRoundtripStable` (export to DXF, reload, re-run `island()`, same
+  islands back — the generalized, permanent form of the `regr_04` "double
+  border in one loop" discovery: round-tripping every fixture automatically
+  instead of finding one by hand).
+
+Both are red today on the same 6 files, for the reason above — intentional,
+same shape as `test_golden.py`'s regression fixtures: documents a known,
+unfixed defect rather than hiding it.
