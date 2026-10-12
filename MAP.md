@@ -3568,3 +3568,100 @@ whether one band can serve all of them or not.
 
 Still open, still guarded by the same two tests (D104) — the bar for calling
 this done is both tests green on all 15 fixtures, not a majority.
+
+### D106 — a face's segments are read off its own boundary; a self-touching loop is one face per lobe; a face thinner than the node tolerance is not a face
+
+Closes D104/D105 for 13 of 15 fixtures on both guard tests (the
+consistency test is green on all 15; the round-trip is red only on
+`anch_03`/`regr_02`, for a different cause, below).
+
+**D105's lead is refuted by measurement, not by taste.** On the four broken
+outers the rim edges are not a mis-ordered complete set: `anch_03` c[7] has
+14.8 of 21.1 mm of its union ring covered by *no* edge that lies wholly on
+the rim, `anch_06` c[3] 4.2 of 8.5 mm, with free ends 3.3–6.1 mm apart —
+no band of 0.51 can bridge that, and no ordering can recover edges that
+were filtered out. The rest of the ring runs along edges that are only
+*partly* on it: crossings shapely nodes inside `polygonize` and the planar
+network does not (splines are never split, D101 merges cuts within
+tolerance). `regr_01` is the opposite case: the ring fully covered, plus
+29 mm of overlapping duplicates and 24 free ends. So the cause is not
+"order", it is "the network's edges don't break where the face's boundary
+breaks".
+
+**Fix 1 — read the face's segments off its boundary** (`core/topology/
+rim.py::face_segments`). Walk the face polygon's ring in order; each ring
+side belongs to an edge if it lies within `band` of it; split the ring
+among edges with the fewest switches (greedy max-reach cover); at each
+switch, cut on the ring vertex closest to both edges (their contact
+point); each run is its edge trimmed between the run's ends, snapped to the
+edge's own endpoint when within `band` (`core/primitives/trim.py::
+sub_segment`: lines and arcs by parameter, circles and ellipses with a
+`via` point for the side, B-splines *exactly* by knot insertion, Piegl &
+Tiller A5.1 — not a polyline). Order comes from the ring, shape from the
+edges: arcs stay arcs, splines stay splines. Used by `_faces_union_loop`'s
+fallback; `.polygon` and the loop's edge set (what `read_island` marks as
+taken, what D103 compares against) are untouched. The first version picked
+"nearest edge per side": near a line tangent to a circle both are within
+`band` over a stretch, the owner flip-flopped and left 0.009–0.02 mm
+pieces, which `refit_tessellations` on reload read as a tessellation and
+refit into a different arc (r 1.102 → 1.104 on `anch_06`). The min-switch
+cover removes that: 363 → 266 pieces across the fixtures, none shorter
+than `band`; every trimmed spline within 0.005 mm of the original, arcs
+within 0.0095 (the chord sagitta).
+
+**Fix 2 — a loop that touches itself is one face per lobe** (`island.py::
+_loop_faces`). `build_polygon` repairs an invalid ring with `buffer(0)` and
+keeps the *largest* polygon — every other lobe was dropped silently
+(non-negotiable 7). `regr_04.cluster[0].inner[0]` is two crescents between
+two internally tangent circles (r 344 and 349, tangent at the bottom): the
+loop is a figure-8 through the tangency, `.polygon` kept one crescent and
+`build_polygon(.segments)` — after `merge_runs`, whose output was checked
+correct (sweeps equal the sum of their pieces, rings 0.01 apart) — kept
+the *other* one by numerical accident: hence the 198% "divergence". It was
+never `merge_runs` (D104/D105 guessed it was). Now each lobe of
+`make_valid(ring)` is its own inner, segments via `face_segments`. On
+`anch_02` this also surfaces two pairs of 15 × 0.5 mm strips bounded by
+four drawn lines each (a threaded-section drawing) that the old repair
+discarded: +4 inners there. Correction to D105: `drw_0011`'s
+`cluster[2].inner[1]` was not a `merge_runs` case either — it is the outer
+of a nested island (it becomes an inner of its host), built by the same
+union fallback, fixed by Fix 1.
+
+**Fix 3 — a face thinner than the node tolerance is not a face.** Near a
+tangency two curves stay within tolerance for tens of millimetres, so where
+a lobe's tip "ends" is undefined within tolerance; on reload `regr_04`
+produced a third inner, a 0.02 mm² blade 12 mm long (≈0.0008 mm wide).
+Two curves closer than the node tolerance touch (that is what the
+tolerance means); the face between them does not exist. Rule: mean width
+2·area/perimeter < `tolerance` → not a face (lobes, inner loops and D71's
+outside loops alike; the loop's edges then fall to non-contour/unclassified,
+i.e. trash — nothing dropped). Checked before adding it: no inner of any
+fixture is under 0.05 mm (the thinnest, `drw_0011`'s strip, is 0.075).
+
+**Two guard tests had comparisons finer than the representation** — fixed,
+with the reason, not loosened to pass:
+- `TestRoundtripStable` compared outer bounds *rounded to 2 decimals*: a
+  rounding flip on any sub-tolerance difference. `anch_03`'s [745…] island
+  is one `CircleSeg`, bit-identical before and after; only `.polygon` was
+  built differently (union snapped to the 0.01 grid vs direct
+  discretization), 745.768 vs 745.763 → "745.77 ≠ 745.76". Now: bounds
+  within `DEFAULT_TOLERANCE + GRAPH_EPSILON` (sagitta + node grid, the
+  uncertainty of `.polygon` itself), inner count still exact.
+- `test_island_segments_consistency` allowed max(1% area, 0.01 mm²): an
+  absolute area floor has no geometric meaning for a thin face. Now
+  max(1% area, perimeter × (`DEFAULT_TOLERANCE + GRAPH_EPSILON`)) — the area
+  of a band that wide along the outline. On large faces 1% still governs
+  (`regr_04` outer: 446 vs 21 mm²).
+
+**Still open, deliberately not touched:** `anch_03`/`regr_02` round-trip,
+the 5806 mm² island going 28 → 15 inners. Already red at `06b89b1`. Cause:
+inner loops that *partially overlap* each other (e.g. 18.7 + 71.1 mm²
+whose union is 76.6) — LoopFinder cycles that aren't faces; on reload the
+overlapping outlines merge. It sits on D103's open doubts (anch_03's
+drilling-pattern loops, nested "grandchild" inners — 27 overlapping pairs
+on anch_03, 25 on anch_02, mostly full containment), so it belongs to that
+thread, not this one. Goldens: the 8 island goldens and the 2 text budgets
+were already red at `06b89b1` and stay red with the same first assertion;
+not regenerated (TODO: not until D103's doubts are settled). This change
+moves `regr_04` islands[1] 1 → 2 inners and `anch_02`'s text +2% (the 4
+strips above).

@@ -17,10 +17,16 @@ import unittest
 from pathlib import Path
 
 import forge
+from forge.core.island import GRAPH_EPSILON
 from forge.core.primitives.polygon_builder import build_polygon
+from forge.core.primitives.segments import DEFAULT_TOLERANCE
 
 SOURCE_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "golden_islands"
 MAX_GAP = 0.5
+# di quanto può spostarsi il bordo della stessa forma fra le due letture: la
+# freccia della discretizzazione più la griglia dei nodi dell'unione di facce
+# (D106) — lungo tutto il perimetro, è l'area di una fascia così larga
+OUTLINE_BAND = DEFAULT_TOLERANCE + GRAPH_EPSILON
 
 
 class TestIslandSegmentsConsistency(unittest.TestCase):
@@ -30,7 +36,7 @@ class TestIslandSegmentsConsistency(unittest.TestCase):
         rebuilt = build_polygon(contour.segments)
         self.assertIsNotNone(rebuilt, f"{where}: .segments non formano un poligono valido")
         sym = poly.symmetric_difference(rebuilt).area
-        tol = max(poly.area * 0.01, 0.01)
+        tol = max(poly.area * 0.01, poly.length * OUTLINE_BAND)
         self.assertLess(sym, tol,
                          f"{where}: .polygon (area={poly.area:.4f}) e .segments "
                          f"(area={rebuilt.area:.4f}) descrivono forme diverse "

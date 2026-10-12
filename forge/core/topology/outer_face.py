@@ -32,6 +32,7 @@ from .edge import Edge
 from .noding import edge_geometry
 from .graph import Graph, build_node_graph
 from .loop_finder import LoopFinder, loop_geometry
+from .rim import face_segments
 from ..primitives.segments import DEFAULT_TOLERANCE
 
 DIRECTION_SAMPLE = 3.0   # mm — la direzione di un edge a un nodo si legge fin qui (al massimo a metà edge)
@@ -168,15 +169,17 @@ def _faces_union_loop(edges: List[Edge], epsilon: float):
     """(loop, segments, styles, polygon) sul bordo dell'unione delle facce
     chiuse della rete, coi nodi sulla griglia `epsilon` (D100); None se la
     rete non chiude nessuna faccia. Se gli edge del bordo non si chiudono in
-    un giro del grafo (componenti scollegati), il poligono è l'unione e il
-    giro sono gli edge che ci stanno sopra, nell'ordine dato."""
+    un giro del grafo, il poligono è l'unione, il giro sono gli edge che ci
+    stanno sopra per intero, e i segmenti si leggono percorrendo l'anello
+    dell'unione (`rim.face_segments`, D106)."""
     faces = list(polygonize(shapely.unary_union([edge_geometry(e) for e in edges],
                                                 grid_size=max(epsilon, 1e-6))))
     if not faces:
         return None
     union = unary_union(faces)
     region = max(getattr(union, "geoms", [union]), key=lambda g: g.area)
-    rim = region.exterior.buffer(2 * max(epsilon, 1e-6))
+    band = 2 * max(epsilon, 1e-6)
+    rim = region.exterior.buffer(band)
     on_rim = [e for e in edges if rim.contains(edge_geometry(e))]
     found = _largest_loop(on_rim, epsilon) if on_rim else None
     if found is not None and found[3].area >= region.area * 0.99:
@@ -184,7 +187,8 @@ def _faces_union_loop(edges: List[Edge], epsilon: float):
     if not on_rim:
         return None
     outer = Polygon(region.exterior)
-    return [(e, False) for e in on_rim], [e.segment for e in on_rim], [e.style for e in on_rim], outer
+    segments, styles = face_segments(edges, outer, band)
+    return [(e, False) for e in on_rim], segments, styles, outer
 
 
 def _largest_loop(edges: List[Edge], epsilon: float):

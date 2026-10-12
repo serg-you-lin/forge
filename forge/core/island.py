@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
+from shapely import make_valid
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
@@ -32,7 +33,7 @@ from ..model.document import ForgeDocument
 from ..model.feature import OpenFeature
 from ..model.result import ForgeResult
 from ..model.role import ContourRole, is_structural_role
-from .primitives.segments import segment_is_closed
+from .primitives.segments import DEFAULT_TOLERANCE, segment_is_closed
 from .topology.edge import Edge
 from .topology.graph import build_node_graph
 from .geometry.shape import merge_runs
@@ -40,6 +41,7 @@ from .topology.loop_finder import LoopFinder, loop_geometry
 from .topology.noding import NODE_DECIMALS, edge_geometry, renode, split_at_crossings
 from .topology.non_contour_edges import NonContourEdgeDetector
 from .topology.outer_face import OuterFace, outer_face
+from .topology.rim import face_segments
 from .healing.islands import spatial_islands
 from .healing.gap_solver import (
     free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes, local_gap_fixes, MoveEndpoint,
@@ -108,7 +110,7 @@ def island(doc: ForgeDocument, *, max_gap: float,
     clusters = {}
     for i, r in enumerate(readings):
         if r.outer is not None and r.nested_in is None:
-            clusters[i] = _cluster(r, doc.source_path)
+            clusters[i] = _cluster(r, doc.source_path, tol)
     owned = []   # (OpenFeature, cluster che la contiene)
     for i, r in enumerate(readings):
         host = clusters.get(r.nested_in) if r.nested_in is not None else clusters.get(i)
@@ -119,9 +121,9 @@ def island(doc: ForgeDocument, *, max_gap: float,
         if r.nested_in is not None:
             host.inners.append(_contour(r.outer.segments, r.outer.styles, r.outer.polygon,
                                         ContourRole.INNER, host.outer))
-            host.inners += _inners(r.inner_loops, host.outer)
+            host.inners += _inners(r.inner_loops, host.outer, tol)
             # D71: dentro l'ospite, anche i giri fuori dal contorno scelto sono interni
-            host.inners += _inners(r.outside_loops, host.outer)
+            host.inners += _inners(r.outside_loops, host.outer, tol)
             in_loops = {id(e) for loop in r.outside_loops for e, _ in loop}
             outside = [e for e in r.outside if id(e) not in in_loops]
         owned += [(f, host) for f in _open(r.spurs + outside + r.non_contour + r.unclassified)]
@@ -184,13 +186,16 @@ def read_island(edges: List[Edge], tolerance: float, max_gap: float) -> IslandRe
         outside_ids = {id(e) for e in reading.outside}
         rest = [e for e in rest if id(e) not in outside_ids]
         if reading.outside:
-            reading.outside_loops = LoopFinder().find(build_node_graph(reading.outside, epsilon=GRAPH_EPSILON))
+            reading.outside_loops = [
+                loop for loop in LoopFinder().find(build_node_graph(reading.outside, epsilon=GRAPH_EPSILON))
+                if _loop_faces(loop, tolerance)]
 
     rest_graph = build_node_graph(rest, epsilon=GRAPH_EPSILON)
     loops = LoopFinder().find(rest_graph)
     band = tolerance + max_gap
     reference = face.polygon if face is not None else None
     loops = _drop_boundary_duplicates(loops, reference, band)
+    loops = [loop for loop in loops if _loop_faces(loop, tolerance)]
     reading.inner_loops = loops
     in_loops = {id(e) for loop in loops for e, _ in loop}
     full_graph = build_node_graph(pieces, epsilon=GRAPH_EPSILON)
@@ -278,22 +283,56 @@ def _drop_redundant_meets(fixes: list, graph) -> list:
     return [f for f in fixes if id(f) not in drop_ids]
 
 
-def _cluster(reading: IslandReading, source_file: str) -> ForgeCluster:
+def _cluster(reading: IslandReading, source_file: str, tolerance: float) -> ForgeCluster:
     face = reading.outer
     outer = _contour(face.segments, face.styles, face.polygon, ContourRole.OUTER, None)
     cluster = ForgeCluster(outer=outer, source_file=source_file)
-    cluster.inners = _inners(reading.inner_loops, outer)
+    cluster.inners = _inners(reading.inner_loops, outer, tolerance)
     return cluster
 
 
-def _inners(loops, parent: ForgeContour) -> List[ForgeContour]:
-    """Un ForgeContour inner per giro chiuso; un giro senza poligono valido no."""
-    inners = []
-    for loop in loops:
-        geometry = loop_geometry(loop)
-        if geometry is not None:
-            inners.append(_contour(*geometry, ContourRole.INNER, parent))
-    return inners
+def _inners(loops, parent: ForgeContour, tolerance: float) -> List[ForgeContour]:
+    """Un ForgeContour inner per faccia di ogni giro chiuso; un giro senza
+    poligono valido no."""
+    return [_contour(*face, ContourRole.INNER, parent)
+            for loop in loops for face in _loop_faces(loop, tolerance)]
+
+
+def _loop_faces(loop, tolerance: float) -> list:
+    """(segmenti, stili, poligono) per ogni faccia di un giro chiuso: una se
+    il suo anello è semplice; se tocca se stesso (due archi tangenti, due
+    bordi entro tolleranza) una per lobo, coi segmenti letti dal bordo del
+    lobo (`face_segments`) — non il solo lobo più grande (D106). Una faccia
+    più stretta di `tolerance` non è una faccia: è il contatto fra due
+    curve che si toccano (D106)."""
+    geometry = loop_geometry(loop)
+    if geometry is None:
+        return []
+    ring = []
+    for i, seg in enumerate(geometry[0]):
+        pts = seg.discretize(DEFAULT_TOLERANCE)
+        ring += pts if i == 0 else pts[1:]
+    raw = Polygon(ring)
+    if raw.is_valid:
+        return [] if _thinner_than(raw, tolerance) else [geometry]
+    lobes = [Polygon(g.exterior) for g in _polygons(make_valid(raw))
+             if not _thinner_than(g, tolerance)]
+    if len(lobes) < 2:
+        return [geometry] if lobes else []
+    edges = [e for e, _ in loop]
+    return [(*face_segments(edges, lobe, 2 * GRAPH_EPSILON), lobe) for lobe in lobes]
+
+
+def _thinner_than(polygon: Polygon, width: float) -> bool:
+    """Larghezza media (2·area/perimetro: per una striscia, la sua
+    larghezza) sotto `width`."""
+    return 2 * polygon.area < width * polygon.length
+
+
+def _polygons(geometry) -> List[Polygon]:
+    if geometry.geom_type == "Polygon":
+        return [geometry]
+    return [p for g in getattr(geometry, "geoms", []) for p in _polygons(g)]
 
 
 def _contour(segments, styles, polygon, role, parent) -> ForgeContour:

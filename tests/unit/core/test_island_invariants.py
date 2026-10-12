@@ -13,14 +13,35 @@ import unittest
 from pathlib import Path
 
 import forge
+from forge.core.island import GRAPH_EPSILON
+from forge.core.primitives.segments import DEFAULT_TOLERANCE
 
 MAX_GAP = 0.5
 SOURCE_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "golden_islands"
+# lo stesso contorno può dare un `.polygon` diverso di tanto così: la freccia
+# della discretizzazione più la griglia dei nodi dell'unione di facce (D106)
+BOUNDS_TOLERANCE = DEFAULT_TOLERANCE + GRAPH_EPSILON
 
 
 def _snapshot(result) -> list:
-    return sorted([round(float(v), 2) for v in c.outer.polygon.bounds] + [len(c.inners)]
+    return sorted([float(v) for v in c.outer.polygon.bounds] + [len(c.inners)]
                   for c in result.clusters)
+
+
+def _unmatched(before: list, after: list) -> list:
+    """Le isole di `before` senza una gemella in `after`: stesso numero di
+    inner, riquadro entro BOUNDS_TOLERANCE (accoppiamento uno a uno)."""
+    free = list(after)
+    missing = []
+    for item in before:
+        twin = next((other for other in free if other[4] == item[4]
+                     and all(abs(x - y) <= BOUNDS_TOLERANCE for x, y in zip(item[:4], other[:4]))),
+                    None)
+        if twin is None:
+            missing.append([round(v, 3) for v in item])
+        else:
+            free.remove(twin)
+    return missing
 
 
 class TestPolygonValidity(unittest.TestCase):
@@ -49,7 +70,8 @@ for _dxf in sorted(SOURCE_DIR.glob("*.dxf")):
 
 class TestRoundtripStable(unittest.TestCase):
     """Esportare in DXF e rileggere con `island()` deve dare le stesse isole
-    (stesso riquadro esterno, stesso numero di inner per isola) — se cambia,
+    (stesso riquadro esterno entro BOUNDS_TOLERANCE, stesso numero di inner
+    per isola) — se cambia,
     il motore ha scritto o letto qualcosa di diverso da quello che aveva
     trovato la prima volta. Trovato così il 12 ottobre su `regr_04` (bordo
     doppio in un solo giro): quel caso resta rosso qui finché non è risolto,
@@ -65,8 +87,12 @@ def _make_roundtrip_test(dxf: Path):
             tmp_path = Path(tmp) / f"{dxf.stem}.dxf"
             exported.saveas(str(tmp_path))
             after = forge.island(forge.load_dxf(str(tmp_path)), max_gap=MAX_GAP)
-        self.assertEqual(_snapshot(before), _snapshot(after),
-                          f"{dxf.stem}: le isole cambiano dopo export+reload")
+        snap_before, snap_after = _snapshot(before), _snapshot(after)
+        self.assertEqual(len(snap_before), len(snap_after),
+                         f"{dxf.stem}: il numero di isole cambia dopo export+reload")
+        self.assertEqual(_unmatched(snap_before, snap_after), [],
+                         f"{dxf.stem}: le isole cambiano dopo export+reload "
+                         f"(dopo: {[[round(v, 3) for v in s] for s in snap_after]})")
     return test
 
 

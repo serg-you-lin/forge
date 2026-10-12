@@ -15,52 +15,25 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
-## RIPARTENZA — `.polygon` vs `.segments`: DA RISOLVERE SUL SERIO, non più deprioritizzato (MAP.md D104)
+## CHIUSO (12 ottobre, MAP.md D106) — `.polygon` vs `.segments`; resta un filo, dentro D103
 
-**Riaperto il 12 ottobre stesso, poche ore dopo averlo deprioritizzato: 6 file
-su 15 (40%) è troppo alto per lasciarlo lì.** Il quadro con causa e numeri è
-in MAP.md D104. Non è solo un problema delle viste 3D isometriche: colpisce
-anche `regr_01`, che è **una vista normale da sopra**, non isometrica —
-corretto in D104, che prima diceva "solo viste 3D" a torto. Occhio: una delle
-6 forme (`drw_0011.cluster[2].inner[1]`) è in realtà un **inner**, quindi la
-causa giusta per lei è probabilmente `merge_runs` (la stessa di
-`regr_04.cluster[0].inner[0]`), non `_faces_union_loop` — il conteggio "6 file
-= 6 casi della stessa causa" in D104 è impreciso su questo punto, da
-controllare quando si riprende.
+Risolto: i segmenti di una faccia si leggono dal suo bordo (`topology/rim.py`,
+taglio esatto delle primitive in `primitives/trim.py`, spline comprese); un
+giro che tocca se stesso è una faccia per lobo (prima `buffer(0)` buttava i
+lobi minori in silenzio); una faccia più stretta della tolleranza di nodo non
+è una faccia. La pista di D105 (rigrafo a banda larga) è smentita dai numeri:
+metà del bordo stava su edge solo in parte sul bordo, nessun ordine e nessuna
+banda li recupera. Coerenza verde su 15/15, round-trip su 13/15. DXF prima/dopo
+da guardare a occhio: `_debug/*_D106_prima.dxf` / `*_D106_dopo.dxf`
+(anch_02, anch_03, anch_06, drw_0011, regr_01, regr_02, regr_04).
 
-**La causa, in breve (dettagli in D104):** `_faces_union_loop`
-(`outer_face.py`) raccoglie i pezzi vicini al bordo giusto ma non li rimette
-in fila — `build_polygon` li incolla fuori sequenza e il poligono si
-autointerseca. Tre tentativi fatti il 12 ottobre, nessuno ancora buono su
-tutti i casi insieme:
-1. Ordinare per proiezione sul perimetro: fissa i casi grandi (`regr_04`
-   cluster[2] 92%→1.8%, `regr_01` 84%→6.8%) ma rompe quelli piccoli
-   (`anch_03`/`regr_02` cluster[7] diventano un poligono non valido, `anch_06`
-   cluster[3] peggiora 50%→86%) — la proiezione è ambigua su un giro piccolo
-   con pochi pezzi.
-2. Incatenare per vicinanza (nearest-neighbour): scritto, non verificato sui
-   6 casi prima che la sessione cambiasse rotta.
-3. **Pista più promettente, solo accennata, da riprendere da qui**: invece di
-   ordinare i pezzi a mano, ricostruire un secondo grafo (`build_node_graph`)
-   usando *solo* i pezzi vicini al bordo (`on_rim`, già isolati da
-   `_faces_union_loop`) con una tolleranza larga quanto `tolerance + max_gap`
-   (la stessa scala già usata altrove in `island.py`, non una costante nuova)
-   invece della `GRAPH_EPSILON` stretta di sempre, e rilanciare `LoopFinder`
-   su quel grafo più piccolo e più tollerante. Primo riscontro, solo su 2
-   file, non sistematico: **`anch_06` torna al 99.9% dell'area giusta**, ma
-   su `regr_04` cluster[2] con `band=0.51` **non si trova più nessun giro**
-   (probabilmente la tolleranza larga fonde due nodi che dovevano restare
-   separati, rompendo la topologia) — serve capire quale tolleranza va bene
-   per i casi piccoli senza rompere quelli grandi, non necessariamente la
-   stessa per tutti. `anch_03`/`regr_01` non ancora provati bene (l'isola
-   spaziale giusta non è stata isolata con lo script veloce usato stanotte).
-
-**Guardato per sempre, senza bisogno di occhio umano, da due test nuovi** (non
-sono golden, non si rigenerano mai): `tests/unit/core/test_island_segments_
-consistency.py` e `tests/unit/core/test_island_invariants.py` — rossi apposta
-sugli stessi 6 file, verdi sugli altri 9. Il criterio per dire "risolto": tutti
-e due verdi su tutti i 15 file, senza eccezioni e senza toccare le tolleranze
-in modo che favorisca un caso a scapito di un altro.
+**Filo rimasto, lasciato apposta (è territorio D103, sotto):** round-trip di
+`anch_03`/`regr_02`, l'isola da 5806 mm² passa da 28 a 15 inner. Già rosso
+su `06b89b1`. Causa: giri inner che si **sovrappongono in parte** fra loro
+(es. 18.7 + 71.1 mm², unione 76.6): cicli di LoopFinder che non sono facce;
+rileggendo, i contorni sovrapposti si fondono. Si decide insieme ai dubbi
+D103 qui sotto (forellini di anch_03, inner "nipoti"): 27 coppie
+sovrapposte su anch_03, 25 su anch_02, quasi tutte contenimento pieno.
 
 ## APERTO — 4 dubbi su D103 (`_drop_boundary_duplicates`), non verificati, segnalati da Federico il 12 ottobre guardando `_debug/*_ghosts.dxf`
 
@@ -81,69 +54,16 @@ sessione, non salvato nel repo — da riscrivere se serve (richiama
 `island_mod._drop_boundary_duplicates` con uno spy, poi `forge.to_dxf` +
 `ezdxf` per disegnare i giri scartati in rosso sopra al resto).
 
-**Sotto, per chi riprende in mano il caso specifico di `regr_04` (una causa
-più piccola e diversa, dentro `merge_runs`, non l'`outer_face.py` di D104):**
+**`regr_04.cluster[0].inner[0]` (il "bordo doppio in un giro"): chiarito in
+D106** — non era `merge_runs` (verificato corretto) ma due mezzelune fra due
+cerchi tangenti internamente, giro a otto, e `build_polygon` che teneva un lobo
+solo. Ora sono due inner.
 
-**Fatti, verificati uno per uno, non per sentito dire:**
-- Su `regr_04.dxf`, isola bbox `[155.429, 471.499, 678.418, 725.013]`, l'unico
-  inner reale rimasto dopo D101-D103 (area 75.3361 mm², quello giusto, non un
-  fantasma) **esportato con `to_dxf` e ricaricato non torna uguale**: da 1
-  inner diventa 2, aree ~74.40 e ~74.13 (metà a testa). Verificato col
-  round-trip (`to_dxf(result).saveas(...)` poi `forge.load_dxf` +
-  `forge.island()` di nuovo sullo stesso file).
-- Causa isolata: `ForgeContour.segments` di quell'inner (quello che `to_dxf`
-  scrive parola per parola, via `write_segments`) ha 8 pezzi con **due
-  famiglie di archi quasi identiche** (stesso centro ~(416.92, 941.5/946.5),
-  raggi 344 e 349 — 5mm di differenza) collegate da due `LineSeg` che saltano
-  fino a un punto lontano (~209.7, 665.6 — dove stava uno dei vecchi
-  fantasmi di D101). `to_svg`/`to_view_model` non mostra il problema perché
-  non legge `.segments`, ridisegna la forma finita da `.polygon` — stessa
-  scatola rotta, un disegnatore la ignora, l'altro la incolla tutta.
-- Tracciato più a monte (`LoopFinder().find(rest_graph)` prima di
-  `loop_geometry`): il giro grezzo per questo inner ha **204 edge, tutti
-  distinti (nessun id ripetuto), area 75.56 — corretta**. Il danno nasce
-  dopo, in `merge_runs` (`core/geometry/shape.py`), quando i 204 pezzettini
-  (nati dal taglio automatico) vengono ricomposti in archi grandi: trova due
-  "giri" quasi uguali dentro lo stesso loop invece di uno, come se il bordo
-  del buco fosse stato percorso due volte, una copia spostata di poco
-  dall'altra.
-- **Stessa famiglia del "muro doppio" di `anch_02` (D103), ma un caso che
-  D103 non può vedere**: D103 scarta un giro quasi-doppio quando sono **due
-  giri separati** restituiti da `LoopFinder`. Qui, dopo la fusione dei nodi
-  entro tolleranza (D101), le due copie del bordo sono finite **incollate in
-  un giro unico** — `LoopFinder` non le restituisce più come due giri da
-  confrontare, ne restituisce una sola, già fusa. Nessun pezzo del codice
-  attuale sa separare due bordi quasi-doppi dentro un giro già fuso.
-
-**Tentativo fatto e then SCARTATO (12 ottobre), verificato sbagliato prima di
-scriverlo qui, non lasciata traccia nel codice:** ipotesi che fosse un giro
-percorso "andata e ritorno" su una sporgenza (stesso criterio di
-`outer_face()`, un edge con lo stesso `id()` contato due volte nello stesso
-giro) — fix scritto in `loop_geometry` (`loop_finder.py`) + instradamento
-delle sporgenze in `reading.spurs` (`island.py`, `outer_face.py`,
-`heal.py`/`healing/steps.py`, firma pubblica di `loops_to_features`
-cambiata). **Riprovato il giro dopo il fix: identico, bit per bit — zero
-sporgenze trovate nel giro grezzo di 204 edge (verificato: nessun id con
-count ≥ 2).** Causa non era quella. `git checkout --` su tutti gli 8 file
-tocati, repo tornata pulita su `c076045`, nessuna traccia del tentativo.
-
-**Cosa serve, non ancora deciso:** un modo per riconoscere e separare due
-bordi quasi-doppi **dentro un giro già fuso da `LoopFinder`**, non solo fra
-giri distinti come fa D103 oggi. Possibili direzioni da valutare (nessuna
-scelta ancora, sono solo appunti):
-- in `merge_runs`/prima di chiamarlo, rilevare che il giro visita due volte
-  una stessa zona geometrica (buffer-contains fra due metà del giro, stesso
-  criterio di `_drop_boundary_duplicates` ma applicato a *sotto-tratti* di un
-  giro solo, non a giri diversi);
-- oppure più a monte, prima che D101 fonda i nodi: capire se la fusione
-  dovrebbe fermarsi quando unisce due componenti che erano bordi-doppio
-  candidati (rischio: tocca D101, chiuso, da riaprire esplicitamente se si
-  va in questa direzione).
-
-**Non toccare `anch_02`/gli altri golden islands finché questo non è capito**:
-è lo stesso meccanismo, probabilmente negli stessi punti già segnalati sopra
-(i ~20 forellini doppi, la vista isometrica grande) — rigenerare qualsiasi
-golden ora rischia di congelare un numero sbagliato.
+**Non toccare `anch_02`/gli altri golden islands finché i dubbi D103 qui sopra
+(e gli inner sovrapposti di anch_03) non sono chiariti**: rigenerare qualsiasi
+golden ora rischia di congelare un numero sbagliato. Nota: D106 cambia già
+`regr_04` islands[1] (1 → 2 inner) e `anch_02` (+4 strisce) — da tenerne conto
+quando si rigenera.
 
 ---
 
