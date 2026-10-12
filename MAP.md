@@ -3534,3 +3534,37 @@ can't regress silently:
 Both are red today on the same 6 files, for the reason above — intentional,
 same shape as `test_golden.py`'s regression fixtures: documents a known,
 unfixed defect rather than hiding it.
+
+### D105 — reopening D104 same day: 40% of real fixtures is not a gap to shelve, and the "6 files" count was imprecise
+
+D104's "nobody calls `to_dxf()` on this today, so it doesn't block anything"
+is still true, but Federico pushed back on the framing: 6 of 15 — closer to
+40% once `drw_0011` is confirmed real, and 5 of those 6 (`anch_03`, `anch_06`,
+`regr_01`, `regr_02`, `regr_04`) are anonymized client sheets, not invented
+cases — is common, not an edge case worth shelving. Also `regr_01` is a plain
+top-down view, not isometric: D104's "this is about 3D/multi-face views" was
+too narrow, the trigger is any outer face whose simple walk can't close ≥99%
+of the union, 3D or not.
+
+Correction to D104's count: `drw_0011`'s broken shape is
+`cluster[2].inner[1]`, an *inner* — `_faces_union_loop` only ever builds an
+*outer* face, so this one's cause is more likely the same `merge_runs`
+double-arc-family bug already named for `regr_04.cluster[0].inner[0]`, not
+`_faces_union_loop`'s ordering. Not re-verified yet; flagged so the next
+session doesn't lump it in by assumption.
+
+First lead tried toward an actual fix, same day, not yet proven: instead of
+hand-ordering the rim edges (D104's two failed attempts), rebuild a second,
+smaller graph from only the rim edges (already isolated by
+`_faces_union_loop`) with `build_node_graph(on_rim, epsilon=tolerance +
+max_gap)` — the same band already used elsewhere in `island.py`, not a new
+constant — and re-run `LoopFinder` on that. One data point each way, not a
+pattern yet: `anch_06` recovers 99.9% of the true area; `regr_04` cluster[2]
+finds no loop at all at that band (plausibly the wide tolerance merges two
+nodes that needed to stay separate, breaking the graph). `anch_03`/`regr_01`
+not tried yet (the probe script's island-isolation by bbox missed them).
+Needs a per-case look at which band each one actually needs before deciding
+whether one band can serve all of them or not.
+
+Still open, still guarded by the same two tests (D104) — the bar for calling
+this done is both tests green on all 15 fixtures, not a majority.

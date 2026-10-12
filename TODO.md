@@ -15,28 +15,71 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
-## RIPARTENZA — `.polygon` vs `.segments`: deprioritizzato il 12 ottobre, guardato da due test permanenti (MAP.md D104)
+## RIPARTENZA — `.polygon` vs `.segments`: DA RISOLVERE SUL SERIO, non più deprioritizzato (MAP.md D104)
 
-**Non più il filo più urgente — declassato di proposito il 12 ottobre.**
-Il quadro completo, con la decisione e il perché, è in MAP.md D104: per 6
-`golden_islands` su 15 (`anch_03`, `anch_06`, `drw_0011`, `regr_01`, `regr_02`,
-`regr_04`), `.segments` (letto solo da `to_dxf`) non descrive la stessa forma
-di `.polygon` (letto da SVG, view_model, e da qualunque lettura di datum/
-feature sul bordo di un'isola). Oggi **nessuno chiama `to_dxf()` su una vista
-3D/multi-faccia letta da `island()`** (verificato: nessun chiamante in forge,
-snapdraw, snapbend) — quindi il difetto non blocca il lavoro vero (isole +
-datum/feature dal bordo), e non vale la caccia a tempo indeterminato che gli
-abbiamo dato fin qui. Due tentativi di fix fatti e scartati lo stesso giorno
-(dettagli in D104): nessuno dei due migliora tutti i 6 casi insieme senza
-peggiorarne altri — `outer_face.py` è tornato pulito, identico a `c076045`.
+**Riaperto il 12 ottobre stesso, poche ore dopo averlo deprioritizzato: 6 file
+su 15 (40%) è troppo alto per lasciarlo lì.** Il quadro con causa e numeri è
+in MAP.md D104. Non è solo un problema delle viste 3D isometriche: colpisce
+anche `regr_01`, che è **una vista normale da sopra**, non isometrica —
+corretto in D104, che prima diceva "solo viste 3D" a torto. Occhio: una delle
+6 forme (`drw_0011.cluster[2].inner[1]`) è in realtà un **inner**, quindi la
+causa giusta per lei è probabilmente `merge_runs` (la stessa di
+`regr_04.cluster[0].inner[0]`), non `_faces_union_loop` — il conteggio "6 file
+= 6 casi della stessa causa" in D104 è impreciso su questo punto, da
+controllare quando si riprende.
 
-**Guardato per sempre, senza bisogno di occhio umano, da due test nuovi:**
-`tests/unit/core/test_island_segments_consistency.py` e
-`tests/unit/core/test_island_invariants.py` — rossi apposta sugli stessi 6
-file, verdi sugli altri 9. Non sono golden: non si rigenerano mai, o sono
-vere o il motore ha un difetto. Se un giorno serve riesportare in DXF una
-vista 3D con gli archi fedeli, si riparte da questi due test e da D104, non
-da zero.
+**La causa, in breve (dettagli in D104):** `_faces_union_loop`
+(`outer_face.py`) raccoglie i pezzi vicini al bordo giusto ma non li rimette
+in fila — `build_polygon` li incolla fuori sequenza e il poligono si
+autointerseca. Tre tentativi fatti il 12 ottobre, nessuno ancora buono su
+tutti i casi insieme:
+1. Ordinare per proiezione sul perimetro: fissa i casi grandi (`regr_04`
+   cluster[2] 92%→1.8%, `regr_01` 84%→6.8%) ma rompe quelli piccoli
+   (`anch_03`/`regr_02` cluster[7] diventano un poligono non valido, `anch_06`
+   cluster[3] peggiora 50%→86%) — la proiezione è ambigua su un giro piccolo
+   con pochi pezzi.
+2. Incatenare per vicinanza (nearest-neighbour): scritto, non verificato sui
+   6 casi prima che la sessione cambiasse rotta.
+3. **Pista più promettente, solo accennata, da riprendere da qui**: invece di
+   ordinare i pezzi a mano, ricostruire un secondo grafo (`build_node_graph`)
+   usando *solo* i pezzi vicini al bordo (`on_rim`, già isolati da
+   `_faces_union_loop`) con una tolleranza larga quanto `tolerance + max_gap`
+   (la stessa scala già usata altrove in `island.py`, non una costante nuova)
+   invece della `GRAPH_EPSILON` stretta di sempre, e rilanciare `LoopFinder`
+   su quel grafo più piccolo e più tollerante. Primo riscontro, solo su 2
+   file, non sistematico: **`anch_06` torna al 99.9% dell'area giusta**, ma
+   su `regr_04` cluster[2] con `band=0.51` **non si trova più nessun giro**
+   (probabilmente la tolleranza larga fonde due nodi che dovevano restare
+   separati, rompendo la topologia) — serve capire quale tolleranza va bene
+   per i casi piccoli senza rompere quelli grandi, non necessariamente la
+   stessa per tutti. `anch_03`/`regr_01` non ancora provati bene (l'isola
+   spaziale giusta non è stata isolata con lo script veloce usato stanotte).
+
+**Guardato per sempre, senza bisogno di occhio umano, da due test nuovi** (non
+sono golden, non si rigenerano mai): `tests/unit/core/test_island_segments_
+consistency.py` e `tests/unit/core/test_island_invariants.py` — rossi apposta
+sugli stessi 6 file, verdi sugli altri 9. Il criterio per dire "risolto": tutti
+e due verdi su tutti i 15 file, senza eccezioni e senza toccare le tolleranze
+in modo che favorisca un caso a scapito di un altro.
+
+## APERTO — 4 dubbi su D103 (`_drop_boundary_duplicates`), non verificati, segnalati da Federico il 12 ottobre guardando `_debug/*_ghosts.dxf`
+
+Nessuno di questi quattro è stato controllato sul codice — sono dubbi legittimi,
+non ancora confermati né respinti:
+- **`anch_02`/`anch_03`** (50 e 4 giri scartati sui forellini del pattern di
+  foratura): potrebbero essere inner annidati legittimi ("inner nipoti",
+  profondità 2), non duplicati — da confrontare con come `heal()` tratta lo
+  stesso tipo di nesting.
+- **`anch_06`** (1 giro scartato, sovrapposto all'outer): potrebbe essere un
+  simbolo di disegno vero, non un duplicato del bordo.
+- **`anch_07`/`regr_05`** (1 giro scartato, 0.07 mm²): dovrebbe forse finire in
+  `non_contour`/trash, non nel bucket "duplicato scartato".
+
+Script per rigenerare i DXF con i giri scartati in rosso (layer
+`FANTASMA_SCARTATO`): `_debug/mark_ghosts.py` era nello scratchpad della
+sessione, non salvato nel repo — da riscrivere se serve (richiama
+`island_mod._drop_boundary_duplicates` con uno spy, poi `forge.to_dxf` +
+`ezdxf` per disegnare i giri scartati in rosso sopra al resto).
 
 **Sotto, per chi riprende in mano il caso specifico di `regr_04` (una causa
 più piccola e diversa, dentro `merge_runs`, non l'`outer_face.py` di D104):**
@@ -829,10 +872,6 @@ creare una fingerprint geometrica per validare na forge part.
 ---
 
 ## PRIORITÀ BASSA — futuro
-
-### Feature di tracciatura.
-Il caso: un disegno (quello dei segni tracciati stretti, oggi non più su disco)
-ha una serie di dentelli che partono da una linea orizzontale, che sono considerati parte del grafo giustamnete. vorrei aggiungere un parametro che sotto una certa distanza queste linee siano considerate solo dei segni di marcatura, completando il grafo solo con la linea orizzontale. Anche se ho degli inner che hanno distanza inferiore alla tolleranza di cui sopra, devono essere detectati come segni di incisione e posti sul layer 'Engrave'. probabilmente questa cosa va implementata nel modulo detect e può essere individuato il tutto solo passando detect_flat() come facciamo con le bl che hanno la loro tolleranza.
 
 
 ### Implementazione nuovo formato:
