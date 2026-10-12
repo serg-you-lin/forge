@@ -3696,3 +3696,14 @@ Writing the first one exposed two defects in D106 itself, both on
   direction along its edge: the cover is over (edge, sense) pairs, sense =
   sign of the side's direction against the edge's tangent at that point
   (`rim._sense`); where the ring turns back, the run ends — at the tip.
+
+Known-red tests are now `expectedFailure`, so a red suite means a real
+regression again: the 8 island goldens moved by D102/D103 (`KNOWN_STALE`,
+regenerated all together once D103's doubts are settled, after looking at
+the DXFs) and the 4 crossing-inner failures on `anch_03`/`regr_02`
+(`KNOWN_CROSSING_INNERS`). The two text budgets (`anch_02`, `anch_06`) stay
+plainly red until the goldens are regenerated — Federico's call. Suite: 888
+passed, 12 xfailed, 2 failed.
+`main` → **0.14.0** (D101–D107: `island()` output changes — more inners where
+lobes used to vanish, new trash pieces, outer segments read off the face
+boundary; no signature change).

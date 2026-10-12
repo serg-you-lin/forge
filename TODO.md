@@ -80,14 +80,9 @@ entro `tolerance` in un nodo solo, non due — la causa isolata di D100. Suite
 solo_non_due`. Branch creato da `main` a `108b74c` (prima dello stash del
 lavoro PDF in corso, sotto).
 
-**Pulizia rimasta, non distruttiva:** `git stash list` ha un secondo stash,
-`"WIP on topology/t-junction-noding: 108b74c..."` (senza nome esplicito) —
-è l'esperimento scartato di questa sessione (`GRAPH_EPSILON` → `tolerance`
-in `island.py`, descritto e respinto in MAP.md D101, "tried and rejected").
-Verificato col contenuto (`git stash show -p`) prima di scriverlo qui: non
-contiene altro. Va tolto con `git stash drop` quando Federico lo confirma —
-non l'ho fatto io, l'auto-mode di Claude Code blocca `git stash drop` come
-azione distruttiva da confermare a mano.
+Lo stash dell'esperimento scartato di D101 è stato tolto il 12 ottobre, con
+l'ok di Federico. Resta solo lo stash del lavoro PDF in corso (`On main: WIP
+pre topology-noding branch`).
 
 **Nuovo filo aperto (11 ottobre, non ancora capito a fondo) — inner "fantasma" vicino
 alle asole/forellini, anche con l'albero committato (non è un residuo dello stash
