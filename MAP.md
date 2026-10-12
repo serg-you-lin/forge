@@ -3144,6 +3144,86 @@ Suite: forge 810 (809 green + `regr_04`, flagged, not regenerated).
 Branch: `topology/t-junction-noding` (not yet merged — see TODO.md for the
 `D##` numbering collision with the PDF-adapter WIP stashed on `main`).
 
+### D102 — a gap-fix across two endpoints already in the same component is a sliver, not a gap: `_drop_redundant_meets` (`island.py`) ✅
+
+Found chasing a 0.33 mm spike on `anch_02`'s isometric view, `cluster[1]`: a
+rounded tip of a slot (`inner[0]`, area 1011 mm²) that should read as one
+smooth curve instead shoots out and back through three points 0.3–0.4 mm
+apart — same family as D100/D101 (quasi-tangency) but not fixed by either:
+the fix is already on this branch and the defect survives it. Bisected (11
+October) on a worktree at older commits: clean at `1b5b02e` (D99), already
+broken at `091970a` (D100) — introduced by D100's union-of-faces patch, not
+by this branch's own D101 work, and innocent of D101.
+
+Root cause is earlier than the outer-face walk or the union of faces:
+`_normalize()`'s gap-fix (`compute_gap_fixes`) sees two free endpoints of two
+unrelated `LineSeg`s (edges of a different face of the isometric view, not
+the slot's own rounded corner) sitting ~0.4 mm from the corner's curve — within
+`max_gap` (0.5 mm) — and extends them to their real line-line intersection,
+0.33 mm past the true curve. The tell: both endpoints already belong to the
+same connected component of the graph (joined elsewhere by that very corner).
+A real gap always spans two different components; this one doesn't, so
+"closing" it only opens a second, spurious path alongside a contour that was
+already closed — it closes nothing that was open.
+
+Fix: `_drop_redundant_meets()` discards a `MoveEndpoint` gap-fix (line/arc
+extended to an intersection) whenever its two source endpoints are already in
+the same connected component before the fix is applied. Verified against the
+constructed regression (`tests/data/regressions/island_tangent_spike.dxf`,
+`TestTangentSpike`, 71 edges) and against real golden files with legitimate
+gap-fixes between genuinely separate components (`anch_03`, `anch_08`,
+`regr_02`) — none of those are dropped. An earlier version of the filter
+(distance to another curve, not component membership) dropped those too;
+replaced after comparing the two cases side by side.
+
+### D103 — a closed loop nested inside another, hugging its border, is a boundary duplicate, not a second inner: `_drop_boundary_duplicates` (`island.py`) ✅
+
+Found in the same `anch_02.dxf` session, `cluster[1]`: roughly 20 holes of a
+drilling pattern (bbox ~3.5 mm) each read as **two** nested inners at the same
+spot — one clean (the true projected ellipse, 2 `SplineSeg` closing end to
+end, ~16 mm²) and one "ghost" nested inside it (2 `ArcSeg` + 4–7 jagged
+`SplineSeg`, ~11 mm², a real area, not the zero-area ghosts D101 already
+handles). Bisected: preexisting at `1b5b02e` (D99), before any work on this
+branch or the stashed PDF adapter — `fitting.py`/`points.py` were never
+touched in that history, only moved (D95). Not a source duplicate either: the
+raw edges feeding `island()` in the hot spot are a single connected network
+(2 `ArcSeg` + 13 `SplineSeg`) that maps exactly onto both reported loops (2
+spline in the clean one, 2 arc + 11 spline in the ghost).
+
+So the bug is in `island()` itself: one connected network has two closed
+walks, a real one and a ghost, and both get reported as inners. D71 ("every
+closed walk is an inner") is right for disconnected islands but not for a
+walk that follows almost the same border as one already kept — here the
+ghost's entire boundary stays within ~0.51 mm of the clean inner's boundary
+(the visible wall of a hole seen in an isometric view, nearly folded onto its
+own opening), just over `max_gap` (0.5) alone but inside `tolerance + max_gap`
+(0.55).
+
+Fix: `_drop_boundary_duplicates()` in `read_island()` — given the outer
+found, or any other loop already accepted (largest area first), discard a
+smaller loop whose entire boundary lies within `tolerance + max_gap` of a
+larger accepted loop's boundary (`big.exterior.buffer(band).contains(small.
+exterior)`); no new constant, reuses the two parameters `island()` already
+takes. Edges of a discarded loop are not lost (non-negotiable 7): they fall
+through to `NonContourEdgeDetector` as `non_contour` or `unclassified`,
+instead of a false inner.
+
+**Golden impact, checked case by case, not regenerated (non-negotiable 9 —
+Federico judges by eye):** D102+D103 together flip 8 island goldens
+(`anch_02/03/06/07`, `regr_01/02/04/05`) and 2 text-budget goldens
+(`anch_02/06`), each losing one or more inners that were spikes or ghosts of
+this kind — `anch_03`/`regr_02` lose the most (32 → 28), a systematic pattern
+in that file, not an isolated case. Three checked by hand, all the same bug,
+no false positive found. None of the affected goldens have been regenerated
+here; see TODO.md for what is left before merging (`regr_04`'s confirmation,
+then the rest) and for extending `test_golden_islands.py`'s snapshot to
+compare inner shape, not just bbox + count, so this class of regression
+cannot pass unseen again.
+
+Suite: forge 802 + 8 subtests green, 10 failed — all and only the golden
+islands/text-budget above, no other regression (`gen_index.py --check` ok).
+Branch: `topology/t-junction-noding` (not yet merged).
+
 ---
 
 ## Closed questions (history)

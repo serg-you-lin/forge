@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
+from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
 from ..model.cluster import ForgeCluster
@@ -41,7 +42,7 @@ from .topology.non_contour_edges import NonContourEdgeDetector
 from .topology.outer_face import OuterFace, outer_face
 from .healing.islands import spatial_islands
 from .healing.gap_solver import (
-    free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes, local_gap_fixes,
+    free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes, local_gap_fixes, MoveEndpoint,
 )
 from .healing.normalizer import (
     merge_collinear_overlaps, merge_cocircular_overlaps, weld_degenerate_linesegs,
@@ -187,6 +188,9 @@ def read_island(edges: List[Edge], tolerance: float, max_gap: float) -> IslandRe
 
     rest_graph = build_node_graph(rest, epsilon=GRAPH_EPSILON)
     loops = LoopFinder().find(rest_graph)
+    band = tolerance + max_gap
+    reference = face.polygon if face is not None else None
+    loops = _drop_boundary_duplicates(loops, reference, band)
     reading.inner_loops = loops
     in_loops = {id(e) for loop in loops for e, _ in loop}
     full_graph = build_node_graph(pieces, epsilon=GRAPH_EPSILON)
@@ -200,6 +204,34 @@ def read_island(edges: List[Edge], tolerance: float, max_gap: float) -> IslandRe
 # Helper
 # ---------------------------------------------------------------------------
 
+def _drop_boundary_duplicates(loops: list, reference: Optional[Polygon], band: float) -> list:
+    """Scarta un giro chiuso il cui intero bordo sta entro `band` dal bordo di
+    un giro più grande già accettato (il contorno esterno `reference`, o un
+    altro giro già tenuto, in ordine di area): non è una feature annidata,
+    è la stessa curva ritracciata un po' spostata (entro tolleranza+gap) —
+    tipicamente la parete visibile di un foro in una vista isometrica,
+    quasi sovrapposta alla sua stessa apertura. Raffina D71 ("ogni giro
+    chiuso è un inner"), che resta corretto per isole scollegate ma non per
+    un giro che segue quasi lo stesso bordo di un altro già tenuto."""
+    accepted: List[Polygon] = [reference] if reference is not None else []
+    scored = []
+    for loop in loops:
+        geometry = loop_geometry(loop)
+        area = geometry[2].area if geometry is not None else -1.0
+        scored.append((area, loop, geometry))
+    kept = []
+    for _, loop, geometry in sorted(scored, key=lambda t: -t[0]):
+        if geometry is None:
+            kept.append(loop)
+            continue
+        polygon = geometry[2]
+        if any(g.exterior.buffer(band).contains(polygon.exterior) for g in accepted):
+            continue
+        accepted.append(polygon)
+        kept.append(loop)
+    return kept
+
+
 def _normalize(edges: List[Edge], tolerance: float, max_gap: float) -> List[Edge]:
     """Stessi passi di heal, ma sulla griglia fine della rete piana: prima i
     nodi dagli estremi reali (renode), poi tassellature, merge, weld e gap —
@@ -208,10 +240,42 @@ def _normalize(edges: List[Edge], tolerance: float, max_gap: float) -> List[Edge
     edges = weld_degenerate_linesegs(merge_cocircular_overlaps(merge_collinear_overlaps(edges)))
     gap = max(tolerance, max_gap)
     graph = build_node_graph(edges)
-    fixes = local_gap_fixes(compute_gap_fixes(free_endpoints_from_edges(edges, graph), gap), gap)
+    fixes = compute_gap_fixes(free_endpoints_from_edges(edges, graph), gap)
+    fixes = _drop_redundant_meets(fixes, graph)
+    fixes = local_gap_fixes(fixes, gap)
     if fixes:
         edges = apply_gap_fixes(edges, fixes, NODE_DECIMALS)
     return [e for e in edges if e.start != e.end or segment_is_closed(e.segment)]
+
+
+def _drop_redundant_meets(fixes: list, graph) -> list:
+    """Scarta un fix "incontro" (due `MoveEndpoint` sullo stesso punto, la
+    retta/arco di ognuno prolungato fino all'intersezione con l'altro)
+    quando i due estremi di partenza sono già nella stessa componente
+    connessa del grafo: non è un gap da chiudere, un giro li collega già
+    altrove senza bisogno di questi due — saldarli comunque apre un secondo
+    percorso parallelo spurio (sliver) accanto al contorno che si chiude già
+    da solo (stessa famiglia di D100/D101, un passo prima: nel gap-fix,
+    invece che nel noding). Un fix fra componenti diverse resta: lì è un
+    gap vero, l'unico modo di collegarli."""
+    by_point: dict = {}
+    for fix in fixes:
+        if isinstance(fix, MoveEndpoint):
+            by_point.setdefault(fix.new_pt, []).append(fix)
+    component_of: dict = {}
+    for i, component in enumerate(graph.connected_components()):
+        for node in component:
+            component_of[node] = i
+    drop_ids = set()
+    for pair in by_point.values():
+        if len(pair) != 2:
+            continue
+        fa, fb = pair
+        node_a = graph.canonical(fa.ref.start if fa.role == "start" else fa.ref.end)
+        node_b = graph.canonical(fb.ref.start if fb.role == "start" else fb.ref.end)
+        if component_of.get(node_a) == component_of.get(node_b):
+            drop_ids.update(id(f) for f in pair)
+    return [f for f in fixes if id(f) not in drop_ids]
 
 
 def _cluster(reading: IslandReading, source_file: str) -> ForgeCluster:

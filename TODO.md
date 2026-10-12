@@ -32,6 +32,175 @@ contiene altro. Va tolto con `git stash drop` quando Federico lo confirma —
 non l'ho fatto io, l'auto-mode di Claude Code blocca `git stash drop` come
 azione distruttiva da confermare a mano.
 
+**Nuovo filo aperto (11 ottobre, non ancora capito a fondo) — inner "fantasma" vicino
+alle asole/forellini, anche con l'albero committato (non è un residuo dello stash
+PDF):** su `tests/data/golden_islands/anch_02.dxf` (vista isometrica, cluster[1]),
+confermato da Federico guardando `_debug/anch_02_3D_from_dxf_CLEAN_TREE.dxf` (`island()`
+sul codice committato di questo branch, nessuno stash applicato):
+
+1. L'asola grande (`inner[0]`, area 1011 mm², bbox 1421–1507 × 101–158) ha una punta
+   arrotondata rovinata da una spike di 0.33 mm: il bordo liscio arriva a
+   (1506.30, 105.58), scatta fuori a (1506.63, 105.39) e torna a (1506.30, 105.19)
+   prima di richiudersi. Tre punti a 0.3–0.4 mm l'uno dall'altro che dovrebbero
+   essere un nodo solo non si sono fusi — stessa famiglia di D100/D101
+   (quasi-tangenza) ma **non risolta da D101**: il fix di D101 è già committato su
+   questo branch e il difetto resta. Sembra un punto reale (fit-point della spline
+   di raccordo) che non coincide con la curva healed, non un duplicato banale.
+2. **Sistematico, non isolato**: nello stesso cluster, circa 20 forellini del
+   pattern di foratura (bbox ~3.5mm, es. 1540–1544×128–134 e 1540–1544×104–109)
+   hanno **due** inner quasi sovrapposti nello stesso punto: uno pulito (l'ellisse
+   proiettata vera, 2 SplineSeg che chiudono da estremo a estremo, area ~16 mm²) e
+   uno "fantasma" annidato dentro, fatto di 2 ArcSeg + 4-7 SplineSeg minuscoli e
+   seghettati (area ~11 mm², non zero come i fantasmi di `regr_04`/D101 — qui è
+   un'area reale, sbagliata). Pattern: `cluster[1].inners[26,28,30,32,...64]` su
+   `anch_02.dxf` (script di ispezione non salvato, rifare con `forge.island()`
+   + `max_gap=0.5` se serve riprodurre).
+3. Federico non si fida più dei golden su questa classe di fogli: **confermato**
+   che il motivo è reale — `test_golden_islands.py` confronta solo bbox outer e
+   **conteggio** inners (non la forma), `test_golden_anchoring.py` solo il testo
+   delle annotazioni: nessuno dei due avrebbe mai potuto vedere né la spike né gli
+   inner fantasma, a differenza di `tests/real/test_golden.py` (`heal()`, parti
+   piatte) che confronta la forma via WKT/shapely con tolleranze stette.
+4. **Bisecato (11 ottobre) su worktree a commit vecchi, stesso `anch_02.dxf`, stesso
+   `max_gap=0.5` — due bug distinti, non uno:**
+   - **Fantasmi (punto 2 sopra): preesistenti**, identici su `1b5b02e` (D99, prima
+     di tutto il lavoro di questa sessione). `fitting.py`/`points.py` non sono mai
+     stati toccati per il PDF nella storia committata (solo spostati, D95) — non è
+     una contaminazione del lavoro PDF. Raw edge nel punto caldo (1538–1546 ×
+     127–135, prima di `island()`): 2 `ArcSeg` + 13 `SplineSeg`, un'unica rete
+     connessa — e tornano spalmati esattamente sui due inner (2 spline nel pulito,
+     2 arc + 11 spline nel fantasma). Quindi non è il source duplicato: è
+     `island()` che da una rete sola trova due giri chiusi (uno vero, uno fantasma)
+     e li riporta entrambi come inner (D71 dice "tutti i giri chiusi" — corretto
+     per isole scollegate, probabilmente non per questo caso).
+   - **Spike (punto 1 sopra): introdotta da D100.** Pulita su `1b5b02e` (D99, punta
+     a x=1506.30 netta), già rotta su `091970a` (D100, "the outer face is the
+     boundary of the union of the closed faces", x=1506.63) — **non è D101**, il
+     fix di questa sessione è innocente qui. Riapre di fatto la domanda del punto 3
+     di "Resta da chiudere prima di mergiare" sotto: non è solo "forse ridondante",
+     D100 **regredisce** un caso quasi-tangente sul bordo dell'unione.
+
+**Piano di fix (deciso l'11 ottobre):**
+
+1. ✅ **Fatto (11 ottobre) — test di regressione PRIMA del fix, rossi apposta.**
+   Due fixture ritagliate dal foglio reale (non costruite a mano/analiticamente:
+   i bug coinvolgono spline vere, 62 nella seconda — minimizzarle a mano non
+   valeva l'effort), salvate con l'API di forge (`OpenFeature`+`ForgeResult`+
+   `forge.to_dxf`, mai `ezdxf` diretto) — **attenzione**: il ruolo dev'essere
+   un slug qualunque tipo `"geometry"`, **non** `"unknown"` — `role_to_dxf_layer`
+   manda `unknown` sul layer `Trash`, e `DxfAdapter.to_edges()` scarta `Trash` a
+   lettura (`_NON_STRUCTURAL_LAYERS`, `adapter.py:40`) — ci si casca dentro,
+   verificato sul roundtrip prima di fissare le fixture:
+   - `tests/data/regressions/island_ghost_loop.dxf` (15 edge: 2 `ArcSeg` + 13
+     `SplineSeg`, il foro col giro fantasma)
+   - `tests/data/regressions/island_tangent_spike.dxf` (71 edge, l'asola con la
+     spike)
+   - `tests/unit/core/test_island_regressions.py` — `TestGhostLoop` e
+     `TestTangentSpike`, caricano le fixture via `forge.load_dxf` +
+     `forge.core.island.read_island(edges, tolerance=0.05, max_gap=0.5)`.
+   Stato suite confermato: 809 passed, 3 failed (i 2 nuovi + `regr_04`, già
+   rosso e noto, punto 1 sotto — nessun'altra rottura, `gen_index.py --check` ok).
+2. ✅ **Fatto (11 ottobre, stessa sessione del punto 1) — i due fix.** La prima
+   ipotesi (punto 3 di sotto, sede del bug in `outer_face.py`) era **sbagliata**:
+   verificato con un giro-passo-passo che `outer_face()` da sola, su `doc.edges`
+   crudi, già dà il risultato giusto (1011.26, nessuna spike) — il bug si
+   manifesta solo dopo `_normalize()` (gap-fix), prima ancora che `outer_face`
+   veda la rete. Entrambi i fix stanno quindi in `forge/core/island.py`, non in
+   `outer_face.py`. Suite dopo i due fix: 810 passed, 10 failed — i 10 sono
+   TUTTI golden islands/text-budget preesistenti impattati dal fix fantasmi
+   (vedi "Impatto sui golden" sotto), **nessuna rottura nuova**: i 2 test di
+   regressione (punto 1) sono verdi, `regr_04` resta nella stessa famiglia di
+   rottura già nota (D101), `gen_index.py --check` ok.
+
+3. ✅ **Fix spike — causa reale: `_normalize()` salda due estremi liberi che
+   non sono un gap vero (`forge/core/island.py`).** La spike non nasce nel
+   walk né nell'union di `outer_face.py` (quelli restano INTOCCATI): nasce
+   prima, in `_normalize()`. Due `LineSeg` indipendenti (edge di un'altra
+   faccia della vista isometrica, non il raccordo del contorno) hanno ciascuno
+   un estremo libero a ~0.4mm dalla curva del raccordo (2 `SplineSeg` già
+   chiusi fra loro, la vera punta arrotondata) — entro `max_gap=0.5`, quindi
+   `compute_gap_fixes` li tratta come un gap e li prolunga (retta-retta) fino
+   alla loro intersezione reale, 0.33mm **oltre** la curva vera: una spike,
+   non un gap chiuso. Il segno che lo tradisce: quei due estremi erano **già
+   nella stessa componente connessa del grafo** (collegati altrove dal
+   raccordo stesso) — saldarli apre un secondo percorso parallelo spurio
+   (sliver) accanto al contorno che si chiude già da solo, non chiude niente
+   che fosse aperto. Fix: `_drop_redundant_meets()` in `island.py` scarta un
+   fix "incontro" (`MoveEndpoint` di retta/arco prolungata fino
+   all'intersezione) quando i suoi due estremi di partenza sono già nella
+   stessa componente connessa — un gap vero collega sempre due componenti
+   diverse. Verificato: rigetta *solo* la coppia spuria del fixture
+   (`TestTangentSpike` verde); su `anch_03`/`anch_08`/`regr_02` (golden reali
+   con gap-fix legittimi, estremi in componenti diverse) non scarta nulla —
+   la prima versione (filtro per prossimità a un'altra curva, non per
+   componente) scartava anche questi per errore, scoperta e corretta
+   confrontando i due casi fianco a fianco prima di fissare il criterio.
+4. ✅ **Fix fantasmi — non è `split_at_crossings`/noding: è D71 troppo largo
+   su un giro che duplica il bordo di un altro (`forge/core/island.py`).** Le
+   15 edge sono **due componenti connesse separate** (13 e 2), ognuna già un
+   giro chiuso per conto suo — non c'è autoincrocio numerico da correggere.
+   Il giro fantasma (11.3 mm², 2 `ArcSeg`+11 `SplineSeg`) sta **interamente
+   dentro** il giro vero (16.25 mm², 2 `SplineSeg`) e il suo bordo intero resta
+   entro ~0.51mm dal bordo del giro vero (tipicamente la parete visibile di un
+   foro in una vista isometrica, quasi sovrapposta alla sua stessa apertura).
+   D71 ("ogni giro chiuso è un inner") è corretto per isole scollegate ma non
+   per un giro che segue quasi lo stesso bordo di un altro già tenuto. Fix:
+   `_drop_boundary_duplicates()` in `read_island()` — dato l'outer trovato
+   (o un altro giro già accettato, in ordine di area decrescente), scarta un
+   giro il cui bordo intero sta entro `tolerance + max_gap` dal bordo di un
+   giro più grande già accettato (`big.exterior.buffer(band).contains(small.
+   exterior)`); la soglia riusa i due parametri esistenti (nessuna costante
+   nuova) — misurata sul fixture: 0.51mm, oltre `max_gap` da solo (0.5) ma
+   dentro `tolerance+max_gap` (0.55). Gli edge del giro scartato non si
+   perdono (non-negoziabile 7): ricadono su `NonContourEdgeDetector` come
+   `non_contour` o `unclassified`, non più falsi "inner".
+
+   **Impatto sui golden, verificato caso per caso ma NON rigenerato
+   (non-negoziabile 9 — Federico deve giudicare a occhio):** 8 golden islands
+   (`anch_02/03/06/07`, `regr_01/02/04/05`) e 2 text-budget (`anch_02/06`)
+   ora falliscono per questo fix — perdono un inner a testa (o più su
+   `anch_03`/`regr_02`, 32→28: lì il pattern è sistematico, non un caso
+   isolato). Controllati a mano tre casi, tutti coerenti con lo stesso bug,
+   nessun falso positivo trovato:
+   - `anch_02` isola più piccola: perde un inner di area 3.10 mm² annidato
+     dentro un inner pulito di 19.57 mm² alla stessa posizione (bbox quasi
+     identico) — stesso pattern descritto sopra per `anch_02.dxf` nelle note
+     dell'11 ottobre (punto 2), sui ~20 forellini del pattern di foratura.
+   - `regr_04` isola[1]: il golden aveva già, da D101, un giro fantasma ad
+     area quasi-zero (9.8e-13 mm², mai rigenerato — "il golden è letto dalla
+     lettura vecchia e bacata", MAP.md D101); questo fix lo scarta anche lui
+     (4→1 invece di 4→2), stessa famiglia di garbage, non un nuovo problema.
+   - `anch_07` isola[0]: perde un giro minuscolo (0.076 mm², quasi un punto)
+     che era un inner diretto dell'outer del pezzo stesso (non di un foro),
+     col bordo a 0.51mm dal contorno esterno — stesso meccanismo, comparso
+     accanto al contorno principale invece che dentro un foro.
+   `test_text_budget.py` cresce di riflesso (gli edge del giro scartato
+   finiscono in `non_contour`/`unclassified`, resi diversamente da `to_text`).
+
+   **Prossimo passo per Federico:** guardare questi 10 casi a occhio (DXF
+   aperti, non i numeri del golden) e confermare — poi, solo dopo, punto 5.
+
+   **Nuovo filo aperto (12 ottobre) — stesso fix, lato PDF: completamente
+   sbagliato, confermato da Federico a occhio.** I due fix sopra (punto 3 e 4,
+   `_drop_redundant_meets` e `_drop_boundary_duplicates`) sono stati pensati e
+   verificati solo sui golden **DXF**. Sul lato PDF (`_debug/anch_02_ALL_
+   ISLANDS_from_pdf_BEFORE_FIX.dxf` vs `..._FIXED.dxf`, 11 ottobre 18:00-18:04,
+   stesso pomeriggio del fix) Federico ha guardato i DXF e confermato: il
+   risultato è completamente sbagliato, non un caso isolato. Non ancora
+   root-causato — ipotesi non verificata: `band = tolerance + max_gap` in
+   `_drop_boundary_duplicates` è calibrato sulla precisione DXF, e il residuo
+   di un cerchio/arco PDF (fit ai punti Bezier campionati, non esatto come un
+   `ARC` DXF — stessa causa di D102/D103 nello stash dell'adapter PDF) cade
+   probabilmente proprio nella fascia che il filtro tratta come "duplicato da
+   scartare", portandosi via inner veri. Da investigare con numeri reali
+   prima di assumere questa causa, non solo a occhio.
+5. **Solo dopo la conferma di Federico sopra:** rigenerare i golden islands e
+   text-budget impattati, **poi** estendere `snapshot()` in
+   `tests/real/test_golden_islands.py` a confrontare anche la **forma** di
+   ogni inner (non solo bbox esterno + conteggio), sul modello di
+   `test_golden.py` (WKT/shapely, tolleranza stretta) — così la prossima
+   regressione di questa classe non passa inosservata.
+
 **Resta da chiudere prima di mergiare:**
 
 1. **`regr_04` — golden da far giudicare a Federico, non ancora rigenerato.**
