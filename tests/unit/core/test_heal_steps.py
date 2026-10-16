@@ -2,7 +2,7 @@
 tests/unit/core/test_heal_steps.py
 ----------------------------------
 I passi di heal() usati da soli, come li usa un consumatore che compone la
-sua ricetta (D62) — e la composizione nell'ordine di heal() che dà lo stesso
+sua ricetta (D62) â€” e la composizione nell'ordine di heal() che dÃ  lo stesso
 risultato di heal().
 """
 
@@ -16,7 +16,7 @@ sys.path.insert(0, str(project_root))
 
 import forge
 from forge.model.document import ForgeDocument
-from forge.model.feature import ClosedFeature, OpenFeature
+from forge.model.curve import ClosedCurve, OpenCurve
 from forge.model.role import ContourRole
 from forge.core.topology.edge import Edge
 from forge.core.primitives.segments import ArcSeg, LineSeg, CircleSeg, SplineSeg
@@ -41,7 +41,7 @@ def _circle(center, radius, role=ContourRole.UNKNOWN):
 
 def _broken_square(spur=False):
     # Angolo in basso a destra rotto: 10.03 vs 10.14, nodi a 1 decimale
-    # 10.0 vs 10.1 — lo chiude solo la riparazione via clustering (D57).
+    # 10.0 vs 10.1 â€” lo chiude solo la riparazione via clustering (D57).
     edges = [_line((0.0, 0.0), (10.03, 0.0), decimals=1),
              _line((10.14, 0.0), (10.14, 10.0), decimals=1),
              _line((10.14, 10.0), (0.0, 10.0), decimals=1),
@@ -61,8 +61,8 @@ class TestSplitLabeled(unittest.TestCase):
         self.assertEqual(labeled, [mark])
 
     def test_002_hole_resta_col_predicato_del_chiamante(self):
-        # D30: senza predicato un "hole" non è strutturale, con il predicato
-        # del chiamante che lo riconosce sì
+        # D30: senza predicato un "hole" non Ã¨ strutturale, con il predicato
+        # del chiamante che lo riconosce sÃ¬
         hole = _circle((5, 5), 1, role="hole")
         _, labeled = forge.split_labeled(_square(0, 0, 10) + [hole])
         self.assertEqual(labeled, [hole])
@@ -108,14 +108,14 @@ class TestFindNonContourEdges(unittest.TestCase):
         self.assertEqual(forge.find_non_contour_edges(edges, 0.01), {id(diagonal)})
 
     def test_002_linea_fra_due_quadrati_esclusa(self):
-        # percorsa andata e ritorno dal bordo esterno: non è contorno di nessuno
+        # percorsa andata e ritorno dal bordo esterno: non Ã¨ contorno di nessuno
         joint = _line((10.0, 10.0), (20.0, 20.0))
         edges = _square(0, 0, 10) + _square(20, 20, 10) + [joint]
         self.assertEqual(forge.find_non_contour_edges(edges, 0.01), {id(joint)})
 
 
 class TestLooseEnds(unittest.TestCase):
-    """Due quadrati uniti da una linea, più un moncone a 3 mm da un vertice:
+    """Due quadrati uniti da una linea, piÃ¹ un moncone a 3 mm da un vertice:
     lo schema di F6 (D111)."""
 
     def setUp(self):
@@ -127,7 +127,7 @@ class TestLooseEnds(unittest.TestCase):
     def test_001_la_linea_che_unisce_due_forme(self):
         candidates = forge.find_non_contour_edges(self.edges + [self.chord], 0.01)
         self.assertEqual(forge.find_joining_edges(self.edges + [self.chord], candidates), [self.joint],
-                         "la diagonale di un quadrato è una corda, non unisce niente")
+                         "la diagonale di un quadrato Ã¨ una corda, non unisce niente")
 
     def test_002_estremo_libero_e_distanza(self):
         ends = forge.free_ends(self.edges)
@@ -161,7 +161,7 @@ class TestShortElementsAndTolerance(unittest.TestCase):
     """D112: la tolleranza misura un gap, non la lunghezza di un lato. Quadrato
     100 con l'angolo in alto a destra raccordato/smussato, staccato di 0.3 ai
     due capi, tol 1: i lati vicini stanno entro tol fra loro, ma ognuno ha il
-    capo dell'elemento corto più vicino."""
+    capo dell'elemento corto piÃ¹ vicino."""
 
     GAP = 0.3
 
@@ -185,15 +185,15 @@ class TestShortElementsAndTolerance(unittest.TestCase):
         self.assertAlmostEqual(result.clusters[0].outer.area, 10000 - c * c / 2, places=3)
 
     def test_003_ogni_estremo_chiude_un_gap_solo(self):
-        # tre estremi entro tol: si accoppiano i due più vicini, il terzo resta libero
+        # tre estremi entro tol: si accoppiano i due piÃ¹ vicini, il terzo resta libero
         edges = [_line((0, 0), (10, 0)), _line((10.2, 0), (20, 0)), _line((10.5, 0.6), (10.5, 10))]
         healed = forge.close_free_gaps(edges, 1.0)
         self.assertEqual(len(forge.free_ends(healed)), 4, "i due capi esterni e i due del moncone")
 
 
 class TestCloseNearFullArcs(unittest.TestCase):
-    """D112: un arco diventa cerchio solo se il gap è entro tolleranza (è un
-    gap) E l'angolo mancante è entro la soglia (è un cerchio)."""
+    """D112: un arco diventa cerchio solo se il gap Ã¨ entro tolleranza (Ã¨ un
+    gap) E l'angolo mancante Ã¨ entro la soglia (Ã¨ un cerchio)."""
 
     def _close(self, seg, tolerance, **kw):
         doc = forge.load_segments([seg], tolerance=0.01)
@@ -222,12 +222,40 @@ class TestCloseNearFullArcs(unittest.TestCase):
 
     def test_007_punta_di_spigolo_coi_capi_fusi_non_si_chiude(self):
         # i due capi cadono nello stesso nodo, ma a quel nodo arrivano due lati
-        arc = _arc(1.5, 0.3)
+        arc = _arc(1.5, 0.01)
         a, b = arc._point_at(arc.start_angle), arc._point_at(arc.end_angle)
         doc = forge.load_segments([LineSeg((20, 0.3), a), arc, LineSeg(b, (20, -0.3))], tolerance=0.1)
         self.assertEqual(doc.edges[1].start, doc.edges[1].end, "premessa: capi fusi")
         _, n = forge.close_near_full_arcs(list(doc.edges), 0.1)
         self.assertEqual(n, 0)
+
+
+class TestSingleNodeGrid(unittest.TestCase):
+    """D113: la tolleranza chiude i gap, non arrotonda i nodi. Lecca-lecca:
+    quadrato con un arco r=1.5 di 359.4Â° in punta a un cuneo strettissimo, i
+    due lati attaccati esatti ai capi dell'arco, capi a 0.016 fra loro."""
+
+    def _lollipop(self):
+        arc = _arc(1.5, 0.6)
+        a, b = arc._point_at(arc.start_angle), arc._point_at(arc.end_angle)
+        return [LineSeg((20, 0.3), (20, 20)), LineSeg((20, 20), (60, 20)), LineSeg((60, 20), (60, -20)),
+                LineSeg((60, -20), (20, -20)), LineSeg((20, -20), (20, -0.3)), LineSeg((20, -0.3), b),
+                arc, LineSeg(a, (20, 0.3))]
+
+    def test_001_l_arco_in_punta_resta_nell_outer(self):
+        for tol in (0.05, 0.5):
+            with self.subTest(tolerance=tol):
+                result = forge.heal(forge.load_segments(self._lollipop(), tolerance=tol))
+                self.assertEqual(result.cluster_count, 1)
+                cluster = result.clusters[0]
+                self.assertEqual(cluster.inners, [], "l'arco non Ã¨ un foro")
+                arcs = [s for s in cluster.outer.segments if isinstance(s, ArcSeg)]
+                self.assertEqual(len(arcs), 1)
+                self.assertGreater(math.degrees(arcs[0]._sweep()), 359)
+
+    def test_002_i_nodi_non_dipendono_dalla_tolleranza(self):
+        nodes = lambda tol: [(e.start, e.end) for e in forge.load_segments(self._lollipop(), tolerance=tol).edges]
+        self.assertEqual(nodes(0.005), nodes(0.5))
 
     def test_006_heal_non_chiude_un_arco_per_sola_tolleranza(self):
         result = forge.heal(forge.load_segments([_arc(10.0, 2.9)], tolerance=1.0))
@@ -275,7 +303,7 @@ class TestFindLoops(unittest.TestCase):
         self.assertEqual([e.segment for e in edges], before)
 
 
-class TestLoopsToFeatures(unittest.TestCase):
+class TestLoopsToCurves(unittest.TestCase):
 
     def test_001_loop_con_un_edge_non_strutturale_scartato(self):
         engraved = _square(20, 0, 5, role="engrave")
@@ -283,32 +311,32 @@ class TestLoopsToFeatures(unittest.TestCase):
         self.assertEqual(len(loops), 2)
         kept = forge.structural_loops(loops)
         self.assertEqual(len(kept), 1)
-        features = forge.loops_to_features(kept)
-        self.assertEqual([round(f.polygon.area) for f in features], [100])
+        curves = forge.loops_to_curves(kept)
+        self.assertEqual([round(f.polygon.area) for f in curves], [100])
 
 
 class TestPolygonize(unittest.TestCase):
 
     def test_001_bordo_esterno_e_buco(self):
         polygons = forge.polygonize_edges(_square(0, 0, 10) + _square(3, 3, 4), 0.1)
-        features = forge.polygons_to_features(polygons)
-        roles = sorted((f.role, round(f.polygon.area)) for f in features)
+        curves = forge.polygons_to_curves(polygons)
+        roles = sorted((f.role, round(f.polygon.area)) for f in curves)
         self.assertIn((ContourRole.OUTER, 84), roles)
         self.assertIn((ContourRole.INNER, 16), roles)
 
 
 class TestLabeledAndHierarchy(unittest.TestCase):
 
-    def test_001_labeled_features_chiuso_e_aperto(self):
-        features = forge.labeled_features([_circle((5, 5), 1, role="engrave"),
-                                           _line((0, 0), (3, 0), role="engrave")])
-        self.assertIsInstance(features[0], ClosedFeature)
-        self.assertIsInstance(features[1], OpenFeature)
-        self.assertTrue(all(f.role == "engrave" for f in features))
+    def test_001_labeled_curves_chiuso_e_aperto(self):
+        curves = forge.labeled_curves([_circle((5, 5), 1, role="engrave"),
+                                      _line((0, 0), (3, 0), role="engrave")])
+        self.assertIsInstance(curves[0], ClosedCurve)
+        self.assertIsInstance(curves[1], OpenCurve)
+        self.assertTrue(all(f.role == "engrave" for f in curves))
 
     def test_002_quadrato_dentro_quadrato(self):
         loops = forge.find_loops(_square(0, 0, 10) + _square(3, 3, 4), set(), 0.1).loops
-        clusters, trash = forge.build_hierarchy(forge.loops_to_features(loops), label="p")
+        clusters, trash = forge.build_hierarchy(forge.loops_to_curves(loops), label="p")
         self.assertEqual(len(clusters), 1)
         self.assertEqual(len(clusters[0].inners), 1)
         self.assertEqual(clusters[0].inners[0].depth, 1)
@@ -327,9 +355,9 @@ class TestComposition(unittest.TestCase):
         search = forge.find_loops(edges, forge.find_non_contour_edges(edges, tol), tol)
         kept = forge.structural_loops(search.loops)
         in_loops = {id(e) for loop in kept for e, _ in loop}
-        features = forge.loops_to_features(kept) + forge.edges_to_open_features(
-            search.edges, exclude_ids=in_loops)
-        clusters, _ = forge.build_hierarchy(features)
+        curves = forge.loops_to_curves(kept) + forge.edges_to_open_curves(
+                                       search.edges, exclude_ids=in_loops)
+        clusters, _ = forge.build_hierarchy(curves)
         return clusters
 
     def test_001_stessi_cluster_di_heal(self):

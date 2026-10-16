@@ -6,7 +6,7 @@ from .document import ForgeDocument
 from .contour import ForgeContour
 from .cluster import ForgeCluster
 from .result import ForgeResult
-from .feature import Feature, ClosedFeature, OpenFeature
+from .curve import Curve, ClosedCurve, OpenCurve
 from .style import EdgeStyle
 from .detected import DetectedFeature, DetectedFeatures
 
@@ -21,9 +21,9 @@ __all__ = [
     "ForgeContour",
     "ForgeCluster",
     "ForgeResult",
-    "Feature",
-    "ClosedFeature",
-    "OpenFeature",
+    "Curve",
+    "ClosedCurve",
+    "OpenCurve",
     "EdgeStyle",
     "DetectedFeature",
     "DetectedFeatures",

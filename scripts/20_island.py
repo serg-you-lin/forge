@@ -33,7 +33,7 @@ import time
 import traceback
 
 import forge
-from forge.model.feature import OpenFeature
+from forge.model.curve import OpenCurve
 
 # --- CONFIG ----------------------------------------------------------------
 INPUT_DIR = r"tests/examples/islands"          # tutti i .dxf/.dwg qui dentro
@@ -59,9 +59,9 @@ def _diagnostic(result, readings):
     for r in readings:
         for role, edges in (("sporgenza", r.spurs), ("fuori_contorno", r.outside),
                             ("non_contorno", r.non_contour), ("unknown", r.unclassified)):
-            trash += [OpenFeature(role=role, segments=[e.segment], styles=[e.style]) for e in edges]
+            trash += [OpenCurve(role=role, segments=[e.segment], styles=[e.style]) for e in edges]
         if r.outer is None:
-            trash += [OpenFeature(role="unknown", segments=[e.segment], styles=[e.style]) for e in r.edges]
+            trash += [OpenCurve(role="unknown", segments=[e.segment], styles=[e.style]) for e in r.edges]
     result.trash_entities = trash
     return result
 

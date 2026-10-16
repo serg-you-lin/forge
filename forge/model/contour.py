@@ -22,11 +22,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from forge.model.feature import ClosedFeature
+from forge.model.curve import ClosedCurve
 
 
 @dataclass
-class ForgeContour(ClosedFeature):
+class ForgeContour(ClosedCurve):
     depth:  int                        = 0
     parent: Optional["ForgeContour"]   = None
 

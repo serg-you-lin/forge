@@ -3914,7 +3914,7 @@ file order. The two ends of one edge are never a gap. With a third end in
 the cluster, two are paired and the third stays free, reported by the
 free-ends warning (D111). The really doubtful cases are not guessed
 (Federico): a CAD that exports an entity badly gets a fix written for it
-by the caller, as cogo does, from the public steps.
+by the caller, from the public steps.
 
 **`island()` keeps every pair** (`pairwise=False`). Its contract is that
 a piece is the edges that touch within `max_gap`. In a sheet of views,
@@ -3957,16 +3957,16 @@ ends in the trash with its geometry intact.
 wrote it with a zero chord, and it read back as a NaN arc of radius 0. It
 is now a `CircleSeg` and round-trips as a circle of the same radius.
 
-**Ends fused by the node rounding are not free ends.** The cogo sheets
-have the opposite case: an r = 1.5 arc at the tip of a very sharp corner.
+**Ends fused by the node rounding are not free ends.** Federico's production
+sheets have the opposite case: an r = 1.5 arc at the tip of a very sharp corner.
 Each of its ends meets a side exactly, and the ends are 0.008 apart, so the
 rounding of `Edge.start`/`Edge.end` makes them one node. The first version
 of the rule read `start == end` as "a loop on its own" and turned the tip
 into a circle. The fused node must touch no other edge. A self-loop is not
 in the node graph (it sits among the degenerate loops), so the node's
 degree must be 0 (`test_007_punta_di_spigolo_coi_capi_fusi_non_si_chiude`).
-What `heal()` does with that tip is unchanged from 0.14.1 and still wrong.
-That is a separate defect, open in TODO.
+What `heal()` did with that tip was unchanged from 0.14.1 and still
+wrong; D113 fixes it.
 
 **Old vs new on the 768 DXFs under forge/ and snapbend/ `tests/`:** 0 change
 in `heal()` and 0 in `island()`. The rule changes only the constructed
@@ -3979,3 +3979,102 @@ budgets are red. snapbend: 427 passed. DXF before/after for Federico in
 within the tolerance and on lone near-full arcs; new public step
 `close_near_full_arcs`, constant `NEAR_FULL_ARC_MISSING`; no signature
 changed).
+
+### D113 — one node grid for all of forge: the tolerance closes gaps, it never snaps nodes ✅
+Reopening the node rounding of the loaders, which was never written down as
+a decision. Until 0.14.2 forge had two rules for "these two ends are one
+node":
+
+| where | node | default grid |
+|---|---|---|
+| `load_dxf` and the other loaders, so all of `heal()`; `rotate_document`; `apply_gap_fixes` in heal | `round_point(p, node_decimals_for(tolerance))` | 1 decimal (tolerance 0.05 → cells of 0.1) |
+| `island()` (`renode`, D59) | recomputed from the real ends | 3 decimals (`NODE_DECIMALS`) |
+
+The coarse grid is how forge closed small gaps before the gap solver and the
+distance clustering existed. It is not even a tolerance:
+- two points 0.001 apart on each side of a cell border stay apart;
+- two points 0.09 apart in one cell are fused;
+- nothing asks whether there was a gap to close.
+
+Federico's case: a production part with an r = 1.5 arc of 359.4° at the tip of a
+very sharp corner. Each end meets a side exactly, and the ends are 0.015
+apart. The grid made both ends one node, the arc became a self-loop and left
+the graph, and the outer went straight through the node, re-closing the
+corner without the arc. The arc came out as an inner of area 7.02, or as a
+cluster of its own where it touched the outer. Everything was closed and well
+nested, so `is_valid` was True on geometry that was not the drawing's. Ends
+falling into two cells (chords 0.03, 0.08) kept the arc in the outer: the
+grid decided by chance.
+
+**Rule.** One grid, `NODE_DECIMALS = 3` in `core/geometry/measure.py`, the
+default of `round_point`, for every reading and every tolerance. Two ends are
+one node only if they coincide on that grid. The tolerance is only the
+widest gap that may be closed:
+- by `close_free_gaps` (pairs, D112);
+- by the tolerant step of `find_loops` (distance clustering);
+- by `island()`'s `max_gap`.
+
+The geometric reason is D112's, carried down to the nodes: a gap is two
+*free* ends near each other. Two ends that each have an exact partner are
+not a gap. Neither are the two ends of one edge.
+
+- `node_decimals_for` removed. `apply_gap_fixes` loses `node_decimals`, and
+  `rotate_document` loses `tolerance` (only the grid used it). Clean break,
+  no alias.
+- `load_*(tolerance=…)` keeps the parameter. It is stored as the document's
+  default `heal()` tolerance (`node_tolerance()`), and no longer shapes the
+  nodes.
+- `noding.NODE_DECIMALS` now comes from `measure`: one source.
+
+**Corpus, each drawing read only with its own reading.** The map is
+`tests/examples/READINGS.json` (local, folder names may carry client codes).
+
+| reading | files | changed |
+|---|---|---|
+| `heal()` | 475 | 3: the corner tips |
+| `island()` | 97 | 7 |
+
+- **`heal()`:** the 3 changes are all the corner tips, on three parts of
+  one production sheet. Two go from 1 inner to 0, with the arc back in the
+  outer. The third goes from 2 clusters to 1, losing the fake 7.02 piece.
+  Federico checked the output: correct.
+- **`island()`:** two sheets (one is `regr_01`) gain a closed 3×6 slot.
+  `drw_0031` gains a thin 0.14 inner. One sheet loses a zero-area "hole".
+  The trash counts move by ±1–34. Sheets of views are not forge's test
+  bed: judging them belongs to snapdraw. Drawings not yet anonymized never
+  enter the repo and are not part of the count.
+
+Every golden test is still green. Two tests are new
+(`test_heal_steps.TestSingleNodeGrid`), and both are red on 0.14.2.
+`test_007` was moved to ends that fuse on the fine grid. Suite: 1206
+passed; only the two known text budgets are red. snapbend: 427 passed.
+
+### D114 — `Feature` becomes `Curve`: the base of the model is geometry, not a reading ✅
+"Feature" is a reading word: a feature is a hole, a bend, a slot, which is
+what a consumer finds, not what forge builds. The base classes carry only
+segments, styles, a role and, when closed, a polygon. That is a curve,
+closed or open, in the mathematical sense (a closed curve bounds a region,
+straight pieces included). Same line as D68, where `slot` became `stadium`.
+`Path` was weighed and dropped: it reads as `pathlib.Path`, which every
+script around forge imports. `Trace` and `Chain` were weighed too: "closed
+trace" reads badly, and `_chain` already means something else in the
+normalizer.
+
+| before | after |
+|---|---|
+| `Feature`, `ClosedFeature`, `OpenFeature` | `Curve`, `ClosedCurve`, `OpenCurve` |
+| `forge/model/feature.py` | `forge/model/curve.py` |
+| `loops_to_features`, `polygons_to_features`, `labeled_features` | `loops_to_curves`, `polygons_to_curves`, `labeled_curves` |
+| `edges_to_open_features`, `loop_to_closed_feature` | `edges_to_open_curves`, `loop_to_closed_curve` |
+
+Clean break, no alias. Not renamed, on purpose: `DetectedFeature`,
+`cluster.features(name)`, `feature_role` and the view-model `features`
+key. They are the consumers' overlay (D90), where "feature" is the right
+word. snapbend's `Hole`, `BendingLine` and `Engraving` now subclass
+`ClosedCurve`/`OpenCurve`. The decisions above keep the names they had when
+they were written.
+
+`main` → **0.15.0** (D113 + D114, one bump: public signatures changed —
+`rotate_document` without `tolerance`, `apply_gap_fixes` without
+`node_decimals`, `node_decimals_for` removed, the `Feature` names above; in
+0.x a breaking change is a minor bump).

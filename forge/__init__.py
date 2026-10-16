@@ -136,10 +136,10 @@ from .core.healing.normalizer import (
 from .core.healing.steps import (
     split_non_finite, split_labeled, close_free_gaps, dangling_splines, find_non_contour_edges,
     find_joining_edges, free_ends, close_near_full_arcs, NEAR_FULL_ARC_MISSING, repair_merged_corners, find_loops, LoopSearch, structural_loops,
-    loops_to_features, polygonize_edges, polygons_to_features,
-    labeled_features, build_hierarchy,
+    loops_to_curves, polygonize_edges, polygons_to_curves,
+    labeled_curves, build_hierarchy,
 )
-from .core.topology.loop_finder import edges_to_open_features
+from .core.topology.loop_finder import edges_to_open_curves
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -211,11 +211,11 @@ __all__ = [
     "find_loops",
     "LoopSearch",
     "structural_loops",
-    "loops_to_features",
+    "loops_to_curves",
     "polygonize_edges",
-    "polygons_to_features",
-    "edges_to_open_features",
-    "labeled_features",
+    "polygons_to_curves",
+    "edges_to_open_curves",
+    "labeled_curves",
     "build_hierarchy",
     # Utilità
     # Ispezione / debug (3 livelli: DXF grezzo → ForgeDocument → ForgeResult)

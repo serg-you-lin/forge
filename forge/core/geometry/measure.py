@@ -19,18 +19,11 @@ Point = Tuple[float, float]
 # Arrotondamento
 # ---------------------------------------------------------------------------
 
-def round_point(pt, decimals: int = 1) -> Tuple:
+NODE_DECIMALS = 3   # griglia unica dei nodi, per ogni lettura e ogni tolleranza (MAP.md D113)
+
+
+def round_point(pt, decimals: int = NODE_DECIMALS) -> Tuple:
     return (round(float(pt[0]), decimals), round(float(pt[1]), decimals))
-
-
-def node_decimals_for(tolerance: float) -> int:
-    """
-    Numero di decimali a cui arrotondare gli endpoint per la topologia.
-
-    Unica fonte di verità — usata da ForgeAdapter e dai passi di heal() perché
-    producano nodi coerenti a parità di tolleranza.
-    """
-    return max(round(-math.log10(tolerance * 2)), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -148,7 +141,7 @@ def chord_angle_deg(a: Point, b: Point) -> float:
 # Serve alla regola di processo `Ø < max_drill_diameter → foro` che vive in
 # detect_flat(): dato un contorno interno, questo helper dice se è geometricamente
 # un cerchio e con quale diametro/centro. Prima la stessa logica stava in
-# `hierarchy._single_loop_geometry` e i valori erano stoccati su ClosedFeature
+# `hierarchy._single_loop_geometry` e i valori erano stoccati su ClosedCurve
 # (campi rimossi in D15) — ora si ricava qui, al momento della classificazione.
 
 CIRCULAR_BBOX_ASPECT_TOLERANCE = 0.15

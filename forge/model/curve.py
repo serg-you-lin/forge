@@ -1,15 +1,16 @@
 """
-model/feature.py
+model/curve.py
 
-Gerarchia base del dominio forge.
+Gerarchia base del dominio forge: una curva è una sequenza di segmenti,
+chiusa o aperta. Nome geometrico, non di processo (MAP.md D114).
 
-Feature
-├── ClosedFeature   — contorno chiuso (loop), ha polygon e segments
-└── OpenFeature     — tracciato aperto, ha segments ma non polygon
+Curve
+├── ClosedCurve   — contorno chiuso (loop), ha polygon e segments
+└── OpenCurve     — tracciato aperto, ha segments ma non polygon
 
 Tutte le entità del modello ereditano da qui:
-    Hole(ClosedFeature), ForgeContour(ClosedFeature)
-    BendingLine(OpenFeature), Engraving(OpenFeature)
+    Hole(ClosedCurve), ForgeContour(ClosedCurve)
+    BendingLine(OpenCurve), Engraving(OpenCurve)
 
 Note:
     - segments è List[LineSeg | ArcSeg | SplineSeg] — primitive pure, zero ezdxf
@@ -34,19 +35,19 @@ from forge.model.style import EdgeStyle
 
 
 @dataclass
-class Feature:
+class Curve:
     """
     Radice della gerarchia. Porta solo identità semantica e traceability.
 
-    Non istanziare direttamente — usare ClosedFeature o OpenFeature.
+    Non istanziare direttamente — usare ClosedCurve o OpenCurve.
     """
     role:       str          # costante ContourRole, o slug di un consumatore
 
 
 @dataclass
-class ClosedFeature(Feature):
+class ClosedCurve(Curve):
     """
-    Feature con geometria chiusa: ha un polygon e una lista di segmenti.
+    Curva chiusa: ha un polygon e una lista di segmenti.
 
     Il polygon è prodotto dall'adapter (o dal polygon_builder) e passato
     al costruttore — il core non lo ricalcola mai.
@@ -69,9 +70,9 @@ class ClosedFeature(Feature):
 
 
 @dataclass
-class OpenFeature(Feature):
+class OpenCurve(Curve):
     """
-    Feature con geometria aperta: ha segmenti ma non un polygon.
+    Curva aperta: ha segmenti ma non un polygon.
     """
     segments:    List[LineSeg | ArcSeg | SplineSeg] = field(default_factory=list)
     styles:      List[EdgeStyle]                  = field(default_factory=list)

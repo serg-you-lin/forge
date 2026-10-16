@@ -15,29 +15,6 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
-## APERTO (16 ottobre, MAP.md D112) — arco sulla punta di uno spigolo strettissimo: l'arrotondamento dei nodi lo stacca dall'outer
-
-Visto sui fogli cogo: un arco r=1.5 di 359.4–359.7° chiude la punta di uno
-spigolo molto stretto. I due lati arrivano esattamente ai suoi capi (distanza
-0), ma i capi distano 0.008–0.015 fra loro. L'arrotondamento di
-`Edge.start`/`Edge.end` (1 decimale con la tolleranza di default) fonde i due
-capi in un nodo solo, e l'arco diventa un self-loop: esce dal grafo come
-loop degenere. L'outer passa dritto per quel nodo, quindi lo spigolo si
-richiude senza l'arco. L'arco esce come inner di area 7.02, o come cluster
-a sé quando tocca l'outer. Atteso (Federico): l'uscita identica
-all'ingresso, con l'arco dentro l'outer; solo le linee di piega vanno nel
-trash.
-
-Se i capi cadono in due nodi diversi, invece, l'arco resta giustamente
-nell'outer. Succede con le corde da 0.03 e 0.08, quindi la sorte la decide
-la griglia di arrotondamento.
-
-Il meccanismo da toccare è l'identità dei nodi. Qui non c'è nessun gap: ogni
-capo ha un compagno esatto. La tolleranza (D112: misura un gap, non un lato)
-non dovrebbe fondere due giunzioni esatte distinte, e nemmeno i due capi
-dello stesso edge. È una decisione sul modello dei nodi, da prendere con
-Federico prima di scrivere codice.
-
 ## APERTO (16 ottobre, MAP.md D108) — rename `forge` → `topo`, distribuzione `g-topo`
 
 Da fare: package `forge/` → `topo/`, `pyproject.toml` (`name = "g-topo"`),

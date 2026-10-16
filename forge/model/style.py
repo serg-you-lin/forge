@@ -8,7 +8,7 @@ non è uno dei tre standard BYLAYER/BYBLOCK/CONTINUOUS) è già risolto in una
 tupla di lunghezze (`linetype_pattern`), pronta per essere ri-registrata in un
 documento di output senza mai riaprire la sorgente. Captato dall'adapter al
 load (`Edge.style`), sopravvive nel modello come `styles` — lista parallela a
-`segments` su ClosedFeature/OpenFeature — fino a write(), che ripristina
+`segments` su ClosedCurve/OpenCurve — fino a write(), che ripristina
 sempre il linetype (Cluster E). Il colore NON viene mai riapplicato in
 output: resta quello del layer forge di destinazione, una decisione di
 dominio per ruolo (`rules/palette.py`) — trash compreso. `color`/`true_color`

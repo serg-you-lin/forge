@@ -7,7 +7,7 @@ D15: HierarchyBuilder costruisce SOLO l'albero di contenimento —
 `ForgeCluster(outer, inners=[ForgeContour...])`, zero `Hole`. La classificazione
 hole / countersink è di `detect_flat()` (vedi tests/unit/test_detect.py).
 
-I proxy ClosedFeature/OpenFeature vengono costruiti direttamente con Polygon
+I proxy ClosedCurve/OpenCurve vengono costruiti direttamente con Polygon
 shapely e primitive native — nessun adapter DXF, nessun file reale.
 """
 
@@ -16,7 +16,7 @@ import unittest
 from shapely.geometry import Polygon
 
 from forge.core.primitives.segments import LineSeg
-from forge.model.feature import ClosedFeature, OpenFeature
+from forge.model.curve import ClosedCurve, OpenCurve
 from forge.model.role import ContourRole
 from forge.core.healing.hierarchy import HierarchyBuilder
 
@@ -26,7 +26,7 @@ from forge.core.healing.hierarchy import HierarchyBuilder
 # ---------------------------------------------------------------------------
 
 def _make_proxy(polygon, *, role=ContourRole.UNKNOWN):
-    return ClosedFeature(role=role, polygon=polygon)
+    return ClosedCurve(role=role, polygon=polygon)
 
 
 def _make_open_proxy(pts, *, role=ContourRole.UNKNOWN):
@@ -34,7 +34,7 @@ def _make_open_proxy(pts, *, role=ContourRole.UNKNOWN):
         LineSeg(start=pts[i], end=pts[i + 1])
         for i in range(len(pts) - 1)
     ]
-    return OpenFeature(role=role, segments=segments)
+    return OpenCurve(role=role, segments=segments)
 
 
 def _circle_proxy(cx, cy, r):
@@ -175,7 +175,7 @@ class TestNestingDepthAndParent(unittest.TestCase):
 class TestTrash(unittest.TestCase):
     """
     - 1 proxy outer (100×100)
-    - 1 OpenFeature role=UNKNOWN fuori dall'outer
+    - 1 OpenCurve role=UNKNOWN fuori dall'outer
 
     Atteso: il proxy aperto flottante finisce in trash, l'outer produce 1 ForgeCluster.
     """

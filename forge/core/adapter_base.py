@@ -16,15 +16,16 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from .topology.edge import Edge
-from .geometry.measure import node_decimals_for
+from .geometry.measure import NODE_DECIMALS
 from ..model.document import DEFAULT_NODE_TOLERANCE
 
 
 class ForgeAdapter(ABC):
 
     def __init__(self, tolerance: float = DEFAULT_NODE_TOLERANCE):
+        # `tolerance` è il gap che heal() chiuderà di default, non la griglia dei nodi (D113)
         self.tolerance = tolerance
-        self.node_decimals = node_decimals_for(tolerance)
+        self.node_decimals = NODE_DECIMALS
 
     @abstractmethod
     def to_edges(self) -> list[Edge]:

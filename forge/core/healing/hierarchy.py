@@ -3,7 +3,7 @@
 from typing import Optional
 from shapely.geometry import Polygon
 
-from ...model.feature import ClosedFeature
+from ...model.curve import ClosedCurve
 from ...model.cluster import ForgeCluster
 from ...model.contour import ForgeContour
 from ...model.role import ContourRole, is_structural_role
@@ -15,16 +15,16 @@ MIN_SINGLE_LOOP_DIAMETER = 0.05
 
 
 # ---------------------------------------------------------------------------
-# Conversione loop → ClosedFeature
+# Conversione loop → ClosedCurve
 # ---------------------------------------------------------------------------
 
-def loop_to_closed_feature(
+def loop_to_closed_curve(
     loop,
     role: ContourRole = ContourRole.UNKNOWN,
     polygon=None,
     segments: list = None,
     styles: list = None,
-) -> Optional[ClosedFeature]:
+) -> Optional[ClosedCurve]:
     from ...core.topology.loop_finder import LoopFinder
 
     if polygon is not None:
@@ -46,13 +46,13 @@ def loop_to_closed_feature(
         # Guard sui micro-cerchi: un loop di una singola primitiva circolare
         # con diametro sotto soglia è rumore, non un contorno. La
         # classificazione hole/inner vera e propria è di detect_flat() (D15) —
-        # qui `diameter`/`center` NON vengono stoccati sul feature.
+        # qui `diameter`/`center` NON vengono stoccati sulla curva.
         if len(loop) == 1:
             diameter, _ = circular_geometry(poly, segments)
             if diameter is not None and diameter < MIN_SINGLE_LOOP_DIAMETER:
                 return None
 
-        return ClosedFeature(
+        return ClosedCurve(
             role=role,
             polygon=poly,
             segments=segments or [],
@@ -66,7 +66,7 @@ def loop_to_closed_feature(
 # Albero di contenimento
 # ---------------------------------------------------------------------------
 
-def _place(proxy: ClosedFeature, nodes: list) -> bool:
+def _place(proxy: ClosedCurve, nodes: list) -> bool:
     for node in nodes:
         if node[0].polygon.contains(proxy.polygon):
             if not _place(proxy, node[1]):
@@ -89,7 +89,7 @@ def _build_tree(proxies: list) -> list:
 # ---------------------------------------------------------------------------
 
 def _make_inner(
-    proxy: ClosedFeature,
+    proxy: ClosedCurve,
     parent_role: ContourRole = ContourRole.UNKNOWN,
     depth: int = 1,
     parent: Optional[ForgeContour] = None,

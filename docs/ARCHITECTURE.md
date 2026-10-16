@@ -84,7 +84,7 @@ forge/
 │   ├── cluster.py    ForgeCluster — il contenitore, `detected` è l'overlay
 │   │                 di un consumatore (vocabolario aperto per nome — D44)
 │   ├── detected.py   DetectedFeatures — il contenitore dell'overlay (D44, D90)
-│   ├── feature.py    Feature → ClosedFeature / OpenFeature
+│   ├── curve.py      Curve → ClosedCurve / OpenCurve
 │   ├── contour.py
 │   ├── annotation.py Annotation → Note / Dimension / Leader
 │   └── role.py       ContourRole = solo UNKNOWN/OUTER/INNER — il minimo
@@ -191,8 +191,8 @@ consumatore (snapdraw) compone gli stessi passi come gli serve.
      warning: la discrepanza sopravvive nell'output)
    - se nessun gradino chiude, `heal()` passa all'ultima spiaggia:
      `polygonize_edges` sui segmenti discretizzati, che dà già i contorni
-     (`polygons_to_features`, geometria nativa persa)
-6. **loop → feature** (`structural_loops`, `loops_to_features`): un loop con un
+     (`polygons_to_curves`, geometria nativa persa)
+6. **loop → curva** (`structural_loops`, `loops_to_curves`): un loop con un
    edge di ruolo non strutturale non è contorno
 7. **costruzione gerarchia** (`build_hierarchy`): quale loop contiene quale →
    albero di contenimento `outer` / `inner`. `heal` si ferma qui: **non** decide
@@ -282,11 +282,14 @@ esterno che restituisce codice / materiale / spessore, e a metterli in
 
 ### La tolleranza
 
-`tolerance` (default 0.05, i golden usano 0.5) è la distanza sotto la quale due
-punti sono "lo stesso nodo". Serve in tre modi:
+`tolerance` (default 0.05, i golden usano 0.5) è il gap più largo che forge può
+chiudere. **Non** arrotonda i nodi: ogni endpoint va su una griglia unica
+(`NODE_DECIMALS` = 3 decimali, MAP.md D113), la stessa per `heal()` e `island()`
+e per qualunque tolleranza, così due capi diventano lo stesso nodo solo se
+coincidono davvero. Serve in tre modi:
 
-1. **arrotondamento**: ogni endpoint viene quantizzato su una griglia di lato
-   `tolerance` prima di entrare nel grafo
+1. **gap fra nodi del grafo tollerante** (`find_loops`, ultimo gradino): capi
+   entro `tolerance` fusi per distanza, mai i due capi dello stesso edge (D112)
 2. **chiusura gap**: due endpoint liberi entro `tolerance` vengono congiunti
    prolungando i segmenti
 3. **nodo per contatto** (`split_at_crossings`, D101): un estremo che giace

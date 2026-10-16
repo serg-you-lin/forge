@@ -18,7 +18,7 @@ from shapely import STRtree
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import polygonize, snap, unary_union
 
-from ..geometry.measure import node_decimals_for, round_point, track_points
+from ..geometry.measure import round_point, track_points
 from ..primitives import LineSeg
 from ..primitives.polygon_builder import build_polygon
 from ..primitives.segments import (
@@ -29,12 +29,12 @@ from ..topology.graph import build_node_graph
 from ..topology.loop_finder import LoopFinder, loop_geometry
 from ..topology.non_contour_edges import NonContourEdgeDetector
 from ...model.cluster import ForgeCluster
-from ...model.feature import ClosedFeature, OpenFeature
+from ...model.curve import ClosedCurve, OpenCurve
 from ...model.role import ContourRole, is_structural_role
 from .gap_solver import (
     free_endpoints_from_edges, compute_gap_fixes, apply_gap_fixes, gap_endpoints_at_nodes,
 )
-from .hierarchy import HierarchyBuilder, loop_to_closed_feature
+from .hierarchy import HierarchyBuilder, loop_to_closed_curve
 
 
 @dataclass
@@ -104,13 +104,11 @@ def close_near_full_arcs(edges: List[Edge], tolerance: float,
     Ritorna (edge, n_archi_chiusi).
     """
     graph = build_node_graph(edges)
-    decimals = node_decimals_for(tolerance) if math.isfinite(tolerance) else None
     closed, out = 0, []
     for edge in edges:
         seg = edge.segment
         if isinstance(seg, ArcSeg) and _is_near_full_arc(edge, graph, tolerance, max_missing_angle):
-            pt = segment_endpoints(CircleSeg(center=seg.center, radius=seg.radius))[0]
-            node = round_point(pt, decimals) if decimals is not None else edge.start
+            node = round_point(segment_endpoints(CircleSeg(center=seg.center, radius=seg.radius))[0])
             edge = replace(edge, start=node, end=node,
                            segment=CircleSeg(center=seg.center, radius=seg.radius))
             closed += 1
@@ -145,7 +143,7 @@ def close_free_gaps(edges: List[Edge], tolerance: float) -> List[Edge]:
     fixes = compute_gap_fixes(endpoints, tolerance)
     if not fixes:
         return list(edges)
-    return apply_gap_fixes(edges, fixes, node_decimals_for(tolerance))
+    return apply_gap_fixes(edges, fixes)
 
 
 def dangling_splines(edges: List[Edge]) -> List[Edge]:
@@ -238,7 +236,7 @@ def repair_merged_corners(edges: List[Edge], tolerance: float,
             skipped.append(canon)
     if not fixes:
         return list(edges), 0, skipped
-    return apply_gap_fixes(edges, fixes, node_decimals_for(tolerance)), repaired, skipped
+    return apply_gap_fixes(edges, fixes), repaired, skipped
 
 
 def find_loops(edges: List[Edge], non_contour_ids: Set[int], tolerance: float) -> LoopSearch:
@@ -296,20 +294,20 @@ def structural_loops(loops: List[list],
             if all(e.role == ContourRole.UNKNOWN or structural(e.role) for e, _ in loop)]
 
 
-def loops_to_features(loops: List[list]) -> List[ClosedFeature]:
-    """Un ClosedFeature per loop, col ruolo del primo edge; senza poligono valido, niente."""
-    features = []
+def loops_to_curves(loops: List[list]) -> List[ClosedCurve]:
+    """Un ClosedCurve per loop, col ruolo del primo edge; senza poligono valido, niente."""
+    curves = []
     for loop in loops:
         role = loop[0][0].role if loop else ContourRole.UNKNOWN
         geometry = loop_geometry(loop)
         if geometry is None:
             continue
         segments, styles, polygon = geometry
-        feature = loop_to_closed_feature(loop, role=role, polygon=polygon, segments=segments,
-                                         styles=styles)
-        if feature is not None:
-            features.append(feature)
-    return features
+        curve = loop_to_closed_curve(loop, role=role, polygon=polygon, segments=segments,
+                                     styles=styles)
+        if curve is not None:
+            curves.append(curve)
+    return curves
 
 
 def polygonize_edges(edges: List[Edge], tolerance: float) -> List[Polygon]:
@@ -328,34 +326,34 @@ def polygonize_edges(edges: List[Edge], tolerance: float) -> List[Polygon]:
     return list(polygonize(snap(merged, merged, tolerance)))
 
 
-def polygons_to_features(polygons: List[Polygon]) -> List[ClosedFeature]:
+def polygons_to_curves(polygons: List[Polygon]) -> List[ClosedCurve]:
     """
-    Per poligono un ClosedFeature OUTER dal bordo esterno e uno INNER per
+    Per poligono un ClosedCurve OUTER dal bordo esterno e uno INNER per
     buco, a LineSeg: la geometria nativa è persa.
     """
-    features = []
+    curves = []
     for poly in polygons:
         if not poly.is_valid:
             poly = poly.buffer(0)
-        outer = loop_to_closed_feature([], role=ContourRole.OUTER, polygon=poly,
-                                       segments=_ring_segments(poly.exterior.coords))
+        outer = loop_to_closed_curve([], role=ContourRole.OUTER, polygon=poly,
+                                     segments=_ring_segments(poly.exterior.coords))
         if outer is not None:
-            features.append(outer)
+            curves.append(outer)
         for interior in poly.interiors:
-            inner = loop_to_closed_feature([], role=ContourRole.INNER, polygon=Polygon(interior),
-                                           segments=_ring_segments(interior.coords))
+            inner = loop_to_closed_curve([], role=ContourRole.INNER, polygon=Polygon(interior),
+                                         segments=_ring_segments(interior.coords))
             if inner is not None:
-                features.append(inner)
-    return features
+                curves.append(inner)
+    return curves
 
 
-def labeled_features(edges: List[Edge]) -> list:
+def labeled_curves(edges: List[Edge]) -> list:
     """
-    Gli Edge messi da parte da split_labeled() come feature col loro ruolo
-    intatto: ClosedFeature se l'edge è già chiuso da solo (cerchio, spline
-    chiusa), OpenFeature altrimenti. Tracce degeneri escluse.
+    Gli Edge messi da parte da split_labeled() come curve col loro ruolo
+    intatto: ClosedCurve se l'edge è già chiuso da solo (cerchio, spline
+    chiusa), OpenCurve altrimenti. Tracce degeneri escluse.
     """
-    features = []
+    curves = []
     for edge in edges:
         seg = edge.segment
         if seg is None:
@@ -363,25 +361,25 @@ def labeled_features(edges: List[Edge]) -> list:
         if edge.start == edge.end:
             polygon = build_polygon([seg], DEFAULT_TOLERANCE)
             if polygon is not None:
-                features.append(ClosedFeature(role=edge.role, polygon=polygon,
-                                              segments=[seg], styles=[edge.style]))
+                curves.append(ClosedCurve(role=edge.role, polygon=polygon,
+                                          segments=[seg], styles=[edge.style]))
             continue
         if len(track_points([seg])) >= 2:
-            features.append(OpenFeature(role=edge.role, segments=[seg], styles=[edge.style]))
-    return features
+            curves.append(OpenCurve(role=edge.role, segments=[seg], styles=[edge.style]))
+    return curves
 
 
-def build_hierarchy(features: list, label: str = "", source_file: str = "",
+def build_hierarchy(curves: list, label: str = "", source_file: str = "",
                     is_structural: Optional[Callable[[str], bool]] = None
                     ) -> Tuple[List[ForgeCluster], list]:
     """
-    Albero di contenimento sui ClosedFeature: ogni radice è un ForgeCluster
+    Albero di contenimento sui ClosedCurve: ogni radice è un ForgeCluster
     (outer), i discendenti i suoi inners con `depth`/`parent`. Ritorna
     (cluster, trash): trash è ciò che non è finito in un cluster e non è
     strutturale.
     """
     builder = HierarchyBuilder(label=label, source_file=source_file, is_structural=is_structural)
-    return builder.build(features)
+    return builder.build(curves)
 
 
 # ---------------------------------------------------------------------------

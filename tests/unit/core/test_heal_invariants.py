@@ -280,7 +280,7 @@ def _make_rotation_test(angle: float):
                 self.skipTest("gap largo esattamente la tolleranza: sul filo della soglia")
             doc, result = _read(dxf)
             tol = _tolerance(dxf)
-            turned = forge.heal(forge.rotate_document(doc, angle, tolerance=tol), tolerance=tol)
+            turned = forge.heal(forge.rotate_document(doc, angle), tolerance=tol)
             back = [affinity.rotate(p, -angle, origin=(0, 0), use_radians=True) for p in _outers(turned)]
             self.assertEqual(turned.cluster_count, result.cluster_count, f"{dxf.stem}: ruotato cambia i pezzi")
             self.assertEqual(_shape_differences(_outers(result), back), [],

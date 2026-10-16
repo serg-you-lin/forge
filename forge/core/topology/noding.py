@@ -39,7 +39,8 @@ from ..primitives.segments import (
     LineSeg, ArcSeg, CircleSeg, DEFAULT_TOLERANCE, angle_from_start, segment_endpoints, segment_is_closed,
 )
 
-NODE_DECIMALS = 3   # griglia dei nodi della rete: tagli e estremi sulla stessa
+from ..geometry.measure import NODE_DECIMALS   # tagli ed estremi sulla stessa griglia di tutto forge (D113)
+
 GRAPH_EPSILON = 0.01   # mm — due tagli dello stesso incrocio, calcolati da due edge, sono un nodo solo
 
 _EPS = 1e-9

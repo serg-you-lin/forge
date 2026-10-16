@@ -30,7 +30,7 @@ from shapely.ops import unary_union
 from ..model.cluster import ForgeCluster
 from ..model.contour import ForgeContour
 from ..model.document import ForgeDocument
-from ..model.feature import OpenFeature
+from ..model.curve import OpenCurve
 from ..model.result import ForgeResult
 from ..model.role import ContourRole, is_structural_role
 from .primitives.segments import DEFAULT_TOLERANCE, LineSeg, segment_endpoints, segment_is_closed
@@ -111,7 +111,7 @@ def island(doc: ForgeDocument, *, max_gap: float,
     for i, r in enumerate(readings):
         if r.outer is not None and r.nested_in is None:
             clusters[i] = _cluster(r, doc.source_path, tol)
-    owned = []   # (OpenFeature, cluster che la contiene)
+    owned = []   # (OpenCurve, cluster che la contiene)
     for i, r in enumerate(readings):
         host = clusters.get(r.nested_in) if r.nested_in is not None else clusters.get(i)
         if host is None or r.outer is None:
@@ -129,8 +129,8 @@ def island(doc: ForgeDocument, *, max_gap: float,
         owned += [(f, host) for f in _open(r.spurs + outside + r.non_contour + r.unclassified + r.off_faces)]
     result.clusters = sorted(clusters.values(), key=lambda c: c.outer.polygon.area, reverse=True)
     index = {id(c): k for k, c in enumerate(result.clusters)}
-    for feature, host in owned:
-        feature.cluster_ref = None if host is None else index[id(host)]
+    for curve, host in owned:
+        curve.cluster_ref = None if host is None else index[id(host)]
     result.trash_entities += [f for f, _ in owned]
     if not result.clusters:
         result.is_valid = False
@@ -250,7 +250,7 @@ def _normalize(edges: List[Edge], tolerance: float, max_gap: float) -> List[Edge
     fixes = _drop_redundant_meets(fixes, graph)
     fixes = local_gap_fixes(fixes, gap)
     if fixes:
-        edges = apply_gap_fixes(edges, fixes, NODE_DECIMALS)
+        edges = apply_gap_fixes(edges, fixes)
     return [e for e in edges if e.start != e.end or segment_is_closed(e.segment)]
 
 
@@ -388,5 +388,5 @@ def _contour(segments, styles, polygon, role, parent) -> ForgeContour:
 
 
 def _open(edges: List[Edge]) -> list:
-    return [OpenFeature(role=e.role, segments=[e.segment], styles=[e.style]) for e in edges]
+    return [OpenCurve(role=e.role, segments=[e.segment], styles=[e.style]) for e in edges]
 

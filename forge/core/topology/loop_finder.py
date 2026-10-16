@@ -214,17 +214,17 @@ def loop_geometry(loop) -> Optional[Tuple[list, list, Polygon]]:
 
 
 # ---------------------------------------------------------------------------
-# Edge → OpenFeature — tracce non consumate da loop strutturali
+# Edge → OpenCurve — tracce non consumate da loop strutturali
 # ---------------------------------------------------------------------------
 
-def edges_to_open_features(edges: list, exclude_ids: set) -> list:
+def edges_to_open_curves(edges: list, exclude_ids: set) -> list:
     """
-    Converte gli Edge non assorbiti da un loop strutturale in OpenFeature.
+    Converte gli Edge non assorbiti da un loop strutturale in OpenCurve.
 
     Opera esclusivamente su Edge (role semantico, segmento nativo) —
     zero dipendenze da ezdxf o altro formato.
 
-    L'OpenFeature porta solo `role` + `segments` (primitive native). `pts`,
+    L'OpenCurve porta solo `role` + `segments` (primitive native). `pts`,
     `length`, `shape_type` sono valori derivati: chi li consuma (detect,
     write._write_trash, inspect) li ricava dai segmenti con gli helper
     `track_*` di `core.geometry.measure`.
@@ -233,11 +233,11 @@ def edges_to_open_features(edges: list, exclude_ids: set) -> list:
         edges:       lista di Edge prodotta da adapter.to_edges()
         exclude_ids: id(Edge) già assorbiti in loop strutturali
     """
-    from ...model.feature import OpenFeature
+    from ...model.curve import OpenCurve
     from ...core.primitives.segments import LineSeg
     from ...core.geometry.measure import track_points
 
-    features = []
+    curves = []
     for edge in edges:
         if id(edge) in exclude_ids:
             continue
@@ -248,6 +248,6 @@ def edges_to_open_features(edges: list, exclude_ids: set) -> list:
         if len(track_points([seg])) < 2:
             continue
 
-        features.append(OpenFeature(role=edge.role, segments=[seg], styles=[edge.style]))
+        curves.append(OpenCurve(role=edge.role, segments=[seg], styles=[edge.style]))
 
-    return features
+    return curves

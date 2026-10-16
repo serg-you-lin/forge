@@ -40,12 +40,12 @@ from typing import List, Optional, Tuple
 
 from shapely.affinity import rotate as _shapely_rotate
 
-from ..core.geometry.measure import longest_segment, chord_angle_deg, round_point, node_decimals_for
+from ..core.geometry.measure import longest_segment, chord_angle_deg, round_point
 from ..core.primitives.segments import segment_endpoints
 from ..model.cluster import ForgeCluster
 from ..model.contour import ForgeContour
-from ..model.document import DEFAULT_NODE_TOLERANCE, ForgeDocument
-from ..model.feature import OpenFeature
+from ..model.document import ForgeDocument
+from ..model.curve import OpenCurve
 from ..model.result import ForgeResult
 
 Point = Tuple[float, float]
@@ -160,7 +160,7 @@ def rotate_result(result: ForgeResult, angle_rad: float, origin: Point = (0.0, 0
     new_clusters = [rotate_cluster(c, angle_rad, origin) for c in result.clusters]
     new_trash = [
         replace(t, segments=[s.rotated(angle_rad, origin) for s in t.segments])
-        if isinstance(t, OpenFeature) else t
+        if isinstance(t, OpenCurve) else t
         for t in result.trash_entities
     ]
     new_arcs = [a.rotated(angle_rad, origin) for a in result.all_arcs]
@@ -188,12 +188,11 @@ def rotate_document(
     doc: ForgeDocument,
     angle_rad: float,
     origin: Point = (0.0, 0.0),
-    tolerance: float = DEFAULT_NODE_TOLERANCE,
 ) -> ForgeDocument:
     """
     Nuovo `ForgeDocument` con ogni `edge.segment` ruotato di `angle_rad`
-    (radianti, CCW) attorno a `origin` — stesso arrotondamento degli endpoint
-    (`round_point`/`node_decimals_for`) usato dall'adapter al caricamento.
+    (radianti, CCW) attorno a `origin`, coi nodi sulla stessa griglia del
+    caricamento (`round_point`, `NODE_DECIMALS`).
 
     Primitiva pre-heal: utile quando l'angolo è già noto da altrove (non
     serve misurarlo su questo stesso documento) e si vuole ruotare prima di
@@ -203,17 +202,11 @@ def rotate_document(
 
     Le annotazioni non sono ruotate — stesso limite di `rotate_result`.
     """
-    decimals = node_decimals_for(tolerance)
     new_edges: List = []
     for edge in doc.edges:
         seg = edge.segment.rotated(angle_rad, origin)
         start, end = segment_endpoints(seg)
-        new_edges.append(replace(
-            edge,
-            segment=seg,
-            start=round_point(start, decimals),
-            end=round_point(end, decimals),
-        ))
+        new_edges.append(replace(edge, segment=seg, start=round_point(start), end=round_point(end)))
 
     new_warnings = list(doc.warnings)
     if doc.annotations:

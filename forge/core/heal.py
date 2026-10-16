@@ -21,7 +21,7 @@ from ..model.document import ForgeDocument
 from ..model.result import ForgeResult
 from ..model.role import is_structural_role
 from .primitives.segments import ArcSeg
-from .topology.loop_finder import edges_to_open_features
+from .topology.loop_finder import edges_to_open_curves
 from .healing.normalizer import (
     merge_collinear_overlaps, merge_cocircular_overlaps, weld_degenerate_linesegs,
 )
@@ -29,8 +29,8 @@ from .healing.steps import (
     LoopSearch, split_non_finite, split_labeled, close_near_full_arcs, NEAR_FULL_ARC_MISSING,
     close_free_gaps, dangling_splines, find_non_contour_edges,
     find_joining_edges, free_ends,
-    find_loops, structural_loops, loops_to_features, polygonize_edges,
-    polygons_to_features, labeled_features, build_hierarchy,
+    find_loops, structural_loops, loops_to_curves, polygonize_edges,
+    polygons_to_curves, labeled_curves, build_hierarchy,
 )
 
 
@@ -121,17 +121,17 @@ def heal(doc: ForgeDocument, tolerance: Optional[float] = None, label: str = "",
                                                 tol if search.method == "tolerant" else 0.0)
 
     # Scala finita senza loop: ultima spiaggia polygonize, che dà già i
-    # ClosedFeature (OUTER dal bordo, INNER dai buchi) — nessun edge "in loop".
+    # ClosedCurve (OUTER dal bordo, INNER dai buchi) — nessun edge "in loop".
     loop_edge_ids = set()
     closed = []
     if search.loops:
         kept = structural_loops(search.loops, structural)
         loop_edge_ids = {id(e) for loop in kept for e, _ in loop}
-        closed = loops_to_features(kept)
+        closed = loops_to_curves(kept)
     elif edges:
         result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
         polygons = polygonize_edges(edges, tol)
-        closed = polygons_to_features(polygons)
+        closed = polygons_to_curves(polygons)
         if polygons:
             result.warnings.append(
                 f"Geometria ricostruita via fallback polygonize "
@@ -143,16 +143,16 @@ def heal(doc: ForgeDocument, tolerance: Optional[float] = None, label: str = "",
                 "potrebbero essere marcature o geometria aperta."
             )
 
-    features = closed + edges_to_open_features(edges, exclude_ids=loop_edge_ids)
-    if not features:
+    curves = closed + edges_to_open_curves(edges, exclude_ids=loop_edge_ids)
+    if not curves:
         result.errors.append("Nessuna geometria chiusa trovata dopo healing.")
         result.is_valid = False
         return result
 
-    clusters, trash = build_hierarchy(features, label=label, source_file=source_file,
+    clusters, trash = build_hierarchy(curves, label=label, source_file=source_file,
                                       is_structural=structural)
     result.clusters = clusters
-    result.trash_entities = trash + labeled_features(labeled)
+    result.trash_entities = trash + labeled_curves(labeled)
     if not clusters:
         # La geometria non compone nessun contorno esterno chiuso: il
         # risultato non è un pezzo, è un file non lavorabile. La trash resta

@@ -337,7 +337,7 @@ def _moved_segment(segment, role: str, new_pt: Point2D):
     return None
 
 
-def apply_gap_fixes(edges: List[Edge], fixes: List[GapFix], node_decimals: int = 1) -> List[Edge]:
+def apply_gap_fixes(edges: List[Edge], fixes: List[GapFix]) -> List[Edge]:
     """
     Applica i GapFix restituendo una NUOVA lista di Edge — `edges` non viene mutata.
 
@@ -358,7 +358,7 @@ def apply_gap_fixes(edges: List[Edge], fixes: List[GapFix], node_decimals: int =
             new_seg = _moved_segment(base.segment, fix.role, fix.new_pt)
             if new_seg is None:
                 continue
-            node = round_point(fix.new_pt, node_decimals)
+            node = round_point(fix.new_pt)
             replacements[id(fix.ref)] = Edge(
                 role=base.role,
                 start=node if fix.role == "start" else base.start,
@@ -368,12 +368,12 @@ def apply_gap_fixes(edges: List[Edge], fixes: List[GapFix], node_decimals: int =
         elif isinstance(fix, AddSegment):
             a = (float(fix.pt_a[0]), float(fix.pt_a[1]))
             b = (float(fix.pt_b[0]), float(fix.pt_b[1]))
-            if round_point(a, node_decimals) == round_point(b, node_decimals):
+            if round_point(a) == round_point(b):
                 continue
             added.append(Edge(
                 role=ContourRole.UNKNOWN,
-                start=round_point(a, node_decimals),
-                end=round_point(b, node_decimals),
+                start=round_point(a),
+                end=round_point(b),
                 segment=LineSeg(start=a, end=b),
             ))
 
