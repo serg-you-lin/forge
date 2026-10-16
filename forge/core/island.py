@@ -246,7 +246,7 @@ def _normalize(edges: List[Edge], tolerance: float, max_gap: float) -> List[Edge
     edges = weld_degenerate_linesegs(merge_cocircular_overlaps(merge_collinear_overlaps(edges)))
     gap = max(tolerance, max_gap)
     graph = build_node_graph(edges)
-    fixes = compute_gap_fixes(free_endpoints_from_edges(edges, graph), gap)
+    fixes = compute_gap_fixes(free_endpoints_from_edges(edges, graph), gap, pairwise=False)
     fixes = _drop_redundant_meets(fixes, graph)
     fixes = local_gap_fixes(fixes, gap)
     if fixes:

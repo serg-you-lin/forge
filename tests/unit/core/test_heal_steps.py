@@ -145,13 +145,93 @@ class TestLooseEnds(unittest.TestCase):
         self.assertEqual(result.warnings, [])
 
     def test_005_estremo_fuso_dal_grafo_tollerante_non_e_libero(self):
-        # arco da solo aperto di 0.5, tol 1: il gap solver non unisce un edge a
-        # se stesso, lo chiude il grafo tollerante — e i due estremi non sono liberi
-        half = math.asin(0.25 / 10.0)
-        doc = forge.load_segments([ArcSeg((0.0, 0.0), 10.0, 2 * half, 2 * math.pi)], tolerance=1.0)
-        result = forge.heal(doc)
+        # l'angolo rotto lo chiude solo il grafo tollerante (D57): sui suoi
+        # nodi i due capi dell'angolo sono uno, libero resta il moncone
+        edges = _broken_square(spur=True)
+        self.assertEqual([p for p, _ in forge.free_ends(edges)], [(10.0, 0.0), (10.1, -5.0)])
+        self.assertEqual([p for p, _ in forge.free_ends(edges, epsilon=0.1)], [(10.1, -5.0)])
+
+
+def _arc(radius, missing_deg, center=(0.0, 0.0)):
+    half = math.radians(missing_deg) / 2
+    return ArcSeg(center, radius, half, 2 * math.pi - half)
+
+
+class TestShortElementsAndTolerance(unittest.TestCase):
+    """D112: la tolleranza misura un gap, non la lunghezza di un lato. Quadrato
+    100 con l'angolo in alto a destra raccordato/smussato, staccato di 0.3 ai
+    due capi, tol 1: i lati vicini stanno entro tol fra loro, ma ognuno ha il
+    capo dell'elemento corto più vicino."""
+
+    GAP = 0.3
+
+    def _heal(self, corner, a, b):
+        g = self.GAP
+        segs = [LineSeg((0, 0), (100, 0)), LineSeg((100, 0), (100, a - g)), corner,
+                LineSeg((b - g, 100), (0, 100)), LineSeg((0, 100), (0, 0))]
+        return forge.heal(forge.load_segments(segs, tolerance=1.0))
+
+    def test_001_raccordo_resta(self):
+        result = self._heal(ArcSeg((99.6, 99.6), 0.4, 0, math.pi / 2), 99.6, 99.6)
         self.assertEqual(result.cluster_count, 1)
-        self.assertFalse(any("estremi liberi" in w for w in result.warnings), result.warnings)
+        outer = result.clusters[0].outer
+        self.assertIn("ArcSeg", [type(s).__name__ for s in outer.segments])
+        self.assertAlmostEqual(outer.area, 10000 - (0.4 ** 2 - math.pi * 0.4 ** 2 / 4), places=3)
+
+    def test_002_smusso_resta(self):
+        c = 0.5 / math.sqrt(2)
+        result = self._heal(LineSeg((100, 100 - c), (100 - c, 100)), 100 - c, 100 - c)
+        self.assertEqual(result.cluster_count, 1)
+        self.assertAlmostEqual(result.clusters[0].outer.area, 10000 - c * c / 2, places=3)
+
+    def test_003_ogni_estremo_chiude_un_gap_solo(self):
+        # tre estremi entro tol: si accoppiano i due più vicini, il terzo resta libero
+        edges = [_line((0, 0), (10, 0)), _line((10.2, 0), (20, 0)), _line((10.5, 0.6), (10.5, 10))]
+        healed = forge.close_free_gaps(edges, 1.0)
+        self.assertEqual(len(forge.free_ends(healed)), 4, "i due capi esterni e i due del moncone")
+
+
+class TestCloseNearFullArcs(unittest.TestCase):
+    """D112: un arco diventa cerchio solo se il gap è entro tolleranza (è un
+    gap) E l'angolo mancante è entro la soglia (è un cerchio)."""
+
+    def _close(self, seg, tolerance, **kw):
+        doc = forge.load_segments([seg], tolerance=0.01)
+        edges, n = forge.close_near_full_arcs(list(doc.edges), tolerance, **kw)
+        return type(edges[0].segment).__name__, n
+
+    def test_001_export_rotto_diventa_cerchio(self):
+        self.assertEqual(self._close(_arc(3.0, 0.4), 0.05), ("CircleSeg", 1))
+
+    def test_002_gap_entro_tol_ma_non_e_un_cerchio(self):
+        self.assertEqual(self._close(_arc(0.4, 90), 1.0), ("ArcSeg", 0), "un tre quarti piccolo")
+        self.assertEqual(self._close(_arc(10.0, 2.9), 1.0), ("ArcSeg", 0))
+
+    def test_003_quasi_cerchio_ma_gap_oltre_tol(self):
+        self.assertEqual(self._close(_arc(500.0, 1.5), 0.1), ("ArcSeg", 0))
+
+    def test_004_solo_angolo_a_scelta_del_chiamante(self):
+        self.assertEqual(self._close(_arc(500.0, 1.5), math.inf), ("CircleSeg", 1))
+
+    def test_005_capo_collegato_non_si_chiude(self):
+        arc = _arc(10.0, 1.0)
+        end = arc._point_at(arc.end_angle)
+        doc = forge.load_segments([arc, LineSeg(end, (end[0] + 5, end[1]))], tolerance=0.01)
+        _, n = forge.close_near_full_arcs(list(doc.edges), 1.0)
+        self.assertEqual(n, 0)
+
+    def test_007_punta_di_spigolo_coi_capi_fusi_non_si_chiude(self):
+        # i due capi cadono nello stesso nodo, ma a quel nodo arrivano due lati
+        arc = _arc(1.5, 0.3)
+        a, b = arc._point_at(arc.start_angle), arc._point_at(arc.end_angle)
+        doc = forge.load_segments([LineSeg((20, 0.3), a), arc, LineSeg(b, (20, -0.3))], tolerance=0.1)
+        self.assertEqual(doc.edges[1].start, doc.edges[1].end, "premessa: capi fusi")
+        _, n = forge.close_near_full_arcs(list(doc.edges), 0.1)
+        self.assertEqual(n, 0)
+
+    def test_006_heal_non_chiude_un_arco_per_sola_tolleranza(self):
+        result = forge.heal(forge.load_segments([_arc(10.0, 2.9)], tolerance=1.0))
+        self.assertEqual(result.cluster_count, 0)
 
 
 class TestFindLoops(unittest.TestCase):

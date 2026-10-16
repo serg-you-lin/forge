@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`74` modules · `379` module-level functions · `56` classes · `13599` lines of code.
+`74` modules · `381` module-level functions · `56` classes · `13671` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -36,7 +36,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `annotation_anchor` | func | `forge/adapters/dxf/annotation_extractor.py:94` | Punto d'ancoraggio XY di un'entità di annotazione. |
 | `_annotation_entry` | func | `forge/io/view_model.py:106` |  |
 | `_annotation_signature` | func | `forge/adapters/dxf/loader.py:63` |  |
-| `apply_gap_fixes` | func | `forge/core/healing/gap_solver.py:326` | Applica i GapFix restituendo una NUOVA lista di Edge — `edges` non viene mutata. |
+| `apply_gap_fixes` | func | `forge/core/healing/gap_solver.py:340` | Applica i GapFix restituendo una NUOVA lista di Edge — `edges` non viene mutata. |
 | `_apply_role_styles` | func | `forge/io/dxf.py:463` | Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer |
 | `_Arc` | class | `forge/core/healing/outer_scan.py:104` |  |
 | `arc_angles` | func | `forge/core/geometry/points.py:121` | `(start_angle, end_angle, ccw)` in radianti di un arco che passa per |
@@ -62,7 +62,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `BridgeTab` | class | `forge/tools/tabs.py:84` | Risultato di un singolo ponte. `*_cut_{a,b}` sono `(punto, indice_lato)` |
 | `_bspline_basis_row` | func | `forge/core/geometry/points.py:179` | Le n+1 funzioni di base N_i,p(u) (Cox-de Boor, Piegl & Tiller A2.2). |
 | `_bspline_find_span` | func | `forge/core/primitives/segments.py:258` | Indice `i` tale che `knots[i] <= t < knots[i+1]` (ricerca binaria, "The |
-| `build_hierarchy` | func | `forge/core/healing/steps.py:322` | Albero di contenimento sui ClosedFeature: ogni radice è un ForgeCluster |
+| `build_hierarchy` | func | `forge/core/healing/steps.py:374` | Albero di contenimento sui ClosedFeature: ogni radice è un ForgeCluster |
 | `build_metadata` | func | `forge/io/exporter.py:23` | Costruisce il dict dei metadati per un ForgeCluster |
 | `build_node_graph` | func | `forge/core/topology/graph.py:268` | Costruisce il Graph da list[Edge]. |
 | `build_polygon` | func | `forge/core/primitives/polygon_builder.py:19` | Costruisce un Polygon shapely da una lista di primitive geometriche. |
@@ -78,7 +78,8 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `circular_geometry` | func | `forge/core/geometry/measure.py:157` | (diameter, center) se il contorno è ~circolare, altrimenti (None, None). |
 | `_clamp` | func | `forge/core/primitives/trim.py:86` | Un punto appena oltre un estremo (entro tolleranza) sta su quell'estremo. |
 | `clean_mtext` | func | `forge/adapters/dxf/mtext.py:18` | Testo semplice da una stringa MTEXT grezza: rimuove i codici di |
-| `close_free_gaps` | func | `forge/core/healing/steps.py:92` | Chiude i gap fra estremi liberi entro `tolerance` col gap solver |
+| `close_free_gaps` | func | `forge/core/healing/steps.py:136` | Chiude i gap fra estremi liberi entro `tolerance` col gap solver |
+| `close_near_full_arcs` | func | `forge/core/healing/steps.py:97` | Un ArcSeg coi due capi liberi diventa CircleSeg (stesso centro e raggio) |
 | `_close_self_loop` | func | `forge/core/topology/graph.py:252` | ArcSeg il cui sviluppo (raggio*sweep) supera epsilon -> CircleSeg (loop degenere vero). Altrimenti `None` (sl… |
 | `ClosedFeature` | class | `forge/model/feature.py:47` | Feature con geometria chiusa: ha un polygon e una lista di segmenti. |
 | `_closest_to` | func | `forge/core/geometry/intersections.py:91` | Restituisce il punto più vicino a ref tra i candidati. |
@@ -90,7 +91,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `CollinearRun` | class | `forge/core/geometry/lines.py:94` | Tratti sulla stessa retta, in fila lungo di essa. |
 | `color_for_layer` | func | `forge/adapters/dxf/layers.py:58` | Colore DXF canonico per un layer. |
 | `_color_index` | func | `forge/model/role_rule.py:105` | Intero ACI da intero, stringa numerica ("4") o nome standard ("cyan"). |
-| `compute_gap_fixes` | func | `forge/core/healing/gap_solver.py:174` | Calcola i GapFix per tutti gli endpoint liberi entro tolerance. |
+| `compute_gap_fixes` | func | `forge/core/healing/gap_solver.py:174` | Calcola i GapFix fra gli endpoint liberi entro tolerance. I due capi |
 | `concentric_groups` | func | `forge/core/geometry/shape.py:192` | Partizione dei contorni circolari di `items` per centro: ogni cerchio sta |
 | `ConcentricGroup` | class | `forge/core/geometry/shape.py:175` | Contorni circolari con lo stesso centro, dal raggio minore al maggiore. |
 | `_configure_odafc` | func | `forge/adapters/dxf/loader.py:107` | Punta l'addon `odafc` all'eseguibile ODA File Converter. |
@@ -106,7 +107,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_crossings` | func | `forge/core/topology/noding.py:153` | Incroci reali (non sul prolungamento) fra `seg` e un cutter. |
 | `_cumulative_lengths_closed` | func | `forge/tools/tabs.py:158` | `cum[i]` = distanza cumulata da `points[0]` a `points[i]` (lato i-1->i). |
 | `_cutters` | func | `forge/core/topology/noding.py:141` |  |
-| `dangling_splines` | func | `forge/core/healing/steps.py:107` | SplineSeg aperte con almeno un estremo non collegato a nient'altro. |
+| `dangling_splines` | func | `forge/core/healing/steps.py:151` | SplineSeg aperte con almeno un estremo non collegato a nient'altro. |
 | `deduplicate` | func | `forge/adapters/dxf/sanitize.py:216` | Shortcut: estrae chiavi, trova duplicati, li elimina. |
 | `delete_entities` | func | `forge/adapters/dxf/sanitize.py:210` | Elimina le entità dal msp in-place. |
 | `_describe_dxf_entity` | func | `forge/inspect.py:104` |  |
@@ -145,7 +146,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_emit_annotation` | func | `forge/io/dxf.py:268` |  |
 | `_emit_note` | func | `forge/io/dxf.py:278` |  |
 | `_emit_rendered` | func | `forge/io/dxf.py:304` | DIMENSION / LEADER: ri-materializza l'immagine appiattita. I testi in |
-| `_endpoint_meta` | func | `forge/core/healing/gap_solver.py:239` | Dati che il solver usa per calcolare l'intersezione, per tipo di segmento. |
+| `_endpoint_meta` | func | `forge/core/healing/gap_solver.py:253` | Dati che il solver usa per calcolare l'intersezione, per tipo di segmento. |
 | `_ends` | func | `forge/core/geometry/lines.py:27` | I due capi di un tratto: `LineString` (primo e ultimo punto) o `(start, end)`. |
 | `_ensure_layer` | func | `forge/io/dxf.py:445` | Crea il layer `name` col suo colore canonico se non esiste già. Serve per i |
 | `ensure_linetype` | func | `forge/adapters/dxf/exporter.py:23` | Garantisce che il linetype `name` esista in `doc` e ne ritorna il nome; |
@@ -166,9 +167,9 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `feature_role` | func | `forge/model/role.py:90` | Il ruolo con cui si disegna un contorno di un elemento dell'overlay (D90): |
 | `_features` | func | `forge/io/view_model.py:86` | `cluster.detected` per nome → lista di voci disegnabili. |
 | `find_duplicates` | func | `forge/core/healing/normalizer.py:57` | Restituisce i ref delle entità duplicate (seconda occorrenza in poi). |
-| `find_joining_edges` | func | `forge/core/healing/steps.py:126` | Gli Edge fra `candidate_ids` (di solito i non-contorno) che uniscono due |
-| `find_loops` | func | `forge/core/healing/steps.py:200` | La scala di heal() per chiudere i giri, esclusi `non_contour_ids`: |
-| `find_non_contour_edges` | func | `forge/core/healing/steps.py:116` | id(edge) degli Edge che non chiudono un contorno (branching, e non sul |
+| `find_joining_edges` | func | `forge/core/healing/steps.py:170` | Gli Edge fra `candidate_ids` (di solito i non-contorno) che uniscono due |
+| `find_loops` | func | `forge/core/healing/steps.py:244` | La scala di heal() per chiudere i giri, esclusi `non_contour_ids`: |
+| `find_non_contour_edges` | func | `forge/core/healing/steps.py:160` | id(edge) degli Edge che non chiudono un contorno (branching, e non sul |
 | `_first_coord` | func | `forge/core/topology/graph.py:329` |  |
 | `_first_point` | func | `forge/io/text.py:153` | Un punto che sta sul segmento, per dire in quale pezzo cade. |
 | `_first_step` | func | `forge/core/topology/outer_face.py:133` | L'edge che contiene il punto più a sinistra del componente, percorso |
@@ -184,20 +185,20 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `ForgeContour` | class | `forge/model/contour.py:29` |  |
 | `ForgeDocument` | class | `forge/model/document.py:37` | Documento di dominio prodotto da load_dxf() / load_svg() / load_pdf(). |
 | `ForgeResult` | class | `forge/model/result.py:11` | Risultato completo di una sessione forge su un file DXF. |
-| `free_endpoints_from_edges` | func | `forge/core/healing/gap_solver.py:259` | Estrae gli endpoint liberi (grado < 2 nel grafo) dagli Edge. |
-| `free_ends` | func | `forge/core/healing/steps.py:154` | (estremo, distanza dal nodo più vicino) per ogni estremo che nessun altro |
-| `_gap_endpoints` | func | `forge/core/healing/gap_solver.py:288` | GapEndpoint per gli estremi di LINE / ARC / SPLINE il cui nodo (arrotondato) |
-| `gap_endpoints_at_nodes` | func | `forge/core/healing/gap_solver.py:271` | GapEndpoint per gli endpoint che cadono su uno dei `nodes` — tuple di |
+| `free_endpoints_from_edges` | func | `forge/core/healing/gap_solver.py:273` | Estrae gli endpoint liberi (grado < 2 nel grafo) dagli Edge. |
+| `free_ends` | func | `forge/core/healing/steps.py:198` | (estremo, distanza dal nodo più vicino) per ogni estremo che nessun altro |
+| `_gap_endpoints` | func | `forge/core/healing/gap_solver.py:302` | GapEndpoint per gli estremi di LINE / ARC / SPLINE il cui nodo (arrotondato) |
+| `gap_endpoints_at_nodes` | func | `forge/core/healing/gap_solver.py:285` | GapEndpoint per gli endpoint che cadono su uno dei `nodes` — tuple di |
 | `GapEndpoint` | class | `forge/core/healing/gap_solver.py:46` | Endpoint libero nel grafo topologico. |
 | `_generic` | func | `forge/core/geometry/shape.py:139` |  |
 | `GeometryAdapter` | class | `forge/adapters/geometry/loader.py:49` | Traduce descrizioni geometriche pure (dict) in Edge del dominio forge. |
 | `_get_solver` | func | `forge/core/healing/gap_solver.py:162` |  |
 | `__getattr__` | func | `forge/model/__init__.py:33` |  |
-| `_graph` | func | `forge/core/healing/steps.py:339` |  |
+| `_graph` | func | `forge/core/healing/steps.py:391` |  |
 | `Graph` | class | `forge/core/topology/graph.py:59` | Grafo topologico interrogabile. |
 | `group_collinear_lines` | func | `forge/core/geometry/lines.py:61` | Tratti raggruppati per retta: [[L1, L2], [L3], ...]. Ogni gruppo prende la |
 | `_h` | func | `forge/inspect.py:42` |  |
-| `heal` | func | `forge/core/heal.py:39` | Legge `doc` dall'interno: un ForgeCluster per contorno esterno chiuso, |
+| `heal` | func | `forge/core/heal.py:41` | Legge `doc` dall'interno: un ForgeCluster per contorno esterno chiuso, |
 | `HierarchyBuilder` | class | `forge/core/healing/hierarchy.py:149` |  |
 | `inject` | func | `forge/tools/inject.py:39` | Arricchisce i ForgeCluster con i dati estratti da un `data_injector` esterno. |
 | `_inners` | func | `forge/core/island.py:295` | Un ForgeContour inner per faccia di ogni giro chiuso; un giro senza |
@@ -210,6 +211,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `interpolate_bspline` | func | `forge/core/geometry/points.py:145` | B-spline di grado `degree` che passa per tutti i `points` (interpolazione |
 | `_intersections` | func | `forge/core/healing/outer_scan.py:150` | Punti del pezzo con coordinata `a` == level. |
 | `interval_coverage` | func | `forge/core/geometry/axis.py:47` | Frazione di [lo, hi] coperta dall'unione degli intervalli. |
+| `_is_near_full_arc` | func | `forge/core/healing/steps.py:121` |  |
 | `is_structural_role` | func | `forge/model/role.py:78` | True se ``role`` è OUTER o INNER per il motore (vedi ``STRUCTURAL_ROLES``). |
 | `Island` | class | `forge/core/healing/islands.py:36` | Gruppo di Edge vicini, con la bbox che li contiene tutti. |
 | `island` | func | `forge/core/island.py:75` | Legge `doc` per isole. Un ForgeCluster per ogni contorno esterno che non |
@@ -218,7 +220,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `items_inside` | func | `forge/core/geometry/axis.py:221` | I tratti con entrambi i capi dentro `bounds` allargato di `margin`, nell'ordine dato. |
 | `_joined` | func | `forge/core/geometry/shape.py:294` |  |
 | `_key_for` | func | `forge/adapters/dxf/sanitize.py:154` | Restituisce una chiave hashable che identifica univocamente |
-| `labeled_features` | func | `forge/core/healing/steps.py:300` | Gli Edge messi da parte da split_labeled() come feature col loro ruolo |
+| `labeled_features` | func | `forge/core/healing/steps.py:352` | Gli Edge messi da parte da split_labeled() come feature col loro ruolo |
 | `_largest_loop` | func | `forge/core/topology/outer_face.py:202` | (loop, segments, styles, polygon) del giro di area massima. |
 | `Leader` | class | `forge/model/annotation.py:147` | Direttrice con testo che punta a una feature. |
 | `_leader_annotation` | func | `forge/adapters/dxf/annotation_extractor.py:348` |  |
@@ -237,21 +239,21 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `load_geometry` | func | `forge/adapters/geometry/loader.py:198` | Costruisce un ForgeDocument da una lista di descrizioni geometriche pure — |
 | `load_pdf` | func | `forge/adapters/pdf/loader.py:22` | Apre un documento PDF, estrae le geometrie vettoriali da tutte le pagine, |
 | `load_segments` | func | `forge/adapters/geometry/loader.py:243` | Un ForgeDocument da segmenti di forge (`LineSeg`, `ArcSeg`, `CircleSeg`, |
-| `local_gap_fixes` | func | `forge/core/healing/gap_solver.py:215` | Solo i fix che non spostano un estremo più di `max_move`: due rette quasi |
+| `local_gap_fixes` | func | `forge/core/healing/gap_solver.py:229` | Solo i fix che non spostano un estremo più di `max_move`: due rette quasi |
 | `longest_segment` | func | `forge/core/geometry/measure.py:122` | `(segment, length)` del segmento più lungo in `segments` — `(None, 0.0)` |
 | `longest_structural_segment` | func | `forge/tools/rotate.py:89` | `(segment, length, angle_deg)` del segmento più lungo fra |
 | `_loop_faces` | func | `forge/core/island.py:302` | (segmenti, stili, poligono) per ogni faccia di un giro chiuso: una se |
 | `loop_geometry` | func | `forge/core/topology/loop_finder.py:206` | (segmenti, stili, poligono) di un loop; None se i segmenti non chiudono |
 | `loop_to_closed_feature` | func | `forge/core/healing/hierarchy.py:21` |  |
 | `LoopFinder` | class | `forge/core/topology/loop_finder.py:28` |  |
-| `loops_to_features` | func | `forge/core/healing/steps.py:247` | Un ClosedFeature per loop, col ruolo del primo edge; senza poligono valido, niente. |
-| `LoopSearch` | class | `forge/core/healing/steps.py:39` | Come find_loops() ha chiuso (o non chiuso) i giri, gradino per gradino. |
-| `_loose_ends_warnings` | func | `forge/core/heal.py:180` | Quello che resta aperto anche quando qualcosa si chiude (D111): gli |
+| `loops_to_features` | func | `forge/core/healing/steps.py:299` | Un ClosedFeature per loop, col ruolo del primo edge; senza poligono valido, niente. |
+| `LoopSearch` | class | `forge/core/healing/steps.py:41` | Come find_loops() ha chiuso (o non chiuso) i giri, gradino per gradino. |
+| `_loose_ends_warnings` | func | `forge/core/heal.py:186` | Quello che resta aperto anche quando qualcosa si chiude (D111): gli |
 | `_make_inner` | func | `forge/core/healing/hierarchy.py:91` |  |
 | `_make_polygon` | func | `forge/core/primitives/polygon_builder.py:48` |  |
 | `map_sanitized_item_to_edge` | func | `forge/adapters/pdf/graph_adapter.py:13` |  |
 | `_measured_points` | func | `forge/adapters/dxf/annotation_extractor.py:272` | I punti sulla geometria fra cui la quota misura, dai def-point: |
-| `_meet_or_bridge` | func | `forge/core/healing/gap_solver.py:248` | Se le due geometrie si incontrano in `ix`, porta lì entrambi gli estremi; |
+| `_meet_or_bridge` | func | `forge/core/healing/gap_solver.py:262` | Se le due geometrie si incontrano in `ix`, porta lì entrambi gli estremi; |
 | `_merge_annotations` | func | `forge/adapters/dxf/loader.py:68` | Aggiunge a `base` le annotazioni di `extra` non già presenti (per firma). |
 | `merge_cocircular_overlaps` | func | `forge/core/healing/normalizer.py:376` | `merge_collinear_overlaps` per gli ArcSeg: fonde gruppi co-circolari |
 | `merge_collinear_overlaps` | func | `forge/core/healing/normalizer.py:120` | Fonde gruppi di LineSeg collineari (stessa retta infinita, `_line_key`) |
@@ -262,7 +264,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_merged_line` | func | `forge/core/healing/normalizer.py:238` | Il fuso di una catena collineare: nodi arrotondati, segmento a piena |
 | `_mleader_anchor` | func | `forge/adapters/dxf/annotation_extractor.py:113` | Primo vertice della direttrice di un MULTILEADER. |
 | `mleader_text` | func | `forge/adapters/dxf/mtext.py:37` | Testo grezzo di un MULTILEADER (prima della pulizia), None se assente. |
-| `_moved_segment` | func | `forge/core/healing/gap_solver.py:308` | Nuovo segmento con l'endpoint `role` spostato su `new_pt`. None se non gestito. |
+| `_moved_segment` | func | `forge/core/healing/gap_solver.py:322` | Nuovo segmento con l'endpoint `role` spostato su `new_pt`. None se non gestito. |
 | `MoveEndpoint` | class | `forge/core/healing/gap_solver.py:73` | Istruzione: sposta l'endpoint role di ref al punto new_pt. |
 | `name_rules` | func | `forge/model/role_rule.py:96` | Scorciatoia: {nome: ruolo} → una RoleRule(name=...) per voce. |
 | `_nearest_within` | func | `forge/tools/anchor.py:184` | L'indice della parte più vicina a ``probe``, se entro ``snap_distance`` (> 0). |
@@ -312,9 +314,9 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_point_to_segment_distance` | func | `forge/core/primitives/segments.py:276` | Distanza perpendicolare di `p` dal segmento `a`-`b` (0 se `a == b`). |
 | `_poly_points` | func | `forge/io/view_model.py:36` | Vertici dell'anello esterno di un polygon shapely come lista di [x, y]. |
 | `polygon` | func | `forge/core/geometry/build.py:27` | Il poligono per i `points` dati, chiuso: l'ultimo lato torna al primo punto. Almeno 3 punti. |
-| `polygonize_edges` | func | `forge/core/healing/steps.py:263` | Ultima spiaggia quando nessun grafo chiude: le facce dell'intero disegno |
+| `polygonize_edges` | func | `forge/core/healing/steps.py:315` | Ultima spiaggia quando nessun grafo chiude: le facce dell'intero disegno |
 | `_polygons` | func | `forge/core/island.py:376` |  |
-| `polygons_to_features` | func | `forge/core/healing/steps.py:279` | Per poligono un ClosedFeature OUTER dal bordo esterno e uno INNER per |
+| `polygons_to_features` | func | `forge/core/healing/steps.py:331` | Per poligono un ClosedFeature OUTER dal bordo esterno e uno INNER per |
 | `polyline_line_intersections` | func | `forge/core/geometry/intersections.py:98` | Intersezioni fra la retta infinita (p1, p2) e la spezzata `points` (ogni |
 | `_polyline_points` | func | `forge/adapters/dxf/annotation_extractor.py:487` |  |
 | `_raw_linetype_pattern` | func | `forge/adapters/dxf/adapter.py:52` | Pattern grezzo (lunghezza totale + tratti con segno, `+` = tratto, |
@@ -335,12 +337,12 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `RenderedGeometry` | class | `forge/model/annotation.py:46` | Immagine di una quota/direttrice già appiattita in primitive pure. |
 | `RenderedText` | class | `forge/model/annotation.py:37` | Un testo dentro l'immagine appiattita di una quota/direttrice. |
 | `renode` | func | `forge/core/topology/noding.py:63` | Nodi di ogni Edge ricalcolati dal punto reale del segmento a |
-| `repair_merged_corners` | func | `forge/core/healing/steps.py:174` | Chiude gli angoli che il grafo esatto vede aperti e il clustering degli |
+| `repair_merged_corners` | func | `forge/core/healing/steps.py:218` | Chiude gli angoli che il grafo esatto vede aperti e il clustering degli |
 | `resolve_role` | func | `forge/model/role_rule.py:88` | Ruolo della prima regola che matcha, in ordine; `unknown` se nessuna. |
 | `resolve_target` | func | `forge/tools/anchor.py:126` | L'oggetto (contorno o feature) a cui punta un ``target``, o ``None``. |
 | `_result_bbox_center` | func | `forge/tools/rotate.py:231` | Centro del bbox unito degli outer di tutti i cluster — vedi `rotate_to_longest`. |
 | `_rim_runs` | func | `forge/core/topology/rim.py:87` | [((edge, verso), primo vertice, ultimo vertice)] lungo l'anello: copertura greedy |
-| `_ring_segments` | func | `forge/core/healing/steps.py:345` |  |
+| `_ring_segments` | func | `forge/core/healing/steps.py:397` |  |
 | `_role` | func | `forge/inspect.py:53` | Nome del ruolo come stringa piatta ('outer'), non 'ContourRole.OUTER'. |
 | `_role_from` | func | `forge/adapters/geometry/loader.py:41` | work_type stringa (stesso vocabolario di RoleRule.role) → ruolo. Un work_type |
 | `role_str` | func | `forge/model/role.py:142` | Valore stringa di un ruolo, che sia una costante ``ContourRole`` o una |
@@ -368,7 +370,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_scale` | func | `forge/tools/tabs.py:59` |  |
 | `_scan_axis` | func | `forge/core/healing/outer_scan.py:184` |  |
 | `_scan_bbox` | func | `forge/io/svg.py:175` | bbox da tutti i punti del view model — fallback quando vm['bbox'] è None. |
-| `_search_warnings` | func | `forge/core/heal.py:199` | Cosa racconta heal() dei gradini della scala di find_loops(). |
+| `_search_warnings` | func | `forge/core/heal.py:205` | Cosa racconta heal() dei gradini della scala di find_loops(). |
 | `_seg_end_point` | func | `forge/adapters/dxf/exporter.py:93` |  |
 | `segment_endpoints` | func | `forge/core/primitives/segments.py:506` | (start, end) di un segmento primitivo, in coordinate XY non arrotondate. |
 | `segment_is_closed` | func | `forge/core/primitives/segments.py:542` | True se gli endpoint del segmento coincidono entro ``tolerance``. |
@@ -402,14 +404,14 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_split_circle` | func | `forge/core/topology/noding.py:239` |  |
 | `_split_closed_polyline_at_cuts` | func | `forge/tools/tabs.py:166` | Spezza il contorno chiuso `points` sui tagli in `cuts` — ognuno |
 | `_split_into_stretches` | func | `forge/core/primitives/fitting.py:48` | Spezza `points` in tratti fra due spigoli consecutivi (estremi inclusi). |
-| `split_labeled` | func | `forge/core/healing/steps.py:75` | Separa gli Edge con un ruolo già deciso e non strutturale (cornice, |
-| `split_non_finite` | func | `forge/core/healing/steps.py:54` | Separa gli Edge con una coordinata non finita (NaN, inf): ritorna |
+| `split_labeled` | func | `forge/core/healing/steps.py:77` | Separa gli Edge con un ruolo già deciso e non strutturale (cornice, |
+| `split_non_finite` | func | `forge/core/healing/steps.py:56` | Separa gli Edge con una coordinata non finita (NaN, inf): ritorna |
 | `_split_params` | func | `forge/core/topology/noding.py:178` |  |
 | `split_to_files` | func | `forge/recipes.py:23` | Pipeline multi-pezzo + salvataggio su disco: heal → split → `.saveas()` per |
 | `splits_polygon` | func | `forge/core/geometry/lines.py:82` | La corda `start`-`end`, prolungata di `reach` ai due capi, divide `polygon` in due o più parti. |
 | `stadium` | func | `forge/core/geometry/build.py:57` | Stadio fuori tutto `length` × `width` (due semicerchi di raggio |
 | `_stadium` | func | `forge/core/geometry/shape.py:96` |  |
-| `structural_loops` | func | `forge/core/healing/steps.py:236` | I loop in cui ogni edge con ruolo deciso è strutturale: un solo edge non |
+| `structural_loops` | func | `forge/core/healing/steps.py:288` | I loop in cui ogni edge con ruolo deciso è strutturale: un solo edge non |
 | `structural_segments` | func | `forge/tools/rotate.py:73` | Segmenti nativi dei contorni strutturali di ogni cluster: sempre |
 | `_style_attribs` | func | `forge/adapters/dxf/exporter.py:49` | dxfattribs per una entità in output: layer + linetype della sorgente, se |
 | `_sub` | func | `forge/tools/tabs.py:51` |  |
@@ -764,19 +766,19 @@ _forge/core/geometry/shape.py_
 - `_continues(prev, prev_style, seg, style) -> bool` — L275 — `seg` prosegue `prev` sulla stessa curva, nello stesso verso?
 - `_joined(prev, seg)` — L294
 
-#### `forge/core/heal.py` — 218 lines
+#### `forge/core/heal.py` — 224 lines
 
 _core/heal.py_
 
-- `heal(doc: ForgeDocument, tolerance: Optional[float]=None, label: str='', source_file: str='', is_structural: Optional[Callable[[str], bool]]=None) -> ForgeResult` — L39 — Legge `doc` dall'interno: un ForgeCluster per contorno esterno chiuso,
-- `_loose_ends_warnings(edges: list, non_contour_ids: set, epsilon: float) -> list[str]` — L180 — Quello che resta aperto anche quando qualcosa si chiude (D111): gli
-- `_search_warnings(search: LoopSearch, tolerance: float) -> list[str]` — L199 — Cosa racconta heal() dei gradini della scala di find_loops().
+- `heal(doc: ForgeDocument, tolerance: Optional[float]=None, label: str='', source_file: str='', is_structural: Optional[Callable[[str], bool]]=None) -> ForgeResult` — L41 — Legge `doc` dall'interno: un ForgeCluster per contorno esterno chiuso,
+- `_loose_ends_warnings(edges: list, non_contour_ids: set, epsilon: float) -> list[str]` — L186 — Quello che resta aperto anche quando qualcosa si chiude (D111): gli
+- `_search_warnings(search: LoopSearch, tolerance: float) -> list[str]` — L205 — Cosa racconta heal() dei gradini della scala di find_loops().
 
 #### `forge/core/healing/__init__.py` — 0 lines
 
 No module-level function or class.
 
-#### `forge/core/healing/gap_solver.py` — 371 lines
+#### `forge/core/healing/gap_solver.py` — 385 lines
 
 _core/healing/gap_solver.py_
 
@@ -788,15 +790,15 @@ _core/healing/gap_solver.py_
 - `_solve_arc_arc(ep_a: GapEndpoint, ep_b: GapEndpoint) -> List[GapFix]` — L126
 - `_solve_spline_any(ep_a: GapEndpoint, ep_b: GapEndpoint) -> List[GapFix]` — L138
 - `_get_solver(kind_a: str, kind_b: str)` — L162
-- `compute_gap_fixes(endpoints: List[GapEndpoint], tolerance: float) -> List[GapFix]` — L174 — Calcola i GapFix per tutti gli endpoint liberi entro tolerance.
-- `local_gap_fixes(fixes: List[GapFix], max_move: float) -> List[GapFix]` — L215 — Solo i fix che non spostano un estremo più di `max_move`: due rette quasi
-- `_endpoint_meta(segment) -> dict` — L239 — Dati che il solver usa per calcolare l'intersezione, per tipo di segmento.
-- `_meet_or_bridge(ix: Optional[Point2D], ep_a: GapEndpoint, ep_b: GapEndpoint) -> List[GapFix]` — L248 — Se le due geometrie si incontrano in `ix`, porta lì entrambi gli estremi;
-- `free_endpoints_from_edges(edges: List[Edge], graph) -> List[GapEndpoint]` — L259 — Estrae gli endpoint liberi (grado < 2 nel grafo) dagli Edge.
-- `gap_endpoints_at_nodes(edges: List[Edge], nodes: set) -> List[GapEndpoint]` — L271 — GapEndpoint per gli endpoint che cadono su uno dei `nodes` — tuple di
-- `_gap_endpoints(edges: List[Edge], keep: Callable[[Point2D], bool]) -> List[GapEndpoint]` — L288 — GapEndpoint per gli estremi di LINE / ARC / SPLINE il cui nodo (arrotondato)
-- `_moved_segment(segment, role: str, new_pt: Point2D)` — L308 — Nuovo segmento con l'endpoint `role` spostato su `new_pt`. None se non gestito.
-- `apply_gap_fixes(edges: List[Edge], fixes: List[GapFix], node_decimals: int=1) -> List[Edge]` — L326 — Applica i GapFix restituendo una NUOVA lista di Edge — `edges` non viene mutata.
+- `compute_gap_fixes(endpoints: List[GapEndpoint], tolerance: float, pairwise: bool=True) -> List[GapFix]` — L174 — Calcola i GapFix fra gli endpoint liberi entro tolerance. I due capi
+- `local_gap_fixes(fixes: List[GapFix], max_move: float) -> List[GapFix]` — L229 — Solo i fix che non spostano un estremo più di `max_move`: due rette quasi
+- `_endpoint_meta(segment) -> dict` — L253 — Dati che il solver usa per calcolare l'intersezione, per tipo di segmento.
+- `_meet_or_bridge(ix: Optional[Point2D], ep_a: GapEndpoint, ep_b: GapEndpoint) -> List[GapFix]` — L262 — Se le due geometrie si incontrano in `ix`, porta lì entrambi gli estremi;
+- `free_endpoints_from_edges(edges: List[Edge], graph) -> List[GapEndpoint]` — L273 — Estrae gli endpoint liberi (grado < 2 nel grafo) dagli Edge.
+- `gap_endpoints_at_nodes(edges: List[Edge], nodes: set) -> List[GapEndpoint]` — L285 — GapEndpoint per gli endpoint che cadono su uno dei `nodes` — tuple di
+- `_gap_endpoints(edges: List[Edge], keep: Callable[[Point2D], bool]) -> List[GapEndpoint]` — L302 — GapEndpoint per gli estremi di LINE / ARC / SPLINE il cui nodo (arrotondato)
+- `_moved_segment(segment, role: str, new_pt: Point2D)` — L322 — Nuovo segmento con l'endpoint `role` spostato su `new_pt`. None se non gestito.
+- `apply_gap_fixes(edges: List[Edge], fixes: List[GapFix], node_decimals: int=1) -> List[Edge]` — L340 — Applica i GapFix restituendo una NUOVA lista di Edge — `edges` non viene mutata.
 
 #### `forge/core/healing/hierarchy.py` — 210 lines
 
@@ -854,28 +856,30 @@ _core/healing/outer_scan.py_
 - `_intersections(piece, a: int, level: float) -> List[Point]` — L150 — Punti del pezzo con coordinata `a` == level.
 - `_scan_axis(pieces: list, axis: str, hits: Dict[int, List[OuterHit]]) -> int` — L184
 
-#### `forge/core/healing/steps.py` — 347 lines
+#### `forge/core/healing/steps.py` — 399 lines
 
 _core/healing/steps.py_
 
-- **class** `LoopSearch` — L39 — Come find_loops() ha chiuso (o non chiuso) i giri, gradino per gradino.
-- `split_non_finite(edges: List[Edge]) -> Tuple[List[Edge], List[Edge]]` — L54 — Separa gli Edge con una coordinata non finita (NaN, inf): ritorna
-- `split_labeled(edges: List[Edge], is_structural: Optional[Callable[[str], bool]]=None) -> Tuple[List[Edge], List[Edge]]` — L75 — Separa gli Edge con un ruolo già deciso e non strutturale (cornice,
-- `close_free_gaps(edges: List[Edge], tolerance: float) -> List[Edge]` — L92 — Chiude i gap fra estremi liberi entro `tolerance` col gap solver
-- `dangling_splines(edges: List[Edge]) -> List[Edge]` — L107 — SplineSeg aperte con almeno un estremo non collegato a nient'altro.
-- `find_non_contour_edges(edges: List[Edge], tolerance: float) -> Set[int]` — L116 — id(edge) degli Edge che non chiudono un contorno (branching, e non sul
-- `find_joining_edges(edges: List[Edge], candidate_ids: Set[int]) -> List[Edge]` — L126 — Gli Edge fra `candidate_ids` (di solito i non-contorno) che uniscono due
-- `free_ends(edges: List[Edge], epsilon: float=0.0) -> List[Tuple[Tuple, float]]` — L154 — (estremo, distanza dal nodo più vicino) per ogni estremo che nessun altro
-- `repair_merged_corners(edges: List[Edge], tolerance: float, exclude_ids: FrozenSet[int]=frozenset()) -> Tuple[List[Edge], int, list]` — L174 — Chiude gli angoli che il grafo esatto vede aperti e il clustering degli
-- `find_loops(edges: List[Edge], non_contour_ids: Set[int], tolerance: float) -> LoopSearch` — L200 — La scala di heal() per chiudere i giri, esclusi `non_contour_ids`:
-- `structural_loops(loops: List[list], is_structural: Optional[Callable[[str], bool]]=None) -> List[list]` — L236 — I loop in cui ogni edge con ruolo deciso è strutturale: un solo edge non
-- `loops_to_features(loops: List[list]) -> List[ClosedFeature]` — L247 — Un ClosedFeature per loop, col ruolo del primo edge; senza poligono valido, niente.
-- `polygonize_edges(edges: List[Edge], tolerance: float) -> List[Polygon]` — L263 — Ultima spiaggia quando nessun grafo chiude: le facce dell'intero disegno
-- `polygons_to_features(polygons: List[Polygon]) -> List[ClosedFeature]` — L279 — Per poligono un ClosedFeature OUTER dal bordo esterno e uno INNER per
-- `labeled_features(edges: List[Edge]) -> list` — L300 — Gli Edge messi da parte da split_labeled() come feature col loro ruolo
-- `build_hierarchy(features: list, label: str='', source_file: str='', is_structural: Optional[Callable[[str], bool]]=None) -> Tuple[List[ForgeCluster], list]` — L322 — Albero di contenimento sui ClosedFeature: ogni radice è un ForgeCluster
-- `_graph(edges: List[Edge], exclude_ids: FrozenSet[int], epsilon: float=0.0)` — L339
-- `_ring_segments(coords) -> List[LineSeg]` — L345
+- **class** `LoopSearch` — L41 — Come find_loops() ha chiuso (o non chiuso) i giri, gradino per gradino.
+- `split_non_finite(edges: List[Edge]) -> Tuple[List[Edge], List[Edge]]` — L56 — Separa gli Edge con una coordinata non finita (NaN, inf): ritorna
+- `split_labeled(edges: List[Edge], is_structural: Optional[Callable[[str], bool]]=None) -> Tuple[List[Edge], List[Edge]]` — L77 — Separa gli Edge con un ruolo già deciso e non strutturale (cornice,
+- `close_near_full_arcs(edges: List[Edge], tolerance: float, max_missing_angle: float=NEAR_FULL_ARC_MISSING) -> Tuple[List[Edge], int]` — L97 — Un ArcSeg coi due capi liberi diventa CircleSeg (stesso centro e raggio)
+- `_is_near_full_arc(edge: Edge, graph, tolerance: float, max_missing_angle: float) -> bool` — L121
+- `close_free_gaps(edges: List[Edge], tolerance: float) -> List[Edge]` — L136 — Chiude i gap fra estremi liberi entro `tolerance` col gap solver
+- `dangling_splines(edges: List[Edge]) -> List[Edge]` — L151 — SplineSeg aperte con almeno un estremo non collegato a nient'altro.
+- `find_non_contour_edges(edges: List[Edge], tolerance: float) -> Set[int]` — L160 — id(edge) degli Edge che non chiudono un contorno (branching, e non sul
+- `find_joining_edges(edges: List[Edge], candidate_ids: Set[int]) -> List[Edge]` — L170 — Gli Edge fra `candidate_ids` (di solito i non-contorno) che uniscono due
+- `free_ends(edges: List[Edge], epsilon: float=0.0) -> List[Tuple[Tuple, float]]` — L198 — (estremo, distanza dal nodo più vicino) per ogni estremo che nessun altro
+- `repair_merged_corners(edges: List[Edge], tolerance: float, exclude_ids: FrozenSet[int]=frozenset()) -> Tuple[List[Edge], int, list]` — L218 — Chiude gli angoli che il grafo esatto vede aperti e il clustering degli
+- `find_loops(edges: List[Edge], non_contour_ids: Set[int], tolerance: float) -> LoopSearch` — L244 — La scala di heal() per chiudere i giri, esclusi `non_contour_ids`:
+- `structural_loops(loops: List[list], is_structural: Optional[Callable[[str], bool]]=None) -> List[list]` — L288 — I loop in cui ogni edge con ruolo deciso è strutturale: un solo edge non
+- `loops_to_features(loops: List[list]) -> List[ClosedFeature]` — L299 — Un ClosedFeature per loop, col ruolo del primo edge; senza poligono valido, niente.
+- `polygonize_edges(edges: List[Edge], tolerance: float) -> List[Polygon]` — L315 — Ultima spiaggia quando nessun grafo chiude: le facce dell'intero disegno
+- `polygons_to_features(polygons: List[Polygon]) -> List[ClosedFeature]` — L331 — Per poligono un ClosedFeature OUTER dal bordo esterno e uno INNER per
+- `labeled_features(edges: List[Edge]) -> list` — L352 — Gli Edge messi da parte da split_labeled() come feature col loro ruolo
+- `build_hierarchy(features: list, label: str='', source_file: str='', is_structural: Optional[Callable[[str], bool]]=None) -> Tuple[List[ForgeCluster], list]` — L374 — Albero di contenimento sui ClosedFeature: ogni radice è un ForgeCluster
+- `_graph(edges: List[Edge], exclude_ids: FrozenSet[int], epsilon: float=0.0)` — L391
+- `_ring_segments(coords) -> List[LineSeg]` — L397
 
 #### `forge/core/island.py` — 392 lines
 

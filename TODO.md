@@ -15,6 +15,29 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
+## APERTO (16 ottobre, MAP.md D112) — arco sulla punta di uno spigolo strettissimo: l'arrotondamento dei nodi lo stacca dall'outer
+
+Visto sui fogli cogo: un arco r=1.5 di 359.4–359.7° chiude la punta di uno
+spigolo molto stretto. I due lati arrivano esattamente ai suoi capi (distanza
+0), ma i capi distano 0.008–0.015 fra loro. L'arrotondamento di
+`Edge.start`/`Edge.end` (1 decimale con la tolleranza di default) fonde i due
+capi in un nodo solo, e l'arco diventa un self-loop: esce dal grafo come
+loop degenere. L'outer passa dritto per quel nodo, quindi lo spigolo si
+richiude senza l'arco. L'arco esce come inner di area 7.02, o come cluster
+a sé quando tocca l'outer. Atteso (Federico): l'uscita identica
+all'ingresso, con l'arco dentro l'outer; solo le linee di piega vanno nel
+trash.
+
+Se i capi cadono in due nodi diversi, invece, l'arco resta giustamente
+nell'outer. Succede con le corde da 0.03 e 0.08, quindi la sorte la decide
+la griglia di arrotondamento.
+
+Il meccanismo da toccare è l'identità dei nodi. Qui non c'è nessun gap: ogni
+capo ha un compagno esatto. La tolleranza (D112: misura un gap, non un lato)
+non dovrebbe fondere due giunzioni esatte distinte, e nemmeno i due capi
+dello stesso edge. È una decisione sul modello dei nodi, da prendere con
+Federico prima di scrivere codice.
+
 ## APERTO (16 ottobre, MAP.md D108) — rename `forge` → `topo`, distribuzione `g-topo`
 
 Da fare: package `forge/` → `topo/`, `pyproject.toml` (`name = "g-topo"`),
@@ -34,36 +57,6 @@ Restano:
   esterno e `polygonize` dà 4 facce. Non è D111 (nessun candidato: i tratti
   della catena non hanno entrambi gli estremi a grado > 2): è la scelta del
   giro in `LoopFinder` quando una catena divide il pezzo.
-
-## APERTO (16 ottobre) — la tolleranza scavalca un elemento più corto di lei
-
-`heal()` tratta la tolleranza come "due estremi così vicini sono lo stesso
-punto" anche quando il disegno li collega già con della geometria. Con
-`tol=1` (DXF in `tests/examples/tolleranza/`, locali):
-
-- **raccordo r=0.4 staccato di 0.3 ai due capi**: i due lati vicini stanno a
-  0.99 fra loro, il gap solver li prolunga all'intersezione, esce lo spigolo
-  vivo e del raccordo resta nel trash solo una retta: l'arco è perso;
-- **smusso di 0.5 staccato di 0.3**: stesso schema, ma lo smusso sparisce del
-  tutto (trash vuoto) — viola "niente si perde";
-- **arco da solo aperto di 0.5**: il grafo tollerante fonde i suoi due capi,
-  esce un `CircleSeg` pieno.
-
-Due meccanismi: `compute_gap_fixes` fa un fix per *ogni* coppia di estremi
-liberi entro tolleranza, non per il compagno più vicino; il grafo tollerante
-di `find_loops` fonde nodi entro tolleranza anche se sono i due capi dello
-stesso edge o di una catena corta. Un lato più corto della tolleranza è
-geometria legittima (collegato esatto resta: smusso 0.8, asola con semicerchi
-r=0.4, rettangolo 100×0.8 a `tol=1` escono giusti), la tolleranza parla di
-gap, non di dimensioni. Da decidere con Federico (D112):
-regola del compagno più vicino reciproco, e "due estremi già collegati da
-geometria non sono un gap".
-
-## APERTO (16 ottobre) — un difetto visto su file reali
-
-- Un giro fatto da un solo `ArcSeg` quasi completo (359.6°, capi a ~0.02 mm,
-  sotto tolleranza) resta `ArcSeg` invece di diventare `CircleSeg`; `to_dxf` lo
-  scrive con corda zero e, riletto, è un arco NaN di raggio 0.
 
 ## APERTO (16 ottobre, MAP.md D109) — contorno meno regione, traccia × contorno
 

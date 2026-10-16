@@ -14,6 +14,7 @@ Puro: solo Edge, primitive e modello, nessun formato.
 
 from __future__ import annotations
 
+import math
 from typing import Callable, Optional
 
 from ..model.document import ForgeDocument
@@ -25,7 +26,8 @@ from .healing.normalizer import (
     merge_collinear_overlaps, merge_cocircular_overlaps, weld_degenerate_linesegs,
 )
 from .healing.steps import (
-    LoopSearch, split_non_finite, split_labeled, close_free_gaps, dangling_splines, find_non_contour_edges,
+    LoopSearch, split_non_finite, split_labeled, close_near_full_arcs, NEAR_FULL_ARC_MISSING,
+    close_free_gaps, dangling_splines, find_non_contour_edges,
     find_joining_edges, free_ends,
     find_loops, structural_loops, loops_to_features, polygonize_edges,
     polygons_to_features, labeled_features, build_hierarchy,
@@ -91,6 +93,10 @@ def heal(doc: ForgeDocument, tolerance: Optional[float] = None, label: str = "",
     if labeled and is_structural is None:
         result.warnings.append(_LABELED_WITHOUT_PREDICATE.format(n=len(labeled)))
 
+    edges, full_arcs = close_near_full_arcs(edges, tol)
+    if full_arcs:
+        result.warnings.append(f"{full_arcs} archi quasi completi (gap entro tolleranza, mancano al "
+                               f"più {math.degrees(NEAR_FULL_ARC_MISSING):.0f}°) chiusi in cerchio.")
     edges = close_free_gaps(edges, tol)
     if dangling_splines(edges):
         result.warnings.append(

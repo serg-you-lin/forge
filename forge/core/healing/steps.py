@@ -11,17 +11,19 @@ Puro: solo Edge, primitive e modello, nessun formato.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable, FrozenSet, List, Optional, Set, Tuple
 
 from shapely import STRtree
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import polygonize, snap, unary_union
 
-from ..geometry.measure import node_decimals_for, track_points
+from ..geometry.measure import node_decimals_for, round_point, track_points
 from ..primitives import LineSeg
 from ..primitives.polygon_builder import build_polygon
-from ..primitives.segments import DEFAULT_TOLERANCE, SplineSeg
+from ..primitives.segments import (
+    DEFAULT_TOLERANCE, ArcSeg, CircleSeg, SplineSeg, segment_endpoints,
+)
 from ..topology.edge import Edge
 from ..topology.graph import build_node_graph
 from ..topology.loop_finder import LoopFinder, loop_geometry
@@ -87,6 +89,48 @@ def split_labeled(edges: List[Edge],
         return list(edges), []
     labeled_ids = {id(e) for e in labeled}
     return [e for e in edges if id(e) not in labeled_ids], labeled
+
+
+NEAR_FULL_ARC_MISSING = math.radians(2.0)   # angolo mancante oltre il quale un arco non è un cerchio (D112)
+
+
+def close_near_full_arcs(edges: List[Edge], tolerance: float,
+                         max_missing_angle: float = NEAR_FULL_ARC_MISSING) -> Tuple[List[Edge], int]:
+    """
+    Un ArcSeg coi due capi liberi diventa CircleSeg (stesso centro e raggio)
+    solo se il gap fra i capi è entro `tolerance` E l'angolo mancante è entro
+    `max_missing_angle` (MAP.md D112): la tolleranza dice se il buco è un gap,
+    l'angolo se l'arco è un cerchio. `tolerance=math.inf` lascia solo l'angolo.
+    Ritorna (edge, n_archi_chiusi).
+    """
+    graph = build_node_graph(edges)
+    decimals = node_decimals_for(tolerance) if math.isfinite(tolerance) else None
+    closed, out = 0, []
+    for edge in edges:
+        seg = edge.segment
+        if isinstance(seg, ArcSeg) and _is_near_full_arc(edge, graph, tolerance, max_missing_angle):
+            pt = segment_endpoints(CircleSeg(center=seg.center, radius=seg.radius))[0]
+            node = round_point(pt, decimals) if decimals is not None else edge.start
+            edge = replace(edge, start=node, end=node,
+                           segment=CircleSeg(center=seg.center, radius=seg.radius))
+            closed += 1
+        out.append(edge)
+    return out, closed
+
+
+def _is_near_full_arc(edge: Edge, graph, tolerance: float, max_missing_angle: float) -> bool:
+    seg = edge.segment
+    if 2 * math.pi - seg._sweep() > max_missing_angle:
+        return False
+    start, end = segment_endpoints(seg)
+    if math.dist(start, end) > tolerance:
+        return False
+    # un capo che tocca altra geometria non è libero: l'arco fa parte di un giro.
+    # Capi fusi nello stesso nodo: il self-loop sta fra i degeneri, quindi il
+    # nodo deve restare senza altri edge (la punta di uno spigolo non è un cerchio)
+    if edge.start == edge.end:
+        return graph.degree(edge.start) == 0
+    return graph.degree(edge.start) == 1 and graph.degree(edge.end) == 1
 
 
 def close_free_gaps(edges: List[Edge], tolerance: float) -> List[Edge]:
@@ -223,6 +267,14 @@ def find_loops(edges: List[Edge], non_contour_ids: Set[int], tolerance: float) -
         return search
 
     graph_c = _graph(search.edges, exclude, epsilon=tolerance)
+    # un edge i cui due capi il clustering fonde si chiuderebbe su se stesso
+    # per sola tolleranza: resta fuori dal giro (D112)
+    folded = {id(e) for e in search.edges
+              if e.start != e.end and id(e) not in exclude
+              and graph_c.canonical(e.start) == graph_c.canonical(e.end)}
+    if folded:
+        exclude = exclude | folded
+        graph_c = _graph(search.edges, exclude, epsilon=tolerance)
     search.loops = LoopFinder().find(graph_c, exclude_ids=exclude)
     if search.loops:
         search.method = "tolerant"

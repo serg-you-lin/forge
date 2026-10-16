@@ -174,13 +174,20 @@ def _get_solver(kind_a: str, kind_b: str):
 def compute_gap_fixes(
     endpoints: List[GapEndpoint],
     tolerance: float,
+    pairwise: bool = True,
 ) -> List[GapFix]:
     """
-    Calcola i GapFix per tutti gli endpoint liberi entro tolerance.
+    Calcola i GapFix fra gli endpoint liberi entro tolerance. I due capi
+    dello stesso edge non sono mai un gap (un arco quasi chiuso è
+    `close_near_full_arcs`).
 
     Parametri:
         endpoints : lista di GapEndpoint prodotta dall'adapter
         tolerance : distanza massima tra due endpoint per considerarli un gap
+        pairwise  : True (heal, MAP.md D112) — accoppiati due a due per
+                    vicinanza, ogni endpoint chiude al più un gap, col compagno
+                    più vicino ancora libero; False (island) — ogni coppia
+                    entro tolerance, perché lì un pezzo è "ciò che si tocca"
 
     Restituisce:
         Lista di GapFix (MoveEndpoint o AddSegment) da applicare.
@@ -189,26 +196,33 @@ def compute_gap_fixes(
     if len(endpoints) < 2:
         return []
 
-    fixes:   List[GapFix] = []
-    checked: set           = set()
-
+    pairs = []
     for i, ep_a in enumerate(endpoints):
-        for j, ep_b in enumerate(endpoints):
-            if i >= j:
-                continue
+        for j in range(i + 1, len(endpoints)):
+            ep_b = endpoints[j]
             if ep_a.ref is ep_b.ref:
                 continue
-            pair_key = (id(ep_a.ref), id(ep_b.ref), ep_a.role, ep_b.role)
-            if pair_key in checked:
+            d = _distance(ep_a.pt, ep_b.pt)
+            if d <= tolerance:
+                # a parità di distanza decidono le coordinate, mai l'ordine del file
+                pairs.append((d, sorted((tuple(ep_a.pt), tuple(ep_b.pt))), i, j))
+    if pairwise:
+        pairs.sort(key=lambda p: (p[0], p[1]))
+
+    fixes: List[GapFix] = []
+    taken: set = set()
+    for _, _, i, j in pairs:
+        ep_a, ep_b = endpoints[i], endpoints[j]
+        key_a, key_b = (id(ep_a.ref), ep_a.role), (id(ep_b.ref), ep_b.role)
+        if pairwise:
+            if key_a in taken or key_b in taken:
                 continue
-            checked.add(pair_key)
-
-            if _distance(ep_a.pt, ep_b.pt) > tolerance:
-                continue
-
-            solver = _get_solver(ep_a.kind, ep_b.kind)
-            fixes.extend(solver(ep_a, ep_b))
-
+            taken.update((key_a, key_b))
+        elif (key_a, key_b) in taken:
+            continue
+        else:
+            taken.add((key_a, key_b))
+        fixes.extend(_get_solver(ep_a.kind, ep_b.kind)(ep_a, ep_b))
     return fixes
 
 

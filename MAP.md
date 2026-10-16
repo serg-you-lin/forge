@@ -3886,3 +3886,96 @@ there is not free, and the warning must not say it is.
 `main` → **0.14.1** (D111: `heal()` output changes on concave sides, `F6`,
 NaN input; new warnings; new public steps `split_non_finite`,
 `find_joining_edges`, `free_ends`; no signature change).
+
+### D112 — the tolerance measures a gap, not a side: free ends pair two by two; an arc closes on itself only if it is a circle ✅
+
+**The defect.** `heal()` read the tolerance as "two ends this close are one
+point" even when the drawing already joined them with geometry. At
+`tol = 1`, on a 100 mm square whose corner is cut by a short element
+detached by 0.3 at both ends:
+- a fillet of r = 0.4 came out as a sharp corner, and only a straight line
+  was left of the arc in the trash;
+- a 0.5 chamfer came out as a sharp corner and vanished, trash empty (a
+  breach of non-negotiable 7);
+- a lone arc open by 0.5 (2.9° missing) came out as a full circle.
+
+Two mechanisms caused it. `compute_gap_fixes` made a fix for *every* pair
+of free ends within the tolerance: the two sides next to the fillet are
+0.99 apart, so they were extended to their intersection over the fillet.
+The tolerant graph of `find_loops` fused nodes within the tolerance even
+when they were the two ends of one edge. The same elements joined exactly
+were always fine; only gaps exposed it.
+
+**Free ends pair two by two by nearness** (`compute_gap_fixes`, default
+`pairwise=True`). Candidate pairs are taken in increasing distance and an
+end that is already paired is skipped. Each end closes at most one gap,
+with the nearest end still free. Ties are broken by coordinates, never by
+file order. The two ends of one edge are never a gap. With a third end in
+the cluster, two are paired and the third stays free, reported by the
+free-ends warning (D111). The really doubtful cases are not guessed
+(Federico): a CAD that exports an entity badly gets a fix written for it
+by the caller, as cogo does, from the public steps.
+
+**`island()` keeps every pair** (`pairwise=False`). Its contract is that
+a piece is the edges that touch within `max_gap`. In a sheet of views,
+three lines meeting at a corner all touch; pairing them would detach one.
+With pairing, `regr_01` went from 191 to 231 trash items. D112 is a
+`heal()` rule.
+
+**An arc closes on itself only if it is a circle**
+(`close_near_full_arcs`, new public step, run before `close_free_gaps`).
+An `ArcSeg` whose two ends are free becomes a `CircleSeg` with the same
+center and radius only if both of these hold:
+- the gap between its ends is within the tolerance: that is the question
+  "is the hole a gap?", and it depends on scale;
+- the missing angle is within `NEAR_FULL_ARC_MISSING` = 2°: that is the
+  question "is the arc a circle?", and it does not depend on scale.
+
+Neither condition covers the other:
+
+| case | gap | missing | becomes a circle? |
+|---|---|---|---|
+| r = 0.4, three quarters | 0.57 | 90° | no — the angle says it is not a circle |
+| r = 500, 358.5° | 13 mm | 1.5° | no — the gap is beyond what the caller allowed |
+| r = 3, 359.6° (export noise) | 0.02 | 0.4° | yes |
+
+Closing on the angle alone was considered (Federico weighed it) and
+rejected. The tolerance is the limit of what `heal()` may invent, and every
+other closure respects it: on a 358° arc of r = 500 the angle alone would
+close 17 mm of contour that the caller never allowed. The double check
+contains the angle-only rule: a caller passes `tolerance=math.inf`. The
+opposite would not be true. 2° is a named constant, not a derived number:
+broken exports lose fractions of a degree, and a drawn arc rarely goes
+above 350°.
+
+**The tolerant graph does not close an edge on itself.** If clustering
+fuses an edge's two ends, the edge stays out of that step's loops, and it
+ends in the trash with its geometry intact.
+
+**A free near-full arc now round-trips.** A loop made by one lone arc of
+359.4–359.7°, with ends about 0.02 apart, stayed an `ArcSeg`. `to_dxf`
+wrote it with a zero chord, and it read back as a NaN arc of radius 0. It
+is now a `CircleSeg` and round-trips as a circle of the same radius.
+
+**Ends fused by the node rounding are not free ends.** The cogo sheets
+have the opposite case: an r = 1.5 arc at the tip of a very sharp corner.
+Each of its ends meets a side exactly, and the ends are 0.008 apart, so the
+rounding of `Edge.start`/`Edge.end` makes them one node. The first version
+of the rule read `start == end` as "a loop on its own" and turned the tip
+into a circle. The fused node must touch no other edge. A self-loop is not
+in the node graph (it sits among the degenerate loops), so the node's
+degree must be 0 (`test_007_punta_di_spigolo_coi_capi_fusi_non_si_chiude`).
+What `heal()` does with that tip is unchanged from 0.14.1 and still wrong.
+That is a separate defect, open in TODO.
+
+**Old vs new on the 768 DXFs under forge/ and snapbend/ `tests/`:** 0 change
+in `heal()` and 0 in `island()`. The rule changes only the constructed
+cases, which are now tests
+(`test_heal_steps.TestShortElementsAndTolerance`,
+`TestCloseNearFullArcs`). Suite: 1205 passed; only the two known text
+budgets are red. snapbend: 427 passed. DXF before/after for Federico in
+`tests/examples/tolleranza/` (local).
+`main` → **0.14.2** (D112: `heal()` output changes on short elements
+within the tolerance and on lone near-full arcs; new public step
+`close_near_full_arcs`, constant `NEAR_FULL_ARC_MISSING`; no signature
+changed).

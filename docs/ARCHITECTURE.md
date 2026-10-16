@@ -168,8 +168,12 @@ consumatore (snapdraw) compone gli stessi passi come gli serve.
    consumatore che marca la geometria prima di `heal` (snapdraw) —
    `forge.non_contour_candidates(doc)` (D55) espone lo stesso criterio del
    passo 4 sotto, per decidere QUALI edge marcare qui
-3. **chiude i gap** (`close_free_gaps`): estremi liberi entro `tolerance`
-   portati alla loro intersezione reale
+3. **chiude i gap**: prima un arco quasi completo coi capi liberi diventa
+   cerchio (`close_near_full_arcs`: gap entro `tolerance` e angolo mancante
+   entro 2°), poi gli estremi liberi entro `tolerance` (`close_free_gaps`),
+   accoppiati due a due per vicinanza, portati alla loro intersezione reale.
+   La tolleranza misura un gap, non un lato: un elemento più corto di lei
+   resta (D112)
 4. **detection non-contorno** (`find_non_contour_edges`): gli `Edge` con
    entrambi gli endpoint su nodi di branching (grado > 2) che il bordo della
    faccia esterna della loro componente non percorre una volta sola (una
