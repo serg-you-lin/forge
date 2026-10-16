@@ -10,10 +10,12 @@ Puro: solo Edge, primitive e modello, nessun formato.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Callable, FrozenSet, List, Optional, Set, Tuple
 
-from shapely.geometry import LineString, Polygon
+from shapely import STRtree
+from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import polygonize, snap, unary_union
 
 from ..geometry.measure import node_decimals_for, track_points
@@ -48,6 +50,27 @@ class LoopSearch:
 # ---------------------------------------------------------------------------
 # API pubblica
 # ---------------------------------------------------------------------------
+
+def split_non_finite(edges: List[Edge]) -> Tuple[List[Edge], List[Edge]]:
+    """
+    Separa gli Edge con una coordinata non finita (NaN, inf): ritorna
+    (finiti, non finiti). Un punto senza posizione non sta in nessun grafo
+    né in nessuna uscita; heal() li conta in `errors` e il risultato non è
+    valido.
+    """
+    def finite(edge: Edge) -> bool:
+        try:
+            points = [edge.start, edge.end] + list(edge.segment.discretize())
+        except (ValueError, ArithmeticError):
+            return False
+        return all(math.isfinite(v) for p in points for v in p[:2])
+
+    bad = [e for e in edges if not finite(e)]
+    if not bad:
+        return list(edges), []
+    bad_ids = {id(e) for e in bad}
+    return [e for e in edges if id(e) not in bad_ids], bad
+
 
 def split_labeled(edges: List[Edge],
                   is_structural: Optional[Callable[[str], bool]] = None
@@ -92,11 +115,60 @@ def dangling_splines(edges: List[Edge]) -> List[Edge]:
 
 def find_non_contour_edges(edges: List[Edge], tolerance: float) -> Set[int]:
     """
-    id(edge) degli Edge che non chiudono un contorno (branching + centroide
-    fuori dal convex hull della componente, D49). heal() li tiene fuori dal
-    grafo della ricerca loop.
+    id(edge) degli Edge che non chiudono un contorno (branching, e non sul
+    bordo della faccia esterna della componente, D111). heal() li tiene fuori
+    dal grafo della ricerca loop. `tolerance`: due tagli più vicini sono un
+    contatto solo, nella rete piana su cui si percorre la faccia esterna.
     """
     return NonContourEdgeDetector(tolerance).detect(build_node_graph(edges), edges)
+
+
+def find_joining_edges(edges: List[Edge], candidate_ids: Set[int]) -> List[Edge]:
+    """
+    Gli Edge fra `candidate_ids` (di solito i non-contorno) che uniscono due
+    forme altrimenti staccate: tolti, i loro due estremi non sono più
+    collegati. Fra due forme chiuse è il nodo ambiguo per eccellenza — un
+    pezzo con una linea attaccata, o due pezzi? heal() li legge come due e
+    lo dice in un warning (D111).
+    """
+    graph = build_node_graph(edges)
+    joining = []
+    for edge in edges:
+        if id(edge) not in candidate_ids:
+            continue
+        start, goal = graph.canonical(edge.start), graph.canonical(edge.end)
+        if start == goal:
+            continue
+        seen, todo = {start}, [start]
+        while todo and goal not in seen:
+            node = todo.pop()
+            for other_edge, other in graph[node]:
+                if other_edge is not edge and other not in seen:
+                    seen.add(other)
+                    todo.append(other)
+        if goal not in seen:
+            joining.append(edge)
+    return joining
+
+
+def free_ends(edges: List[Edge], epsilon: float = 0.0) -> List[Tuple[Tuple, float]]:
+    """
+    (estremo, distanza dal nodo più vicino) per ogni estremo che nessun altro
+    edge tocca, dal più vicino a un nodo: un estremo a pochi mm da un vertice
+    è un gap che la tolleranza non ha chiuso. `epsilon`: quello del grafo su
+    cui i loop sono stati chiusi, perché un estremo fuso lì non è libero.
+    """
+    graph = build_node_graph(edges, epsilon=epsilon)
+    open_nodes = graph.open_nodes()
+    if not open_nodes:
+        return []
+    nodes = list(graph.nodes)
+    tree = STRtree([Point(q) for q in nodes])
+    ends = []
+    for node in open_nodes:
+        hit = tree.query_nearest(Point(node), exclusive=True, return_distance=True)
+        ends.append((node, float(hit[1][0]) if len(hit[1]) else math.inf))
+    return sorted(ends, key=lambda item: item[1])
 
 
 def repair_merged_corners(edges: List[Edge], tolerance: float,

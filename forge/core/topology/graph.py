@@ -106,11 +106,9 @@ class Graph:
 
         Un foglio con più viste/pezzi indipendenti produce più componenti —
         nodi mai raggiungibili l'uno dall'altro perché non condividono nessun
-        edge. Serve a chi deve ragionare per forma (es. `NonContourEdgeDetector`,
-        che altrimenti calcolerebbe un convex hull su tutto il foglio invece
-        che sulla singola vista, scambiando lati di contorno di una vista
-        piccola per "interni" solo perché un'altra vista sullo stesso foglio è
-        più grande).
+        edge. Serve a chi deve ragionare per forma (es. `NonContourEdgeDetector`
+        e `outer_face`, che percorrono la faccia esterna di ogni vista per
+        conto suo).
         """
         seen: set = set()
         components: List[set] = []

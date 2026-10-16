@@ -39,7 +39,7 @@ from .topology.edge import Edge
 from .topology.graph import build_node_graph
 from .geometry.shape import merge_runs
 from .topology.loop_finder import LoopFinder, loop_geometry
-from .topology.noding import NODE_DECIMALS, edge_geometry, renode, split_at_crossings
+from .topology.noding import GRAPH_EPSILON, NODE_DECIMALS, edge_geometry, renode, split_at_crossings
 from .topology.non_contour_edges import NonContourEdgeDetector
 from .topology.outer_face import OuterFace, outer_face
 from .topology.rim import face_segments
@@ -51,8 +51,6 @@ from .healing.normalizer import (
     merge_collinear_overlaps, merge_cocircular_overlaps, weld_degenerate_linesegs,
     refit_tessellations,
 )
-
-GRAPH_EPSILON = 0.01   # mm — due tagli dello stesso incrocio, calcolati da due edge, sono un nodo solo
 
 
 @dataclass

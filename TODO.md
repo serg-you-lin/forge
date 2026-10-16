@@ -21,6 +21,50 @@ Da fare: package `forge/` → `topo/`, `pyproject.toml` (`name = "g-topo"`),
 import in test/script/docs, `gen_index` layers, README/README_IT, LLM.md/API.md;
 poi i consumer (snapbend, snapdraw). Nessun alias.
 
+## APERTO (16 ottobre, MAP.md D111) — invarianti di heal: cosa resta
+
+D111 ha chiuso il criterio non-contorno sui lati concavi e il crash su NaN, e
+messo le invarianti di `heal()` (`tests/unit/core/test_heal_invariants.py`).
+Restano:
+
+- **L'ordine degli edge cambia il risultato** (`KNOWN_ORDER_DEPENDENT`,
+  `linee_di_piegatura_interne`): quadrilatero + catena di 3 pieghe da vertice
+  a vertice passando per due punti a metà lato (nodi di grado 2). Edge in
+  ordine: 1 pezzo; al contrario: il cercatore di loop non trova il giro
+  esterno e `polygonize` dà 4 facce. Non è D111 (nessun candidato: i tratti
+  della catena non hanno entrambi gli estremi a grado > 2): è la scelta del
+  giro in `LoopFinder` quando una catena divide il pezzo.
+
+## APERTO (16 ottobre) — la tolleranza scavalca un elemento più corto di lei
+
+`heal()` tratta la tolleranza come "due estremi così vicini sono lo stesso
+punto" anche quando il disegno li collega già con della geometria. Con
+`tol=1` (DXF in `tests/examples/tolleranza/`, locali):
+
+- **raccordo r=0.4 staccato di 0.3 ai due capi**: i due lati vicini stanno a
+  0.99 fra loro, il gap solver li prolunga all'intersezione, esce lo spigolo
+  vivo e del raccordo resta nel trash solo una retta: l'arco è perso;
+- **smusso di 0.5 staccato di 0.3**: stesso schema, ma lo smusso sparisce del
+  tutto (trash vuoto) — viola "niente si perde";
+- **arco da solo aperto di 0.5**: il grafo tollerante fonde i suoi due capi,
+  esce un `CircleSeg` pieno.
+
+Due meccanismi: `compute_gap_fixes` fa un fix per *ogni* coppia di estremi
+liberi entro tolleranza, non per il compagno più vicino; il grafo tollerante
+di `find_loops` fonde nodi entro tolleranza anche se sono i due capi dello
+stesso edge o di una catena corta. Un lato più corto della tolleranza è
+geometria legittima (collegato esatto resta: smusso 0.8, asola con semicerchi
+r=0.4, rettangolo 100×0.8 a `tol=1` escono giusti), la tolleranza parla di
+gap, non di dimensioni. Da decidere con Federico (D112):
+regola del compagno più vicino reciproco, e "due estremi già collegati da
+geometria non sono un gap".
+
+## APERTO (16 ottobre) — un difetto visto su file reali
+
+- Un giro fatto da un solo `ArcSeg` quasi completo (359.6°, capi a ~0.02 mm,
+  sotto tolleranza) resta `ArcSeg` invece di diventare `CircleSeg`; `to_dxf` lo
+  scrive con corda zero e, riletto, è un arco NaN di raggio 0.
+
 ## APERTO (16 ottobre, MAP.md D109) — contorno meno regione, traccia × contorno
 
 Tre API geometriche da scrivere quando il prototipo esterno si è stabilizzato:
@@ -682,8 +726,6 @@ committato — la storia sta nel git log e in `MAP.md`).
 - **archi_si_no.dxf** — riconoscere gli archi come outer romperebbe le bending
   line (il grafo gira prima di quella decisione). Accettato così com'è; in
   futuro potrebbe diventare un comportamento opzionale.
-- **F6.dxf** — edge case da gestire con le tolleranze; ci si aspetterebbe un
-  warning sui nodi ambigui dal validator, non ancora emesso.
 - **rect_special_countersink.dxf** — l'anello esterno del countersink
   potrebbe opzionalmente uscire su un layer a parte per un trattamento CAM
   diverso. Non bloccante.

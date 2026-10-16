@@ -134,8 +134,8 @@ from .core.healing.normalizer import (
     merge_collinear_overlaps, merge_cocircular_overlaps, weld_degenerate_linesegs,
 )
 from .core.healing.steps import (
-    split_labeled, close_free_gaps, dangling_splines, find_non_contour_edges,
-    repair_merged_corners, find_loops, LoopSearch, structural_loops,
+    split_non_finite, split_labeled, close_free_gaps, dangling_splines, find_non_contour_edges,
+    find_joining_edges, free_ends, repair_merged_corners, find_loops, LoopSearch, structural_loops,
     loops_to_features, polygonize_edges, polygons_to_features,
     labeled_features, build_hierarchy,
 )
@@ -200,10 +200,13 @@ __all__ = [
     "merge_collinear_overlaps",
     "merge_cocircular_overlaps",
     "weld_degenerate_linesegs",
+    "split_non_finite",
     "split_labeled",
     "close_free_gaps",
     "dangling_splines",
     "find_non_contour_edges",
+    "find_joining_edges",
+    "free_ends",
     "repair_merged_corners",
     "find_loops",
     "LoopSearch",

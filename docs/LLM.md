@@ -116,7 +116,7 @@ forge.save_json(result, "out.json")
 | `normalize_role` / `is_structural_role` | `(value) -> str` / `(role) -> bool` | role-vocabulary primitives (see below). `is_structural_role` is the engine's own minimal predicate (outer/inner only) — a consumer passes its own extended one to `heal(is_structural=...)`. |
 | `RoleStyle` | `dataclass(color: tuple[int,int,int]|None, linetype: str|None, lineweight: float|None, layer_name: str|None)` | per-role visual override for `to_dxf`/`split` via `role_styles={role: RoleStyle(...)}`. `None` fields keep forge's default. A `linetype` neither in the output document nor in ezdxf's standard table → `ValueError` at `to_dxf`/`split` (D85). Wins over anything `register_role_style` registered for the same role. |
 | `register_role_style` | `(role, style: RoleStyle) -> None` | registers a `RoleStyle` **once**, applied to every later `to_dxf`/`split` automatically — same idiom as `set_schema`. snapbend uses this exact call to register its colors/layer names at import time. |
-| `non_contour_candidates` | `(doc, tolerance=None) -> list[Edge]` | same topological criterion `heal()` uses internally to exclude an edge from the contour graph (branching + centroid outside its connected component's convex hull, D49) — asserts **no** meaning (not "bending", not anything). snapbend's bend detection is just one interpretation of these candidates. A consumer (snapdraw, the interpreter) that wants a different interpretation (a raised-feature edge in a plan view is not a bend line) calls this to get the same candidate set without re-deriving the criterion, then sets `edge.role` on the returned `Edge`s (references into `doc.edges` — mutation is reflected there) **before** `heal()`. Runs on `doc.edges` as-is, before `heal()`'s own merge/gap-closing preprocessing — meant to decide roles pre-`heal()`, not to predict its exact excluded set to the edge case. |
+| `non_contour_candidates` | `(doc, tolerance=None) -> list[Edge]` | same topological criterion `heal()` uses internally to exclude an edge from the contour graph (both endpoints on branching nodes, and not on the boundary of its connected component's outer face, D111) — asserts **no** meaning (not "bending", not anything). snapbend's bend detection is just one interpretation of these candidates. A consumer (snapdraw, the interpreter) that wants a different interpretation (a raised-feature edge in a plan view is not a bend line) calls this to get the same candidate set without re-deriving the criterion, then sets `edge.role` on the returned `Edge`s (references into `doc.edges` — mutation is reflected there) **before** `heal()`. Runs on `doc.edges` as-is, before `heal()`'s own merge/gap-closing preprocessing — meant to decide roles pre-`heal()`, not to predict its exact excluded set to the edge case. |
 
 ### Debug/inspect (stdout only, 3 levels in order)
 
@@ -203,7 +203,7 @@ forge.to_dxf(result, doc)   # FlangeUp layer, orange — registered once, applie
 That assumes the source already groups flange edges under their own name
 (`forge.name_rules({"FlangeMarks": ...})`). When it doesn't — you only know
 geometrically that an edge sits where a bend line *would* sit (both endpoints
-on a branching node, interior to its shape's hull) and have to decide for
+on a branching node, not on its shape's outer boundary) and have to decide for
 yourself whether it's really a bend or a raised-feature edge — use
 `non_contour_candidates(doc)` instead of a name rule:
 

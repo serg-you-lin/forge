@@ -1104,6 +1104,9 @@ inert for every existing fixture).
 
 ### D49 — `NonContourEdgeDetector`'s convex hull is per connected component, not per sheet ✅
 
+> Reopened by D111: the convex hull is gone, criterion 2 is now "not on the
+> component's outer face exactly once". The per-component part stays.
+
 Found on a real multi-view sheet, untracked (a plate
 outline plus a second, much smaller "thickness" view above it — two shapes,
 no edge in common). The small view's own outer never closed, at *any*
@@ -3765,3 +3768,121 @@ each), where `heal()` is the wrong reading and its output means nothing
 (non-negotiable 5). On flat patterns (heal goldens, snapbend fixtures) no
 contour changes; trash pieces +21 on `Multifeature`, +1 on `FU` and
 `polilinea_con_marcatura`.
+
+### D111 — reopening D49: an edge is contour when the outer face borders it on one side; `heal()` gets invariants ✅
+
+**The defect.** D49's criterion 2 excluded an edge (both endpoints on
+branching nodes) when its centroid lay inside its component's convex hull,
+assuming a real side always lies on the hull. A side of the concave part of
+an outer does not. When two bend lines without a role end at its two
+vertices, the side is excluded as if it were a chord, and the part opens.
+This came from a real sheet of 20 bent parts read without a layer rule for
+the bends: `heal()` closed 4 and sent 16 to the trash. The goldens never
+showed it, for two reasons. They are read with `name_rules`, so on the
+concave fixtures the bends already carry a role and never reach the
+detector. And a golden freezes an output, so it protects a defect that was
+there when it was written.
+
+**The criterion now (topological, no distance).** An edge is contour when
+the boundary of its component's outer face (`outer_face_passes`, the same
+walk as `outer_face`, D100) traverses it exactly once: material on one side,
+outside on the other. An edge with a closed face on both sides is a chord
+(never traversed). An edge with the outside on both sides is a bridge or a
+spur (traversed twice). Neither one is contour. Only candidates (both ends
+at degree > 2) are tested, as before. The walk is done per component, so
+D49's multi-view case still holds (`test_hull_per_componente_non_per_foglio_intero`
+is unchanged and green).
+
+The walk runs on the planar network (`split_at_crossings` at the heal
+tolerance, nodes within `GRAPH_EPSILON`, the same as `island()`, D101), not
+on `heal()`'s graph, which never nodes a crossing. This was found on the
+second real sheet: there, the two flanks of a notch are drawn crossing each
+other about 0.1 mm above its bottom. On the unnoded graph the walk went
+across the crossing, took two bends as the boundary, and cut 720 mm² of
+material off the part. An original edge counts as boundary when its pieces
+border the outside for more than half its length. A real side does so
+along its whole length; a chord does so at most along a grazed stretch. The
+invariants found that grazed case: a chord arriving almost tangent at the
+end of a fillet, outside the material for 1.2 mm at 6 µm. Taking "any piece
+on the boundary" there turned a 1010 mm chord into contour. `tolerance`
+therefore stays in the signatures (`NonContourEdgeDetector`,
+`find_non_contour_edges`, `non_contour_candidates`), with a real job now:
+two cuts closer than it are one contact.
+
+On the two real sheets of bent parts, read with and without the bend layer:
+20/21 and 71/72 parts. The only part that differs is a 5 × 5 registration
+mark, a closed square that only its layer says is not a part.
+
+**What it does not change.** A hole joined to the outer by lines is
+classified as before: its sides between two attachment nodes are not on the
+outer face, so they are excluded, exactly as when they were inside the hull.
+
+**Invariants** (`tests/unit/core/test_heal_invariants.py`, same nature as
+D104/D107 for `island()`, never regenerated). They run on every heal golden.
+- Valid polygons.
+- Nothing dropped: within the heal tolerance.
+- Chords keep the outer: pairs of chords from one vertex to the two ends of a
+  straight side, concave sides first, re-healed with the outer alone, must
+  give the same outer. This is the generic form of an unlabeled bend.
+- Roles of chords don't matter: on a file's own non-structural edges that
+  cross an outer edge to edge, read without their role, the outers are the
+  same.
+- Rigid motion: a quarter turn, exact on the node grid, for every file. An
+  arbitrary angle (0.7 rad) skips the files whose gap is exactly the
+  tolerance, which today is `Multipolis`: re-rounding to the node grid (D96)
+  moves it just over the threshold. That is a knife edge, not a defect.
+- Edge order: reversed edges give the same parts.
+- `heal()` never raises.
+
+The shape comparison runs on a 1 µm grid, because GEOS can return the whole
+union as the symmetric difference of two polygons equal to 1e-13 that have
+near-collinear vertices. Before the fix, 20 of these tests were red: 18
+chord, 1 role, 1 NaN. After it, none are. New fixture:
+`golden/pieghe_su_lati_concavi.dxf`, the real sheet anonymized (no texts, no
+marks, neutral name, built with forge). Its bends sit on a `bending` layer that its config maps to a role.
+Without that role it reads 4 parts before the fix and 20 after.
+
+**Two more defects found by the invariants.**
+- `heal()` crashed on a NaN coordinate. Now `split_non_finite` (a new public
+  step, first in `heal()`) sets the edge aside, counts it in `errors`, and
+  the result is invalid.
+- The order of the edges changes the result on `linee_di_piegatura_interne`
+  (open in TODO, `KNOWN_ORDER_DEPENDENT`): that is the loop finder's choice
+  when a chain of degree-2 nodes divides the part, not this criterion.
+
+**Golden changes.** `F6` (heal and snapbend process): 1 → 2 clusters. The
+closed 1384.9 × 34 strip, which a 311.8 mm bridge joins to the pentagon,
+used to go to the trash. Its long side is inside the hull, so it was
+excluded and the strip was opened. Now the bridge is excluded (traversed
+twice) and the strip is a part of its own. Federico: F6 is an edge case on
+purpose, with no right answer of its own. What it must do is warn. So the
+two goldens are regenerated at 2 clusters, and `heal()` now says what is
+ambiguous. These warnings are emitted only when some loop closed; with none,
+the old "estremi liberi" warning covers it.
+- **Free ends** (`free_ends`): the ends that nothing touches, with their
+  distance to the nearest node. On F6 that is the 7 mm stub, 3.72 mm from a
+  pentagon corner. `close_free_gaps` joins only free ends to each other,
+  never a free end to a node, so no tolerance closes it.
+- **Joining edges** (`find_joining_edges`): a non-contour edge whose removal
+  disconnects its two ends, which here is the 311.8 mm line.
+
+The old TODO note "F6: a warning on ambiguous nodes is expected, not yet
+emitted" is closed by this.
+
+**Old vs new `heal()` on every DXF under forge/ and snapbend/ `tests/`
+(762).** 616 are identical and 146 change in their contours. Split by the
+reading each file is for:
+- `heal()` files: 7 change, all of them `F6` and its copies plus the new
+  fixture (4 → 20).
+- `island()` files and drawing sheets (`golden_islands`, `golden_anchoring`,
+  `examples/`, `lab/`): 139 change. There, `heal()` output means nothing
+  (non-negotiable 5).
+- `island()` uses the detector only to tell `non_contour` from
+  `unclassified` in its leftovers. Its goldens and invariants are unchanged.
+
+`free_ends` counts open ends on the graph the loops were closed on
+(`epsilon = tolerance` when the tolerant step closed them): an end fused
+there is not free, and the warning must not say it is.
+`main` → **0.14.1** (D111: `heal()` output changes on concave sides, `F6`,
+NaN input; new warnings; new public steps `split_non_finite`,
+`find_joining_edges`, `free_ends`; no signature change).

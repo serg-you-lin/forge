@@ -9,7 +9,7 @@ from forge.core.primitives.segments import LineSeg
 
 
 def _make_edge(p1, p2):
-    # Ruolo irrilevante per il criterio (solo geometria: branching + hull) —
+    # Ruolo irrilevante per il criterio (solo topologia: branching + faccia esterna) —
     # stesso pattern di tests/unit/core/test_non_contour_edges.py.
     return Edge(role="unknown", start=p1, end=p2, segment=LineSeg(start=p1, end=p2))
 
@@ -44,21 +44,18 @@ class TestNonContourCandidates(unittest.TestCase):
 
         self.assertEqual(forge.non_contour_candidates(doc), [])
 
-    def test_tolerance_esplicita_sovrascrive_source_meta(self):
-        rect = [
-            _make_edge((0.0, 0.0), (1.0, 0.0)),
-            _make_edge((1.0, 0.0), (1.0, 2.0)),
-            _make_edge((1.0, 2.0), (0.0, 2.0)),
-            _make_edge((0.0, 2.0), (0.0, 0.0)),
-        ]
-        diagonal = _make_edge((0.0, 0.0), (1.0, 2.0))
-        # source_meta assente del tutto: deve cadere sul default (0.05), non
-        # esplodere.
-        doc = ForgeDocument(edges=rect + [diagonal])
+    def test_lato_concavo_fra_due_pieghe_non_e_candidato(self):
+        # una U: le due pieghe vanno da (0,10)/(30,10) ai vertici del fondo
+        # della tacca, (10,10)/(20,10); il fondo (10,10)-(20,10) sta dentro il
+        # convex hull ma confina con l'esterno: è contorno (D111)
+        u = [_make_edge(a, b) for a, b in [
+            ((0.0, 0.0), (30.0, 0.0)), ((30.0, 0.0), (30.0, 20.0)), ((30.0, 20.0), (20.0, 20.0)),
+            ((20.0, 20.0), (20.0, 10.0)), ((20.0, 10.0), (10.0, 10.0)), ((10.0, 10.0), (10.0, 20.0)),
+            ((10.0, 20.0), (0.0, 20.0)), ((0.0, 20.0), (0.0, 0.0))]]
+        bends = [_make_edge((0.0, 0.0), (10.0, 10.0)), _make_edge((30.0, 0.0), (20.0, 10.0))]
+        doc = ForgeDocument(edges=u + bends)
 
-        candidates = forge.non_contour_candidates(doc, tolerance=0.01)
-
-        self.assertEqual([id(e) for e in candidates], [id(diagonal)])
+        self.assertEqual({id(e) for e in forge.non_contour_candidates(doc)}, {id(e) for e in bends})
 
     def test_edge_restituiti_sono_mutabili_in_place(self):
         # Il punto della funzione: il chiamante deve poter settare .role sugli

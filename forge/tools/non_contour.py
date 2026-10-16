@@ -3,8 +3,8 @@ forge/tools/non_contour.py
 ---------------------------
 Espone a un consumatore lo stesso criterio topologico che `heal()` usa
 internamente per decidere "questo edge non chiude un contorno" —
-`NonContourEdgeDetector` (branching + centroide fuori dal convex hull della
-sua componente connessa, MAP.md D49).
+`NonContourEdgeDetector` (branching, e non sul bordo della faccia esterna
+della sua componente connessa, MAP.md D111).
 
 `heal()` non assegna mai un significato a questi edge: li esclude dal grafo e
 basta, restano in `trash_entities` col ruolo che avevano (`unknown` se nessuno
@@ -39,14 +39,12 @@ from ..core.healing.steps import find_non_contour_edges
 
 def non_contour_candidates(doc: ForgeDocument, tolerance: Optional[float] = None) -> List[Edge]:
     """
-    Edge di `doc.edges` che l'euristica topologica di `heal()` escluderebbe dal
+    Edge di `doc.edges` che il criterio topologico di `heal()` escluderebbe dal
     grafo dei contorni — candidati a "qualcos'altro", senza dire cosa.
 
     tolerance: se None ripresa da doc.source_meta['tolerance'] (stesso
                fallback di heal()).
     """
     edges = list(doc.edges)
-    tol = doc.node_tolerance(tolerance)
-
-    excluded_ids = find_non_contour_edges(edges, tol)
+    excluded_ids = find_non_contour_edges(edges, doc.node_tolerance(tolerance))
     return [e for e in edges if id(e) in excluded_ids]

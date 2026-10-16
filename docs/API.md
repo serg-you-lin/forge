@@ -376,10 +376,13 @@ duplicato.
 forge.merge_collinear_overlaps(edges) -> list[Edge]
 forge.merge_cocircular_overlaps(edges) -> list[Edge]
 forge.weld_degenerate_linesegs(edges) -> list[Edge]
+forge.split_non_finite(edges) -> tuple[list[Edge], list[Edge]]
 forge.split_labeled(edges, is_structural=None) -> tuple[list[Edge], list[Edge]]
 forge.close_free_gaps(edges, tolerance) -> list[Edge]
 forge.dangling_splines(edges) -> list[Edge]
 forge.find_non_contour_edges(edges, tolerance) -> set[int]
+forge.find_joining_edges(edges, candidate_ids) -> list[Edge]
+forge.free_ends(edges, epsilon=0.0) -> list[tuple[point, float]]
 forge.find_loops(edges, non_contour_ids, tolerance) -> LoopSearch
 forge.repair_merged_corners(edges, tolerance, exclude_ids=frozenset()) -> tuple[list[Edge], int, list]
 forge.structural_loops(loops, is_structural=None) -> list[loop]
@@ -394,13 +397,16 @@ forge.build_hierarchy(features, label="", source_file="", is_structural=None)
 
 | passo | prende → ritorna | cosa fa |
 |---|---|---|
+| `split_non_finite` | `list[Edge]` → `(finiti, non finiti)` | mette da parte gli edge con una coordinata NaN/inf: heal() li conta in `errors` e il risultato non è valido (D111). |
 | `merge_collinear_overlaps` | `list[Edge]` → `list[Edge]` | fonde le rette tracciate a spezzoni sovrapposti (D50). |
 | `merge_cocircular_overlaps` | `list[Edge]` → `list[Edge]` | lo stesso sugli archi co-circolari (D52). |
 | `weld_degenerate_linesegs` | `list[Edge]` → `list[Edge]` | salda i `LineSeg` sotto 0.05 mm in un nodo solo (D56). |
 | `split_labeled` | `list[Edge]` → `(restano, etichettati)` | mette da parte gli edge con un ruolo già deciso e non strutturale (D30). Senza `is_structural`, solo `outer`/`inner` sono strutturali. |
 | `close_free_gaps` | `list[Edge]` → `list[Edge]` | chiude i gap fra estremi liberi entro `tolerance` (estensione all'intersezione reale o linea di congiunzione). |
 | `dangling_splines` | `list[Edge]` → `list[Edge]` | le `SplineSeg` aperte con un estremo non collegato — solo diagnostica. |
-| `find_non_contour_edges` | `list[Edge]` → `set[id(Edge)]` | edge che non chiudono un contorno (D49), da tenere fuori dal grafo. `non_contour_candidates(doc)` è la stessa cosa su un documento. |
+| `find_non_contour_edges` | `list[Edge]` → `set[id(Edge)]` | edge che non chiudono un contorno (corde e ponti: estremi su nodi di branching, non sul bordo della faccia esterna, D111), da tenere fuori dal grafo. `non_contour_candidates(doc)` è la stessa cosa su un documento. |
+| `find_joining_edges` | `list[Edge]`, `set[id]` → `list[Edge]` | fra i candidati, gli edge che uniscono due forme altrimenti staccate (tolti, i due estremi non si collegano più): heal() li segnala in un warning (D111). |
+| `free_ends` | `list[Edge]`, `epsilon` → `[(punto, mm)]` | gli estremi che nessun altro edge tocca, con la distanza dal nodo più vicino, dal più vicino; `epsilon` è quello del grafo su cui si sono chiusi i loop. heal() li segnala anche quando qualcosa si chiude (D111). |
 | `find_loops` | `list[Edge]` → `LoopSearch` | la scala: grafo esatto → riparazione angoli se restano estremi liberi (D57) → grafo tollerante. |
 | `repair_merged_corners` | `list[Edge]` → `(edge, n_riparati, cluster_saltati)` | il secondo gradino da solo: angoli fusi dal clustering portati all'intersezione reale; cluster di 3+ estremi saltati. |
 | `structural_loops` | loop → loop | tiene i loop senza edge di ruolo non strutturale. |
@@ -1318,8 +1324,8 @@ forge.non_contour_candidates(doc: ForgeDocument, tolerance=None) -> list[Edge]
 ```
 
 Edge di `doc.edges` che il criterio topologico di `heal()` escluderebbe dal
-grafo dei contorni (branching + centroide fuori dal convex hull della sua
-componente connessa, MAP.md D49) — **senza dire cosa siano**. `heal()` da solo
+grafo dei contorni (estremi su nodi di branching, e non sul bordo della faccia
+esterna della sua componente connessa, MAP.md D111) — **senza dire cosa siano**. `heal()` da solo
 non assegna un significato a questi edge: li esclude e basta, restano in
 `trash_entities` col ruolo che avevano. Un consumatore li interpreta (snapbend
 `detect_flat`: dritto, estremi sul contorno esterno → `"bending"`).

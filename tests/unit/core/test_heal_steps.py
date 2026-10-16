@@ -6,6 +6,7 @@ sua ricetta (D62) — e la composizione nell'ordine di heal() che dà lo stesso
 risultato di heal().
 """
 
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -18,7 +19,7 @@ from forge.model.document import ForgeDocument
 from forge.model.feature import ClosedFeature, OpenFeature
 from forge.model.role import ContourRole
 from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg, CircleSeg, SplineSeg
+from forge.core.primitives.segments import ArcSeg, LineSeg, CircleSeg, SplineSeg
 
 EXAMPLES = project_root / "tests" / "data"
 
@@ -105,6 +106,52 @@ class TestFindNonContourEdges(unittest.TestCase):
         edges = [_line((0.0, 0.0), (1.0, 0.0)), _line((1.0, 0.0), (1.0, 2.0)),
                  _line((1.0, 2.0), (0.0, 2.0)), _line((0.0, 2.0), (0.0, 0.0)), diagonal]
         self.assertEqual(forge.find_non_contour_edges(edges, 0.01), {id(diagonal)})
+
+    def test_002_linea_fra_due_quadrati_esclusa(self):
+        # percorsa andata e ritorno dal bordo esterno: non è contorno di nessuno
+        joint = _line((10.0, 10.0), (20.0, 20.0))
+        edges = _square(0, 0, 10) + _square(20, 20, 10) + [joint]
+        self.assertEqual(forge.find_non_contour_edges(edges, 0.01), {id(joint)})
+
+
+class TestLooseEnds(unittest.TestCase):
+    """Due quadrati uniti da una linea, più un moncone a 3 mm da un vertice:
+    lo schema di F6 (D111)."""
+
+    def setUp(self):
+        self.joint = _line((10.0, 10.0), (20.0, 20.0))
+        self.stub = _line((10.0, 0.0), (13.0, -4.0))
+        self.chord = _line((0.0, 0.0), (10.0, 10.0))
+        self.edges = _square(0, 0, 10) + _square(20, 20, 10) + [self.joint, self.stub]
+
+    def test_001_la_linea_che_unisce_due_forme(self):
+        candidates = forge.find_non_contour_edges(self.edges + [self.chord], 0.01)
+        self.assertEqual(forge.find_joining_edges(self.edges + [self.chord], candidates), [self.joint],
+                         "la diagonale di un quadrato è una corda, non unisce niente")
+
+    def test_002_estremo_libero_e_distanza(self):
+        ends = forge.free_ends(self.edges)
+        self.assertEqual([p for p, _ in ends], [(13.0, -4.0)])
+        self.assertAlmostEqual(ends[0][1], 5.0)
+
+    def test_003_heal_li_dice(self):
+        result = forge.heal(ForgeDocument(edges=self.edges, source_meta={"tolerance": 0.05}))
+        self.assertEqual(result.cluster_count, 2)
+        self.assertTrue(any("estremi liberi" in w for w in result.warnings))
+        self.assertTrue(any("uniscono due forme" in w for w in result.warnings))
+
+    def test_004_pezzo_pulito_nessun_warning(self):
+        result = forge.heal(ForgeDocument(edges=_square(0, 0, 10), source_meta={"tolerance": 0.05}))
+        self.assertEqual(result.warnings, [])
+
+    def test_005_estremo_fuso_dal_grafo_tollerante_non_e_libero(self):
+        # arco da solo aperto di 0.5, tol 1: il gap solver non unisce un edge a
+        # se stesso, lo chiude il grafo tollerante — e i due estremi non sono liberi
+        half = math.asin(0.25 / 10.0)
+        doc = forge.load_segments([ArcSeg((0.0, 0.0), 10.0, 2 * half, 2 * math.pi)], tolerance=1.0)
+        result = forge.heal(doc)
+        self.assertEqual(result.cluster_count, 1)
+        self.assertFalse(any("estremi liberi" in w for w in result.warnings), result.warnings)
 
 
 class TestFindLoops(unittest.TestCase):

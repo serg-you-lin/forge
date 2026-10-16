@@ -171,9 +171,10 @@ consumatore (snapdraw) compone gli stessi passi come gli serve.
 3. **chiude i gap** (`close_free_gaps`): estremi liberi entro `tolerance`
    portati alla loro intersezione reale
 4. **detection non-contorno** (`find_non_contour_edges`): gli `Edge` con
-   entrambi gli endpoint su nodi di branching (grado > 2) e il centroide fuori
-   dal convex hull della loro componente sono candidati a non essere contorno
-   (D49) — escono dal grafo per non rompere la ricerca dei loop. `heal` non
+   entrambi gli endpoint su nodi di branching (grado > 2) che il bordo della
+   faccia esterna della loro componente non percorre una volta sola (una
+   corda, un ponte) non sono contorno (D111, riapre D49) — escono dal grafo
+   per non rompere la ricerca dei loop. `heal` non
    decide cosa siano: resta a un consumatore (snapbend li interpreta come
    piega; snapdraw può decidere da sé)
 5. **ricerca loop** (`find_loops` → `LoopSearch`, che dice quale gradino ha

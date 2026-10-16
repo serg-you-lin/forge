@@ -8,7 +8,7 @@ from forge.core.primitives.segments import LineSeg
 
 def _make_edge(p1, p2):
     # Il ruolo qui è irrilevante per NonContourEdgeDetector, che lavora per
-    # sola geometria (branching + centroide nel convex hull), mai per ruolo
+    # sola topologia (branching + faccia esterna), mai per ruolo
     # — una stringa qualunque non-strutturale basta (era ContourRole.BEND,
     # ora vocabolario di tools/manufacturing_role.py, non del motore).
     return Edge(
@@ -97,6 +97,40 @@ class TestNonContourEdgeDetector(unittest.TestCase):
                           "i lati veri del contorno di B non vanno esclusi")
         self.assertIn(b_diagonal_id, result,
                        "la diagonale di B resta un edge non di contorno")
+
+    def test_lato_concavo_fra_due_corde_resta_contorno(self):
+        # una L: il lato (10,10)-(10,30) della parte concava sta dentro il
+        # convex hull; le due corde da (0,0) ai suoi vertici lo rendono
+        # candidato (estremi a grado 3), ma confina con l'esterno (D111)
+        #
+        #  (0,30)-(10,30)
+        #    |      |
+        #    |    (10,10)----(30,10)
+        #    |                  |
+        #  (0,0)--------------(30,0)
+        outline = [_make_edge(a, b) for a, b in [
+            ((0.0, 0.0), (30.0, 0.0)), ((30.0, 0.0), (30.0, 10.0)), ((30.0, 10.0), (10.0, 10.0)),
+            ((10.0, 10.0), (10.0, 30.0)), ((10.0, 30.0), (0.0, 30.0)), ((0.0, 30.0), (0.0, 0.0))]]
+        chords = [_make_edge((0.0, 0.0), (10.0, 10.0)), _make_edge((0.0, 0.0), (10.0, 30.0))]
+        edges = outline + chords
+        result = NonContourEdgeDetector(tolerance=0.01).detect(build_node_graph(edges), edges)
+        self.assertEqual(result, {id(e) for e in chords})
+
+    def test_tacca_coi_fianchi_accavallati(self):
+        # una tacca dal basso fino a (30,20), coi fianchi disegnati che si
+        # incrociano poco sopra il fondo (il fianco destro torna a (27, 0.5),
+        # a sinistra di dove parte il sinistro): senza un nodo nell'incrocio il
+        # percorso della faccia esterna ci passava sopra e prendeva le pieghe
+        # per bordo. Tre pieghe dal vertice della tacca (D111).
+        outline = [_make_edge(a, b) for a, b in [
+            ((0.0, 0.0), (28.0, 0.0)), ((28.0, 0.0), (30.0, 20.0)), ((30.0, 20.0), (27.0, 0.5)),
+            ((27.0, 0.5), (60.0, 0.0)), ((60.0, 0.0), (60.0, 40.0)), ((60.0, 40.0), (30.0, 40.0)),
+            ((30.0, 40.0), (0.0, 40.0)), ((0.0, 40.0), (0.0, 0.0))]]
+        bends = [_make_edge((30.0, 20.0), (0.0, 0.0)), _make_edge((30.0, 20.0), (60.0, 0.0)),
+                 _make_edge((30.0, 20.0), (30.0, 40.0))]
+        edges = outline + bends
+        result = NonContourEdgeDetector(tolerance=0.01).detect(build_node_graph(edges), edges)
+        self.assertEqual(result, {id(e) for e in bends})
 
 
 if __name__ == "__main__":

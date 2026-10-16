@@ -64,10 +64,7 @@ def outer_face(edges: List[Edge], epsilon: float = 0.0) -> Optional[OuterFace]:
     graph = build_node_graph(edges, epsilon=epsilon)
     best, spurs = None, []
     for component in graph.connected_components():
-        walk = _outer_face_walk(graph, component, len(edges))
-        count: dict = {}
-        for edge, _, _ in walk:
-            count[id(edge)] = count.get(id(edge), 0) + 1
+        count = outer_face_passes(graph, component, len(edges))
         spurs += [e for e in edges if count.get(id(e), 0) >= 2]
         boundary = [e for e in edges if count.get(id(e)) == 1]
         found = _largest_loop(boundary, epsilon) if boundary else None
@@ -86,6 +83,17 @@ def outer_face(edges: List[Edge], epsilon: float = 0.0) -> Optional[OuterFace]:
         return None
     loop, segments, styles, polygon = best
     return OuterFace(loop=loop, segments=segments, styles=styles, polygon=polygon, spurs=spurs)
+
+
+def outer_face_passes(graph: Graph, component, n_edges: int) -> dict:
+    """{id(edge): quante volte il bordo della faccia esterna di `component`
+    lo percorre}. 1 = l'edge confina con l'esterno da un lato solo: è bordo;
+    2 = sporgenza o ponte, esterno da tutti e due i lati; assente = l'edge
+    ha una faccia chiusa da tutti e due i lati (una corda)."""
+    count: dict = {}
+    for edge, _, _ in _outer_face_walk(graph, component, n_edges):
+        count[id(edge)] = count.get(id(edge), 0) + 1
+    return count
 
 
 # ---------------------------------------------------------------------------

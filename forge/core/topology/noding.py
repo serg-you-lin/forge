@@ -40,6 +40,7 @@ from ..primitives.segments import (
 )
 
 NODE_DECIMALS = 3   # griglia dei nodi della rete: tagli e estremi sulla stessa
+GRAPH_EPSILON = 0.01   # mm — due tagli dello stesso incrocio, calcolati da due edge, sono un nodo solo
 
 _EPS = 1e-9
 _MIN_PIECE = 1e-4   # mm — sotto, lo spezzone non viene creato
