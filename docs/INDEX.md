@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`74` modules · `373` module-level functions · `56` classes · `13457` lines of code.
+`74` modules · `374` module-level functions · `56` classes · `13495` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -40,8 +40,8 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_apply_role_styles` | func | `forge/io/dxf.py:463` | Applica gli override di `role_styles` (D37) ai layer DXF: crea il layer |
 | `_Arc` | class | `forge/core/healing/outer_scan.py:104` |  |
 | `arc_angles` | func | `forge/core/geometry/points.py:121` | `(start_angle, end_angle, ccw)` in radianti di un arco che passa per |
-| `_arc_chains` | func | `forge/core/healing/normalizer.py:357` | Catene angolari di un gruppo sullo stesso cerchio. Se l'ultima catena |
-| `_arc_key` | func | `forge/core/healing/normalizer.py:330` | Chiave del cerchio (centro+raggio) a precisione fissa — v. `_line_key`. |
+| `_arc_chains` | func | `forge/core/healing/normalizer.py:394` | Catene angolari di un gruppo sullo stesso cerchio. Se l'ultima catena |
+| `_arc_key` | func | `forge/core/healing/normalizer.py:367` | Chiave del cerchio (centro+raggio) a precisione fissa — v. `_line_key`. |
 | `_arc_point` | func | `forge/core/healing/outer_scan.py:131` |  |
 | `_arc_s` | func | `forge/core/topology/noding.py:100` |  |
 | `arc_seg_to_bulge` | func | `forge/adapters/dxf/exporter.py:77` |  |
@@ -67,7 +67,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `build_node_graph` | func | `forge/core/topology/graph.py:270` | Costruisce il Graph da list[Edge]. |
 | `build_polygon` | func | `forge/core/primitives/polygon_builder.py:19` | Costruisce un Polygon shapely da una lista di primitive geometriche. |
 | `_build_tree` | func | `forge/core/healing/hierarchy.py:78` |  |
-| `_chain` | func | `forge/core/healing/normalizer.py:259` | Ordina per `lo` e incatena gli span che si toccano o si sovrappongono: |
+| `_chain` | func | `forge/core/healing/normalizer.py:265` | Ordina per `lo` e incatena gli span che si toccano o si sovrappongono: |
 | `chord_angle_deg` | func | `forge/core/geometry/measure.py:135` | Angolo (gradi, 0-180°) della corda da `a` a `b`. Modulo 180 perché una |
 | `circle` | func | `forge/core/geometry/build.py:52` | Il cerchio di raggio `radius` in `center`. |
 | `_circle` | func | `forge/core/geometry/shape.py:82` |  |
@@ -228,7 +228,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_Line` | class | `forge/core/healing/outer_scan.py:97` |  |
 | `_line_intersection` | func | `forge/core/geometry/intersections.py:18` | Intersezione tra retta (p1,p2) e retta (p3,p4). None se parallele. |
 | `_line_key` | func | `forge/core/healing/normalizer.py:93` | Chiave della retta infinita per p1->p2: (angolo canonico, offset). |
-| `_line_spans` | func | `forge/core/healing/normalizer.py:208` | Span lungo la retta comune: `t` è la proiezione sulla direzione del |
+| `_line_spans` | func | `forge/core/healing/normalizer.py:214` | Span lungo la retta comune: `t` è la proiezione sulla direzione del |
 | `_lines` | func | `forge/core/island.py:366` |  |
 | `LineSeg` | class | `forge/core/primitives/segments.py:44` |  |
 | `load_dxf` | func | `forge/adapters/dxf/loader.py:219` | Apre un documento DXF o DWG e lo traduce in un ForgeDocument. |
@@ -250,13 +250,13 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_measured_points` | func | `forge/adapters/dxf/annotation_extractor.py:272` | I punti sulla geometria fra cui la quota misura, dai def-point: |
 | `_meet_or_bridge` | func | `forge/core/healing/gap_solver.py:248` | Se le due geometrie si incontrano in `ix`, porta lì entrambi gli estremi; |
 | `_merge_annotations` | func | `forge/adapters/dxf/loader.py:68` | Aggiunge a `base` le annotazioni di `extra` non già presenti (per firma). |
-| `merge_cocircular_overlaps` | func | `forge/core/healing/normalizer.py:339` | `merge_collinear_overlaps` per gli ArcSeg: fonde gruppi co-circolari |
+| `merge_cocircular_overlaps` | func | `forge/core/healing/normalizer.py:376` | `merge_collinear_overlaps` per gli ArcSeg: fonde gruppi co-circolari |
 | `merge_collinear_overlaps` | func | `forge/core/healing/normalizer.py:120` | Fonde gruppi di LineSeg collineari (stessa retta infinita, `_line_key`) |
 | `merge_intervals` | func | `forge/core/geometry/axis.py:36` | Unisce gli intervalli che si sovrappongono o distano al più `tolerance`, in ordine. |
-| `_merge_on_carrier` | func | `forge/core/healing/normalizer.py:279` | Raggruppa per supporto (`key`) gli edge di `segment_type` con ruolo |
+| `_merge_on_carrier` | func | `forge/core/healing/normalizer.py:285` | Raggruppa per supporto (`key`) gli edge di `segment_type` con ruolo |
 | `merge_runs` | func | `forge/core/geometry/shape.py:243` | Segmenti consecutivi di un giro chiuso sulla stessa circonferenza (o |
-| `_merged_arc` | func | `forge/core/healing/normalizer.py:383` | Il fuso di una catena cocircolare: un arco, o un cerchio se chiude il |
-| `_merged_line` | func | `forge/core/healing/normalizer.py:232` | Il fuso di una catena collineare: nodi arrotondati, segmento a piena |
+| `_merged_arc` | func | `forge/core/healing/normalizer.py:420` | Il fuso di una catena cocircolare: un arco, o un cerchio se chiude il |
+| `_merged_line` | func | `forge/core/healing/normalizer.py:238` | Il fuso di una catena collineare: nodi arrotondati, segmento a piena |
 | `_mleader_anchor` | func | `forge/adapters/dxf/annotation_extractor.py:113` | Primo vertice della direttrice di un MULTILEADER. |
 | `mleader_text` | func | `forge/adapters/dxf/mtext.py:37` | Testo grezzo di un MULTILEADER (prima della pulizia), None se assente. |
 | `_moved_segment` | func | `forge/core/healing/gap_solver.py:308` | Nuovo segmento con l'endpoint `role` spostato su `new_pt`. None se non gestito. |
@@ -322,7 +322,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `rectangle` | func | `forge/core/geometry/build.py:37` | Rettangolo `length` × `width` centrato in `center`, lato lungo a `angle` gradi. |
 | `_rectangle` | func | `forge/core/geometry/shape.py:122` |  |
 | `_refine_segment` | func | `forge/core/primitives/segments.py:288` | Suddivide `[t0, t1]` finché il punto medio (valutato con `evaluate(t)`) |
-| `refit_tessellations` | func | `forge/core/healing/normalizer.py:455` | Una catena di almeno `min_run` LineSeg (`role == UNKNOWN`) più corti di |
+| `refit_tessellations` | func | `forge/core/healing/normalizer.py:492` | Una catena di almeno `min_run` LineSeg (`role == UNKNOWN`) più corti di |
 | `register_role_style` | func | `forge/rules/palette.py:157` | Registra uno `RoleStyle` per `role`, valido per ogni render successivo |
 | `registered_role_styles` | func | `forge/rules/palette.py:168` | Copia del registro attivo — letta dai renderer, mai mutata da loro. |
 | `regular_polygon` | func | `forge/core/geometry/build.py:43` | Poligono regolare di `sides` lati inscritto nel cerchio di raggio `radius`; il primo vertice a `angle` gradi. |
@@ -364,7 +364,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_scale` | func | `forge/tools/tabs.py:59` |  |
 | `_scan_axis` | func | `forge/core/healing/outer_scan.py:184` |  |
 | `_scan_bbox` | func | `forge/io/svg.py:175` | bbox da tutti i punti del view model — fallback quando vm['bbox'] è None. |
-| `_search_warnings` | func | `forge/core/heal.py:167` | Cosa racconta heal() dei gradini della scala di find_loops(). |
+| `_search_warnings` | func | `forge/core/heal.py:168` | Cosa racconta heal() dei gradini della scala di find_loops(). |
 | `_seg_end_point` | func | `forge/adapters/dxf/exporter.py:93` |  |
 | `segment_endpoints` | func | `forge/core/primitives/segments.py:506` | (start, end) di un segmento primitivo, in coordinate XY non arrotondate. |
 | `segment_is_closed` | func | `forge/core/primitives/segments.py:542` | True se gli endpoint del segmento coincidono entro ``tolerance``. |
@@ -376,7 +376,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `set_schema` | func | `forge/io/exporter.py:100` | Imposta uno schema esterno come schema attivo. |
 | `_setup_layers` | func | `forge/io/dxf.py:436` |  |
 | `_shape` | func | `forge/io/svg.py:28` |  |
-| `_short_runs` | func | `forge/core/healing/normalizer.py:507` | Catene massimali: percorsi fra nodi di grado != 2, o anelli. |
+| `_short_runs` | func | `forge/core/healing/normalizer.py:544` | Catene massimali: percorsi fra nodi di grado != 2, o anelli. |
 | `_side_cover` | func | `forge/core/topology/rim.py:60` | Per ogni lato dell'anello, gli (edge, verso) che distano meno di `band` |
 | `sides_on_border` | func | `forge/core/geometry/axis.py:231` | I lati di `bounds` ("left", "bottom", "right", "top") che stanno sul |
 | `simplify_points` | func | `forge/core/primitives/fitting.py:198` | `detect_corners` + `fit_primitives` in un solo passo — comodo quando serve |
@@ -386,7 +386,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_solve_arc_line` | func | `forge/core/healing/gap_solver.py:112` |  |
 | `_solve_line_line` | func | `forge/core/healing/gap_solver.py:100` |  |
 | `_solve_spline_any` | func | `forge/core/healing/gap_solver.py:138` |  |
-| `_Span` | class | `forge/core/healing/normalizer.py:243` | Un edge come intervallo [lo, hi] sul suo supporto (posizione lungo la |
+| `_Span` | class | `forge/core/healing/normalizer.py:249` | Un edge come intervallo [lo, hi] sul suo supporto (posizione lungo la |
 | `spanning_lines` | func | `forge/core/geometry/axis.py:199` | (ys, xs): le coordinate delle linee strettamente interne a `bounds` (bordo |
 | `spatial_islands` | func | `forge/core/healing/islands.py:54` | Union-find sulle coppie di Edge a distanza <= gap_tolerance (STRtree, |
 | `_spline_param` | func | `forge/core/primitives/trim.py:146` | Parametro del punto della spline più vicino a `pt`: campioni, poi |
@@ -394,6 +394,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_split` | func | `forge/core/topology/noding.py:213` |  |
 | `split` | func | `forge/io/dxf.py:162` | Materializza un ForgeResult in un Drawing per parte. |
 | `split_at_crossings` | func | `forge/core/topology/noding.py:70` | Spezza ogni LineSeg/ArcSeg/CircleSeg nei punti dove incrocia un altro |
+| `_split_at_junctions` | func | `forge/core/healing/normalizer.py:339` | Spezza una catena dove due span consecutivi si toccano SOLO (nessuna |
 | `_split_circle` | func | `forge/core/topology/noding.py:238` |  |
 | `_split_closed_polyline_at_cuts` | func | `forge/tools/tabs.py:166` | Spezza il contorno chiuso `points` sui tagli in `cuts` — ognuno |
 | `_split_into_stretches` | func | `forge/core/primitives/fitting.py:48` | Spezza `points` in tratti fra due spigoli consecutivi (estremi inclusi). |
@@ -437,7 +438,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `validate` | func | `forge/rules/validator.py:29` | Valida l'input prima di heal(). |
 | `validate_result` | func | `forge/rules/validator.py:128` | Valida i ForgeCluster dentro un ForgeResult già popolato da heal(). |
 | `_warn_non_roundtrip_types` | func | `forge/adapters/dxf/loader.py:86` | Avvisa sui tipi di entità che to_dxf() non riscrive (HATCH, IMAGE, …). |
-| `weld_degenerate_linesegs` | func | `forge/core/healing/normalizer.py:403` | Salda (non cancella) i LineSeg `role == UNKNOWN` di lunghezza reale |
+| `weld_degenerate_linesegs` | func | `forge/core/healing/normalizer.py:440` | Salda (non cancella) i LineSeg `role == UNKNOWN` di lunghezza reale |
 | `_width_factor` | func | `forge/adapters/dxf/annotation_extractor.py:159` | Stretch orizzontale effettivo del testo (1.0 = nessuno). |
 | `_with_nodes` | func | `forge/core/topology/noding.py:207` |  |
 | `_write_annotations` | func | `forge/io/dxf.py:230` | Riscrive le annotazioni testuali della sorgente nel documento di output. |
@@ -758,12 +759,12 @@ _forge/core/geometry/shape.py_
 - `_continues(prev, prev_style, seg, style) -> bool` — L275 — `seg` prosegue `prev` sulla stessa curva, nello stesso verso?
 - `_joined(prev, seg)` — L294
 
-#### `forge/core/heal.py` — 186 lines
+#### `forge/core/heal.py` — 187 lines
 
 _core/heal.py_
 
 - `heal(doc: ForgeDocument, tolerance: Optional[float]=None, label: str='', source_file: str='', is_structural: Optional[Callable[[str], bool]]=None) -> ForgeResult` — L38 — Legge `doc` dall'interno: un ForgeCluster per contorno esterno chiuso,
-- `_search_warnings(search: LoopSearch, tolerance: float) -> list[str]` — L167 — Cosa racconta heal() dei gradini della scala di find_loops().
+- `_search_warnings(search: LoopSearch, tolerance: float) -> list[str]` — L168 — Cosa racconta heal() dei gradini della scala di find_loops().
 
 #### `forge/core/healing/__init__.py` — 0 lines
 
@@ -809,25 +810,26 @@ _core/healing/islands.py_
   - methods: `width`, `height`
 - `spatial_islands(edges: Iterable[Edge], gap_tolerance: float) -> List[Island]` — L54 — Union-find sulle coppie di Edge a distanza <= gap_tolerance (STRtree,
 
-#### `forge/core/healing/normalizer.py` — 535 lines
+#### `forge/core/healing/normalizer.py` — 572 lines
 
 _core/healing/normalizer.py_
 
 - `find_duplicates(keyed_entities: Iterable[Tuple[Hashable, Any]]) -> List[Any]` — L57 — Restituisce i ref delle entità duplicate (seconda occorrenza in poi).
 - `_line_key(p1, p2) -> Tuple[float, float]` — L93 — Chiave della retta infinita per p1->p2: (angolo canonico, offset).
-- `merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]` — L120 — Fonde gruppi di LineSeg collineari (stessa retta infinita, `_line_key`)
-- `_line_spans(group: List[Edge]) -> List[_Span]` — L208 — Span lungo la retta comune: `t` è la proiezione sulla direzione del
-- `_merged_line(lo: _Span, hi: _Span)` — L232 — Il fuso di una catena collineare: nodi arrotondati, segmento a piena
-- **class** `_Span` — L243 — Un edge come intervallo [lo, hi] sul suo supporto (posizione lungo la
-- `_chain(spans: List[_Span]) -> List[List[_Span]]` — L259 — Ordina per `lo` e incatena gli span che si toccano o si sovrappongono:
-- `_merge_on_carrier(edges: Iterable[Edge], segment_type: type, key: Callable[[Any], Hashable], chains_of: Callable[[List[Edge]], List[List[_Span]]], merged: Callable[[_Span, _Span], Tuple[Point, Point, Any]]) -> List[Edge]` — L279 — Raggruppa per supporto (`key`) gli edge di `segment_type` con ruolo
-- `_arc_key(center, radius) -> Tuple[float, float, float]` — L330 — Chiave del cerchio (centro+raggio) a precisione fissa — v. `_line_key`.
-- `merge_cocircular_overlaps(edges: Iterable[Edge]) -> List[Edge]` — L339 — `merge_collinear_overlaps` per gli ArcSeg: fonde gruppi co-circolari
-- `_arc_chains(group: List[Edge]) -> List[List[_Span]]` — L357 — Catene angolari di un gruppo sullo stesso cerchio. Se l'ultima catena
-- `_merged_arc(lo: _Span, hi: _Span)` — L383 — Il fuso di una catena cocircolare: un arco, o un cerchio se chiude il
-- `weld_degenerate_linesegs(edges: Iterable[Edge]) -> List[Edge]` — L403 — Salda (non cancella) i LineSeg `role == UNKNOWN` di lunghezza reale
-- `refit_tessellations(edges: Iterable[Edge], max_segment: float=0.1, min_run: int=10, arc_fit_tolerance: float=0.02, node_decimals: int=3) -> List[Edge]` — L455 — Una catena di almeno `min_run` LineSeg (`role == UNKNOWN`) più corti di
-- `_short_runs(short_edges: List[Edge]) -> list` — L507 — Catene massimali: percorsi fra nodi di grado != 2, o anelli.
+- `merge_collinear_overlaps(edges: Iterable[Edge], keep_junctions: bool=False) -> List[Edge]` — L120 — Fonde gruppi di LineSeg collineari (stessa retta infinita, `_line_key`)
+- `_line_spans(group: List[Edge]) -> List[_Span]` — L214 — Span lungo la retta comune: `t` è la proiezione sulla direzione del
+- `_merged_line(lo: _Span, hi: _Span)` — L238 — Il fuso di una catena collineare: nodi arrotondati, segmento a piena
+- **class** `_Span` — L249 — Un edge come intervallo [lo, hi] sul suo supporto (posizione lungo la
+- `_chain(spans: List[_Span]) -> List[List[_Span]]` — L265 — Ordina per `lo` e incatena gli span che si toccano o si sovrappongono:
+- `_merge_on_carrier(edges: Iterable[Edge], segment_type: type, key: Callable[[Any], Hashable], chains_of: Callable[[List[Edge]], List[List[_Span]]], merged: Callable[[_Span, _Span], Tuple[Point, Point, Any]], keep_junctions: bool=False) -> List[Edge]` — L285 — Raggruppa per supporto (`key`) gli edge di `segment_type` con ruolo
+- `_split_at_junctions(chain: List[_Span], junction: Callable[[Point], bool]) -> List[List[_Span]]` — L339 — Spezza una catena dove due span consecutivi si toccano SOLO (nessuna
+- `_arc_key(center, radius) -> Tuple[float, float, float]` — L367 — Chiave del cerchio (centro+raggio) a precisione fissa — v. `_line_key`.
+- `merge_cocircular_overlaps(edges: Iterable[Edge]) -> List[Edge]` — L376 — `merge_collinear_overlaps` per gli ArcSeg: fonde gruppi co-circolari
+- `_arc_chains(group: List[Edge]) -> List[List[_Span]]` — L394 — Catene angolari di un gruppo sullo stesso cerchio. Se l'ultima catena
+- `_merged_arc(lo: _Span, hi: _Span)` — L420 — Il fuso di una catena cocircolare: un arco, o un cerchio se chiude il
+- `weld_degenerate_linesegs(edges: Iterable[Edge]) -> List[Edge]` — L440 — Salda (non cancella) i LineSeg `role == UNKNOWN` di lunghezza reale
+- `refit_tessellations(edges: Iterable[Edge], max_segment: float=0.1, min_run: int=10, arc_fit_tolerance: float=0.02, node_decimals: int=3) -> List[Edge]` — L492 — Una catena di almeno `min_run` LineSeg (`role == UNKNOWN`) più corti di
+- `_short_runs(short_edges: List[Edge]) -> list` — L544 — Catene massimali: percorsi fra nodi di grado != 2, o anelli.
 
 #### `forge/core/healing/outer_scan.py` — 217 lines
 

@@ -166,6 +166,34 @@ class TestMergeCollinearOverlaps(unittest.TestCase):
         self.assertEqual(out[0].segment.start, (0.0000003, 0.0))
         self.assertEqual(out[0].segment.end, (30.0000003, 0.0))
 
+    def test_contatto_su_uno_spigolo_non_si_fonde(self):
+        # Una traccia interna che parte da uno spigolo dell'outer, collineare
+        # col lato che arriva lì: in (0,0) finisce anche il lato verticale, è
+        # un nodo vero. Fonderli lo cancellerebbe (MAP.md D110). Senza
+        # `keep_junctions` (island, che noda da sé) si fondono come prima.
+        edges = [
+            _line((-40.0, 0.0), (0.0, 0.0)),
+            _line((0.0, 0.0), (200.0, 0.0)),
+            _line((0.0, 0.0), (0.0, -40.0)),
+        ]
+        self.assertEqual(len(merge_collinear_overlaps(edges, keep_junctions=True)), 3)
+        self.assertEqual(len(merge_collinear_overlaps(edges)), 2)
+
+    def test_contatto_senza_altri_edge_si_fonde(self):
+        # Stesso contatto, ma nel punto non arriva nient'altro: è solo la
+        # cucitura fra due spezzoni della stessa riga.
+        edges = [_line((-40.0, 0.0), (0.0, 0.0)), _line((0.0, 0.0), (200.0, 0.0))]
+        self.assertEqual(len(merge_collinear_overlaps(edges, keep_junctions=True)), 1)
+
+    def test_sovrapposizione_su_uno_spigolo_si_fonde(self):
+        # Una sovrapposizione vera si fonde anche dove arriva un altro edge.
+        edges = [
+            _line((-40.0, 0.0), (5.0, 0.0)),
+            _line((0.0, 0.0), (200.0, 0.0)),
+            _line((0.0, 0.0), (0.0, -40.0)),
+        ]
+        self.assertEqual(len(merge_collinear_overlaps(edges, keep_junctions=True)), 2)
+
 
 class TestMergeCocircularOverlaps(unittest.TestCase):
 

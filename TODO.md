@@ -15,6 +15,18 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
+## APERTO (16 ottobre, MAP.md D108) — rename `forge` → `topo`, distribuzione `g-topo`
+
+Da fare: package `forge/` → `topo/`, `pyproject.toml` (`name = "g-topo"`),
+import in test/script/docs, `gen_index` layers, README/README_IT, LLM.md/API.md;
+poi i consumer (snapbend, snapdraw). Nessun alias.
+
+## APERTO (16 ottobre, MAP.md D109) — contorno meno regione, traccia × contorno
+
+Tre API geometriche da scrivere quando il prototipo esterno si è stabilizzato:
+intersezione traccia × contorno chiuso col tipo di punto; contorno chiuso meno
+disco (poi regione) → contorno nuovo valido; traccia tagliata da una regione.
+
 ## CHIUSO (12 ottobre, MAP.md D106) — `.polygon` vs `.segments`; resta un filo, dentro D103
 
 Risolto: i segmenti di una faccia si leggono dal suo bordo (`topology/rim.py`,

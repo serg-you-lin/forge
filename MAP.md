@@ -3707,3 +3707,61 @@ passed, 12 xfailed, 2 failed.
 `main` → **0.14.0** (D101–D107: `island()` output changes — more inners where
 lobes used to vanish, new trash pieces, outer segments read off the face
 boundary; no signature change).
+
+### D108 — the package becomes `topo`, distributed on PyPI as `g-topo`; no alias ✅
+
+`topo` is taken on PyPI (0.1.1, "Topology models.", last release April 2019,
+abandoned); `g-topo` is free. The distribution name and the import name are
+independent, so: `pip install g-topo`, `import topo`. No `forge` alias kept
+(clean break). A PEP 541 claim on the abandoned `topo` was considered and
+dropped: slow and uncertain, and it buys nothing the split name doesn't.
+Collision risk is only an environment that also installs the 2019 `topo`.
+The rename itself is not done yet (TODO).
+
+### D109 — editing a contour by a region is topo's geometry; when and how big is the consumer's
+
+A consumer (snapbend, bend relief) needs to cut a disk out of an outer where
+a trace meets it at a corner, and shorten the trace to the disk. The split
+is geometry vs meaning, not compute vs modify: the edit itself is geometry,
+and cuts and trims already live in topo (`split_at_crossings`,
+`sub_segment`, `geometry/intersections.py`), so by D93–D95 it is written
+here, not as a consumer's helper. topo will provide, in its own words:
+- a trace × closed-contour intersection that says *where* on the contour
+  it falls (inside a segment, at a vertex, at a tangent break);
+- a closed contour minus a closed region (disk first), returned as a new
+  valid contour;
+- a trace cut by a region.
+No process word ("remove a disk of radius r at p", never "relief"). Which
+traces, which crossings, which radius: the consumer's. Prototyped outside
+topo first; the API is fixed here once the shape holds.
+
+### D110 — reopening D50, for `heal()` only: a touch at a junction node is not a seam ✅
+
+A trace starting at a corner of the outer, collinear with the side arriving
+there (a bend line in a flat pattern, no layer to label it): D50 fused the
+two because they touch, turning the cross of a tray into two overlapping
+rectangles (2 clusters, bends gone), a flange into a lost face, two flanges
+into 3 polygonize pieces. The touch point is not a seam between fragments
+of one line: another edge, on another line, ends there — a real node, and
+`heal()`'s graph does not node by itself, so once fused it is gone.
+`merge_collinear_overlaps(keep_junctions=True)`: two collinear pieces that
+only *touch* at a node where an edge on another carrier also ends stay two;
+a real overlap is fused as before (D50's fragments). `heal()` passes it;
+`island()` keeps the D50 behaviour — it nodes the network itself
+(D101), and with the rule on it moved 10 tests including the roundtrip
+invariant on `anch_08`, so there the pre-merge is load-bearing in ways not
+yet understood (4 inners of `anch_01` closed by merged runs vanish; files in
+`_debug/anch_01_island_{old,new}.dxf`). Flat patterns are read with
+`heal()`, so that is where the rule is needed. Lines only: arcs unchanged.
+Every heal golden and the whole snapbend suite unchanged; new tests:
+`test_normalizer` (3) and snapbend `tests/flat/test_bend_at_corner.py` (3),
+red before, green after.
+
+`heal()` old vs new on every DXF under `tests/` (759): 579 identical, 134
+differ only in how many trash pieces (runs no longer fused across a
+junction: same geometry, more pieces), 46 differ in contours — and all 46
+are drawing sheets (outer = the 4-sided frame, A4…A1, 65–135 annotations
+each), where `heal()` is the wrong reading and its output means nothing
+(non-negotiable 5). On flat patterns (heal goldens, snapbend fixtures) no
+contour changes; trash pieces +21 on `Multifeature`, +1 on `FU` and
+`polilinea_con_marcatura`.

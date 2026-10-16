@@ -69,7 +69,8 @@ def heal(doc: ForgeDocument, tolerance: Optional[float] = None, label: str = "",
         return result
 
     edges = list(doc.edges)
-    for merge, what in ((merge_collinear_overlaps, "segmenti collineari sovrapposti fusi"),
+    for merge, what in ((lambda e: merge_collinear_overlaps(e, keep_junctions=True),
+                         "segmenti collineari sovrapposti fusi"),
                         (merge_cocircular_overlaps, "archi co-circolari sovrapposti fusi"),
                         (weld_degenerate_linesegs, "LineSeg degeneri (sub-tolleranza) saldati")):
         merged = merge(edges)

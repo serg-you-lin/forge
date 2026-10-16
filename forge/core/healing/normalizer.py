@@ -117,7 +117,7 @@ def _line_key(p1, p2) -> Tuple[float, float]:
     return (angle, round(offset, _OFFSET_DECIMALS))
 
 
-def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
+def merge_collinear_overlaps(edges: Iterable[Edge], keep_junctions: bool = False) -> List[Edge]:
     """
     Fonde gruppi di LineSeg collineari (stessa retta infinita, `_line_key`)
     che si toccano o si sovrappongono in un solo Edge ciascuno — a catena: il
@@ -129,6 +129,12 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
     l'estensione totale, altrimenti) — non c'è modo di "sbagliare" a fondere
     solo 2 pezzi collineari, la domanda semmai è se DEVONO restare due
     feature distinte a valle (v. sotto).
+
+    `keep_junctions=True` (lo usa `heal()`): due pezzi che si TOCCANO soltanto
+    in un nodo dove arriva anche un edge su un'altra retta non si fondono — è
+    uno spigolo o un innesto, e il grafo di `heal()`, che non noda da sé, lo
+    perderebbe per sempre (MAP.md D110). `island()` noda la rete da sé e
+    lascia il default.
 
     Storia della soglia minima che c'era qui prima (rimossa): un'ipotesi di
     "servono almeno 3 pezzi indipendenti, una coppia può essere coincidenza"
@@ -202,7 +208,7 @@ def merge_collinear_overlaps(edges: Iterable[Edge]) -> List[Edge]:
     `staffa_scarto_doppia`, senza che una sola fusione fosse coinvolta.)
     """
     return _merge_on_carrier(edges, LineSeg, lambda seg: _line_key(seg.start, seg.end),
-                             _line_spans, _merged_line)
+                             _line_spans, _merged_line, keep_junctions)
 
 
 def _line_spans(group: List[Edge]) -> List[_Span]:
@@ -282,6 +288,7 @@ def _merge_on_carrier(
     key: Callable[[Any], Hashable],
     chains_of: Callable[[List[Edge]], List[List[_Span]]],
     merged: Callable[[_Span, _Span], Tuple[Point, Point, Any]],
+    keep_junctions: bool = False,
 ) -> List[Edge]:
     """
     Raggruppa per supporto (`key`) gli edge di `segment_type` con ruolo
@@ -294,18 +301,27 @@ def _merge_on_carrier(
     original_index = {id(e): i for i, e in enumerate(edges)}
 
     buckets: dict = {}
+    carriers_at: dict = {}  # nodo -> supporti degli edge che finiscono lì
     for edge in edges:
         seg = edge.segment
-        if not isinstance(seg, segment_type) or edge.role != ContourRole.UNKNOWN:
+        if edge.role != ContourRole.UNKNOWN:
             continue
-        buckets.setdefault(key(seg), []).append(edge)
+        carrier = key(seg) if isinstance(seg, segment_type) else id(edge)
+        for node in (edge.start, edge.end):
+            carriers_at.setdefault(node, set()).add(carrier)
+        if isinstance(seg, segment_type):
+            buckets.setdefault(carrier, []).append(edge)
 
     replacement: dict = {}  # id(rappresentante) -> Edge fuso
     drop: set = set()       # id(edge) assorbiti da una fusione
+    junction = lambda node: len(carriers_at.get(node, ())) > 1
     for group in buckets.values():
         if len(group) < 2:
             continue
-        for chain in chains_of(group):
+        chains = chains_of(group)
+        if keep_junctions:
+            chains = [c for whole in chains for c in _split_at_junctions(whole, junction)]
+        for chain in chains:
             if len(chain) < 2:
                 continue
             lo = min(chain, key=lambda s: s.lo)
@@ -318,6 +334,27 @@ def _merge_on_carrier(
             drop.update(id(e) for e in members if e is not representative)
 
     return [replacement.get(id(e), e) for e in edges if id(e) not in drop]
+
+
+def _split_at_junctions(chain: List[_Span], junction: Callable[[Point], bool]) -> List[List[_Span]]:
+    """
+    Spezza una catena dove due span consecutivi si toccano SOLO (nessuna
+    sovrapposizione) in un nodo dove finisce anche un edge su un altro
+    supporto: lì c'è uno spigolo o un innesto, un nodo vero del grafo, e
+    fondere i due pezzi lo cancellerebbe (MAP.md D110). Una sovrapposizione
+    vera si fonde sempre.
+    """
+    out = [[chain[0]]]
+    cur_hi, cur_node = chain[0].hi, chain[0].hi_node
+    for span in chain[1:]:
+        touch_only = span.lo >= cur_hi - _CHAIN_GAP_EPS
+        if touch_only and (junction(span.lo_node) or junction(cur_node)):
+            out.append([span])
+        else:
+            out[-1].append(span)
+        if span.hi > cur_hi:
+            cur_hi, cur_node = span.hi, span.hi_node
+    return out
 
 
 # ---------------------------------------------------------------------------
