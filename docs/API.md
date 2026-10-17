@@ -665,6 +665,76 @@ di direzione in radianti. I tratti rimasti da soli non compaiono.
 
 ---
 
+### `intersections`
+
+```python
+forge.geometry.intersections(a, b) -> list[Point]
+```
+
+I punti dove due primitive si incontrano: incroci e tocchi, capi compresi.
+Esatti fra `LineSeg`, `ArcSeg`, `CircleSeg` (forma chiusa); su `SplineSeg` ed
+`EllipseSeg` entro `CURVE_TOLERANCE` (1e-4), perché lì una forma chiusa non
+c'è. Due tratti sovrapposti (stessa retta, stesso cerchio) non danno punti: il
+loro incontro è un tratto (D118).
+
+**Non muta** niente.
+
+---
+
+### `point_on_contour`, `ContourPoint`
+
+```python
+forge.geometry.point_on_contour(segments, point, tolerance=0.01, angle_tolerance=1e-3) -> ContourPoint | None
+```
+
+Dove cade `point` sull'anello `segments` (testa-coda, come `contour.segments`).
+`ContourPoint`: `point`, `kind` (`"vertex"` due lati con un angolo, `"smooth"`
+due lati che proseguono uno nell'altro — un raccordo —, `"edge"` in mezzo a un
+lato), `segments` (indici: entrante e uscente per un vertice, uno solo per un
+lato), `turn_deg`, `concave` (l'interno occupa più di mezzo giro). Le tangenti
+sono esatte; concavo o convesso lo dice il verso dell'anello. None se `point`
+dista più di `tolerance` (D118).
+
+**Non muta** niente.
+
+---
+
+### `cut_by`
+
+```python
+forge.geometry.cut_by(segment, region, keep="outside") -> list
+```
+
+I pezzi di `segment` fuori (`"outside"`) o dentro (`"inside"`) la regione
+chiusa `region`, nel verso di `segment`, tagliati nei punti di
+`intersections`. Una regione è un anello di primitive qualunque
+(`forge.geometry.circle`, `rectangle`, `polygon`, `contour.segments`). I pezzi
+restano primitive dello stesso tipo: un arco tagliato è un arco (D118).
+
+**Non muta** niente. **Solleva** `ValueError` se un pezzo corre lungo il bordo
+della regione (né dentro né fuori).
+
+---
+
+### `contour_minus`
+
+```python
+forge.geometry.contour_minus(contour, region) -> list[list]
+```
+
+L'anello `contour` meno la regione chiusa `region`: gli anelli del bordo che
+resta, ognuno testa-coda. Un anello esterno ha il verso di `contour`, un foro
+(regione tutta dentro) quello opposto. `[]` se la regione copre tutto,
+`[contour]` se non lo tocca. Tanti anelli quanti ne vengono: un taglio che
+stacca un pezzo ne dà due, e quale tenere lo decide il chiamante. Un tocco
+solo (tangenza) non cambia la forma. Da passare a `ForgeContour.from_segments`
+(D118).
+
+**Non muta** niente. **Solleva** `ValueError` se i due bordi corrono uno
+sull'altro.
+
+---
+
 ### `dash_line`
 
 ```python
@@ -1311,8 +1381,18 @@ cluster.detected.attach("flange_view_hint", [...])`, poi la legge con
 
 ### `ForgeContour`
 
-`role` (`ContourRole`), `polygon` (shapely), `segments` (primitive native),
-proprietà `area` e `bbox`.
+`role` (`ContourRole`), `polygon` (shapely), `segments` (primitive native, un
+anello testa-coda), `depth`, `parent`, proprietà `area` e `bbox`.
+
+```python
+forge.ForgeContour.from_segments(segments, role, depth=0, parent=None, tolerance=0.01) -> ForgeContour
+```
+
+Contorno da un anello di primitive scritto da un chiamante (per esempio il
+risultato di `geometry.contour_minus`): controlla che ogni segmento parta dove
+finisce il precedente e che l'ultimo chiuda sul primo, e calcola il poligono.
+**Solleva** `ValueError` se l'anello non chiude o non racchiude un poligono
+valido (D118).
 
 ### `ContourRole` (ruoli del motore — vocabolario aperto)
 

@@ -128,6 +128,33 @@ def _make_validity_test(dxf: Path):
 _register(TestPolygonValidity, _make_validity_test)
 
 
+class TestContoursAreRings(unittest.TestCase):
+    """I segmenti di ogni outer e di ogni inner sono un anello testa-coda:
+    ognuno parte dove finisce il precedente, l'ultimo chiude sul primo (D118).
+    È quello che un chiamante trova in `contour.segments` e passa alle
+    primitive di `forge.geometry.regions` senza riordinarlo."""
+
+
+def _make_ring_test(dxf: Path):
+    def test(self):
+        from forge.core.primitives.segments import segment_endpoints
+        _, result = _read(dxf)
+        for ci, cluster in enumerate(result.clusters):
+            for name, contour in [("outer", cluster.outer)] + [(f"inner[{i}]", c) for i, c in
+                                                               enumerate(cluster.inners)]:
+                segs = contour.segments
+                for k, seg in enumerate(segs):
+                    end = segment_endpoints(seg)[1]
+                    start = segment_endpoints(segs[(k + 1) % len(segs)])[0]
+                    self.assertLessEqual(math.dist(end, start), DEFAULT_TOLERANCE,
+                                         f"{dxf.stem}.cluster[{ci}].{name}: il segmento {k} "
+                                         f"finisce a {end}, il successivo parte da {start}")
+    return test
+
+
+_register(TestContoursAreRings, _make_ring_test)
+
+
 class TestNothingDropped(unittest.TestCase):
     """Ogni pezzo di geometria in ingresso finisce in uscita — nei segmenti di
     un contorno o nel trash — entro la tolleranza di heal: chiudere un gap o

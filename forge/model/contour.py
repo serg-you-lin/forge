@@ -16,12 +16,19 @@ ha `depth=0`/`parent=None`, un figlio diretto `depth=1`, un nipote `depth=2`,
 e così via. Puramente geometrico (contenimento fra poligoni, calcolato in
 `heal()`), non semantico — `detect_flat()` può ricostruire il ruolo che vuole,
 questi due campi non cambiano.
+
+`ForgeContour.from_segments()` costruisce un contorno da un anello di
+primitive scritto da un chiamante (D118): controlla l'anello e calcola il
+poligono, così nessuno passa `polygon` a mano.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Sequence
 
+from forge.core.primitives.polygon_builder import build_polygon
+from forge.core.primitives.segments import DEFAULT_TOLERANCE, segment_endpoints
 from forge.model.curve import ClosedCurve
 
 
@@ -29,6 +36,27 @@ from forge.model.curve import ClosedCurve
 class ForgeContour(ClosedCurve):
     depth:  int                        = 0
     parent: Optional["ForgeContour"]   = None
+
+    @classmethod
+    def from_segments(cls, segments: Sequence, role: str, depth: int = 0,
+                      parent: Optional["ForgeContour"] = None,
+                      tolerance: float = DEFAULT_TOLERANCE) -> "ForgeContour":
+        """
+        Contorno da un anello di primitive testa-coda: ogni segmento parte
+        dove finisce il precedente (entro `tolerance`), l'ultimo chiude sul
+        primo. Il poligono lo calcola forge. ValueError se l'anello non chiude
+        o non racchiude un poligono valido.
+        """
+        segs = list(segments)
+        for k, seg in enumerate(segs):
+            end, start = segment_endpoints(seg)[1], segment_endpoints(segs[(k + 1) % len(segs)])[0]
+            if math.dist(end, start) > tolerance:
+                raise ValueError(f"from_segments: il segmento {k} finisce a {end}, "
+                                 f"il successivo parte da {start}: non è un anello")
+        polygon = build_polygon(segs, tolerance)
+        if polygon is None:
+            raise ValueError("from_segments: i segmenti non racchiudono un poligono valido")
+        return cls(role=role, polygon=polygon, segments=segs, depth=depth, parent=parent)
 
     def to_dict(self) -> dict:
         return {

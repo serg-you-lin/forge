@@ -20,7 +20,8 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 Obiettivo: API stabili su cui un terzo costruisce i suoi algoritmi con le
 primitive di forge. In ordine (i passi che rompono vanno tutti in una minor):
 
-1. **Rename `forge` → `topo` / `g-topo`** (D108, qui sotto).
+1. **Rename `forge` → `topo` / `g-topo`** (D108, qui sotto), insieme a D117:
+   via i prefissi `Forge*`, i passi di heal/island in `topo.steps`.
 2. **Superficie pubblica esplicita**: `topo` (pipeline), `topo.geometry`
    (fatti, D95), un `topo.primitives` nuovo (segmenti, `Edge`, `sub_segment`,
    un costruttore "contorno da segmenti" che valida, al posto di un
@@ -29,7 +30,7 @@ primitive di forge. In ordine (i passi che rompono vanno tutti in una minor):
    sottomoduli (snapbend 41 import, snapdraw 35, forge-pdf-adapter 170):
    migrarli, poi un controllo di `gen_index` nei consumer che vieta `core`
    (in snapbend vuol dire riaprire il suo D57).
-3. **Le primitive di D109** (qui sotto). Criterio: un algoritmo esterno
+3. ~~**Le primitive di D109**~~ — fatte, D118. Criterio: un algoritmo esterno
    (le scantonature a disco del prototipo) tiene private solo le scelte di
    processo — quali spigoli, che raggio, come raggruppare — e nessuna
    geometria che un altro consumer riscriverebbe uguale (cerchio × arco
@@ -63,11 +64,12 @@ Restano:
   della catena non hanno entrambi gli estremi a grado > 2): è la scelta del
   giro in `LoopFinder` quando una catena divide il pezzo.
 
-## APERTO (16 ottobre, MAP.md D109) — contorno meno regione, traccia × contorno
+## CHIUSO (17 ottobre, MAP.md D118) — contorno meno regione, traccia × contorno
 
-Tre API geometriche da scrivere quando il prototipo esterno si è stabilizzato:
-intersezione traccia × contorno chiuso col tipo di punto; contorno chiuso meno
-disco (poi regione) → contorno nuovo valido; traccia tagliata da una regione.
+Fatte: `intersections`, `point_on_contour`, `cut_by`, `contour_minus`,
+`ForgeContour.from_segments`, più l'invariante "i segmenti di un contorno sono
+un anello". Resta: `contour_minus` rifiuta i bordi che corrono uno sull'altro
+(`ValueError`): da gestire se un caso vero lo chiede.
 
 ## CHIUSO (12 ottobre, MAP.md D106) — `.polygon` vs `.segments`; resta un filo, dentro D103
 

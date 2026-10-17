@@ -2,11 +2,15 @@
 forge/core/geometry/intersections.py
 ------------------------------------
 Intersezioni pure: retta/retta, cerchio/retta, cerchio/cerchio,
-polilinea/retta.
+polilinea/retta, e `intersections(a, b)` fra due primitive qualunque.
 """
 
 import math
 from typing import Optional, Tuple, List
+
+from ..primitives.segments import (
+    ArcSeg, CircleSeg, LineSeg, angle_from_start,
+)
 
 Point = Tuple[float, float]
 
@@ -128,3 +132,67 @@ def polyline_line_intersections(
                 and min(a[1], b[1]) - eps <= ix[1] <= max(a[1], b[1]) + eps):
             results.append((ix, i))
     return results
+
+
+# ---------------------------------------------------------------------------
+# Due primitive qualunque
+# ---------------------------------------------------------------------------
+
+_ON = 1e-9            # quanto un punto può sforare un capo e restare sul tratto
+_SAME_POINT = 1e-7    # due radici più vicine di così sono lo stesso punto
+CURVE_TOLERANCE = 1e-4  # discretizzazione di spline ed ellissi per incrociarle
+
+
+def _exact_parts(seg) -> list:
+    """Retta, arco, cerchio restano se stessi; spline ed ellisse diventano
+    rette fitte (`CURVE_TOLERANCE`): non hanno un'intersezione in forma chiusa."""
+    if isinstance(seg, (LineSeg, ArcSeg, CircleSeg)):
+        return [seg]
+    pts = [tuple(q[:2]) for q in seg.discretize(CURVE_TOLERANCE)]
+    return [LineSeg(start=a, end=b) for a, b in zip(pts, pts[1:]) if a != b]
+
+
+def _on_line(seg: LineSeg, pt: Point) -> bool:
+    dx, dy = seg.end[0] - seg.start[0], seg.end[1] - seg.start[1]
+    l2 = dx * dx + dy * dy
+    if l2 == 0:
+        return False
+    t = ((pt[0] - seg.start[0]) * dx + (pt[1] - seg.start[1]) * dy) / l2
+    return -_ON <= t <= 1 + _ON
+
+
+def _on_arc(seg, pt: Point) -> bool:
+    if isinstance(seg, CircleSeg):
+        return True
+    s = angle_from_start(seg.center, seg.start_angle, seg.ccw, pt)
+    return s <= seg._sweep() + _ON or s >= 2 * math.pi - _ON
+
+
+def _meet(a, b) -> List[Point]:
+    if isinstance(a, LineSeg) and isinstance(b, LineSeg):
+        ix = _line_intersection(a.start, a.end, b.start, b.end)
+        return [ix] if ix and _on_line(a, ix) and _on_line(b, ix) else []
+    if isinstance(a, LineSeg) or isinstance(b, LineSeg):
+        line, arc = (a, b) if isinstance(a, LineSeg) else (b, a)
+        pts = _circle_line_intersections(arc.center[0], arc.center[1], arc.radius, line.start, line.end)
+        return [p for p in pts if _on_line(line, p) and _on_arc(arc, p)]
+    pts = _circle_circle_intersections(a.center[0], a.center[1], a.radius,
+                                       b.center[0], b.center[1], b.radius)
+    return [p for p in pts if _on_arc(a, p) and _on_arc(b, p)]
+
+
+def intersections(a, b) -> List[Point]:
+    """
+    I punti dove due primitive si incontrano: incroci e tocchi, capi compresi.
+    Esatti fra rette, archi e cerchi (forma chiusa); su spline ed ellissi
+    entro `CURVE_TOLERANCE`, perché lì una forma chiusa non c'è. Due tratti
+    sovrapposti (stessa retta, stesso cerchio) non danno punti: il loro
+    incontro è un tratto, non un punto.
+    """
+    out: List[Point] = []
+    for pa in _exact_parts(a):
+        for pb in _exact_parts(b):
+            for p in _meet(pa, pb):
+                if all(_distance(p, q) > _SAME_POINT for q in out):
+                    out.append(p)
+    return out

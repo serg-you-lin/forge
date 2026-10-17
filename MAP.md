@@ -4105,3 +4105,74 @@ snapdraw), not forge's own documentation. The live references in code,
 `MAP.md` or were dropped. Older decisions above still name the two files, as
 they were when written.
 
+### D117 — no brand in type names; the pipeline steps leave the top level ✅ (to apply with D108)
+With the rename to `topo` (D108), `ForgeDocument`, `ForgeResult`,
+`ForgeCluster`, `ForgeContour` (and the internal `ForgeAdapter`, `ForgeText`)
+lose the prefix: `topo.Document`, `topo.Result`, `topo.Cluster`,
+`topo.Contour`. The package namespace already says whose they are; a brand
+inside a class name has to be renamed every time the brand changes, which is
+exactly what D108 would otherwise force. `TopoResult` was weighed and dropped
+for the same reason. Federico's worry was that bare names read too generic;
+always written `topo.Name`, they describe themselves.
+
+The top level keeps what a caller of the pipeline needs: loading, `heal`,
+`island`, export, validation, the model types, `geometry`. The individual
+steps of `heal()` and of the island reading (`close_free_gaps`, `find_loops`,
+`polygonize_edges`, `split_at_crossings`, `outer_face`, ...) move to
+`topo.steps`, for whoever composes their own recipe (D58, D62). Clean break,
+no alias, in the same release as the rename.
+
+### D118 — primitives for a caller's own algorithms: intersections, a point on a contour, cut by a region, contour minus a region ✅
+The test case was an external prototype, disk reliefs at the concave corners a
+bend touches: about 200 of its lines were private geometry (chaining a ring,
+crossing a circle by bisection on a discretization, contour minus disk,
+shortening a line). What a caller writes privately should be its choices,
+never geometry another caller would rewrite the same way.
+
+Five public facts, all on rings of native primitives:
+- `geometry.intersections(a, b)`: exact between lines, arcs, circles (the
+  closed forms already in `intersections.py`, until now private); splines and
+  ellipses within 1e-4, where no closed form exists. `noding.py` keeps its own
+  crossing step: its job is different (a contact within `tolerance` is a node).
+- `geometry.point_on_contour(segments, point)` → `ContourPoint`: vertex,
+  smooth joint or middle of a side, turn angle, concave. Exact tangents;
+  concavity from the ring's direction, not an inside test.
+- `geometry.cut_by(segment, region, keep)`, `geometry.contour_minus(contour,
+  region)`: the region is **any closed ring** — `circle`, `rectangle`,
+  `polygon`, a contour's segments — never a named shape. A disk asked by one
+  client and a square asked by the next are the same call, so the engine does
+  not grow one function per request. Cuts fall on exact intersection points
+  and pieces stay the same primitive (a cut arc is an arc); shapely only says
+  whether a piece's midpoint is inside. `contour_minus` returns every ring
+  that is left (a cut that detaches a piece gives two, a region inside gives a
+  hole with the opposite direction) and decides nothing: which ring to keep is
+  the caller's choice.
+- `ForgeContour.from_segments(segments, role)`: checks the ring closes and
+  computes the polygon, so no caller builds a contour by hand with `polygon`.
+
+The guarantee they rest on is now tested: the segments of every `outer` and
+`inner` that `heal()` writes are a head-to-tail ring (`TestContoursAreRings`,
+all 49 golden drawings).
+
+What stays with the caller, on purpose: which points to look at, which
+corners get a relief, the radius, grouping, when to refuse. That is where a
+customer's process knowledge lives; the geometry under it is the same for
+everybody and lives here (D91).
+
+Proof: the prototype rewritten on these five dropped from ~310 to ~170 lines,
+with no private geometry left, and its output is unchanged on its fixtures
+and on two real sheets (23 + 73 DXF files matched entity by entity, largest
+difference 2.6e-11 mm). One reading changed, for the better: a bend end on the
+tip of a very narrow slit was "not on the border" before, because the old
+code asked the outer's `polygon`, which misses that tip by 18.9 mm; asked on
+the segments it is a convex vertex. Same output (no relief either way). The
+polygon/segments disagreement is the open thread of D106.
+
+Written with a possible later port of the engine core to Rust in mind: pure
+functions over plain primitive data, typed results (`ContourPoint`, rings as
+lists of primitives), exceptions instead of mixed return types, explicit
+dispatch per primitive type (an `enum` + `match` there). shapely is used only
+for the inside/outside test, which has a direct counterpart.
+
+`main` → **0.16.0** (new public names in `forge.geometry` and on
+`ForgeContour`).
