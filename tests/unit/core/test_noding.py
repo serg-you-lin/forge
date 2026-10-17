@@ -2,9 +2,9 @@
 
 import math
 import unittest
-from forge.core.topology.noding import split_at_crossings, renode
-from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg, CircleSeg, ArcSeg
+from topo.core.topology.noding import split_at_crossings, renode
+from topo.core.topology.edge import Edge
+from topo.core.primitives.segments import LineSeg, CircleSeg, ArcSeg
 
 
 def _line(p1, p2):

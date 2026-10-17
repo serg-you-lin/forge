@@ -4,14 +4,14 @@ tests/unit/core/test_ellipse_seg.py
 `EllipseSeg` (core/primitives/segments.py): parametrizzazione, chiusura,
 `.reversed()`, discretizzazione adattiva. Stessa parametrizzazione del
 gruppo DXF ELLIPSE, verificata contro `ezdxf.math.ellipse` (vedi docstring
-della classe) — questi test verificano solo la matematica pura di forge,
+della classe) — questi test verificano solo la matematica pura di topo,
 zero ezdxf.
 """
 
 import math
 import unittest
 
-from forge.core.primitives.segments import EllipseSeg, CircleSeg, segment_is_closed, segment_endpoints
+from topo.core.primitives.segments import EllipseSeg, CircleSeg, segment_is_closed, segment_endpoints
 
 
 def _max_deviation_from_ellipse(seg: EllipseSeg, pts) -> float:

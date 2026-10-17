@@ -1,10 +1,10 @@
 # tests/unit/core/test_non_contour_edges.py
 
 import unittest
-from forge.core.topology.graph import build_node_graph
-from forge.core.topology.non_contour_edges import NonContourEdgeDetector
-from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg
+from topo.core.topology.graph import build_node_graph
+from topo.core.topology.non_contour_edges import NonContourEdgeDetector
+from topo.core.topology.edge import Edge
+from topo.core.primitives.segments import LineSeg
 
 def _make_edge(p1, p2):
     # Il ruolo qui è irrilevante per NonContourEdgeDetector, che lavora per

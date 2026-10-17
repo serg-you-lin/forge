@@ -8,7 +8,7 @@ aperte fuori da ogni isola.
 Disegni in `tests/data/golden_islands/` (`anch_NN`, `regr_NN`): copie
 anonimizzate dei fogli di snapdraw con la sola geometria che `island()` legge
 nel framer — cornice, cartiglio e linee di costruzione tolti da snapdraw, il
-file scritto da forge (layer `geometry`). forge non sa cos'è una cornice:
+file scritto da topo (layer `geometry`). topo non sa cos'è una cornice:
 riceve il foglio già ripulito. Isole giudicate giuste da Federico sulla
 pagina "Scala delle isole" (5 ottobre). Golden in `json/` accanto; senza i
 disegni il test si salta.
@@ -27,7 +27,7 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
+import topo
 
 MAX_GAP = 0.5    # quello di snapdraw (SHEET_MAX_GAP)
 TOL = 0.01       # mm
@@ -38,7 +38,7 @@ GOLDEN_DIR = SOURCE_DIR / "json"
 
 def snapshot(dxf_path: Path) -> dict:
     """Le isole in ordine di riquadro (due isole di area uguale non scambiano il golden)."""
-    result = forge.island(forge.load_dxf(str(dxf_path)), max_gap=MAX_GAP)
+    result = topo.island(topo.load_dxf(str(dxf_path)), max_gap=MAX_GAP)
     islands = sorted([round(float(v), 3) for v in c.outer.polygon.bounds] + [len(c.inners)]
                      for c in result.clusters)
     return {"source_file": dxf_path.name,

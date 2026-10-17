@@ -2,8 +2,8 @@
 06_split.py — un documento DXF per parte (funzione pura)
 =======================================================
 
-API forge usate:
-    split    ForgeResult -> list[Drawing], uno per parte. NON tocca il disco.
+API topo usate:
+    split    Result -> list[Drawing], uno per parte. NON tocca il disco.
 
 Per salvare davvero: itera il risultato e chiama .saveas(), oppure usa
 split_to_files() (vedi 07). Le parti sotto min_area (mm²) vengono scartate.
@@ -14,7 +14,7 @@ split_to_files() (vedi 07). Le parti sotto min_area (mm²) vengono scartate.
 import _paths  # noqa: F401  — chdir alla radice del repo
 
 import os
-import forge
+import topo
 
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/data/golden/example_4_polylines.dxf"   # 4 parti
@@ -25,8 +25,8 @@ MIN_AREA  = 50.0
 
 os.makedirs(OUTDIR, exist_ok=True)
 
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE)
-result = forge.heal(doc, label="batch")
+doc = topo.load_dxf(INPUT, tolerance=TOLERANCE)
+result = topo.heal(doc, label="batch")
 if not result.is_valid:
     raise SystemExit(f"non valido: {result.errors}")
 
@@ -40,10 +40,10 @@ def namer(i, cluster):
 # on_part: hook per parte, callable(cluster, doc_out), prima che il Drawing
 # entri nella lista — utile per scrivere metadati / marcature sul doc figlio
 def on_part(cluster, doc_out):
-    forge.write_metadata_to_dxf(doc_out, cluster)
+    topo.write_metadata_to_dxf(doc_out, cluster)
 
 
-docs = forge.split(
+docs = topo.split(
     result,
     source_doc=doc,
     namer=namer,

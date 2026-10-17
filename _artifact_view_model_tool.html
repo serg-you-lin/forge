@@ -1,4 +1,4 @@
-<title>Forge View Model</title>
+<title>Topo View Model</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -237,7 +237,7 @@ textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
 
 <div class="app">
   <header class="bar">
-    <div class="wordmark"><b>forge</b><span>view&nbsp;model</span></div>
+    <div class="wordmark"><b>topo</b><span>view&nbsp;model</span></div>
     <div class="parts" id="parts"></div>
     <div class="file" id="file">—</div>
     <div class="grow"></div>
@@ -282,7 +282,7 @@ textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
       <div class="sheet" id="sheet">
         <div class="card">
           <h2>Paste a view model</h2>
-          <p>Output of <code>forge.to_view_model(result)</code> — or drop a
+          <p>Output of <code>topo.to_view_model(result)</code> — or drop a
              <code>.json</code> file anywhere on the canvas.</p>
           <textarea id="json" spellcheck="false" placeholder='{ "parts": [ … ], "palette": { … } }'></textarea>
           <div class="actions">
@@ -305,7 +305,7 @@ textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
   const SAMPLES = JSON.parse(document.getElementById("samples-data").textContent);
   const NS = "http://www.w3.org/2000/svg";
 
-  // forge emits ACI-derived hex; a couple are too dark on the viewport ground.
+  // topo emits ACI-derived hex; a couple are too dark on the viewport ground.
   const TWEAK = { "#0000ff": "#5b7cff", "#808080": "#9aa2ab" };
   const fix = c => TWEAK[String(c).toLowerCase()] || c;
 

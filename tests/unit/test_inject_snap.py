@@ -10,21 +10,21 @@ import unittest
 
 from shapely.geometry import Polygon
 
-import forge
-from forge.model.annotation import Note
-from forge.model.cluster import ForgeCluster
-from forge.model.contour import ForgeContour
-from forge.model.result import ForgeResult
-from forge.model.role import ContourRole
+import topo
+from topo.model.annotation import Note
+from topo.model.cluster import Cluster
+from topo.model.contour import Contour
+from topo.model.result import Result
+from topo.model.role import ContourRole
 
 
 def _part(x0, y0, x1, y1):
     poly = Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
-    return ForgeCluster(outer=ForgeContour(polygon=poly, role=ContourRole.OUTER))
+    return Cluster(outer=Contour(polygon=poly, role=ContourRole.OUTER))
 
 
 def _result(*clusters, annotations=()):
-    return ForgeResult(clusters=list(clusters), annotations=list(annotations))
+    return Result(clusters=list(clusters), annotations=list(annotations))
 
 
 def _collect(cluster, testi):
@@ -36,25 +36,25 @@ class TestInjectSnapDistance(unittest.TestCase):
     def test_default_keeps_strict_containment(self):
         res = _result(_part(0, 0, 100, 100),
                       annotations=[Note(position=(105, 50), text="materiale sp.3")])
-        forge.inject(res, data_injector=_collect)
+        topo.inject(res, data_injector=_collect)
         self.assertEqual(res.clusters[0].custom["testi"], [])
 
     def test_text_just_outside_goes_to_part(self):
         res = _result(_part(0, 0, 100, 100),
                       annotations=[Note(position=(105, 50), text="materiale sp.3")])
-        forge.inject(res, data_injector=_collect, snap_distance=10.0)
+        topo.inject(res, data_injector=_collect, snap_distance=10.0)
         self.assertEqual(res.clusters[0].custom["testi"], ["materiale sp.3"])
 
     def test_beyond_snap_distance_goes_nowhere(self):
         res = _result(_part(0, 0, 100, 100),
                       annotations=[Note(position=(150, 50), text="cartiglio")])
-        forge.inject(res, data_injector=_collect, snap_distance=10.0)
+        topo.inject(res, data_injector=_collect, snap_distance=10.0)
         self.assertEqual(res.clusters[0].custom["testi"], [])
 
     def test_snapped_text_goes_only_to_nearest_part(self):
         res = _result(_part(0, 0, 100, 100), _part(120, 0, 220, 100),
                       annotations=[Note(position=(104, 50), text="Q.tà 2")])
-        forge.inject(res, data_injector=_collect, snap_distance=10.0)
+        topo.inject(res, data_injector=_collect, snap_distance=10.0)
         self.assertEqual(res.clusters[0].custom["testi"], ["Q.tà 2"])
         self.assertEqual(res.clusters[1].custom["testi"], [])
 
@@ -62,7 +62,7 @@ class TestInjectSnapDistance(unittest.TestCase):
         # dentro la parte 0 ma a 2 dal bordo della parte 1: resta solo alla 0
         res = _result(_part(0, 0, 100, 100), _part(102, 0, 200, 100),
                       annotations=[Note(position=(99, 50), text="dentro")])
-        forge.inject(res, data_injector=_collect, snap_distance=10.0)
+        topo.inject(res, data_injector=_collect, snap_distance=10.0)
         self.assertEqual(res.clusters[0].custom["testi"], ["dentro"])
         self.assertEqual(res.clusters[1].custom["testi"], [])
 

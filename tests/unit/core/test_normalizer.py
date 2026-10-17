@@ -2,11 +2,11 @@
 
 import math
 import unittest
-from forge.core.healing.normalizer import (
+from topo.core.healing.normalizer import (
     merge_collinear_overlaps, merge_cocircular_overlaps, weld_degenerate_linesegs,
 )
-from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
+from topo.core.topology.edge import Edge
+from topo.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
 
 
 def _line(p1, p2, role="unknown"):

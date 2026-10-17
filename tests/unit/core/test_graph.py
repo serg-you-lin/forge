@@ -2,10 +2,10 @@
 
 import math
 import unittest
-from forge.core.topology.graph import Graph, build_node_graph, cluster_points
-from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg, ArcSeg
-from forge.model.role import ContourRole
+from topo.core.topology.graph import Graph, build_node_graph, cluster_points
+from topo.core.topology.edge import Edge
+from topo.core.primitives.segments import LineSeg, ArcSeg
+from topo.model.role import ContourRole
 
 
 def _make_edge(p1, p2):

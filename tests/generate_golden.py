@@ -33,7 +33,7 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
+import topo
 
 EXAMPLES_DIR      = project_root / "tests" / "data"
 GOLDEN_DXF_DIR    = EXAMPLES_DIR / "golden"
@@ -54,7 +54,7 @@ def _load_config(dxf_path: Path) -> dict:
 
 
 def _geometry(result, source_file: str) -> dict:
-    """Metà forge: outer, perimetri, contorni interni."""
+    """Metà topo: outer, perimetri, contorni interni."""
     golden = {"source_file": source_file, "cluster_count": result.cluster_count, "clusters": []}
     for cluster in result.clusters:
         inners = sorted(cluster.inners, key=lambda x: x.area, reverse=True)
@@ -110,12 +110,12 @@ def generate(force: bool = False, only: str = None):
             name_roles = {**GLOBAL_NAME_ROLES, **config.get("name_roles", {})}
 
             def _load():
-                return forge.load_dxf(
+                return topo.load_dxf(
                     dxf_path, upgrade=True, explode_inserts=True, flatten_z_flag=True,
-                    tolerance=tolerance, verbose=False, role_rules=forge.name_rules(name_roles),
+                    tolerance=tolerance, verbose=False, role_rules=topo.name_rules(name_roles),
                 )
 
-            geom = forge.heal(_load(), tolerance=tolerance)
+            geom = topo.heal(_load(), tolerance=tolerance)
 
             if not geom.is_valid:
                 print(f"  SKIP (non valido): {dxf_path.name} — {geom.errors}")

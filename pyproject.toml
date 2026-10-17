@@ -3,10 +3,10 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "forge"
-# Unica fonte di verità della versione. forge.__version__ la legge da qui via
+name = "g-topo"
+# Unica fonte di verità della versione. topo.__version__ la legge da qui via
 # importlib.metadata — non duplicarla nel codice (MAP.md D11).
-version = "0.16.0"
+version = "0.17.0"
 description = "Deterministic 2D-geometry engine for technical drawings"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -31,11 +31,11 @@ dependencies = [
 raster = ["opencv-python", "Pillow"]
 pdf    = ["PyMuPDF"]
 dev    = ["pytest", "pytest-cov"]
-all    = ["forge[raster,pdf]"]
+all    = ["g-topo[raster,pdf]"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["forge*"]
+include = ["topo*"]
 
 # Regola di dipendenza controllata da scripts/gen_index.py (MAP.md D44)
 [tool.gen_index.layers]

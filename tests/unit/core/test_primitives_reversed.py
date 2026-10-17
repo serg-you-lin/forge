@@ -10,7 +10,7 @@ Fase 4:
 import math
 import unittest
 
-from forge.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
+from topo.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
 
 
 def _arc_len(seg, tol=0.01):

@@ -2,11 +2,11 @@
 07_split_to_files.py — pipeline multi-pezzo completa su disco
 ============================================================
 
-API forge usate:
+API topo usate:
     split_to_files    heal -> split -> .saveas() per parte
                       È L'UNICA funzione della pipeline che scrive su disco.
 
-Ritorna il ForgeResult (per poterci fare save_json dopo). Nome file:
+Ritorna il Result (per poterci fare save_json dopo). Nome file:
 f"{cluster.label}.dxf" dove cluster.label = namer(i, cluster), senza namer f"{label}_P{i+1}".
 
     python 07_split_to_files.py
@@ -14,7 +14,7 @@ f"{cluster.label}.dxf" dove cluster.label = namer(i, cluster), senza namer f"{la
 
 import _paths  # noqa: F401  — chdir alla radice del repo
 
-import forge
+import topo
 
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/data/golden/example_4_polylines.dxf"
@@ -23,9 +23,9 @@ OUTDIR    = "pipeline_output/batch_demo"
 LABEL     = "P-1024"
 # -------------------------------------------------------------------------
 
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE)
+doc = topo.load_dxf(INPUT, tolerance=TOLERANCE)
 
-result = forge.split_to_files(
+result = topo.split_to_files(
     doc,
     output_folder=OUTDIR,
     label=LABEL,
@@ -41,5 +41,5 @@ for w in result.warnings:
     print(f"   warn: {w}")
 
 # il result serve ancora: metadati dell'intero batch
-forge.save_json(result, f"{OUTDIR}/{LABEL}.json")
+topo.save_json(result, f"{OUTDIR}/{LABEL}.json")
 print(f"metadati      : {OUTDIR}/{LABEL}.json")

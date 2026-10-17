@@ -1,9 +1,9 @@
 # tests/unit/core/test_islands.py
 
 import unittest
-from forge.core.healing.islands import spatial_islands
-from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg, CircleSeg
+from topo.core.healing.islands import spatial_islands
+from topo.core.topology.edge import Edge
+from topo.core.primitives.segments import LineSeg, CircleSeg
 
 
 def _line(p1, p2):

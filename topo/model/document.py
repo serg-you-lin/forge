@@ -1,0 +1,54 @@
+"""
+model/document.py
+-----------------
+Il Document — output di topo.load_dxf() e unico input di topo.heal().
+
+load_dxf() non restituisce un modelspace ezdxf: restituisce questo oggetto di
+dominio. Dopo load_dxf() il riferimento al documento ezdxf sorgente sparisce e
+non viene più toccato fino a write().
+
+    edges       : geometria parsata (Edge puri) — input per heal()
+    annotations : testi, quote, leader — dati puri, input per write()
+    source_meta : header rilevanti del file sorgente ($INSUNITS, $MEASUREMENT, …)
+    source_path : percorso del file aperto
+    warnings    : diagnostica raccolta da load_dxf() sul file grezzo — audit,
+                  INSERT non esplosi, entità con Z != 0 riportate sul piano,
+                  duplicati rimossi. topo.validate(doc) le rilancia.
+
+Nessun campo porta un riferimento a ezdxf: edges e annotations sono dati puri
+prodotti dall'adapter, source_meta è un dizionario di primitivi.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from .annotation import Annotation
+
+if TYPE_CHECKING:
+    from ..core.topology.edge import Edge
+
+# Distanza sotto cui due estremi sono lo stesso nodo, se il chiamante non la dà
+DEFAULT_NODE_TOLERANCE = 0.05
+
+
+@dataclass
+class Document:
+    """
+    Documento di dominio prodotto da load_dxf() / load_svg() / load_pdf().
+
+    Contratto: heal(), detect_flat() e write() lavorano solo su questo oggetto e sul
+    Result che ne deriva — mai su entità ezdxf.
+    """
+    edges:       List["Edge"]        = field(default_factory=list)
+    annotations: List[Annotation]    = field(default_factory=list)
+    source_meta: Dict[str, Any]      = field(default_factory=dict)
+    source_path: str                 = ""
+    warnings:    List[str]           = field(default_factory=list)
+
+    def node_tolerance(self, override: Optional[float] = None) -> float:
+        """La tolleranza dei nodi: `override` se dato, altrimenti quella del load."""
+        if override is not None:
+            return override
+        return self.source_meta.get("tolerance", DEFAULT_NODE_TOLERANCE)

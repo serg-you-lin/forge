@@ -2,10 +2,10 @@
 12_to_svg.py — view model + render SVG del modello
 =================================================
 
-API forge usate:
-    to_view_model   ForgeResult -> dict JSON con la geometria di OGNI feature
+API topo usate:
+    to_view_model   Result -> dict JSON con la geometria di OGNI feature
                     (outer, inner, fori, pieghe, incisioni, trash) + colore
-    to_svg          ForgeResult -> stringa SVG (renderer del modello, MAP.md D12)
+    to_svg          Result -> stringa SVG (renderer del modello, MAP.md D12)
     save_svg        idem, scritto su file
 
 `to_view_model` è ciò che consumerebbe una dashboard JS (rendering SVG/Canvas nel
@@ -19,7 +19,7 @@ import _paths  # noqa: F401  — chdir alla radice del repo
 import json
 import os
 
-import forge
+import topo
 
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/data/Multifeature.dxf"
@@ -36,11 +36,11 @@ OUTDIR = "pipeline_output"
 os.makedirs(OUTDIR, exist_ok=True)
 base = os.path.splitext(os.path.basename(INPUT))[0]
 
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
-result = forge.heal(doc, label=base)
+doc = topo.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=topo.name_rules(NAME_ROLES))
+result = topo.heal(doc, label=base)
 
 # 1. view model — il JSON per un renderer esterno
-vm = forge.to_view_model(result, tolerance=0.05)
+vm = topo.to_view_model(result, tolerance=0.05)
 cluster = vm["clusters"][0]
 print(f"parti          : {vm['cluster_count']}")
 print(f"bbox           : {vm['bbox']}")
@@ -55,7 +55,7 @@ with open(vm_path, "w", encoding="utf-8") as f:
 print(f"\nview model     -> {vm_path}")
 
 # 2. SVG — sfondo scuro, fori come cerchi veri
-forge.save_svg(
+topo.save_svg(
     result,
     os.path.join(OUTDIR, f"{base}.svg"),
     tolerance=0.05,
@@ -65,7 +65,7 @@ forge.save_svg(
 )
 
 # variante: sfondo trasparente, senza trash, per incollarlo in un documento
-forge.save_svg(
+topo.save_svg(
     result,
     os.path.join(OUTDIR, f"{base}_clean.svg"),
     include_trash=False,

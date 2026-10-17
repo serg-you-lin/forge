@@ -3719,7 +3719,7 @@ independent, so: `pip install g-topo`, `import topo`. No `forge` alias kept
 (clean break). A PEP 541 claim on the abandoned `topo` was considered and
 dropped: slow and uncertain, and it buys nothing the split name doesn't.
 Collision risk is only an environment that also installs the 2019 `topo`.
-The rename itself is not done yet (TODO).
+Applied in D119 (0.17.0).
 
 ### D109 — editing a contour by a region is topo's geometry; when and how big is the consumer's
 
@@ -4105,7 +4105,7 @@ snapdraw), not forge's own documentation. The live references in code,
 `MAP.md` or were dropped. Older decisions above still name the two files, as
 they were when written.
 
-### D117 — no brand in type names; the pipeline steps leave the top level ✅ (to apply with D108)
+### D117 — no brand in type names; the pipeline steps leave the top level ✅ (applied in D119)
 With the rename to `topo` (D108), `ForgeDocument`, `ForgeResult`,
 `ForgeCluster`, `ForgeContour` (and the internal `ForgeAdapter`, `ForgeText`)
 lose the prefix: `topo.Document`, `topo.Result`, `topo.Cluster`,
@@ -4176,3 +4176,29 @@ for the inside/outside test, which has a direct counterpart.
 
 `main` → **0.16.0** (new public names in `forge.geometry` and on
 `ForgeContour`).
+
+### D119 — the rename is applied: `topo` / `g-topo`, no `Forge*` prefix, `topo.steps` ✅
+D108 and D117 in one breaking release, no alias. The package directory is
+`topo/`, the distribution `g-topo` (`topo.__version__` reads it under that
+name), the model types `topo.Result`, `topo.Cluster`, `topo.Contour`,
+`topo.Document`, the adapter base `Adapter`, the layer table `ALL_LAYERS`.
+The steps of `heal()` and of the island reading left the top level for
+`topo.steps` (29 names); the top level keeps the pipeline.
+
+The formats on disk follow the name too, as a clean break: the XML root is
+`<topo>`, the DXF XDATA application id is `TOPO` (a DXF written before with
+`FORGE` XDATA no longer reads back its metadata through
+`read_metadata_from_dxf`), the text reading opens with `# topo reading` and
+`format: topo-text`, `save_text` names files `<name>.topo.md`. No golden
+carried any of these, so none changed.
+
+Not rewritten: this decision log (history stays as written — `forge` in
+D1…D118 is this package), `dev_tools/` (legacy scripts on the even older
+`dxf_forge`), and the `experiment/pdf-adapter` worktree, which stays on its
+own old base.
+
+Consumers updated in the same pass: snapbend (`to_forge_result` →
+`to_topo_result`), snapdraw, smoother, dxf-anonymize (depends on `g-topo`).
+The local folder and the GitHub repository are renamed by Federico.
+
+`main` → **0.17.0**.

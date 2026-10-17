@@ -1,6 +1,6 @@
 # Script numerati — palestra dell'API
 
-Serie di script standalone in `scripts/`, uno per area di `forge.__all__`.
+Serie di script standalone in `scripts/`, uno per area di `topo.__all__`.
 Ognuno ha un blocco `CONFIG` in testa (INPUT, tolleranza, NAME_ROLES) e gira
 senza argomenti:
 
@@ -25,22 +25,22 @@ INPUT  = r"C:\job\disegno_cliente.dxf"        # assoluto → usato com'è
 OUTDIR = r"pipeline_output"                   # scritto in <repo>/pipeline_output
 ```
 
-| # | script | funzioni forge | cosa mostra |
+| # | script | funzioni topo | cosa mostra |
 |---|--------|----------------|-------------|
 | 00 | `00_inspect.py` | `inspect_file`, `inspect_dxf`, `inspect_document`, `inspect_result` | l'ispettore a 3 livelli — il primo strumento su un file che non torna |
-| 01 | `01_load_and_validate.py` | `load_dxf`, `document_from_msp`, `validate` | aprire un file → `ForgeDocument`; validare l'input |
+| 01 | `01_load_and_validate.py` | `load_dxf`, `document_from_msp`, `validate` | aprire un file → `Document`; validare l'input |
 | 02 | `02_heal.py` | `heal`, `validate_result` | ricostruzione topologia → parti, albero outer/inner (niente fori) |
 | 05 | `05_to_dxf.py` | `to_dxf` | render del modello in un DXF nuovo; `filter_cluster`, `include_trash` |
 | 06 | `06_split.py` | `split` | un `Drawing` per parte (puro); `namer`, `on_part`, `exclude_types` |
 | 07 | `07_split_to_files.py` | `split_to_files` | pipeline multi-pezzo completa su disco |
 | 08 | `08_inject.py` | `inject` | arricchimento CAM dai testi del disegno (`result.annotations`, niente ezdxf) |
-| 09 | `09_export.py` | `to_json`, `save_json`, `save_xml`, `to_nester_input` | metadati fuori da forge |
+| 09 | `09_export.py` | `to_json`, `save_json`, `save_xml`, `to_nester_input` | metadati fuori da topo |
 | 10 | `10_metadata_xdata.py` | `write_metadata_to_dxf`, `read_metadata_from_dxf`, `set_schema` | metadati DENTRO il DXF (XDATA) + schema custom |
 | 11 | `11_batch_heal.py` | `load_dxf` + `heal` + `to_dxf` | heal di tutti i DXF di una cartella → `X_healed.dxf` + `.json` a fianco |
 | 12 | `12_to_svg.py` | `to_view_model`, `to_svg`, `save_svg` | JSON per un renderer esterno + SVG del modello |
 | 14 | `14_style_classification.py` | `RoleRule`, `name_rules`, `load_dxf(role_rules=...)` | assegnare il ruolo da nome, tratteggio, colore o una combinazione (D63) |
 | 16 | `16_bridge_tabs_on_fixture.py` | `tools.tabs.bridge_nested_tabs` (non esportato), `simplify_points` | linguette fra un cerchio e l'anello concentrico che lo contiene (D40) |
-| 17 | `17_rotate_to_longest_outer.py` | `rotate_to_longest` (fuori da `__all__`, D46), `tools.rotate.longest_structural_segment` | ruota un `ForgeResult` già sano così il lato più lungo dell'outer è orizzontale |
+| 17 | `17_rotate_to_longest_outer.py` | `rotate_to_longest` (fuori da `__all__`, D46), `tools.rotate.longest_structural_segment` | ruota un `Result` già sano così il lato più lungo dell'outer è orizzontale |
 | 18 | `18_outer_scan.py` | `core.healing.outer_scan.outer_candidate_edges` (non esportato) | candidati a bordo esterno per ray casting — idea da cui è nata la lettura per isole, oggi non usata da `island()` |
 | 20 | `20_island.py` | `island`, `read_islands` | lettura per isole su tutti i disegni di `tests/examples/islands`, un layer DXF per decisione |
 
@@ -48,12 +48,12 @@ OUTDIR = r"pipeline_output"                   # scritto in <repo>/pipeline_outpu
 scripts/11_batch_heal.py path/`) e `--tol`; senza argomenti processa
 `tests/examples/`. Salta i file già `*_healed`.
 
-I tipi di dominio (`ForgeResult`, `ForgeCluster`, `ForgeContour`, `ForgeDocument`,
+I tipi di dominio (`Result`, `Cluster`, `Contour`, `Document`,
 `Annotation`) sono mostrati inline dentro gli script.
 
 ## Strumenti di manutenzione
 
-Non fanno parte della palestra dell'API: non chiamano `forge`, guardano il repo.
+Non fanno parte della palestra dell'API: non chiamano `topo`, guardano il repo.
 
 - `scripts/gen_index.py` — rigenera `docs/INDEX.md` (ogni nome di modulo con
   `file:line`) e con `--check` esce 1 se è stale; verifica anche la regola di
@@ -63,10 +63,10 @@ Non fanno parte della palestra dell'API: non chiamano `forge`, guardano il repo.
   salvataggio, nomi di layer, testi del cartiglio), e i nomi di sole cifre.
   `--strict` esce 1 al primo sospetto, `--from-disk` cerca anche i nomi dei
   disegni che stanno solo su questa macchina (D73, D75, D76).
-- `python -m forge.tools.anonymize` — non è in `scripts/` ma si usa da riga di
+- `python -m topo.tools.anonymize` — non è in `scripts/` ma si usa da riga di
   comando come loro: `scan` elenca tutto quello che è scritto dentro un disegno
   (testi, nomi di layer/blocco/stile, percorsi, variabili d'intestazione, XDATA),
-  `clean` sostituisce una mappa in quelle sole stringhe e forge verifica che la
+  `clean` sostituisce una mappa in quelle sole stringhe e topo verifica che la
   geometria non si sia mossa. È il passaggio che rende pubblicabile un disegno
   cliente (D77); la mappa resta locale.
 - `scripts/audit_fixtures.py` — i disegni che la suite usa e che non sono in

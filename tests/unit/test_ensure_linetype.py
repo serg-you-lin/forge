@@ -10,7 +10,7 @@ import unittest
 
 import ezdxf
 
-from forge.adapters.dxf.exporter import ensure_linetype
+from topo.adapters.dxf.exporter import ensure_linetype
 
 
 class TestEnsureLinetype(unittest.TestCase):

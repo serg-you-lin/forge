@@ -15,9 +15,9 @@ from pathlib import Path
 from shapely.geometry import LineString, Point
 from shapely.ops import unary_union
 
-import forge
-from forge.core.island import GRAPH_EPSILON
-from forge.core.primitives.segments import DEFAULT_TOLERANCE
+import topo
+from topo.core.island import GRAPH_EPSILON
+from topo.core.primitives.segments import DEFAULT_TOLERANCE
 
 MAX_GAP = 0.5
 SOURCE_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "golden_islands"
@@ -66,7 +66,7 @@ class TestPolygonValidity(unittest.TestCase):
 
 def _make_validity_test(dxf: Path):
     def test(self):
-        result = forge.island(forge.load_dxf(str(dxf)), max_gap=MAX_GAP)
+        result = topo.island(topo.load_dxf(str(dxf)), max_gap=MAX_GAP)
         for ci, cluster in enumerate(result.clusters):
             self._assert_valid(cluster.outer, f"{dxf.stem}.cluster[{ci}].outer")
             for ii, inner in enumerate(cluster.inners):
@@ -89,13 +89,13 @@ class TestRoundtripStable(unittest.TestCase):
 
 def _make_roundtrip_test(dxf: Path):
     def test(self):
-        doc = forge.load_dxf(str(dxf))
-        before = forge.island(doc, max_gap=MAX_GAP)
-        exported = forge.to_dxf(before, source_doc=doc, allow_invalid=True)
+        doc = topo.load_dxf(str(dxf))
+        before = topo.island(doc, max_gap=MAX_GAP)
+        exported = topo.to_dxf(before, source_doc=doc, allow_invalid=True)
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp) / f"{dxf.stem}.dxf"
             exported.saveas(str(tmp_path))
-            after = forge.island(forge.load_dxf(str(tmp_path)), max_gap=MAX_GAP)
+            after = topo.island(topo.load_dxf(str(tmp_path)), max_gap=MAX_GAP)
         snap_before, snap_after = _snapshot(before), _snapshot(after)
         self.assertEqual(len(snap_before), len(snap_after),
                          f"{dxf.stem}: il numero di isole cambia dopo export+reload")
@@ -125,8 +125,8 @@ class TestNothingDropped(unittest.TestCase):
 
 def _make_dropped_test(dxf: Path):
     def test(self):
-        doc = forge.load_dxf(str(dxf))
-        result = forge.island(doc, max_gap=MAX_GAP)
+        doc = topo.load_dxf(str(dxf))
+        result = topo.island(doc, max_gap=MAX_GAP)
         out = [_geometry(s) for c in result.clusters for ct in [c.outer] + c.inners
                for s in ct.segments]
         out += [_geometry(s) for f in result.trash_entities for s in f.segments]
@@ -151,7 +151,7 @@ class TestInnersDontCross(unittest.TestCase):
 
 def _make_cross_test(dxf: Path):
     def test(self):
-        result = forge.island(forge.load_dxf(str(dxf)), max_gap=MAX_GAP)
+        result = topo.island(topo.load_dxf(str(dxf)), max_gap=MAX_GAP)
         crossing = []
         for ci, cluster in enumerate(result.clusters):
             polygons = [inner.polygon for inner in cluster.inners]

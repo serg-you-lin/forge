@@ -1,10 +1,10 @@
 """
 test_writeback.py
 -----------------
-Test di integrazione per forge.to_dxf().
+Test di integrazione per topo.to_dxf().
 
 Dopo il refactoring `write` non modifica più il modelspace sorgente: produce
-un Drawing NUOVO. Questi test verificano il routing dei layer forge sul
+un Drawing NUOVO. Questi test verificano il routing dei layer topo sul
 documento materializzato (doc_out), non più sul msp di partenza.
 
 Il vecchio comportamento "sposta le entità sul msp / entità su layer Trash /
@@ -27,18 +27,18 @@ import ezdxf
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
-from forge.adapters.dxf.adapter import entity_to_polygon
-from forge.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
+import topo
+from topo.adapters.dxf.adapter import entity_to_polygon
+from topo.adapters.dxf.layers import LAYER_OUTER, LAYER_INNER
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 def _pipeline(name, *, name_roles=None):
     """heal → to_dxf. Ritorna (result, msp_out)."""
-    doc = forge.load_dxf(EXAMPLES_DIR / name, role_rules=forge.name_rules(name_roles or {}))
-    result = forge.heal(doc)
-    doc_out = forge.to_dxf(result, doc)
+    doc = topo.load_dxf(EXAMPLES_DIR / name, role_rules=topo.name_rules(name_roles or {}))
+    result = topo.heal(doc)
+    doc_out = topo.to_dxf(result, doc)
     return result, doc_out.modelspace()
 
 
@@ -126,7 +126,7 @@ class TestWritebackDeduplication(unittest.TestCase):
         self.assertEqual(len(outer), 1)
 
     def test_002_no_duplicate_lines_in_output(self):
-        from forge.adapters.dxf.sanitize import deduplicate as _dedup
+        from topo.adapters.dxf.sanitize import deduplicate as _dedup
         self.assertEqual(_dedup(self.msp), 0)
 
 
@@ -134,7 +134,7 @@ class TestWritebackDeduplication(unittest.TestCase):
 # Trash — vive nel modello E viene materializzato sul layer Trash del doc_out
 # ---------------------------------------------------------------------------
 
-from forge.adapters.dxf.layers import TRASH_LAYER
+from topo.adapters.dxf.layers import TRASH_LAYER
 
 
 class TestWritebackTrash(unittest.TestCase):
@@ -153,9 +153,9 @@ class TestWritebackTrash(unittest.TestCase):
         self.assertEqual(len(trash), len(result.trash_entities))
 
     def test_003_include_trash_false_omits_trash(self):
-        doc = forge.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf")
-        result = forge.heal(doc)
-        msp = forge.to_dxf(result, doc, include_trash=False).modelspace()
+        doc = topo.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf")
+        result = topo.heal(doc)
+        msp = topo.to_dxf(result, doc, include_trash=False).modelspace()
         trash = [e for e in msp
                  if e.dxf.hasattr("layer") and e.dxf.layer == TRASH_LAYER]
         self.assertEqual(len(trash), 0)
@@ -177,28 +177,28 @@ class TestWritebackTrash(unittest.TestCase):
         # arco/arco di ~0.26 mm > 0.05) → heal() invalida il risultato. Di
         # default to_dxf() lo scrive lo stesso (tutto in trash, D83); con
         # allow_invalid=False si rifiuta, come vuole chi consegna a una macchina.
-        doc = forge.load_dxf(EXAMPLES_DIR / "arc_open.dxf")
-        result = forge.heal(doc)
+        doc = topo.load_dxf(EXAMPLES_DIR / "arc_open.dxf")
+        result = topo.heal(doc)
         self.assertFalse(result.is_valid)
         self.assertEqual(result.cluster_count, 0)
         self.assertTrue(result.errors)
 
-        msp = forge.to_dxf(result, doc).modelspace()
+        msp = topo.to_dxf(result, doc).modelspace()
         trash = [e for e in msp if e.dxf.layer == TRASH_LAYER]
         self.assertEqual(len(trash), len(result.trash_entities))
         self.assertGreater(len(trash), 0)
 
         with self.assertRaises(ValueError):
-            forge.to_dxf(result, doc, allow_invalid=False)
+            topo.to_dxf(result, doc, allow_invalid=False)
         with self.assertRaises(ValueError):
-            forge.to_svg(result, allow_invalid=False)
-        self.assertIn("<svg", forge.to_svg(result))
+            topo.to_svg(result, allow_invalid=False)
+        self.assertIn("<svg", topo.to_svg(result))
 
 
 # ---------------------------------------------------------------------------
 # Cluster E — linetype della sorgente sempre ripristinato in output. Le linee
 # tratteggiate non devono uscire continue. Il colore invece non si tocca mai:
-# resta quello del layer forge di destinazione (semantico per ruolo — verde
+# resta quello del layer topo di destinazione (semantico per ruolo — verde
 # outer, rosso trash, ... — rules/palette.py), mai quello della sorgente.
 # ---------------------------------------------------------------------------
 
@@ -252,7 +252,7 @@ class TestWritebackStyle(unittest.TestCase):
 # Annotazioni — testi e quote mai scartati, routing su layer dedicato
 # ---------------------------------------------------------------------------
 
-from forge.adapters.dxf.layers import LAYER_ANNOTATION
+from topo.adapters.dxf.layers import LAYER_ANNOTATION
 
 
 class TestWritebackAnnotations(unittest.TestCase):
@@ -296,17 +296,17 @@ class TestWritebackAnnotations(unittest.TestCase):
         self.assertEqual(texts[0].dxf.layer, LAYER_ANNOTATION)
 
     def test_005_annotation_layer_none_keeps_source_layer(self):
-        doc = forge.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf")
-        result = forge.heal(doc)
-        msp = forge.to_dxf(result, doc, annotation_layer=None).modelspace()
+        doc = topo.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf")
+        result = topo.heal(doc)
+        msp = topo.to_dxf(result, doc, annotation_layer=None).modelspace()
         texts = list(msp.query("TEXT"))
         self.assertEqual(len(texts), 1)
         self.assertEqual(texts[0].dxf.layer, "TESTO")
 
     def test_006_annotation_layer_custom_routes_there(self):
-        doc = forge.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf")
-        result = forge.heal(doc)
-        msp = forge.to_dxf(result, doc, annotation_layer=TRASH_LAYER).modelspace()
+        doc = topo.load_dxf(EXAMPLES_DIR / "rect_with_trash.dxf")
+        result = topo.heal(doc)
+        msp = topo.to_dxf(result, doc, annotation_layer=TRASH_LAYER).modelspace()
         texts = list(msp.query("TEXT"))
         self.assertEqual(texts[0].dxf.layer, TRASH_LAYER)
 
@@ -317,21 +317,21 @@ class TestWritebackAnnotations(unittest.TestCase):
         name = "Multifeature.dxf"
         if not (EXAMPLES_DIR / name).exists():
             self.skipTest(name)
-        doc = forge.load_dxf(EXAMPLES_DIR / name)
+        doc = topo.load_dxf(EXAMPLES_DIR / name)
         kinds = Counter(a.kind for a in doc.annotations)
         self.assertEqual(kinds["DIMENSION"], 16)
         self.assertEqual(kinds["LEADER"], 4)
-        result = forge.heal(doc)
-        msp = forge.to_dxf(result, doc).modelspace()
+        result = topo.heal(doc)
+        msp = topo.to_dxf(result, doc).modelspace()
         ann_geom = [e for e in msp.query("LWPOLYLINE")
                     if e.dxf.layer == LAYER_ANNOTATION]
         # direttrici delle quote lineari + frecce dei leader
         self.assertGreater(len(ann_geom), 20)
 
     def test_008_annotation_layer_ignored_on_reload(self):
-        # La geometria che forge scrive sul layer Annotation non deve essere
+        # La geometria che topo scrive sul layer Annotation non deve essere
         # riletta come geometria di parte in un round-trip.
-        from forge.adapters.dxf.adapter import _NON_STRUCTURAL_LAYERS
+        from topo.adapters.dxf.adapter import _NON_STRUCTURAL_LAYERS
         self.assertIn(LAYER_ANNOTATION.lower(), _NON_STRUCTURAL_LAYERS)
         self.assertIn(TRASH_LAYER.lower(), _NON_STRUCTURAL_LAYERS)
 
@@ -345,9 +345,9 @@ class TestWritebackInsertExplodedByDefault(unittest.TestCase):
     def test_001_block_geometry_survives_without_flag(self):
         # scritta.dxf è un solo INSERT che avvolge 93 LINE + 23 SPLINE (lettere).
         # Senza esplodere, load_dxf scartava tutto. Ora è il default.
-        doc = forge.load_dxf(EXAMPLES_DIR / "scritta.dxf")
+        doc = topo.load_dxf(EXAMPLES_DIR / "scritta.dxf")
         self.assertGreater(len(doc.edges), 50)
-        result = forge.heal(doc)
+        result = topo.heal(doc)
         self.assertEqual(result.cluster_count, 1)
         self.assertGreater(len(result.clusters[0].inners), 6)
 

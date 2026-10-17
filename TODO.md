@@ -1,8 +1,8 @@
-# forge — TODO
+# topo — TODO
 
 
 Stato attuale: healing funzionante, export JSON/XDATA base, layer centralizzati.
-Forge è un motore per comprendere geometria CAD 2D.
+Topo è un motore per comprendere geometria CAD 2D.
 
 Nota: tutto quello che era ✅ fatto è stato tolto da qui (il record resta in
 `MAP.md`, decisione per decisione). Questo file tiene solo quello che è
@@ -18,14 +18,18 @@ dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 ## APERTO (17 ottobre) — la strada verso la 1.0.0
 
 Obiettivo: API stabili su cui un terzo costruisce i suoi algoritmi con le
-primitive di forge. In ordine (i passi che rompono vanno tutti in una minor):
+primitive di topo. In ordine (i passi che rompono vanno tutti in una minor):
 
-1. **Rename `forge` → `topo` / `g-topo`** (D108, qui sotto), insieme a D117:
-   via i prefissi `Forge*`, i passi di heal/island in `topo.steps`.
+1. ~~**Rename `forge` → `topo` / `g-topo`**~~ — fatto, D119 (0.17.0), insieme
+   a D117: via i prefissi `Forge*`, i passi di heal/island in `topo.steps`.
+   Restano a Federico: la cartella locale `GitHub/forge` → `GitHub/topo` e il
+   repo GitHub `forge` → `topo`; dopo, reinstallare l'editable
+   (`pip install -e ../topo --no-deps`), `git remote set-url` e
+   `git worktree repair` per `forge-pdf-adapter`.
 2. **Superficie pubblica esplicita**: `topo` (pipeline), `topo.geometry`
    (fatti, D95), un `topo.primitives` nuovo (segmenti, `Edge`, `sub_segment`,
    un costruttore "contorno da segmenti" che valida, al posto di un
-   `ForgeContour` costruito a mano con `depth`/`parent`), `topo.model` (tipi).
+   `Contour` costruito a mano con `depth`/`parent`), `topo.model` (tipi).
    Sotto `core.*` è interno, senza garanzie. Oggi i consumer importano dai
    sottomoduli (snapbend 41 import, snapdraw 35, forge-pdf-adapter 170):
    migrarli, poi un controllo di `gen_index` nei consumer che vieta `core`
@@ -42,13 +46,7 @@ primitive di forge. In ordine (i passi che rompono vanno tutti in una minor):
 5. **Viewer** (punto 9 dei vecchi fili): rifatto prima, o fuori dall'API stabile.
 6. **Audit dati cliente della 1.0** (più sotto): i blocchi nei commit vecchi.
 
-Poi forge 1.0.0, e snapbend 1.0.0 dietro.
-
-## APERTO (16 ottobre, MAP.md D108) — rename `forge` → `topo`, distribuzione `g-topo`
-
-Da fare: package `forge/` → `topo/`, `pyproject.toml` (`name = "g-topo"`),
-import in test/script/docs, `gen_index` layers, README/README_IT, LLM.md/API.md;
-poi i consumer (snapbend, snapdraw). Nessun alias.
+Poi topo 1.0.0, e snapbend 1.0.0 dietro.
 
 ## APERTO (16 ottobre, MAP.md D111) — invarianti di heal: cosa resta
 
@@ -67,7 +65,7 @@ Restano:
 ## CHIUSO (17 ottobre, MAP.md D118) — contorno meno regione, traccia × contorno
 
 Fatte: `intersections`, `point_on_contour`, `cut_by`, `contour_minus`,
-`ForgeContour.from_segments`, più l'invariante "i segmenti di un contorno sono
+`Contour.from_segments`, più l'invariante "i segmenti di un contorno sono
 un anello". Resta: `contour_minus` rifiuta i bordi che corrono uno sull'altro
 (`ValueError`): da gestire se un caso vero lo chiede.
 
@@ -112,7 +110,7 @@ non ancora confermati né respinti:
 Script per rigenerare i DXF con i giri scartati in rosso (layer
 `FANTASMA_SCARTATO`): `_debug/mark_ghosts.py` era nello scratchpad della
 sessione, non salvato nel repo — da riscrivere se serve (richiama
-`island_mod._drop_boundary_duplicates` con uno spy, poi `forge.to_dxf` +
+`island_mod._drop_boundary_duplicates` con uno spy, poi `topo.to_dxf` +
 `ezdxf` per disegnare i giri scartati in rosso sopra al resto).
 
 **`regr_04.cluster[0].inner[0]` (il "bordo doppio in un giro"): chiarito in
@@ -161,7 +159,7 @@ sul codice committato di questo branch, nessuno stash applicato):
    uno "fantasma" annidato dentro, fatto di 2 ArcSeg + 4-7 SplineSeg minuscoli e
    seghettati (area ~11 mm², non zero come i fantasmi di `regr_04`/D101 — qui è
    un'area reale, sbagliata). Pattern: `cluster[1].inners[26,28,30,32,...64]` su
-   `anch_02.dxf` (script di ispezione non salvato, rifare con `forge.island()`
+   `anch_02.dxf` (script di ispezione non salvato, rifare con `topo.island()`
    + `max_gap=0.5` se serve riprodurre).
 3. Federico non si fida più dei golden su questa classe di fogli: **confermato**
    che il motivo è reale — `test_golden_islands.py` confronta solo bbox outer e
@@ -193,8 +191,8 @@ sul codice committato di questo branch, nessuno stash applicato):
 1. ✅ **Fatto (11 ottobre) — test di regressione PRIMA del fix, rossi apposta.**
    Due fixture ritagliate dal foglio reale (non costruite a mano/analiticamente:
    i bug coinvolgono spline vere, 62 nella seconda — minimizzarle a mano non
-   valeva l'effort), salvate con l'API di forge (`OpenFeature`+`ForgeResult`+
-   `forge.to_dxf`, mai `ezdxf` diretto) — **attenzione**: il ruolo dev'essere
+   valeva l'effort), salvate con l'API di topo (`OpenFeature`+`Result`+
+   `topo.to_dxf`, mai `ezdxf` diretto) — **attenzione**: il ruolo dev'essere
    un slug qualunque tipo `"geometry"`, **non** `"unknown"` — `role_to_dxf_layer`
    manda `unknown` sul layer `Trash`, e `DxfAdapter.to_edges()` scarta `Trash` a
    lettura (`_NON_STRUCTURAL_LAYERS`, `adapter.py:40`) — ci si casca dentro,
@@ -204,8 +202,8 @@ sul codice committato di questo branch, nessuno stash applicato):
    - `tests/data/regressions/island_tangent_spike.dxf` (71 edge, l'asola con la
      spike)
    - `tests/unit/core/test_island_regressions.py` — `TestGhostLoop` e
-     `TestTangentSpike`, caricano le fixture via `forge.load_dxf` +
-     `forge.core.island.read_island(edges, tolerance=0.05, max_gap=0.5)`.
+     `TestTangentSpike`, caricano le fixture via `topo.load_dxf` +
+     `topo.core.island.read_island(edges, tolerance=0.05, max_gap=0.5)`.
    Stato suite confermato: 809 passed, 3 failed (i 2 nuovi + `regr_04`, già
    rosso e noto, punto 1 sotto — nessun'altra rottura, `gen_index.py --check` ok).
 2. ✅ **Fatto (11 ottobre, stessa sessione del punto 1) — i due fix.** La prima
@@ -213,7 +211,7 @@ sul codice committato di questo branch, nessuno stash applicato):
    verificato con un giro-passo-passo che `outer_face()` da sola, su `doc.edges`
    crudi, già dà il risultato giusto (1011.26, nessuna spike) — il bug si
    manifesta solo dopo `_normalize()` (gap-fix), prima ancora che `outer_face`
-   veda la rete. Entrambi i fix stanno quindi in `forge/core/island.py`, non in
+   veda la rete. Entrambi i fix stanno quindi in `topo/core/island.py`, non in
    `outer_face.py`. Suite dopo i due fix: 810 passed, 10 failed — i 10 sono
    TUTTI golden islands/text-budget preesistenti impattati dal fix fantasmi
    (vedi "Impatto sui golden" sotto), **nessuna rottura nuova**: i 2 test di
@@ -221,7 +219,7 @@ sul codice committato di questo branch, nessuno stash applicato):
    rottura già nota (D101), `gen_index.py --check` ok.
 
 3. ✅ **Fix spike — causa reale: `_normalize()` salda due estremi liberi che
-   non sono un gap vero (`forge/core/island.py`).** La spike non nasce nel
+   non sono un gap vero (`topo/core/island.py`).** La spike non nasce nel
    walk né nell'union di `outer_face.py` (quelli restano INTOCCATI): nasce
    prima, in `_normalize()`. Due `LineSeg` indipendenti (edge di un'altra
    faccia della vista isometrica, non il raccordo del contorno) hanno ciascuno
@@ -244,7 +242,7 @@ sul codice committato di questo branch, nessuno stash applicato):
    componente) scartava anche questi per errore, scoperta e corretta
    confrontando i due casi fianco a fianco prima di fissare il criterio.
 4. ✅ **Fix fantasmi — non è `split_at_crossings`/noding: è D71 troppo largo
-   su un giro che duplica il bordo di un altro (`forge/core/island.py`).** Le
+   su un giro che duplica il bordo di un altro (`topo/core/island.py`).** Le
    15 edge sono **due componenti connesse separate** (13 e 2), ognuna già un
    giro chiuso per conto suo — non c'è autoincrocio numerico da correggere.
    Il giro fantasma (11.3 mm², 2 `ArcSeg`+11 `SplineSeg`) sta **interamente
@@ -339,12 +337,12 @@ sul codice committato di questo branch, nessuno stash applicato):
    costruttori e `load_segments` fatti). `ArcSeg` usa i radianti; passare lo
    schema ai radianti tocca la matematica di cono e sezione di snapbend
    (`core/cone.py`, `model/section.py`, lo scambio x/y di `model/geometry.py`).
-1. ✅ **fatto (D93)** — **La geometria rimasta in `snapbend/flat/detect.py` torna in forge**
+1. ✅ **fatto (D93)** — **La geometria rimasta in `snapbend/flat/detect.py` torna in topo**
    (Federico, 4 ottobre: "tutto quello che è calcolo e geometria l'avrei messo
-   in forge"). Su 828 righe la geometria pura è poca, ~70 righe; il resto è
+   in topo"). Su 828 righe la geometria pura è poca, ~70 righe; il resto è
    significato (ruoli, `Hole`, pieghe, incisioni) e lì resta. Ma due pezzi
-   sono già doppioni di forge: `_point_line_distance` = `_point_to_line_distance`,
-   `_same_line` = `are_collinear` (`core/geometry.py`). Da portare in forge con
+   sono già doppioni di topo: `_point_line_distance` = `_point_to_line_distance`,
+   `_same_line` = `are_collinear` (`core/geometry.py`). Da portare in topo con
    nomi geometrici: "una corda, prolungata di `reach`, divide il poligono in
    due" (`_cuts_part`) e "tratti sulla stessa retta, uniti dove lo spazio fra
    loro sta dentro un poligono dato" (`_bridged_runs`). La soglia `reach`
@@ -354,12 +352,12 @@ sul codice committato di questo branch, nessuno stash applicato):
 2. **`anonymize`** — **si prosegue in snapdraw** (deciso il 2 ottobre): il lavoro
    sul cartiglio e sui loghi è lettura del disegno, quindi è di snapdraw. Lo
    stato lasciato qui sotto vale come punto di partenza.
-    — ✅ costruito (D77) e ✅ **uscito da forge (D80)**: non è più
-   `forge.tools.anonymize`, è un progetto a sé (`dxf-anonymize`, repo privata,
+    — ✅ costruito (D77) e ✅ **uscito da topo (D80)**: non è più
+   `topo.tools.anonymize`, è un progetto a sé (`dxf-anonymize`, repo privata,
    locale in `GitHub/dxf-anonymize/`), perché una dipendenza dichiarata in
    `pyproject.toml` di un consumer (snapbend, snapdraw) esporrebbe comunque nome
    e scopo dello strumento a chi guarda quella repo, anche con `dxf-anonymize`
-   stessa privata. Dipende da forge (oracolo `heal()`), mai il contrario; si
+   stessa privata. Dipende da topo (oracolo `heal()`), mai il contrario; si
    installa una volta con `pipx` e si lancia da terminale, nessun progetto lo
    nomina nei suoi file tracciati. `scan` aggregato su più disegni e `--find
    PAROLA...` ci sono già (fatti prima dell'estrazione, portati con sé).
@@ -370,7 +368,7 @@ sul codice committato di questo branch, nessuno stash applicato):
    **non committato** in quella repo, insieme a `remove_title_logos` (dato il
    riquadro del cartiglio da snapdraw: toglie i retini lì dentro, svuota i
    blocchi logo — inseriti nel cartiglio, con retini, ≤ metà del cartiglio — e
-   rifiuta di scrivere se cambia un solo edge di forge fuori dal riquadro) —
+   rifiuta di scrivere se cambia un solo edge di topo fuori dal riquadro) —
    ora **committato** in `dxf-anonymize`.
    Lotto pulito in `anonimizzati/drw_0001…0033.dxf`, originali intatti, fatto
    con `dxf-anonymize batch CARTELLA --rules regole.json --out ...` (le
@@ -397,7 +395,7 @@ sul codice committato di questo branch, nessuno stash applicato):
 4. **Il rewrite della history** — ✅ **fatto (D81)**, 2 ottobre: un force-push,
    albero di oggi identico, `audit_names.py --history` pulito.
 5. **`detect_flat()` → snapbend** — ✅ **fatto (D88, D89, D90)**: golden divisi,
-   detection in `snapbend/flat/`, renderer di forge generici sull'overlay.
+   detection in `snapbend/flat/`, renderer di topo generici sull'overlay.
    **Da decidere (Federico):** 10 golden `golden_multipli/process/` (ora in
    snapbend) hanno il summary vuoto (era `custom` prima del refactor di
    inject). Per i fori non manca un controllo (sono nei layer `Hole`); restano
@@ -412,14 +410,14 @@ sul codice committato di questo branch, nessuno stash applicato):
    cambia di categoria il motore; dettaglio nei "limiti geometrici noti".
 7. **Due cose piccole dalla roadmap del preventivo** (step 0 e 1 di
    `ROADMAP.md`): `snap_distance` anche su `inject()` — ✅ fatto (D82). Il
-   controllo quota-vs-geometria misurata **non è di forge** (D69): forge dà già
+   controllo quota-vs-geometria misurata **non è di topo** (D69): topo dà già
    `measured_value`, `display_text` e `references`, il confronto col numero
    scritto si fa in snapdraw — da portare nel TODO di snapdraw.
    Lo script di produzione dello split (ex `scripts/13_…`) importa ancora
-   `extract_forge_texts`, che non esiste più: è rotto. **Spostato in snapbend**
+   `extract_topo_texts`, che non esiste più: è rotto. **Spostato in snapbend**
    (Federico, 4 ottobre: alla radice, non versionato), da riscrivere lì
    su `inject(snap_distance=...)` — vedi il TODO di snapbend.
-8. ~~Il rename `forge` → `snapforge`~~ — superato da D108: il package diventa
+8. ~~Il rename `topo` → `snapforge`~~ — superato da D108: il package diventa
    `topo`, distribuito come `g-topo` (Federico, 17 ottobre).
 9. **Rifare il viewer (`to_view_model` + `to_svg`), in una sessione a parte.**
    Federico, 3 ottobre: "ora è davvero bruttino e limitato, non scalabile, fa
@@ -462,7 +460,7 @@ sul codice committato di questo branch, nessuno stash applicato):
    (D98; in snapdraw un posto solo, `sheet_islands`, snapdraw D29). Scartato:
    la scala (le distanze a cui le isole si uniscono) come strada per scegliere
    la distanza — Federico: "la scala non c'entra e non c'entrerà mai con la
-   detection delle isole". Non si porta in `forge.geometry`. Le misure e i
+   detection delle isole". Non si porta in `topo.geometry`. Le misure e i
    giudizi a occhio del 4-5 ottobre sono riassunti in D98.
 
 14. **Isole: D99-D100 chiusi il 5 ottobre.** Il punto della situazione e i
@@ -473,25 +471,25 @@ sul codice committato di questo branch, nessuno stash applicato):
 
 ## `anonymize` — ripulire un disegno cliente per farne un fixture
 
-**Costruito (D77).** `forge/tools/anonymize.py` + `forge/adapters/dxf/tags.py`,
+**Costruito (D77).** `topo/tools/anonymize.py` + `topo/adapters/dxf/tags.py`,
 11 test in `tests/unit/test_anonymize.py`. Quello che segue è il perché, che
 resta valido come guida all'uso; quello che resta da fare è passarci i 32
 fixture del punto 3.
 
 ```
-python -m forge.tools.anonymize scan  disegno.dxf [--all]
-python -m forge.tools.anonymize clean disegno.dxf --map mappa.json \
+python -m topo.tools.anonymize scan  disegno.dxf [--all]
+python -m topo.tools.anonymize clean disegno.dxf --map mappa.json \
         [--out fixture.dxf] [--also golden1.json golden2.json] [--whole-value]
 ```
 
-Il bisogno vale per forge **e per tutti i consumer**: i test si fanno per forza
+Il bisogno vale per topo **e per tutti i consumer**: i test si fanno per forza
 con disegni di clienti, quindi serve un passaggio che li renda pubblicabili. Vive
-in `forge/tools/anonymize.py` con la lettura/scrittura del formato in
-`adapters/dxf/tags.py`; fuori da `forge.__all__`, i consumer lo importano da
-`forge.tools.anonymize`.
+in `topo/tools/anonymize.py` con la lettura/scrittura del formato in
+`adapters/dxf/tags.py`; fuori da `topo.__all__`, i consumer lo importano da
+`topo.tools.anonymize`.
 
-**Perché non un round-trip attraverso forge.** `load_dxf` → `heal` → `to_dxf`
-restituisce la *lettura* di forge, non il file: spline strane, entità fuori
+**Perché non un round-trip attraverso topo.** `load_dxf` → `heal` → `to_dxf`
+restituisce la *lettura* di topo, non il file: spline strane, entità fuori
 contorno, il `Trash` — cioè esattamente ciò che rende quel disegno un caso di
 prova — non tornerebbero uguali. Il fixture deve restare il file, byte per byte,
 tranne le stringhe che identificano.
@@ -504,7 +502,7 @@ blocco, compresi gli stili di quota), `6`/`7`/`8` (linetype, stile, layer),
 `300`-`309` e `1000` (testo arbitrario e XDATA), `9` (variabili d'intestazione
 tipo `$LASTSAVEDBY`, `$PROJECTNAME`, `$HYPERLINKBASE`), `999` (commenti).
 
-**forge è l'oracolo.** Dopo la pulitura: `heal()` prima e dopo, e numero di
+**topo è l'oracolo.** Dopo la pulitura: `heal()` prima e dopo, e numero di
 cluster, aree, perimetri, bbox e `trash` devono coincidere. Se cambia un numero
 lo strumento ha sbagliato e si rifiuta di scrivere.
 
@@ -520,8 +518,8 @@ Due trappole viste sul campo, da gestire dentro lo strumento:
 Due modalità:
 
 ```
-python -m forge.tools.anonymize scan  disegno.dxf
-python -m forge.tools.anonymize clean disegno.dxf --out fixture.dxf --map mappa.json
+python -m topo.tools.anonymize scan  disegno.dxf
+python -m topo.tools.anonymize clean disegno.dxf --out fixture.dxf --map mappa.json
 ```
 
 `scan` stampa tutto quello che è scritto dentro, da leggere con l'occhio: è la
@@ -542,30 +540,30 @@ nome del fixture) ma la regola per il futuro è: la marcatura si tiene.
 
 ## Due cose decise a voce e mai scritte
 
-### `to_dxf` su un `ForgeResult` non valido — ✅ fatto (D83)
+### `to_dxf` su un `Result` non valido — ✅ fatto (D83)
 
 `allow_invalid=True` su `to_dxf` **e** `to_svg` (alcune macchine prendono SVG):
 di default si vede tutto, chi consegna a una macchina passa `False`. snapbend lo
-fa già nei tre `forge.to_dxf` di `snapbend/io/dxf.py` (modifica locale, **non
+fa già nei tre `topo.to_dxf` di `snapbend/io/dxf.py` (modifica locale, **non
 committata**: quel file è ancora non tracciato in snapbend). In snapbend 3 test
 falliscono da prima, non per questo: `tests/test_to_dxf_integration.py` usa
 `cluster.bending_lines`, che non esiste più.
 
-### il "pnger": forge sa già mostrare, solo non in raster
+### il "pnger": topo sa già mostrare, solo non in raster
 
 Sono due cose diverse. **Renderizzare il modello** — che geometria c'è, con
-ruoli e colori — è di forge, e forge lo fa già due volte: `to_svg` e
+ruoli e colori — è di topo, e topo lo fa già due volte: `to_svg` e
 `to_view_model`. Un SVG lo apre qualsiasi browser, è scalabile, e per un umano è
 meglio di un PNG. **Comporre un'immagine per un lettore preciso** — ritagliare,
 togliere le quote perché un modello leggerebbe i numeri invece delle forme — è
 del consumatore: quelle scelte hanno bisogno di `ViewLayout` e dei ruoli
-`FRAME`/`TITLE_BLOCK`/`CONSTRUCTION`, che forge non ha.
+`FRAME`/`TITLE_BLOCK`/`CONSTRUCTION`, che topo non ha.
 
 Quindi: il raster serve quando il lettore è una macchina, non quando sei tu.
-`to_svg` resta la via umana di forge e **non** si aggiunge `to_png` adesso; in
+`to_svg` resta la via umana di topo e **non** si aggiunge `to_png` adesso; in
 snapdraw il pnger si riscrive su Pillow (una ventina di righe, e matplotlib esce
 di scena con la sua dipendenza non dichiarata). Se un domani il raster serve
-anche a forge, è un `to_png` sottile sopra lo stesso view-model, nell'extra
+anche a topo, è un `to_png` sottile sopra lo stesso view-model, nell'extra
 `raster` che il `pyproject` già dichiara. L'interattivo è un viewer, cioè un'app
 a parte (MAP.md D16).
 
@@ -650,10 +648,10 @@ commit) mergiato `--ff-only` in `main`, bump a `0.6.19`.
 
 Primo pezzo di "funzioni geometriche" (MAP.md D46) — **rivisto una volta
 dopo la prima versione**, su correzione di Federico: la prima stesura
-ruotava il `ForgeDocument` grezzo e chiedeva un secondo `heal()`, e aveva
+ruotava il `Document` grezzo e chiedeva un secondo `heal()`, e aveva
 "outer" cablato nel nome della funzione invece che parametrico. Corretto:
 una rotazione rigida non cambia la topologia, quindi `rotate_result`/
-`rotate_cluster` ruotano DIRETTAMENTE un `ForgeResult`/`ForgeCluster` già
+`rotate_cluster` ruotano DIRETTAMENTE un `Result`/`Cluster` già
 sano (poligoni, segmenti, `all_arcs`) — zero `heal()` di troppo, e
 `rotate_cluster` è economico/ripetibile (pensato per un futuro nester che
 prova molti angoli sulla stessa parte). "Quale entità allineare" è
@@ -662,11 +660,11 @@ un filtro per `role` (verificato che `role` non è affidabile: un inner senza
 ruolo proprio eredita quello del padre, `hierarchy._make_inner`). Dettaglio
 completo, incluso perché la prima versione è stata scartata, in MAP.md D46.
 
-`forge/tools/rotate.py`: `.rotated(angle, origin)` su ogni primitiva,
+`topo/tools/rotate.py`: `.rotated(angle, origin)` su ogni primitiva,
 `segment_length`/`longest_segment`/`chord_angle_deg` in `core/geometry.py`,
 `structural_segments`/`longest_structural_segment`/`rotate_cluster`/
 `rotate_result`/`rotate_document`/`rotate_to_longest` — sperimentale, non
-ancora in `forge.__init__`. Script dimostrativo
+ancora in `topo.__init__`. Script dimostrativo
 `scripts/17_rotate_to_longest_outer.py` su `tests/examples/try_for_rotation.dxf`,
 un solo `heal()`, verificato manualmente (outer più lungo passa da 90° a 0°,
 la diagonale interna resta intatta e ruota con tutto il resto). Suite verde:
@@ -685,18 +683,18 @@ Resta aperto, discusso ma non affrontato:
   proiettata in una vista che mostra la flangia piegata
   (`arccos(proiettata/vera)`) — ma questo richiede sapere quale edge dello
   sviluppo corrisponde a quale edge della vista, che è lavoro di
-  snapdraw/interprete, non di forge.
+  snapdraw/interprete, non di topo.
 - **Idea collegata ma volutamente NON la stessa cosa**: "ruotare" una vista
   per farla combaciare con un'altra vista proiettata (per trasferire feature
   da una faccia allo sviluppo) è un problema di matching/registrazione fra
   due insiemi di punti (tipo ICP), non una semplice rotazione — molto più
   grosso, legato al "raggruppamento viste" di `snapdraw` — non deciso se/come affrontarlo.
-- Le annotazioni (`ForgeDocument.annotations`/`ForgeResult.annotations`) non
+- Le annotazioni (`Document.annotations`/`Result.annotations`) non
   sono ancora ruotate (nessun caso reale l'ha ancora richiesto) — se/quando
   serve, ogni sottoclasse di `Annotation` (`Note`, `Dimension`, `Leader`, ...)
   ha campi diversi da ruotare, non è un'estensione da un rigo.
 - `cluster.detected`/`cluster.custom` non sono ruotati da `rotate_result` —
-  overlay a schema libero (D44), forge non sa cosa contengono. Se un
+  overlay a schema libero (D44), topo non sa cosa contengono. Se un
   consumatore ha già fatto la sua detection prima di ruotare, quei dati restano
   nelle coordinate vecchie — la detection va fatta DOPO aver ruotato.
 
@@ -734,7 +732,7 @@ committato — la storia sta nel git log e in `MAP.md`).
   (a) il pezzo `_1` genera 1 sola bending line dove ce ne sono di più, causa
   non ancora indagata; (b) il cartiglio (`Cartiglio_sviluppo` esploso) viene
   rilevato come un cluster a sé. Il punto (b) non è più "da risolvere in
-  forge": è esattamente il caso d'uso che motiva `snapdraw`, che
+  topo": è esattamente il caso d'uso che motiva `snapdraw`, che
   lo elimina marcando `role="title_block"` prima di `heal`.
 - **arc/arc oltre tolleranza** — `compute_gap_fixes` scarta ogni coppia con
   `distance > tolerance` anche per gli archi; esentarli quando i loro cerchi
@@ -829,7 +827,7 @@ I files splittati non vengono aperti in Autocad, vengono aperti in sigmanest sen
 
 ### Hashing
 
-creare una fingerprint geometrica per validare na forge part.
+creare una fingerprint geometrica per validare na topo part.
 
 ### Analisi
 
@@ -896,7 +894,7 @@ eventualmente ML/vision.
 ## Cosa resta parcheggiato, non toccare senza motivo
 
 - ~~**Problema 2**~~ — risolto da D47, poi la tassonomia di processo è uscita
-  da forge (D90, in snapbend).
+  da topo (D90, in snapbend).
 - ~~**Idea "detect dovrebbe usare il suo stesso contratto"**~~ — risolta da
   D90: la detection sta in snapbend e usa gli stessi ganci di qualunque
   consumatore (`role`, `register_role_style`, `heal(is_structural=...)`,
@@ -910,7 +908,7 @@ eventualmente ML/vision.
 
 ## Regola da ricordare per tutta questa roba
 
-Mai parlare di layer DXF quando si parla di `role`/estensibilità di forge —
+Mai parlare di layer DXF quando si parla di `role`/estensibilità di topo —
 `role_rules` sono solo il modo di assegnarlo al load (D63), il
 meccanismo vero è `edge.role`, assegnabile per qualunque criterio
 (raggio, posizione, geometria...), senza nessuna dipendenza da layer o

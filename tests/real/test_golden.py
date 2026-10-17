@@ -19,8 +19,8 @@ from shapely import wkt as shapely_wkt
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
-from forge.adapters.dxf.layers import role_to_dxf_layer
+import topo
+from topo.adapters.dxf.layers import role_to_dxf_layer
 
 
 EXAMPLES_DIR = project_root / "tests" / "data"
@@ -34,7 +34,7 @@ TOL_PERIMETER = 0.5
 TOL_SHAPE = 1.0
 
 # Solo per TestGoldenWriteBack: write-back DXF -> reload introduce rumore di
-# arrotondamento sub-mm indipendente da forge (v. MAP.md D52, bisect a
+# arrotondamento sub-mm indipendente da topo (v. MAP.md D52, bisect a
 # ac68da1). TOL_AREA/TOL_SHAPE restano stretti per TestGolden (output live
 # vs golden salvato) -- qui il confronto e' output vs se stesso dopo un giro
 # di scrittura/rilettura, un rumore diverso e piu' permissivo per natura.
@@ -111,14 +111,14 @@ def _make_test(path):
             **config.get("name_roles", {})
         }
 
-        result = forge.heal(
-            forge.load_dxf(
+        result = topo.heal(
+            topo.load_dxf(
                 str(dxf_path),
                 upgrade=True,
                 explode_inserts=True,
                 flatten_z_flag=True,
                 tolerance=config.get("tolerance", DEFAULT_TOLERANCE),
-                role_rules=forge.name_rules(name_roles),
+                role_rules=topo.name_rules(name_roles),
             ),
             tolerance=config.get("tolerance", DEFAULT_TOLERANCE),
         )
@@ -274,22 +274,22 @@ def _make_roundtrip_test(path):
         name_roles = {**GLOBAL_NAME_ROLES, **config.get("name_roles", {})}
 
         def _pipeline(doc):
-            return forge.heal(doc, tolerance=tol)
+            return topo.heal(doc, tolerance=tol)
 
         result = _pipeline(
-            forge.load_dxf(
+            topo.load_dxf(
                 str(dxf_path), upgrade=True, explode_inserts=True,
-                flatten_z_flag=True, tolerance=tol, role_rules=forge.name_rules(name_roles),
+                flatten_z_flag=True, tolerance=tol, role_rules=topo.name_rules(name_roles),
             )
         )
-        source_doc = forge.load_dxf(
+        source_doc = topo.load_dxf(
             str(dxf_path), upgrade=True, explode_inserts=True,
-            flatten_z_flag=True, tolerance=tol, role_rules=forge.name_rules(name_roles),
+            flatten_z_flag=True, tolerance=tol, role_rules=topo.name_rules(name_roles),
         )
-        doc_out = forge.to_dxf(result, source_doc)
+        doc_out = topo.to_dxf(result, source_doc)
         rt_result = _pipeline(
-            forge.document_from_msp(
-                doc_out.modelspace(), tolerance=tol, role_rules=forge.name_rules(ROUNDTRIP_NAME_ROLES),
+            topo.document_from_msp(
+                doc_out.modelspace(), tolerance=tol, role_rules=topo.name_rules(ROUNDTRIP_NAME_ROLES),
             )
         )
 

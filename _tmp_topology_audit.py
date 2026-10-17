@@ -5,8 +5,8 @@ from collections import Counter
 from contextlib import redirect_stdout
 from pathlib import Path
 
-import forge
-from forge.adapters.dxf.layers import ROLE_TO_LAYER, LAYER_INNER
+import topo
+from topo.adapters.dxf.layers import ROLE_TO_LAYER, LAYER_INNER
 
 ROOT = Path(__file__).resolve().parent
 EXAMPLES = ROOT / "tests" / "examples"
@@ -36,15 +36,15 @@ def _load_cfg(cfg_dir: Path, stem: str) -> dict:
 
 def _run_heal_on_dxf(dxf_path: Path, tolerance: float, label_map: dict):
     with redirect_stdout(io.StringIO()):
-        _, msp = forge.load_dxf(
+        _, msp = topo.load_dxf(
             str(dxf_path),
             upgrade=True,
             explode_inserts=True,
             flatten_z_flag=True,
         )
-        result = forge.heal(msp, tolerance=tolerance, label_map=label_map)
-        forge.detect_flat(result)
-        forge.inject(result)
+        result = topo.heal(msp, tolerance=tolerance, label_map=label_map)
+        topo.detect_flat(result)
+        topo.inject(result)
     return result
 
 
@@ -100,12 +100,12 @@ def _run_split_parent(parent_path: Path, tolerance: float):
     with tempfile.TemporaryDirectory(prefix=f"audit_split_{parent_path.stem}_") as tmp_dir:
         out_dir = Path(tmp_dir)
         with redirect_stdout(io.StringIO()):
-            _, msp = forge.load_dxf(str(parent_path), explode_inserts=True)
-            result = forge.heal(msp, tolerance=tolerance)
+            _, msp = topo.load_dxf(str(parent_path), explode_inserts=True)
+            result = topo.heal(msp, tolerance=tolerance)
             if result.is_valid and result.parts:
-                forge.detect_flat(result)
-                forge.write(msp, result)
-                forge.split(
+                topo.detect_flat(result)
+                topo.write(msp, result)
+                topo.split(
                     msp,
                     result,
                     output_folder=str(out_dir),

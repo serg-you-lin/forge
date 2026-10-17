@@ -2,29 +2,29 @@
 02_heal.py — ricostruzione della topologia
 ==========================================
 
-API forge usate:
-    heal               doc.edges -> ForgeResult (parti, albero outer/inner)
+API topo usate:
+    heal               doc.edges -> Result (parti, albero outer/inner)
     validate_result    valida l'OUTPUT (heal la chiama già da solo; qui a scopo didattico)
 
 heal() fa il lavoro difficile: chiude i gap, trova i loop chiusi, costruisce
 l'albero di contenimento. NON classifica i fori (lettura di processo: snapbend, MAP.md D88):
-consegna ForgeCluster(outer, inners=[ForgeContour...]).
+consegna Cluster(outer, inners=[Contour...]).
 
     python 02_heal.py
 """
 
 import _paths  # noqa: F401  — chdir alla radice del repo
 
-import forge
+import topo
 
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/data/Linee_piegatura.dxf"
 TOLERANCE = 0.5
 # -------------------------------------------------------------------------
 
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE)
+doc = topo.load_dxf(INPUT, tolerance=TOLERANCE)
 
-result = forge.heal(
+result = topo.heal(
     doc,
     tolerance=TOLERANCE,           # se None: ripreso da doc.source_meta
     label="P-DEMO",                # finisce in cluster.label e nei metadati
@@ -49,6 +49,6 @@ for i, cluster in enumerate(result.clusters):
         print(f"      inner {j}: area={inner.polygon.area:.1f}")
 
 # validate_result: heal() la chiama già; utile solo se costruisci un
-# ForgeResult per altre vie. MUTA il result (aggiunge warnings/errors).
-forge.validate_result(result)
+# Result per altre vie. MUTA il result (aggiunge warnings/errors).
+topo.validate_result(result)
 print(f"\ndopo validate_result: is_valid={result.is_valid}")

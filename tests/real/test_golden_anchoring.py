@@ -25,8 +25,8 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
-from forge.model.annotation import Dimension, Leader
+import topo
+from topo.model.annotation import Dimension, Leader
 
 # max_gap non ha default (D98); island_gap non esiste più (D99)
 MAX_GAP = 0.5
@@ -39,9 +39,9 @@ FILES = [f"anch_{i:02d}.dxf" for i in range(1, 9)]
 
 def _element(result, path):
     """L'elemento agganciato: collezione + forma, senza indice."""
-    item = forge.resolve_target(result, path)
+    item = topo.resolve_target(result, path)
     collection = path.split(".")[1].split("[")[0]
-    shape = forge.geometry.contour_shape(item) if item is not None else None
+    shape = topo.geometry.contour_shape(item) if item is not None else None
     if shape is None:
         return {"in": collection, "shape": None}
     return {"in": collection, "shape": shape.kind,
@@ -50,7 +50,7 @@ def _element(result, path):
 
 
 def snapshot(dxf_path: Path) -> dict:
-    result = forge.anchor_annotations(forge.island(forge.load_dxf(str(dxf_path)), max_gap=MAX_GAP))
+    result = topo.anchor_annotations(topo.island(topo.load_dxf(str(dxf_path)), max_gap=MAX_GAP))
     entries = []
     for a in result.annotations:
         if isinstance(a, Dimension):

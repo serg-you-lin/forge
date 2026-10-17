@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 from shapely import wkt as swkt
-import forge
+import topo
 
 ex = Path("tests/examples")
 g = json.loads((ex / "golden_multipli" / "golden" / "Polylines__000.json").read_text(encoding="utf-8"))
@@ -16,11 +16,11 @@ tol = c.get("tolerance", 0.5)
 
 with tempfile.TemporaryDirectory() as td:
     with redirect_stdout(io.StringIO()):
-        _, msp = forge.load_dxf(str(parent), explode_inserts=True)
-        r = forge.heal(msp, tolerance=tol)
-        forge.detect_flat(r)
-        forge.write(msp, r)
-        forge.split(
+        _, msp = topo.load_dxf(str(parent), explode_inserts=True)
+        r = topo.heal(msp, tolerance=tol)
+        topo.detect_flat(r)
+        topo.write(msp, r)
+        topo.split(
             msp,
             r,
             output_folder=td,

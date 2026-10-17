@@ -1,10 +1,10 @@
 # tests/unit/core/test_outer_face.py
 
 import unittest
-from forge.core.topology.outer_face import outer_face
-from forge.core.topology.noding import split_at_crossings
-from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg, CircleSeg
+from topo.core.topology.outer_face import outer_face
+from topo.core.topology.noding import split_at_crossings
+from topo.core.topology.edge import Edge
+from topo.core.primitives.segments import LineSeg, CircleSeg
 
 
 def _line(p1, p2):

@@ -1,13 +1,13 @@
 # tests/unit/core/test_build.py
-"""Costruttori di `forge.geometry` e `forge.load_segments` (D96): costruire e leggere usano le stesse misure."""
+"""Costruttori di `topo.geometry` e `topo.load_segments` (D96): costruire e leggere usano le stesse misure."""
 
 import math
 import unittest
 
-import forge
-from forge.core.geometry import contour_shape
-from forge.core.geometry.build import circle, polygon, rectangle, regular_polygon, stadium
-from forge.core.primitives.segments import ArcSeg, CircleSeg, LineSeg
+import topo
+from topo.core.geometry import contour_shape
+from topo.core.geometry.build import circle, polygon, rectangle, regular_polygon, stadium
+from topo.core.primitives.segments import ArcSeg, CircleSeg, LineSeg
 
 
 class TestBuild(unittest.TestCase):
@@ -58,9 +58,9 @@ class TestBuild(unittest.TestCase):
 class TestLoadSegments(unittest.TestCase):
 
     def test_due_rettangoli_e_un_cerchio(self):
-        fg = forge.geometry
-        doc = forge.load_segments(fg.rectangle(200, 100) + fg.rectangle(100, 50) + fg.circle(5, center=(70, 0)))
-        result = forge.heal(doc)
+        fg = topo.geometry
+        doc = topo.load_segments(fg.rectangle(200, 100) + fg.rectangle(100, 50) + fg.circle(5, center=(70, 0)))
+        result = topo.heal(doc)
         self.assertTrue(result.is_valid)
         (part,) = result.clusters
         self.assertEqual(fg.contour_shape(part.outer).kind, "rectangle")
@@ -68,12 +68,12 @@ class TestLoadSegments(unittest.TestCase):
         self.assertAlmostEqual(part.area, 200 * 100 - 100 * 50 - math.pi * 25, places=0)
 
     def test_liste_annidate_e_ruolo(self):
-        doc = forge.load_segments([rectangle(10, 10), circle(1)], role="outer")
+        doc = topo.load_segments([rectangle(10, 10), circle(1)], role="outer")
         self.assertEqual(len(doc.edges), 5)
         self.assertTrue(all(e.role == "outer" for e in doc.edges))
 
     def test_load_geometry_poligono(self):
-        doc = forge.load_geometry([{"type": "polygon", "points": [(0, 0), (10, 0), (10, 5), (0, 5)]}])
+        doc = topo.load_geometry([{"type": "polygon", "points": [(0, 0), (10, 0), (10, 5), (0, 5)]}])
         self.assertEqual(len(doc.edges), 4)
 
 

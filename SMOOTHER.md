@@ -1,7 +1,7 @@
 # Smoother — da immagine a DXF pulito
 
 `Smoother` è un **repo a sé**, sorella di `snapdraw` e `snapbend`, consumatore di
-`forge` via `pip install -e ../dxf-forge` — non un modulo dentro forge (memoria
+`topo` via `pip install -e ../dxf-forge` — non un modulo dentro topo (memoria
 `forge-neutral-substrate-agent-layer-above`, `dont-bolt-adapters-onto-forge-for-external-projects`).
 
 Nasce dal prototipo `smoother_5.py` (in questo repo, da spostare/archiviare
@@ -9,18 +9,18 @@ quando il nuovo repo esiste): porta un disegno organico da immagine
 (un cancello, un logo, un contorno disegnato a mano) a un DXF pulito con
 line/spline vere, non discretizzate.
 
-## Perché non è dentro forge
+## Perché non è dentro topo
 
 Dipende da OpenCV (cv2), fa I/O immagine e — in prospettiva — UI di ritocco: né
-l'una né l'altra cosa hanno posto in forge, che resta neutro, deterministico,
+l'una né l'altra cosa hanno posto in topo, che resta neutro, deterministico,
 zero dipendenze da computer vision (stessa ragione per cui `snapdraw` è fuori).
-Quello che forge dà a Smoother è già pronto:
+Quello che topo dà a Smoother è già pronto:
 
-- `forge.simplify_points()` (MAP.md D33) — ricostruzione linea/spline da una
+- `topo.simplify_points()` (MAP.md D33) — ricostruzione linea/spline da una
   sequenza di punti densa, con soglie parametriche
-- `forge.load_geometry()` (MAP.md D32) — porta i contorni ricostruiti a
-  `ForgeDocument`, pronto per `heal()`
-- `ForgeContour.depth`/`.parent` (MAP.md D34) — l'albero di contenimento, per
+- `topo.load_geometry()` (MAP.md D32) — porta i contorni ricostruiti a
+  `Document`, pronto per `heal()`
+- `Contour.depth`/`.parent` (MAP.md D34) — l'albero di contenimento, per
   sapere quali contorni sono "nipoti" (annidati a profondità ≥2) e di chi,
   necessario per le linguette
 
@@ -39,24 +39,24 @@ sequenza di punti è triviale.
 immagine (PNG/JPG)
    │
    ▼
-[1] B/N + ritocco a matita +anteprima spline (abbiamo l'svg json da forge pronto) (UI, non ancora scritta)
+[1] B/N + ritocco a matita +anteprima spline (abbiamo l'svg json da topo pronto) (UI, non ancora scritta)
    │
    ▼
 [2] contorni via cv2.findContours
    │
    ▼
-[A] forge.load_geometry("polyline")  → forge.heal()
+[A] topo.load_geometry("polyline")  → topo.heal()
    │     → depth/parent per contorno (nessun fit necessario per questo)
    ▼
 [B] Smoother: linguette sui nipoti    → taglia un ponticello nei PUNTI GREZZI
    │                                     del contorno nipote, prima del fit
    │                                     (parametri di processo/CAM, non di
-   │                                     forge; non ancora implementato)
+   │                                     topo; non ancora implementato)
    ▼
-[C] forge.simplify_points()          → LineSeg / SplineSeg per contorno
+[C] topo.simplify_points()          → LineSeg / SplineSeg per contorno
    │
    ▼
-forge.load_geometry("spline") → forge.heal() → forge.to_dxf()
+topo.load_geometry("spline") → topo.heal() → topo.to_dxf()
 
 NON SO SE è CHIARO, IO CARICO L'IMMAGINEE HO GIà LA SPLINE OTTENUTA, RITOCCO A MATITA E LA SPLINE SI AGGIORNA VIA VIA. 
 ON DICO CHE DOBBIAMO AVERE LA POSSIBILITà DI RITOCCAE ANCHE GLI ENDPOINT DELLA LWPLINE, MA SAREBBE BELLO AVERE TUTTO NELL''INTERFACIA. SE è TROPPO, LASCIAMO STARE.
@@ -70,7 +70,7 @@ batch di `load_geometry()`: outer/figlio/nipote si aggiustano da soli.
 Conseguenza per Smoother: non taggare `role="outer"`/`"inner"` sui contorni
 tracciati finché non sai se la forma è definitiva — lascia `role` non
 impostato e leggi `depth`/`parent` in uscita da `heal()` per sapere chi è
-cosa. Disciplina di chi chiama, non responsabilità di forge.
+cosa. Disciplina di chi chiama, non responsabilità di topo.
 
 ## Estrazione/editing indipendente della polyline
 
@@ -78,7 +78,7 @@ Uso previsto anche standalone, fuori dalla pipeline immagine→DXF completa:
 caricare un contorno (da immagine o da un DXF esistente), estrarne solo la
 polyline, editarla liberamente, poi normalizzare e trasformare in spline. Le
 tappe [3]-[5]-[7] sopra sono le stesse; cambia solo cosa entra al passo [2]
-(un DXF via `forge.load_dxf()` invece di un'immagine).
+(un DXF via `topo.load_dxf()` invece di un'immagine).
 
 ## Fase futura — sito multi-tool (esplorativo, non iniziato)
 
@@ -87,9 +87,9 @@ questo) uno per pagina. Non ancora iniziato, nessun codice — solo la
 direzione, per non chiudere strade con le scelte di Smoother:
 
 - **Backend**: servizio Python sottile (FastAPI) che avvolge
-  forge/Smoother/bendly — niente reimplementazione della geometria in JS.
-  Formato di scambio: `forge.to_view_model()`/`to_json()`/`to_svg()`, già
-  esistenti (`forge/io/view_model.py`, `forge/io/svg.py`).
+  topo/Smoother/bendly — niente reimplementazione della geometria in JS.
+  Formato di scambio: `topo.to_view_model()`/`to_json()`/`to_svg()`, già
+  esistenti (`topo/io/view_model.py`, `topo/io/svg.py`).
 - **Frontend**: TypeScript (non JS puro) — una base condivisa fra tool
   (editor a canvas/matita, editing di polyline, rendering SVG) conviene
   tipizzata da subito. Canvas/SVG nativi bastano, nessun framework pesante
@@ -104,12 +104,12 @@ documento resta lo spec d'origine (perché); le decisioni vive e il piano di
 lavoro stanno in `smoother/MAP.md` e `smoother/TODO.md`.
 
 Fatto: scaffolding del repo, `smoother_5.py` migrato in
-`scripts/00_image_to_dxf.py` (spigoli/refit ora via `forge.simplify_points()`,
+`scripts/00_image_to_dxf.py` (spigoli/refit ora via `topo.simplify_points()`,
 non più codice locale) e archiviato qui in `_archive/`; `load_geometry()` ha
 guadagnato il tipo `"spline"` (MAP.md D35, sotto); lo script è stato riscritto
 sulle due passate della pipeline sopra.
 
-Varco (chiuso, MAP.md D35): `forge.load_geometry()` accettava solo entità
+Varco (chiuso, MAP.md D35): `topo.load_geometry()` accettava solo entità
 `line`/`arc`/`circle`/`polyline`, non `spline`. **Non era però il pezzo che
 bloccava le linguette** — quello (il contenimento) usa solo `"polyline"`, che
 c'era già; il tipo `"spline"` serve alla passata finale [C], per scrivere in

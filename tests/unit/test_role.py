@@ -1,7 +1,7 @@
 """
 test_role.py
 ------------
-Test unitari per forge.model.role: il vocabolario ruoli aperto (MAP.md D27).
+Test unitari per topo.model.role: il vocabolario ruoli aperto (MAP.md D27).
 
 Copre:
   - normalize_role : ruolo noto → costante, ignoto → slug conservato,
@@ -12,8 +12,8 @@ Copre:
 
 import unittest
 
-import forge
-from forge.model.role import (
+import topo
+from topo.model.role import (
     ContourRole, normalize_role, role_str,
     is_structural_role, STRUCTURAL_ROLES,
 )
@@ -76,7 +76,7 @@ class TestIsStructuralRole(unittest.TestCase):
             self.assertFalse(is_structural_role(r))
 
     def test_slug_di_un_consumatore_non_e_strutturale(self):
-        # `frame` non è più una costante di forge (D31): è uno slug come gli altri
+        # `frame` non è più una costante di topo (D31): è uno slug come gli altri
         self.assertFalse(is_structural_role("frame"))
         self.assertFalse(is_structural_role("title_block"))
         self.assertFalse(is_structural_role("section"))
@@ -91,15 +91,15 @@ class TestCustomRoleSurvivesHeal(unittest.TestCase):
 
     def test_ruolo_custom_conservato_non_schiacciato_a_unknown(self):
         # un quadrato "outer" con dentro un quadratino marcato con un ruolo
-        # che forge non conosce: heal lo tiene come geometria non strutturale
+        # che topo non conosce: heal lo tiene come geometria non strutturale
         # (trash), ma il ruolo resta quello del chiamante, non "unknown"
-        doc = forge.load_geometry([
+        doc = topo.load_geometry([
             {"type": "polygon", "role": "outer",
              "points": [(0, 0), (100, 0), (100, 100), (0, 100)]},
             {"type": "polygon", "role": "title_block",
              "points": [(10, 10), (40, 10), (40, 30), (10, 30)]},
         ])
-        result = forge.heal(doc)
+        result = topo.heal(doc)
 
         all_roles = {result.clusters[0].outer.role}
         all_roles.update(i.role for i in result.clusters[0].inners)
@@ -111,14 +111,14 @@ class TestCustomRoleSurvivesHeal(unittest.TestCase):
 
 class TestConsumerRolesSurviveDetect(unittest.TestCase):
     """
-    D30: un ruolo che forge non classifica (cornice, cartiglio, slug di un
+    D30: un ruolo che topo non classifica (cornice, cartiglio, slug di un
     consumatore) sopravvive la pipeline — load → heal — con geometria e ruolo
     intatti. Lo stesso dopo la detection di snapbend: tests/flat/test_roles.py.
     """
 
     def _framed_doc(self):
         # cornice grande + due pezzi dentro, tutti geometricamente distinti
-        return forge.load_geometry([
+        return topo.load_geometry([
             {"type": "polygon", "role": "frame",
              "points": [(0, 0), (400, 0), (400, 300), (0, 300)]},
             {"type": "polygon", "role": "outer",
@@ -128,7 +128,7 @@ class TestConsumerRolesSurviveDetect(unittest.TestCase):
         ])
 
     def test_la_cornice_non_e_un_cluster_ne_mangia_i_pezzi(self):
-        result = forge.heal(self._framed_doc())
+        result = topo.heal(self._framed_doc())
         self.assertEqual(len(result.clusters), 2)
         for c in result.clusters:
             self.assertEqual(c.outer.role, ContourRole.OUTER)
@@ -136,11 +136,11 @@ class TestConsumerRolesSurviveDetect(unittest.TestCase):
 
     def test_to_dxf_scrive_il_ruolo_di_consumatore_su_un_layer_suo(self):
         # D31: la cornice non finisce su "Trash" insieme alla spazzatura vera,
-        # ma su un layer "frame" col suo colore. forge non sa cosa sia — porta
+        # ma su un layer "frame" col suo colore. topo non sa cosa sia — porta
         # fedele lo slug che il consumatore ha assegnato.
         doc = self._framed_doc()
-        result = forge.heal(doc)
-        out = forge.to_dxf(result, doc)
+        result = topo.heal(doc)
+        out = topo.to_dxf(result, doc)
 
         layers = {e.dxf.layer for e in out.modelspace()}
         self.assertIn("frame", layers)

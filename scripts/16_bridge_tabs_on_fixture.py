@@ -19,9 +19,9 @@ import os
 
 import ezdxf
 
-import forge
-from forge.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
-from forge.tools.tabs import bridge_nested_tabs
+import topo
+from topo.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
+from topo.tools.tabs import bridge_nested_tabs
 
 # --- CONFIG ------------------------------------------------------------
 INPUT = r"tests/data/cerchi_concentrici_detect_is_counter_tabs_join.dxf"
@@ -48,8 +48,8 @@ def write_native(msp, seg):
         raise TypeError(f"tipo non gestito in questo script: {type(seg)}")
 
 
-doc = forge.load_dxf(INPUT)
-result = forge.heal(doc)
+doc = topo.load_dxf(INPUT)
+result = topo.heal(doc)
 cluster = result.clusters[0]
 
 bridges = bridge_nested_tabs(cluster, tab_width=TAB_WIDTH, tab_count=TAB_COUNT,
@@ -75,7 +75,7 @@ for other in cluster.inners:
 
 # i due contorni ponteggiati: ogni stretch rifittato, i fianchi come LINE native
 for stretch in bridge.child_stretches + bridge.parent_stretches:
-    segments = forge.simplify_points(stretch, closed=False, arc_fit_tolerance=ARC_FIT_TOLERANCE)
+    segments = topo.simplify_points(stretch, closed=False, arc_fit_tolerance=ARC_FIT_TOLERANCE)
     print(f"  stretch di {len(stretch)} punti -> {[type(s).__name__ for s in segments]}")
     for seg in segments:
         write_native(msp, seg)

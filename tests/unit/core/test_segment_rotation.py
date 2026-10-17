@@ -3,13 +3,13 @@ tests/unit/core/test_segment_rotation.py
 ------------------------------------------
 `.rotated(angle, origin)` su ogni primitiva nativa (core/primitives/segments.py)
 — stesso pattern di `.reversed()`: stessa geometria, trasformata. Verifica la
-matematica pura di forge, zero ezdxf.
+matematica pura di topo, zero ezdxf.
 """
 
 import math
 import unittest
 
-from forge.core.primitives.segments import (
+from topo.core.primitives.segments import (
     LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg, segment_endpoints,
 )
 

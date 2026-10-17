@@ -1,7 +1,7 @@
 """
 test_role_rule.py
 -----------------
-Test unitari per forge.model.role_rule: le regole con cui il chiamante
+Test unitari per topo.model.role_rule: le regole con cui il chiamante
 assegna un ruolo al load (MAP.md D63), valutate su segnali neutri — nome del
 gruppo sorgente e EdgeStyle — senza nessun formato di mezzo.
 """
@@ -12,9 +12,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import forge
-from forge.model.role_rule import resolve_role
-from forge.model.style import EdgeStyle
+import topo
+from topo.model.role_rule import resolve_role
+from topo.model.style import EdgeStyle
 
 CONTINUA    = EdgeStyle()
 TRATTEGGIATA = EdgeStyle(linetype="DASHED", linetype_pattern=(0.75, 0.5, -0.25))
@@ -81,59 +81,59 @@ class TestDashKind(unittest.TestCase):
 class TestRoleRule(unittest.TestCase):
 
     def test_nome_ignora_le_maiuscole(self):
-        rule = forge.RoleRule("bending", name="Piega")
+        rule = topo.RoleRule("bending", name="Piega")
         self.assertTrue(rule.matches("PIEGA", CONTINUA))
         self.assertFalse(rule.matches("Pieghe", CONTINUA))
 
     def test_nome_contiene(self):
-        rule = forge.RoleRule("construction", name_contains="constr")
+        rule = topo.RoleRule("construction", name_contains="constr")
         self.assertTrue(rule.matches("Construction_lines", CONTINUA))
         self.assertFalse(rule.matches("Taglio", CONTINUA))
 
     def test_condizioni_tutte_vere_insieme(self):
         # il caso del snapdraw: tratteggiata E nome "construction"
-        rule = forge.RoleRule("construction", name_contains="construction", dashed=True)
+        rule = topo.RoleRule("construction", name_contains="construction", dashed=True)
         self.assertTrue(rule.matches("construction", TRATTEGGIATA))
         self.assertFalse(rule.matches("construction", CONTINUA))
         self.assertFalse(rule.matches("0", TRATTEGGIATA))
 
     def test_solo_continue(self):
-        rule = forge.RoleRule("outer", dashed=False)
+        rule = topo.RoleRule("outer", dashed=False)
         self.assertTrue(rule.matches("", CONTINUA))
         self.assertFalse(rule.matches("", TRATTEGGIATA))
 
     def test_forma_del_tratto(self):
         # la regola ISO 128 del snapdraw: catena → costruzione, il tratteggio no
-        rule = forge.RoleRule("construction", dash="chain")
+        rule = topo.RoleRule("construction", dash="chain")
         self.assertTrue(rule.matches("", TRATTO_PUNTO))
         self.assertTrue(rule.matches("", DUE_TRATTI))
         self.assertFalse(rule.matches("", TRATTEGGIATA))
         self.assertFalse(rule.matches("", CONTINUA))
-        self.assertTrue(forge.RoleRule("x", dash="UNIFORM").matches("", PUNTINATA))
+        self.assertTrue(topo.RoleRule("x", dash="UNIFORM").matches("", PUNTINATA))
 
     def test_dashed_include_le_catene(self):
         # dashed resta "ha almeno un vuoto": vale per le due famiglie
-        self.assertTrue(forge.RoleRule("x", dashed=True).matches("", TRATTO_PUNTO))
+        self.assertTrue(topo.RoleRule("x", dashed=True).matches("", TRATTO_PUNTO))
 
     def test_dash_sconosciuto_solleva(self):
         with self.assertRaises(ValueError):
-            forge.RoleRule("construction", dash="dashdot")
+            topo.RoleRule("construction", dash="dashdot")
 
     def test_colore_per_nome_intero_o_stringa(self):
         for key in ("cyan", 4, "4"):
-            self.assertTrue(forge.RoleRule("engrave", color=key).matches("", CIANO), msg=repr(key))
-        self.assertFalse(forge.RoleRule("engrave", color="red").matches("", CIANO))
+            self.assertTrue(topo.RoleRule("engrave", color=key).matches("", CIANO), msg=repr(key))
+        self.assertFalse(topo.RoleRule("engrave", color="red").matches("", CIANO))
 
     def test_colore_sconosciuto_solleva(self):
         with self.assertRaises(ValueError):
-            forge.RoleRule("engrave", color="viola")
+            topo.RoleRule("engrave", color="viola")
 
     def test_regola_senza_condizioni_solleva(self):
         with self.assertRaises(ValueError):
-            forge.RoleRule("bending")
+            topo.RoleRule("bending")
 
     def test_ruolo_ripulito(self):
-        self.assertEqual(forge.RoleRule("Title Block", name="x").role, "title_block")
+        self.assertEqual(topo.RoleRule("Title Block", name="x").role, "title_block")
 
 
 class TestResolveRole(unittest.TestCase):
@@ -141,27 +141,27 @@ class TestResolveRole(unittest.TestCase):
     def test_piega_a_catena_presa_prima_dal_nome(self):
         # una piega disegnata a catena resta bending se la regola per nome viene prima
         rules = [
-            forge.RoleRule("bending", name="piega"),
-            forge.RoleRule("construction", dash="chain"),
+            topo.RoleRule("bending", name="piega"),
+            topo.RoleRule("construction", dash="chain"),
         ]
         self.assertEqual(resolve_role(rules, "Piega", TRATTO_PUNTO), "bending")
         self.assertEqual(resolve_role(rules, "Assi", TRATTO_PUNTO), "construction")
 
     def test_vince_la_prima_in_ordine(self):
         rules = [
-            forge.RoleRule("bending", name="piega"),
-            forge.RoleRule("engrave", color="cyan"),
+            topo.RoleRule("bending", name="piega"),
+            topo.RoleRule("engrave", color="cyan"),
         ]
         self.assertEqual(resolve_role(rules, "Piega", CIANO), "bending")
         self.assertEqual(resolve_role(rules[::-1], "Piega", CIANO), "engrave")
 
     def test_nessuna_regola_e_unknown(self):
         self.assertEqual(resolve_role([], "Piega", CONTINUA), "unknown")
-        self.assertEqual(resolve_role(forge.name_rules({"altro": "outer"}), "Boh", CONTINUA),
+        self.assertEqual(resolve_role(topo.name_rules({"altro": "outer"}), "Boh", CONTINUA),
                          "unknown")
 
     def test_name_rules(self):
-        rules = forge.name_rules({"Cartiglio": "title_block", "MARK": "engrave"})
+        rules = topo.name_rules({"Cartiglio": "title_block", "MARK": "engrave"})
         self.assertEqual(resolve_role(rules, "cartiglio", CONTINUA), "title_block")
         self.assertEqual(resolve_role(rules, "MARK", CONTINUA), "engrave")
 

@@ -2,13 +2,13 @@
 20_island.py — lettura per isole su tutti i disegni di una cartella
 ==================================================================
 
-API forge usate:
-    forge.island(doc, max_gap=)
-                                -> ForgeResult, un ForgeCluster per isola
+API topo usate:
+    topo.island(doc, max_gap=)
+                                -> Result, un Cluster per isola
                                    (outer = contorno esterno, inners = giri
                                    chiusi dentro; isole annidate → interno
                                    di quella che le contiene)
-    forge.read_islands(edges, tolerance, max_gap)
+    topo.read_islands(edges, tolerance, max_gap)
                                 -> [IslandReading]: per ogni pezzo cosa è
                                    stato deciso, pezzo per pezzo
 
@@ -32,8 +32,8 @@ import os
 import time
 import traceback
 
-import forge
-from forge.model.curve import OpenCurve
+import topo
+from topo.model.curve import OpenCurve
 
 # --- CONFIG ----------------------------------------------------------------
 INPUT_DIR = r"tests/examples/islands"          # tutti i .dxf/.dwg qui dentro
@@ -72,9 +72,9 @@ def main():
         stem = os.path.splitext(os.path.basename(path))[0]
         t0 = time.time()
         try:
-            doc = forge.load_dxf(path, tolerance=TOLERANCE)
-            result = forge.island(doc, tolerance=TOLERANCE, max_gap=MAX_GAP)
-            readings = forge.read_islands(doc.edges, TOLERANCE, max_gap=MAX_GAP)
+            doc = topo.load_dxf(path, tolerance=TOLERANCE)
+            result = topo.island(doc, tolerance=TOLERANCE, max_gap=MAX_GAP)
+            readings = topo.read_islands(doc.edges, TOLERANCE, max_gap=MAX_GAP)
         except Exception as exc:
             print(f"{stem}: ERRORE {type(exc).__name__}: {exc}")
             traceback.print_exc(limit=3)
@@ -91,7 +91,7 @@ def main():
             suffix = "_INVALIDO"
         out = os.path.abspath(os.path.join(OUTDIR, f"{stem}{suffix}.dxf"))
         try:
-            forge.to_dxf(_diagnostic(result, readings), doc, include_trash=True).saveas(out)
+            topo.to_dxf(_diagnostic(result, readings), doc, include_trash=True).saveas(out)
             print(f"  -> {out}")
         except PermissionError:
             print(f"  !! {out} è aperto in un altro programma: non sovrascritto")

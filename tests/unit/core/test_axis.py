@@ -1,13 +1,13 @@
 # tests/unit/core/test_axis.py
-"""`forge.core.geometry.axis`: intervalli, rettangoli coperti, linee che attraversano un rettangolo (D94)."""
+"""`topo.core.geometry.axis`: intervalli, rettangoli coperti, linee che attraversano un rettangolo (D94)."""
 
 import unittest
 
-import forge
-from forge.core.geometry.axis import (axis_aligned_share, axis_lines, cluster_values, covered_rectangles,
+import topo
+from topo.core.geometry.axis import (axis_aligned_share, axis_lines, cluster_values, covered_rectangles,
                              interval_coverage, items_inside, merge_intervals, spanning_lines)
-from forge.core.geometry.build import polygon
-from forge.core.primitives.segments import ArcSeg, LineSeg
+from topo.core.geometry.build import polygon
+from topo.core.primitives.segments import ArcSeg, LineSeg
 
 
 def _rect(x0, y0, x1, y1):
@@ -50,7 +50,7 @@ class TestCoveredRectangles(unittest.TestCase):
         self.assertEqual(covered_rectangles(_rect(0, 0, 100, 50)[:3], min_side=10), [])
 
     def test_api_pubblica(self):
-        self.assertIs(forge.geometry.covered_rectangles, covered_rectangles)
+        self.assertIs(topo.geometry.covered_rectangles, covered_rectangles)
 
 
 class TestSpanningLines(unittest.TestCase):
@@ -85,11 +85,11 @@ class TestSidesOnBorder(unittest.TestCase):
 
     def test_riquadro_nell_angolo(self):
         # in basso a destra: tocca il lato basso e il destro del bordo
-        self.assertEqual(forge.geometry.sides_on_border((300, 10, 400, 60), (10, 10, 400, 280), 1.0),
+        self.assertEqual(topo.geometry.sides_on_border((300, 10, 400, 60), (10, 10, 400, 280), 1.0),
                          ["bottom", "right"])
 
     def test_riquadro_in_mezzo(self):
-        self.assertEqual(forge.geometry.sides_on_border((150, 100, 250, 125), (10, 10, 400, 280), 1.0), [])
+        self.assertEqual(topo.geometry.sides_on_border((150, 100, 250, 125), (10, 10, 400, 280), 1.0), [])
 
 
 if __name__ == "__main__":

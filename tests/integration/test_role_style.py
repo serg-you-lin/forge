@@ -2,9 +2,9 @@
 test_role_style.py
 -------------------
 Test per RoleStyle (MAP.md D37): override esplicito di colore/linetype/
-lineweight per ruolo in to_dxf()/split(), noto a forge o assegnato da un
+lineweight per ruolo in to_dxf()/split(), noto a topo o assegnato da un
 consumatore (role_rules). L'override agisce sul layer, non sull'entità —
-tutto ciò che forge scrive è BYLAYER.
+tutto ciò che topo scrive è BYLAYER.
 """
 
 import unittest
@@ -16,9 +16,9 @@ import ezdxf
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
-from forge import RoleStyle, register_role_style
-from forge.adapters.dxf.layers import TRASH_LAYER
+import topo
+from topo import RoleStyle, register_role_style
+from topo.adapters.dxf.layers import TRASH_LAYER
 
 
 def _rect_with_hole_and_frame():
@@ -39,9 +39,9 @@ def _rect_with_hole_and_frame():
     msp.add_line((10, 10), (30, 10), dxfattribs={'layer': 'STAMP'})
     msp.add_line((200, 200), (220, 200), dxfattribs={'layer': 'FRAME'})
 
-    doc_in = forge.document_from_msp(
-        msp, role_rules=forge.name_rules({'FRAME': 'frame', 'STAMP': 'stamp_d90'}))
-    result = forge.heal(doc_in, tolerance=0.05)
+    doc_in = topo.document_from_msp(
+        msp, role_rules=topo.name_rules({'FRAME': 'frame', 'STAMP': 'stamp_d90'}))
+    result = topo.heal(doc_in, tolerance=0.05)
     return result, doc_in
 
 
@@ -55,7 +55,7 @@ class TestRoleStyleRegisteredRole(unittest.TestCase):
     def setUp(self):
         register_role_style("stamp_d90", RoleStyle(color=(255, 0, 255), layer_name="StampD90"))
         self.result, self.doc_in = _rect_with_hole_and_frame()
-        self.doc_out = forge.to_dxf(self.result, self.doc_in)
+        self.doc_out = topo.to_dxf(self.result, self.doc_in)
 
     def test_001_registered_layer_has_true_color(self):
         layer = self.doc_out.layers.get("StampD90")
@@ -76,7 +76,7 @@ class TestRoleStyleColorOverride(unittest.TestCase):
     def setUp(self):
         register_role_style("stamp_d90", RoleStyle(color=(255, 0, 255), layer_name="StampD90"))
         self.result, self.doc_in = _rect_with_hole_and_frame()
-        self.doc_out = forge.to_dxf(
+        self.doc_out = topo.to_dxf(
             self.result, self.doc_in,
             role_styles={"stamp_d90": RoleStyle(color=(0, 0, 0))},
         )
@@ -95,7 +95,7 @@ class TestRoleStyleConsumerRole(unittest.TestCase):
 
     def setUp(self):
         self.result, self.doc_in = _rect_with_hole_and_frame()
-        self.doc_out = forge.to_dxf(
+        self.doc_out = topo.to_dxf(
             self.result, self.doc_in,
             role_styles={"frame": RoleStyle(color=(0, 0, 0), lineweight=0.05)},
         )
@@ -114,7 +114,7 @@ class TestRoleStyleLinetypeOverride(unittest.TestCase):
 
     def setUp(self):
         self.result, self.doc_in = _rect_with_hole_and_frame()
-        self.doc_out = forge.to_dxf(
+        self.doc_out = topo.to_dxf(
             self.result, self.doc_in,
             role_styles={"unknown": RoleStyle(linetype="DASHED")},
         )
@@ -137,7 +137,7 @@ class TestRoleStyleUnknownLinetypeRaises(unittest.TestCase):
     def test_001_unknown_name_raises(self):
         result, doc_in = _rect_with_hole_and_frame()
         with self.assertRaises(ValueError):
-            forge.to_dxf(result, doc_in, role_styles={"unknown": RoleStyle(linetype="DASHHED")})
+            topo.to_dxf(result, doc_in, role_styles={"unknown": RoleStyle(linetype="DASHHED")})
 
 
 class TestRoleStyleUnknownRoleCreatesLayerEvenWithoutEntities(unittest.TestCase):
@@ -148,7 +148,7 @@ class TestRoleStyleUnknownRoleCreatesLayerEvenWithoutEntities(unittest.TestCase)
 
     def setUp(self):
         self.result, self.doc_in = _rect_with_hole_and_frame()
-        self.doc_out = forge.to_dxf(
+        self.doc_out = topo.to_dxf(
             self.result, self.doc_in,
             role_styles={"title_block": RoleStyle(color=(10, 20, 30))},
         )

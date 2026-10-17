@@ -2,20 +2,20 @@
 tests/unit/test_anchor_annotations.py
 --------------------------------------
 `anchor_annotations()`: assegna `cluster_ref` (indice della parte contenitrice)
-alle annotazioni del modello. Fase separata e opzionale (forge/tools/).
+alle annotazioni del modello. Fase separata e opzionale (topo/tools/).
 """
 
 import unittest
 
 from shapely.geometry import Point, Polygon
 
-import forge
-from forge.model.cluster import ForgeCluster
-from forge.model.contour import ForgeContour
-from forge.model.result import ForgeResult
-from forge.model.role import ContourRole
-from forge.model.annotation import Dimension, Leader, Note, RenderedGeometry, RenderedText
-from forge.tools.anchor import anchor_annotations, dimension_references, resolve_target
+import topo
+from topo.model.cluster import Cluster
+from topo.model.contour import Contour
+from topo.model.result import Result
+from topo.model.role import ContourRole
+from topo.model.annotation import Dimension, Leader, Note, RenderedGeometry, RenderedText
+from topo.tools.anchor import anchor_annotations, dimension_references, resolve_target
 
 # max_gap non ha default (D98); island_gap non esiste più (D99)
 MAX_GAP = 0.5
@@ -23,11 +23,11 @@ MAX_GAP = 0.5
 
 def _part(x0, y0, x1, y1):
     poly = Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
-    return ForgeCluster(outer=ForgeContour(polygon=poly, role=ContourRole.OUTER))
+    return Cluster(outer=Contour(polygon=poly, role=ContourRole.OUTER))
 
 
 def _result(*clusters, annotations=()):
-    return ForgeResult(clusters=list(clusters), annotations=list(annotations))
+    return Result(clusters=list(clusters), annotations=list(annotations))
 
 
 class TestAnchorAnnotations(unittest.TestCase):
@@ -81,7 +81,7 @@ class TestAnchorAnnotations(unittest.TestCase):
 
 def _plate_with_holes():
     """Piastra 100x50 con due fori: Ø8 in (20, 25), Ø20 in (70, 25)."""
-    return forge.load_geometry([
+    return topo.load_geometry([
         {"type": "polygon", "points": [(0, 0), (100, 0), (100, 50), (0, 50)]},
         {"type": "circle", "center": (20, 25), "radius": 4},
         {"type": "circle", "center": (70, 25), "radius": 10},
@@ -96,7 +96,7 @@ class TestLeaderTarget(unittest.TestCase):
     """`Leader.target`: l'elemento su cui cade la punta della freccia (D66)."""
 
     def _island(self, *leaders):
-        result = forge.island(_plate_with_holes(), max_gap=MAX_GAP)
+        result = topo.island(_plate_with_holes(), max_gap=MAX_GAP)
         result.annotations = list(leaders)
         return anchor_annotations(result)
 
@@ -130,8 +130,8 @@ class TestLeaderTarget(unittest.TestCase):
 
     def test_elemento_dell_overlay(self):
         # un consumatore sposta un contorno in una sua collezione: il target segue
-        from forge.model import DetectedFeatures
-        result = forge.heal(_plate_with_holes())
+        from topo.model import DetectedFeatures
+        result = topo.heal(_plate_with_holes())
         cluster = result.clusters[0]
         small = min(cluster.inners, key=lambda c: c.polygon.area)
         cluster.inners = [c for c in cluster.inners if c is not small]
@@ -148,7 +148,7 @@ class TestDimensionReferences(unittest.TestCase):
     """`Dimension.references`: gli elementi fra cui la quota misura (D69)."""
 
     def _result(self, *dims):
-        result = forge.island(_plate_with_holes(), max_gap=MAX_GAP)
+        result = topo.island(_plate_with_holes(), max_gap=MAX_GAP)
         result.annotations = list(dims)
         return anchor_annotations(result)
 
@@ -157,12 +157,12 @@ class TestDimensionReferences(unittest.TestCase):
         result = self._result(dim)
         self.assertEqual(len(dim.references), 1)
         hole = resolve_target(result, dim.references[0])
-        self.assertAlmostEqual(forge.geometry.contour_shape(hole).diameter, 20)
+        self.assertAlmostEqual(topo.geometry.contour_shape(hole).diameter, 20)
 
     def test_raggio_sul_foro(self):
         dim = Dimension(position=(40, 40), dim_type="radius", measured_points=[(20, 29)])
         result = self._result(dim)
-        self.assertAlmostEqual(forge.geometry.contour_shape(resolve_target(result, dim.references[0])).diameter, 8)
+        self.assertAlmostEqual(topo.geometry.contour_shape(resolve_target(result, dim.references[0])).diameter, 8)
 
     def test_lineare_fra_due_elementi(self):
         # dal bordo sinistro del pezzo al bordo sinistro del foro Ø8
@@ -170,7 +170,7 @@ class TestDimensionReferences(unittest.TestCase):
         result = self._result(dim)
         self.assertEqual(dim.references[0], "clusters[0].outer")
         self.assertEqual(len(dim.references), 2)
-        self.assertAlmostEqual(forge.geometry.contour_shape(resolve_target(result, dim.references[1])).diameter, 8)
+        self.assertAlmostEqual(topo.geometry.contour_shape(resolve_target(result, dim.references[1])).diameter, 8)
 
     def test_punti_fuori_dalla_geometria(self):
         dim = Dimension(position=(0, 0), measured_points=[(-20, -20), (200, 200)])
@@ -178,7 +178,7 @@ class TestDimensionReferences(unittest.TestCase):
         self.assertEqual(dim.references, [])
 
     def test_senza_punti(self):
-        result = forge.island(_plate_with_holes(), max_gap=MAX_GAP)
+        result = topo.island(_plate_with_holes(), max_gap=MAX_GAP)
         self.assertEqual(dimension_references(result, Dimension(position=(0, 0))), [])
 
 

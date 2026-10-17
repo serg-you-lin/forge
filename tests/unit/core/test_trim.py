@@ -8,10 +8,10 @@ curva accorciata — stessi capi, ogni punto sulla curva originale.
 import math
 import unittest
 
-from forge.core.primitives.segments import (
+from topo.core.primitives.segments import (
     ArcSeg, CircleSeg, EllipseSeg, LineSeg, SplineSeg, segment_endpoints,
 )
-from forge.core.primitives.trim import sub_segment
+from topo.core.primitives.trim import sub_segment
 
 
 def _close(p, q, tol=1e-6):

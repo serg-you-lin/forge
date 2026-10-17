@@ -41,9 +41,9 @@ from shapely import wkt as shapely_wkt
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
-from forge.adapters.dxf.layers import role_to_dxf_layer
-from forge.io.dxf import cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
+import topo
+from topo.adapters.dxf.layers import role_to_dxf_layer
+from topo.io.dxf import cluster_passes_min_area, DEFAULT_MIN_CLUSTER_AREA
 
 
 MULTIPLI_DIR = project_root / "tests" / "data" / "golden_multipli"
@@ -139,11 +139,11 @@ def _get_parent_split_cache(parent_path: Path, tolerance: float) -> dict:
     output_folder = Path(tempfile.mkdtemp(prefix=f"golden_split_{parent_path.stem}_"))
     atexit.register(shutil.rmtree, output_folder, ignore_errors=True)
 
-    doc = forge.load_dxf(parent_path, explode_inserts=True, tolerance=tolerance)
-    result = forge.heal(doc, tolerance=tolerance)
+    doc = topo.load_dxf(parent_path, explode_inserts=True, tolerance=tolerance)
+    result = topo.heal(doc, tolerance=tolerance)
 
     if result.is_valid and result.clusters:
-        drawings = forge.split(
+        drawings = topo.split(
             result,
             doc,
             namer=lambda i, cluster: f"{cluster.label}_P{i + 1:03d}",

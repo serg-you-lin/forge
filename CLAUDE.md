@@ -1,4 +1,4 @@
-# forge — working agreement
+# topo — working agreement
 
 Deterministic 2D-geometry engine for technical drawings and CAD geometry.
 Input adapters (DXF today; PDF frozen/experimental; raw primitives) → a lossless
@@ -6,13 +6,13 @@ domain model (healed closed contours, containment hierarchy, annotations, an ope
 overlay for detected features) → renderers (DXF / JSON / XML / SVG / view-model).
 
 It is **not** a DXF library, and **not** a sheet-metal tool. Sheet/plate
-manufacturing is where forge came from and still its first consumer, not its
+manufacturing is where topo came from and still its first consumer, not its
 boundary: the engine knows no process, no material and no product. Anything that
 reads geometry as "a hole to drill", "a bend", "a dimension that means a thread"
 is the consumer's interpretation (`snapbend` for sheet metal, `snapdraw` for
-drawing notation), not forge's.
+drawing notation), not topo's.
 
-Python 3.11 · version in `pyproject.toml` (single source of truth) · `import forge`.
+Python 3.11 · version in `pyproject.toml` (single source of truth) · `import topo`.
 Talk to Federico in Italian; everything written in the repo is English (except
 docstrings/comments, see Conventions).
 
@@ -24,7 +24,7 @@ docstrings/comments, see Conventions).
 | need the full card for a public name | `docs/API.md` |
 | **need to know what exists or what a function does** | `docs/INDEX.md` and `docs/LLM.md` first, then only the lines they point to. Never read a whole module to understand it: the index exists to save tokens |
 | **about to add a function, helper or class** | `docs/INDEX.md` — every module-level name in the package with `file:line`. Check the name *and* the job exist nowhere before writing |
-| **writing geometry** (a measure, a fact between contours, lines, rectangles) | it goes in `forge/core/geometry/` and its public facts in `forge.geometry` (`__init__.py` is the map) — never as a private helper in a reading or in a consumer (D93-D95) |
+| **writing geometry** (a measure, a fact between contours, lines, rectangles) | it goes in `topo/core/geometry/` and its public facts in `topo.geometry` (`__init__.py` is the map) — never as a private helper in a reading or in a consumer (D93-D95) |
 | why is it built this way | `docs/ARCHITECTURE.md` |
 | why was X decided | `MAP.md` — decision log `D1…Dn`. Grep for the topic. **A closed decision is not re-decided**; to reopen it, say "reopening D##" out loud |
 | what's missing / planned | `TODO.md`, `ROADMAP.md` |
@@ -44,19 +44,19 @@ snapbend's `tests/gen_index.py` — change it in one, copy to the other.
 
 ## Non-negotiables
 
-1. **Reason in forge's own primitives.** `Edge`, `LineSeg`/`ArcSeg`/`SplineSeg`/
+1. **Reason in topo's own primitives.** `Edge`, `LineSeg`/`ArcSeg`/`SplineSeg`/
    `CircleSeg`/`EllipseSeg`, `role`/`ContourRole`, `closed_path`. A source-format
    detail — which DXF layer something sits on, `LINE` vs `LWPOLYLINE`, how the CAD
    author grouped entities — is a fact about how *one file* was authored, never
    domain truth. Test before writing any rule: would it still make sense if the
    same geometry arrived from a PDF or SVG adapter with no layers at all? If not,
    translate it into a real domain concept or drop it.
-2. **Build test fixtures with forge's own API** (`forge.load_dxf`, `Edge`,
-   `LineSeg`, …), never with `ezdxf` directly. forge exists so that is unnecessary.
+2. **Build test fixtures with topo's own API** (`topo.load_dxf`, `Edge`,
+   `LineSeg`, …), never with `ezdxf` directly. topo exists so that is unnecessary.
 3. **Dependency rule:** `core` and `model` never import `adapters`, `tools` or `io`
    (MAP.md D44). `model` may annotate a `tools` type only under `TYPE_CHECKING`.
-4. **forge knows no process.** The `hole`/`bending`/`engrave` vocabulary and
-   `detect_flat()` live in snapbend (`snapbend.flat`, D88). forge reads
+4. **topo knows no process.** The `hole`/`bending`/`engrave` vocabulary and
+   `detect_flat()` live in snapbend (`snapbend.flat`, D88). topo reads
    structure (what closes, what lies inside what, what is connected); meaning
    (hole, bend, view, dimension) is a consumer's, written to `cluster.detected`
    and rendered by role (D90).
@@ -70,9 +70,9 @@ snapbend's `tests/gen_index.py` — change it in one, copy to the other.
    `allow_invalid=False`. `split` always raises on invalid (D83).
 7. **Nothing is silently dropped**: unclassified geometry goes to `trash_entities`,
    unmodeled source types to `doc.warnings`.
-8. **Justify every choice from forge's own geometry and domain model.** "That is
+8. **Justify every choice from topo's own geometry and domain model.** "That is
    what other CAD software does" / "it's the convention" is not an argument here —
-   forge exists precisely so it does not have to inherit anyone else's conventions.
+   topo exists precisely so it does not have to inherit anyone else's conventions.
    State the geometric or mathematical reason directly.
 9. **Never regenerate a golden to make a test pass** without first proving the code
    is right.

@@ -17,7 +17,7 @@ grezzo e basta:
 
 Nessun altro pattern da ricordare, niente `EXAMPLES / "..."`.
 
-Underscore iniziale: non fa parte del package `forge`, vive solo qui accanto
+Underscore iniziale: non fa parte del package `topo`, vive solo qui accanto
 agli script.
 """
 

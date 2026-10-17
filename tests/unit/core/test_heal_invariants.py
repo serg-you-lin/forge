@@ -22,10 +22,10 @@ from shapely import affinity
 from shapely.geometry import LineString, MultiPoint, Point
 from shapely.ops import unary_union
 
-import forge
-from forge.core.primitives import LineSeg
-from forge.core.primitives.segments import DEFAULT_TOLERANCE
-from forge.model.document import ForgeDocument
+import topo
+from topo.core.primitives import LineSeg
+from topo.core.primitives.segments import DEFAULT_TOLERANCE
+from topo.model.document import Document
 
 DATA = Path(__file__).resolve().parent.parent.parent / "data"
 SOURCE_DIR = DATA / "golden"
@@ -64,11 +64,11 @@ def _tolerance(dxf: Path) -> float:
 @lru_cache(maxsize=None)
 def _read(dxf: Path):
     """(documento, risultato di heal) come in test_golden."""
-    rules = forge.name_rules({**GLOBAL_NAME_ROLES, **_config(dxf).get("name_roles", {})})
+    rules = topo.name_rules({**GLOBAL_NAME_ROLES, **_config(dxf).get("name_roles", {})})
     tol = _tolerance(dxf)
-    doc = forge.load_dxf(str(dxf), upgrade=True, explode_inserts=True, flatten_z_flag=True,
+    doc = topo.load_dxf(str(dxf), upgrade=True, explode_inserts=True, flatten_z_flag=True,
                          tolerance=tol, role_rules=rules)
-    return doc, forge.heal(doc, tolerance=tol)
+    return doc, topo.heal(doc, tolerance=tol)
 
 
 def _geometry(segment):
@@ -132,12 +132,12 @@ class TestContoursAreRings(unittest.TestCase):
     """I segmenti di ogni outer e di ogni inner sono un anello testa-coda:
     ognuno parte dove finisce il precedente, l'ultimo chiude sul primo (D118).
     È quello che un chiamante trova in `contour.segments` e passa alle
-    primitive di `forge.geometry.regions` senza riordinarlo."""
+    primitive di `topo.geometry.regions` senza riordinarlo."""
 
 
 def _make_ring_test(dxf: Path):
     def test(self):
-        from forge.core.primitives.segments import segment_endpoints
+        from topo.core.primitives.segments import segment_endpoints
         _, result = _read(dxf)
         for ci, cluster in enumerate(result.clusters):
             for name, contour in [("outer", cluster.outer)] + [(f"inner[{i}]", c) for i, c in
@@ -241,7 +241,7 @@ def _make_chords_test(dxf: Path):
             chords = _chords(cluster, tol)
             if not chords:
                 continue
-            again = forge.heal(forge.load_segments(list(cluster.outer.segments) + chords, tolerance=tol),
+            again = topo.heal(topo.load_segments(list(cluster.outer.segments) + chords, tolerance=tol),
                                tolerance=tol)
             if again.cluster_count != 1 or _shape_differences([cluster.outer.polygon], _outers(again)):
                 broken.append(f"cluster[{ci}] (+{len(chords)} corde): {again.cluster_count} cluster")
@@ -281,9 +281,9 @@ def _make_roles_test(dxf: Path):
         ids = _crossing_edges(doc, result, tol)
         if not ids:
             self.skipTest("nessun edge non strutturale da bordo a bordo")
-        blind = ForgeDocument(edges=[replace(e, role="unknown") if id(e) in ids else e for e in doc.edges],
+        blind = Document(edges=[replace(e, role="unknown") if id(e) in ids else e for e in doc.edges],
                               source_path=doc.source_path, source_meta=doc.source_meta)
-        again = forge.heal(blind, tolerance=tol)
+        again = topo.heal(blind, tolerance=tol)
         self.assertEqual(again.cluster_count, result.cluster_count,
                          f"{dxf.stem}: {len(ids)} edge senza ruolo cambiano il numero di pezzi")
         self.assertEqual(_shape_differences(_outers(result), _outers(again)), [],
@@ -307,7 +307,7 @@ def _make_rotation_test(angle: float):
                 self.skipTest("gap largo esattamente la tolleranza: sul filo della soglia")
             doc, result = _read(dxf)
             tol = _tolerance(dxf)
-            turned = forge.heal(forge.rotate_document(doc, angle), tolerance=tol)
+            turned = topo.heal(topo.rotate_document(doc, angle), tolerance=tol)
             back = [affinity.rotate(p, -angle, origin=(0, 0), use_radians=True) for p in _outers(turned)]
             self.assertEqual(turned.cluster_count, result.cluster_count, f"{dxf.stem}: ruotato cambia i pezzi")
             self.assertEqual(_shape_differences(_outers(result), back), [],
@@ -335,9 +335,9 @@ def _make_order_test(dxf: Path):
     def test(self):
         doc, result = _read(dxf)
         tol = _tolerance(dxf)
-        flipped = ForgeDocument(edges=list(reversed(doc.edges)), source_path=doc.source_path,
+        flipped = Document(edges=list(reversed(doc.edges)), source_path=doc.source_path,
                                 source_meta=doc.source_meta)
-        again = forge.heal(flipped, tolerance=tol)
+        again = topo.heal(flipped, tolerance=tol)
         self.assertEqual(again.cluster_count, result.cluster_count, f"{dxf.stem}: l'ordine cambia i pezzi")
         self.assertEqual(_shape_differences(_outers(result), _outers(again)), [],
                          f"{dxf.stem}: l'ordine cambia gli outer")
@@ -352,9 +352,9 @@ class TestNeverRaises(unittest.TestCase):
     trash), mai un'eccezione."""
 
     def test_coordinate_nan(self):
-        square = forge.geometry.rectangle(100, 50)
-        doc = forge.load_segments(square + [LineSeg(start=(float("nan"), 0.0), end=(10.0, 10.0))])
-        result = forge.heal(doc)
+        square = topo.geometry.rectangle(100, 50)
+        doc = topo.load_segments(square + [LineSeg(start=(float("nan"), 0.0), end=(10.0, 10.0))])
+        result = topo.heal(doc)
         self.assertEqual(result.cluster_count, 1, "il rettangolo resta un pezzo")
         self.assertFalse(result.is_valid, "un edge senza posizione rende il risultato non valido")
 

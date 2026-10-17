@@ -4,11 +4,11 @@
 import math
 import unittest
 
-import forge
-from forge.core.primitives.segments import ArcSeg, CircleSeg, LineSeg
-from forge.core.geometry.shape import CIRCLE, OTHER, POLYGON, RECTANGLE, STADIUM, contour_shape
-from forge.core.topology.edge import Edge
-from forge.model.document import ForgeDocument
+import topo
+from topo.core.primitives.segments import ArcSeg, CircleSeg, LineSeg
+from topo.core.geometry.shape import CIRCLE, OTHER, POLYGON, RECTANGLE, STADIUM, contour_shape
+from topo.core.topology.edge import Edge
+from topo.model.document import Document
 
 # max_gap non ha default (D98); island_gap non esiste più (D99)
 MAX_GAP = 0.5
@@ -97,19 +97,19 @@ class TestContourShapeSuIsole(unittest.TestCase):
         segs = (_ring((0, 0), (100, 0), (100, 50), (0, 50))
                 + [CircleSeg(center=(15, 25), radius=4)]
                 + _stadium((40, 25), (70, 25), 5))
-        return ForgeDocument(edges=[_edge(s) for s in segs], annotations=[],
+        return Document(edges=[_edge(s) for s in segs], annotations=[],
                              source_meta={"tolerance": 0.05}, source_path="")
 
     def _kinds(self, cluster):
         return sorted(contour_shape(c).kind for c in cluster.inners)
 
     def test_island(self):
-        cluster = forge.island(self._doc(), max_gap=MAX_GAP).clusters[0]
+        cluster = topo.island(self._doc(), max_gap=MAX_GAP).clusters[0]
         self.assertEqual(contour_shape(cluster.outer).kind, RECTANGLE)
         self.assertEqual(self._kinds(cluster), [CIRCLE, STADIUM])
 
     def test_heal(self):
-        cluster = forge.heal(self._doc()).clusters[0]
+        cluster = topo.heal(self._doc()).clusters[0]
         self.assertEqual(contour_shape(cluster.outer).kind, RECTANGLE)
         self.assertEqual(self._kinds(cluster), [CIRCLE, STADIUM])
 

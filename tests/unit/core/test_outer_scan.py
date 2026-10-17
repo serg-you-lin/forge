@@ -2,9 +2,9 @@
 
 import math
 import unittest
-from forge.core.healing.outer_scan import outer_candidate_edges, AXIS_X, AXIS_Y
-from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
+from topo.core.healing.outer_scan import outer_candidate_edges, AXIS_X, AXIS_Y
+from topo.core.topology.edge import Edge
+from topo.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
 
 
 def _line(p1, p2):

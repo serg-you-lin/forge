@@ -1,7 +1,7 @@
 """
 test_tabs.py
 ------------
-Test unitari per forge.tools.tabs (MAP.md D40): `bridge_tabs` (una coppia,
+Test unitari per topo.tools.tabs (MAP.md D40): `bridge_tabs` (una coppia,
 una posizione) e `bridge_nested_tabs` (cammina la gerarchia, N linguette per
 coppia, a qualunque profondità).
 """
@@ -16,10 +16,10 @@ from shapely.geometry import Polygon
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
-from forge.core.primitives.segments import CircleSeg
-from forge.model.contour import ForgeContour
-from forge.tools.tabs import bridge_tabs, bridge_nested_tabs
+import topo
+from topo.core.primitives.segments import CircleSeg
+from topo.model.contour import Contour
+from topo.tools.tabs import bridge_tabs, bridge_nested_tabs
 
 
 def _circle_points(center, radius, n=200):
@@ -68,7 +68,7 @@ class TestBridgeTabs(unittest.TestCase):
 
 def _make_contour(radius, depth, parent=None, center=(0.0, 0.0)):
     poly = Polygon(_circle_points(center, radius, n=64))
-    return ForgeContour(role="unknown", polygon=poly, segments=[CircleSeg(center=center, radius=radius)],
+    return Contour(role="unknown", polygon=poly, segments=[CircleSeg(center=center, radius=radius)],
                          depth=depth, parent=parent)
 
 
@@ -82,8 +82,8 @@ class TestBridgeNestedTabs(unittest.TestCase):
     """Cammina la gerarchia — a qualunque profondita', mai un livello saltato."""
 
     def test_001_single_pair_on_real_fixture(self):
-        doc = forge.load_dxf(str(project_root / "tests/data/cerchi_concentrici_detect_is_counter_tabs_join.dxf"))
-        result = forge.heal(doc)
+        doc = topo.load_dxf(str(project_root / "tests/data/cerchi_concentrici_detect_is_counter_tabs_join.dxf"))
+        result = topo.heal(doc)
         cluster = result.clusters[0]
 
         bridges = bridge_nested_tabs(cluster, tab_width=2.0, tab_count=4, discretize_tolerance=0.05)

@@ -2,7 +2,7 @@
 test_golden_annotations.py
 --------------------------
 Regressione sull'estrazione delle annotazioni: confronta
-`forge.load_dxf(...).annotations` (Note / Dimension / Leader) con i golden in
+`topo.load_dxf(...).annotations` (Note / Dimension / Leader) con i golden in
 tests/data/golden/annotations/.
 
 Golden generati da tests/generate_golden_annotations.py — da rigenerare solo
@@ -21,9 +21,9 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
-from forge.model.annotation import Note, Dimension, Leader
-from forge.tools.anchor import anchor_annotations
+import topo
+from topo.model.annotation import Note, Dimension, Leader
+from topo.tools.anchor import anchor_annotations
 
 EXAMPLES_DIR = project_root / "tests" / "data"
 GOLDEN_DIR = EXAMPLES_DIR / "golden" / "annotations"
@@ -88,10 +88,10 @@ def _make_test(path: Path):
         if dxf_path is None:
             self.skipTest(golden["source_file"])
 
-        doc = forge.load_dxf(
+        doc = topo.load_dxf(
             dxf_path, explode_inserts=True, flatten_z_flag=True, verbose=False
         )
-        result = forge.heal(doc)
+        result = topo.heal(doc)
         anchor_annotations(result)
         anns = result.annotations if result.annotations else doc.annotations
         actual = sorted((_actual_dict(a) for a in anns), key=_sort_key)

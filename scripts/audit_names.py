@@ -25,7 +25,7 @@ Quattro controlli:
        pattern con la lettera obbligatoria non vedono
 
 `ALLOWED` è la lista delle cose che *sembrano* un codice pezzo ma non lo sono
-(norme materiale, versioni DXF, sigle interne di forge): va allungata quando
+(norme materiale, versioni DXF, sigle interne di topo): va allungata quando
 l'audit segnala un falso positivo, mai per far tacere un codice vero.
 
 In locale il controllo più forte lo fa `--from-disk`: prende i nomi dei disegni
@@ -108,7 +108,7 @@ NUMBER_LINE = re.compile(r"^[-+]?\d*\.?\d+([eE][-+]?\d+)?$")
 DRAWING_NOISE: tuple[re.Pattern[str], ...] = (
     # identificatori generati dal programma che ha scritto il file
     re.compile(r"^\{?[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}\}?$"),
-    # data/ora ISO, anche quella che forge stessa scrive in XDATA
+    # data/ora ISO, anche quella che topo stessa scrive in XDATA
     re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"),
     # nomi di classi, dizionari e stili del formato
     re.compile(r"^(ACAD|ACDB|AcDb|AcAd|ASDK|ODA|OdDb)", re.IGNORECASE),
@@ -152,7 +152,7 @@ ALLOWED: frozenset[str] = frozenset({
     "AISI304", "AISI316", "AISI316L",
     # codici flake8 nei commenti `# noqa: F401`
     "F401", "F403", "E501",
-    # sigle che forge usa come esempio o nei suoi stessi test
+    # sigle che topo usa come esempio o nei suoi stessi test
     "P1024", "U0001",
     # nomi generati dal programma dentro un disegno, guardati uno per uno:
     # impronta dell'applicazione in un AcDbXrecord (accanto ai valori "ACD" e

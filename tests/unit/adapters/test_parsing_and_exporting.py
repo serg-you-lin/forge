@@ -12,16 +12,16 @@ from unittest.mock import MagicMock, patch
 import math
 from types import SimpleNamespace
 
-from forge.core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg
-from forge.core.topology.edge import Edge
-from forge.adapters.dxf.parser import DxfEntityDispatcher
-from forge.core.topology.loop_finder import segments_from_loop
-from forge.adapters.dxf.exporter import (
+from topo.core.primitives import LineSeg, ArcSeg, SplineSeg, CircleSeg, EllipseSeg
+from topo.core.topology.edge import Edge
+from topo.adapters.dxf.parser import DxfEntityDispatcher
+from topo.core.topology.loop_finder import segments_from_loop
+from topo.adapters.dxf.exporter import (
     arc_seg_to_bulge,
     segments_to_pts_with_bulge,
     write_segments,
 )
-from forge.model.role import ContourRole
+from topo.model.role import ContourRole
 
 # ---------------------------------------------------------------------------
 # Helper — entità DXF mock
@@ -280,7 +280,7 @@ class TestDxfEntityDispatcher(unittest.TestCase):
     def test_006_parse_circle(self):
         """Parsing di un CIRCLE → CircleSeg (primitiva geometrica pura)."""
         parsed = DxfEntityDispatcher(make_circle(0, 0, 10)).parse(rev=False)
-        from forge.core.primitives import CircleSeg
+        from topo.core.primitives import CircleSeg
         self.assertIsInstance(parsed, CircleSeg)
         self.assertEqual(parsed.center, (0.0, 0.0))
         self.assertEqual(parsed.radius, 10.0)

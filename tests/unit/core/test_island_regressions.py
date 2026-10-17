@@ -5,14 +5,14 @@ Regressioni isolate su `read_island()`, trovate l'11 ottobre aprendo
 `anch_02.dxf` (golden_islands) in un viewer e viste sbagliate a occhio da
 Federico — non intercettate da nessun golden esistente (vedi TODO.md).
 Ogni fixture è un ritaglio minimo del foglio reale, salvato con l'API di
-forge stessa (mai ezdxf diretto): `tests/data/regressions/*.dxf`.
+topo stessa (mai ezdxf diretto): `tests/data/regressions/*.dxf`.
 """
 
 import unittest
 from pathlib import Path
 
-import forge
-from forge.core.island import read_island
+import topo
+from topo.core.island import read_island
 
 FIXTURES = Path(__file__).resolve().parent.parent.parent / "data" / "regressions"
 TOLERANCE = 0.05
@@ -26,7 +26,7 @@ class TestGhostLoop(unittest.TestCase):
     PDF né da D98-D101 (bisecato su 1b5b02e, D99: identico)."""
 
     def test_un_foro_non_ha_un_giro_fantasma_annidato(self):
-        doc = forge.load_dxf(str(FIXTURES / "island_ghost_loop.dxf"), tolerance=TOLERANCE)
+        doc = topo.load_dxf(str(FIXTURES / "island_ghost_loop.dxf"), tolerance=TOLERANCE)
         reading = read_island(doc.edges, tolerance=TOLERANCE, max_gap=MAX_GAP)
         self.assertIsNotNone(reading.outer)
         self.assertAlmostEqual(reading.outer.polygon.area, 16.247, places=2)
@@ -43,7 +43,7 @@ class TestTangentSpike(unittest.TestCase):
     su questo caso."""
 
     def test_la_punta_arrotondata_non_ha_una_spike(self):
-        doc = forge.load_dxf(str(FIXTURES / "island_tangent_spike.dxf"), tolerance=TOLERANCE)
+        doc = topo.load_dxf(str(FIXTURES / "island_tangent_spike.dxf"), tolerance=TOLERANCE)
         reading = read_island(doc.edges, tolerance=TOLERANCE, max_gap=MAX_GAP)
         self.assertIsNotNone(reading.outer)
         self.assertAlmostEqual(reading.outer.polygon.area, 1011.27, places=1)

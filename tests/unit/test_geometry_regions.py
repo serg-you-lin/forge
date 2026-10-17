@@ -3,19 +3,19 @@ test_geometry_regions.py
 ------------------------
 Primitive per algoritmi di un chiamante (MAP.md D118): `intersections` fra due
 primitive, `point_on_contour`, `cut_by`, `contour_minus`,
-`ForgeContour.from_segments`. Ogni regione è un contorno chiuso qualunque:
+`Contour.from_segments`. Ogni regione è un contorno chiuso qualunque:
 gli stessi test girano con un disco e con un rettangolo.
 """
 
 import math
 import unittest
 
-import forge
-from forge.core.primitives import ArcSeg, CircleSeg, LineSeg, SplineSeg
-from forge.core.primitives.polygon_builder import build_polygon
-from forge.model.contour import ForgeContour
+import topo
+from topo.core.primitives import ArcSeg, CircleSeg, LineSeg, SplineSeg
+from topo.core.primitives.polygon_builder import build_polygon
+from topo.model.contour import Contour
 
-g = forge.geometry
+g = topo.geometry
 SQUARE = g.rectangle(10, 10, center=(5, 5))          # 0..10 x 0..10, antiorario
 # una L: 10x10 meno il quadrato 5..10 x 5..10, spigolo concavo in (5, 5)
 L_SHAPE = g.polygon([(0, 0), (10, 0), (10, 5), (5, 5), (5, 10), (0, 10)])
@@ -169,7 +169,7 @@ class TestContourMinus(unittest.TestCase):
 
     def test_result_is_a_valid_contour(self):
         ring = g.contour_minus(L_SHAPE, g.circle(1.5, center=(5, 5)))[0]
-        contour = ForgeContour.from_segments(ring, role="outer")
+        contour = Contour.from_segments(ring, role="outer")
         self.assertTrue(contour.polygon.is_valid)
 
     def test_shared_border_raises(self):
@@ -180,17 +180,17 @@ class TestContourMinus(unittest.TestCase):
 class TestContourFromSegments(unittest.TestCase):
 
     def test_ring_becomes_a_contour(self):
-        contour = ForgeContour.from_segments(SQUARE, role="outer")
+        contour = Contour.from_segments(SQUARE, role="outer")
         self.assertAlmostEqual(contour.area, 100)
         self.assertEqual(contour.segments, SQUARE)
 
     def test_open_chain_raises(self):
         with self.assertRaises(ValueError):
-            ForgeContour.from_segments(SQUARE[:3], role="outer")
+            Contour.from_segments(SQUARE[:3], role="outer")
 
     def test_segments_out_of_order_raise(self):
         with self.assertRaises(ValueError):
-            ForgeContour.from_segments([SQUARE[0], SQUARE[2], SQUARE[1], SQUARE[3]], role="outer")
+            Contour.from_segments([SQUARE[0], SQUARE[2], SQUARE[1], SQUARE[3]], role="outer")
 
 
 if __name__ == "__main__":

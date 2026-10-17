@@ -1,9 +1,9 @@
 """
 test_geometry_loader.py
 ------------------------
-Test unitari per adapters/geometry/loader.py (forge.load_geometry).
+Test unitari per adapters/geometry/loader.py (topo.load_geometry).
 
-Verifica il contratto: dict puri Python → ForgeDocument → heal() →
+Verifica il contratto: dict puri Python → Document → heal() →
 to_dxf(), esattamente come load_dxf, ma senza file sorgente. Copre i due casi
 d'uso reali: un rettangolo con foro (polyline + circle) e un settore anulare
 tipo sviluppo di cono (arc + line, con conversione gradi→radianti).
@@ -14,9 +14,9 @@ import unittest
 
 import ezdxf
 
-import forge
-from forge.adapters.geometry.loader import GeometryAdapter, load_geometry
-from forge.model.role import ContourRole
+import topo
+from topo.adapters.geometry.loader import GeometryAdapter, load_geometry
+from topo.model.role import ContourRole
 
 
 class TestGeometryAdapter(unittest.TestCase):
@@ -72,12 +72,12 @@ class TestLoadGeometryRectangleWithHole(unittest.TestCase):
             {"type": "circle", "center": (20, 25), "radius": 5},
         ])
 
-    def test_returns_forge_document(self):
-        self.assertIsInstance(self.doc, forge.ForgeDocument)
+    def test_returns_topo_document(self):
+        self.assertIsInstance(self.doc, topo.Document)
         self.assertTrue(self.doc.edges)
 
     def test_heal_finds_one_part_with_one_inner(self):
-        result = forge.heal(self.doc, label="rect_test")
+        result = topo.heal(self.doc, label="rect_test")
         self.assertTrue(result.is_valid, result.errors)
         self.assertEqual(result.cluster_count, 1)
         cluster = result.clusters[0]
@@ -85,8 +85,8 @@ class TestLoadGeometryRectangleWithHole(unittest.TestCase):
         self.assertEqual(len(cluster.inners), 1)
 
     def test_to_dxf_writes_a_valid_document(self):
-        result = forge.heal(self.doc, label="rect_test")
-        doc_out = forge.to_dxf(result)
+        result = topo.heal(self.doc, label="rect_test")
+        doc_out = topo.to_dxf(result)
         self.assertGreater(len(doc_out.modelspace()), 0)
 
 
@@ -116,7 +116,7 @@ class TestLoadGeometryConeSector(unittest.TestCase):
         ])
 
     def test_forms_a_single_closed_part_with_correct_area(self):
-        result = forge.heal(self.doc, label="cono_sector_test")
+        result = topo.heal(self.doc, label="cono_sector_test")
         self.assertTrue(result.is_valid, result.errors)
         self.assertEqual(result.cluster_count, 1)
         self.assertAlmostEqual(
@@ -124,8 +124,8 @@ class TestLoadGeometryConeSector(unittest.TestCase):
         )
 
     def test_to_dxf_keeps_arcs_native_not_discretized(self):
-        result = forge.heal(self.doc, label="cono_sector_test")
-        doc_out = forge.to_dxf(result)
+        result = topo.heal(self.doc, label="cono_sector_test")
+        doc_out = topo.to_dxf(result)
         msp = doc_out.modelspace()
         # write_segments emette LWPOLYLINE con bulge per un contorno misto
         # linea/arco (rappresentazione esatta, non una discretizzazione) —
@@ -139,7 +139,7 @@ class TestLoadGeometryConeSector(unittest.TestCase):
 class TestLoadGeometrySplineFromSimplifyPoints(unittest.TestCase):
     """
     Il caso reale che ha aperto il tipo "spline": un contorno ricostruito da
-    forge.simplify_points() (Smoother) — la SplineSeg risultante deve poter
+    topo.simplify_points() (Smoother) — la SplineSeg risultante deve poter
     tornare in load_geometry() senza reinventare i suoi campi a mano.
     """
 
@@ -152,7 +152,7 @@ class TestLoadGeometrySplineFromSimplifyPoints(unittest.TestCase):
             (r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n))
             for i in range(n)
         ]
-        segments = forge.simplify_points(points, closed=True)
+        segments = topo.simplify_points(points, closed=True)
         self.assertEqual(len(segments), 1)
         seg = segments[0]
 
@@ -171,7 +171,7 @@ class TestLoadGeometrySplineFromSimplifyPoints(unittest.TestCase):
         self.polygon_area = 0.5 * n * r * r * math.sin(2 * math.pi / n)
 
     def test_heal_finds_one_closed_part(self):
-        result = forge.heal(self.doc, label="spline_loop_test")
+        result = topo.heal(self.doc, label="spline_loop_test")
         self.assertTrue(result.is_valid, result.errors)
         self.assertEqual(result.cluster_count, 1)
         self.assertAlmostEqual(
@@ -179,8 +179,8 @@ class TestLoadGeometrySplineFromSimplifyPoints(unittest.TestCase):
         )
 
     def test_to_dxf_keeps_spline_native_not_discretized(self):
-        result = forge.heal(self.doc, label="spline_loop_test")
-        doc_out = forge.to_dxf(result)
+        result = topo.heal(self.doc, label="spline_loop_test")
+        doc_out = topo.to_dxf(result)
         msp = doc_out.modelspace()
         self.assertEqual(len(list(msp.query("SPLINE"))), 1)
         self.assertEqual(len(list(msp.query("LWPOLYLINE"))), 0)

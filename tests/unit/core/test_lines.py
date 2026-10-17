@@ -5,8 +5,8 @@ import unittest
 
 from shapely.geometry import Polygon, box
 
-import forge
-from forge.core.geometry.lines import CollinearRun, are_collinear, bridged_runs, point_line_distance, splits_polygon
+import topo
+from topo.core.geometry.lines import CollinearRun, are_collinear, bridged_runs, point_line_distance, splits_polygon
 
 PART = box(0, 0, 100, 50)
 
@@ -50,8 +50,8 @@ class TestBridgedRuns(unittest.TestCase):
         self.assertEqual(len(bridged_runs(segments, [self.HOLE])), 1)
 
     def test_api_pubblica(self):
-        self.assertIs(forge.geometry.bridged_runs, bridged_runs)
-        self.assertIs(forge.geometry.splits_polygon, splits_polygon)
+        self.assertIs(topo.geometry.bridged_runs, bridged_runs)
+        self.assertIs(topo.geometry.splits_polygon, splits_polygon)
 
 
 class TestLineFacts(unittest.TestCase):

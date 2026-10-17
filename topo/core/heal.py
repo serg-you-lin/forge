@@ -1,0 +1,224 @@
+"""
+core/heal.py
+------------
+Primo modo di leggere un Document, accanto a island(): dall'interno.
+
+heal() ricostruisce la topologia (chi tocca chi, quali giri si chiudono, come
+stanno uno dentro l'altro) e trova il pezzo per contenimento. È la ricetta per
+un disegno piano — un file di taglio, un nesting di pezzi separati. I passi
+sono in `healing/steps.py`, pubblici: qui c'è solo la loro composizione di
+default, più i warning che la raccontano.
+
+Puro: solo Edge, primitive e modello, nessun formato.
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Callable, Optional
+
+from ..model.document import Document
+from ..model.result import Result
+from ..model.role import is_structural_role
+from .primitives.segments import ArcSeg
+from .topology.loop_finder import edges_to_open_curves
+from .healing.normalizer import (
+    merge_collinear_overlaps, merge_cocircular_overlaps, weld_degenerate_linesegs,
+)
+from .healing.steps import (
+    LoopSearch, split_non_finite, split_labeled, close_near_full_arcs, NEAR_FULL_ARC_MISSING,
+    close_free_gaps, dangling_splines, find_non_contour_edges,
+    find_joining_edges, free_ends,
+    find_loops, structural_loops, loops_to_curves, polygonize_edges,
+    polygons_to_curves, labeled_curves, build_hierarchy,
+)
+
+
+# ---------------------------------------------------------------------------
+# API pubblica
+# ---------------------------------------------------------------------------
+
+def heal(doc: Document, tolerance: Optional[float] = None, label: str = "",
+         source_file: str = "",
+         is_structural: Optional[Callable[[str], bool]] = None) -> Result:
+    """
+    Legge `doc` dall'interno: un Cluster per contorno esterno chiuso,
+    con gli inners per contenimento.
+
+    tolerance: se None viene ripresa da doc.source_meta['tolerance']
+               (quella usata per arrotondare i nodi in load_dxf).
+    I ruoli arrivano già sugli Edge: li assegna il loader (role_rules, D63).
+    is_structural: predicato `Callable[[str], bool]` — "questo ruolo è
+               topologia di contorno di pezzo?" — usato per decidere quali
+               Edge già etichettati restano nel grafo prima della ricerca
+               loop. Il motore da solo conosce solo outer/inner; un
+               consumatore passa il suo (snapbend: un foro è contorno di
+               pezzo). Senza, un edge etichettato "hole" viene trattato come
+               non strutturale e heal() lo segnala con un warning.
+    """
+    if not isinstance(doc, Document):
+        raise TypeError(
+            "topo.heal() richiede un Document da topo.load_dxf(); "
+            f"ricevuto {type(doc).__name__}"
+        )
+    tol = doc.node_tolerance(tolerance)
+    structural = is_structural or is_structural_role
+
+    result = Result(source_file=source_file)
+    result.annotations = list(doc.annotations)
+    if not doc.edges:
+        result.errors.append("Modelspace vuoto: nessuna geometria trovata.")
+        result.is_valid = False
+        return result
+
+    edges, broken = split_non_finite(list(doc.edges))
+    if broken:
+        result.errors.append(f"{len(broken)} edge con coordinate non finite (NaN/inf): "
+                             f"nessuna posizione, esclusi dalla lettura.")
+        result.is_valid = False
+    if not edges:
+        result.errors.append("Nessuna geometria con coordinate finite.")
+        result.is_valid = False
+        return result
+    for merge, what in ((lambda e: merge_collinear_overlaps(e, keep_junctions=True),
+                         "segmenti collineari sovrapposti fusi"),
+                        (merge_cocircular_overlaps, "archi co-circolari sovrapposti fusi"),
+                        (weld_degenerate_linesegs, "LineSeg degeneri (sub-tolleranza) saldati")):
+        merged = merge(edges)
+        if len(edges) > len(merged):
+            result.warnings.append(f"{len(edges) - len(merged)} {what} prima della ricerca loop.")
+        edges = merged
+
+    edges, labeled = split_labeled(edges, structural)
+    if labeled and is_structural is None:
+        result.warnings.append(_LABELED_WITHOUT_PREDICATE.format(n=len(labeled)))
+
+    edges, full_arcs = close_near_full_arcs(edges, tol)
+    if full_arcs:
+        result.warnings.append(f"{full_arcs} archi quasi completi (gap entro tolleranza, mancano al "
+                               f"più {math.degrees(NEAR_FULL_ARC_MISSING):.0f}°) chiusi in cerchio.")
+    edges = close_free_gaps(edges, tol)
+    if dangling_splines(edges):
+        result.warnings.append(
+            "SPLINE con endpoint non connesso trovata — "
+            "gap tra SPLINE e altre entità gestito con una linea di congiunzione. "
+            "Verificare manualmente la correttezza del file."
+        )
+
+    non_contour_ids = find_non_contour_edges(edges, tol)
+    if non_contour_ids:
+        result.warnings.append(
+            f"{len(non_contour_ids)} edge non di contorno "
+            f"esclusi dal grafo (entrambi gli endpoint su nodi di branching)."
+        )
+
+    search = find_loops(edges, non_contour_ids, tol)
+    edges = search.edges
+    result.all_arcs = [e.segment for e in edges if isinstance(e.segment, ArcSeg)]
+    result.warnings += _search_warnings(search, tol)
+    if search.loops:
+        result.warnings += _loose_ends_warnings(edges, non_contour_ids,
+                                                tol if search.method == "tolerant" else 0.0)
+
+    # Scala finita senza loop: ultima spiaggia polygonize, che dà già i
+    # ClosedCurve (OUTER dal bordo, INNER dai buchi) — nessun edge "in loop".
+    loop_edge_ids = set()
+    closed = []
+    if search.loops:
+        kept = structural_loops(search.loops, structural)
+        loop_edge_ids = {id(e) for loop in kept for e, _ in loop}
+        closed = loops_to_curves(kept)
+    elif edges:
+        result.warnings.append("Nessun loop trovato via grafo, uso polygonize come fallback.")
+        polygons = polygonize_edges(edges, tol)
+        closed = polygons_to_curves(polygons)
+        if polygons:
+            result.warnings.append(
+                f"Geometria ricostruita via fallback polygonize "
+                f"({len(polygons)} poligoni). Verificare il risultato."
+            )
+        else:
+            result.warnings.append(
+                "LINE/ARC non formano loop chiusi — "
+                "potrebbero essere marcature o geometria aperta."
+            )
+
+    curves = closed + edges_to_open_curves(edges, exclude_ids=loop_edge_ids)
+    if not curves:
+        result.errors.append("Nessuna geometria chiusa trovata dopo healing.")
+        result.is_valid = False
+        return result
+
+    clusters, trash = build_hierarchy(curves, label=label, source_file=source_file,
+                                      is_structural=structural)
+    result.clusters = clusters
+    result.trash_entities = trash + labeled_curves(labeled)
+    if not clusters:
+        # La geometria non compone nessun contorno esterno chiuso: il
+        # risultato non è un pezzo, è un file non lavorabile. La trash resta
+        # per la diagnostica, ma to_dxf() si rifiuta di scrivere solo quella.
+        result.errors.append(
+            "Nessun contorno esterno chiuso: nessuna parte generabile dal file. "
+            "Gli endpoint liberi non si congiungono entro la tolleranza richiesta."
+        )
+        result.is_valid = False
+        return result
+
+    from ..rules.validator import validate_result
+    validate_result(result)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Helper
+# ---------------------------------------------------------------------------
+
+_LABELED_WITHOUT_PREDICATE = (
+    "{n} edge con un ruolo diverso da "
+    "outer/inner/unknown, trattati come non strutturali di "
+    "default (heal() chiamato senza is_structural=...): un "
+    "ruolo come 'hole' non viene riconosciuto come contorno "
+    "di pezzo e finisce in trash. Passa a heal() un "
+    "is_structural che lo riconosca."
+)
+
+
+def _loose_ends_warnings(edges: list, non_contour_ids: set, epsilon: float) -> list[str]:
+    """Quello che resta aperto anche quando qualcosa si chiude (D111): gli
+    estremi liberi (nel grafo dei loop, `epsilon`), e gli edge che uniscono
+    due forme altrimenti staccate."""
+    warnings = []
+    ends = free_ends(edges, epsilon)
+    if ends:
+        first = ", ".join(f"({p[0]:.1f}, {p[1]:.1f}) a {d:.2f} mm dal nodo più vicino" for p, d in ends[:4])
+        warnings.append(f"{len(ends)} estremi liberi non chiudono niente e restano nel trash "
+                        f"(i più vicini a un nodo: {first}).")
+    joining = find_joining_edges(edges, non_contour_ids)
+    if joining:
+        first = ", ".join(f"({e.start[0]:.1f}, {e.start[1]:.1f})→({e.end[0]:.1f}, {e.end[1]:.1f})"
+                          for e in joining[:4])
+        warnings.append(f"{len(joining)} edge uniscono due forme altrimenti staccate: esclusi dal "
+                        f"contorno, ogni forma è letta per conto suo ({first}).")
+    return warnings
+
+
+def _search_warnings(search: LoopSearch, tolerance: float) -> list[str]:
+    """Cosa racconta heal() dei gradini della scala di find_loops()."""
+    warnings = []
+    if search.repaired:
+        warnings.append(
+            f"{search.repaired} angoli chiusi all'intersezione reale dopo "
+            f"detection via clustering (epsilon={tolerance})."
+        )
+    if search.method == "tolerant":
+        warnings.append(
+            "Loop trovati solo dopo clustering tollerante "
+            f"(epsilon={tolerance}); angoli non riparati: "
+            f"{search.unrepaired_corners[:8]}. La discrepanza sopravvive nell'output."
+        )
+    if search.open_nodes:
+        warnings.append(
+            f"Grafo con {len(search.open_nodes)} estremi liberi dopo "
+            f"clustering (prime coordinate: {search.open_nodes[:8]})."
+        )
+    return warnings

@@ -24,7 +24,7 @@ scala, vedi la nota sotto: qui la frase originale era imprecisa.
 > **Risposta: hai ragione, la frase era sbagliata — corretta sopra.** Ma vale
 > la pena separare due cose che ho impastato:
 >
-> 1. **Le coordinate che forge misura sono già a scala reale.** Un file DXF
+> 1. **Le coordinate che topo misura sono già a scala reale.** Un file DXF
 >    ben fatto è disegnato in model space 1:1 — la "scala" (Drawing
 >    Scale/View Scale/DIMSCALE) è un fattore di
 >    stampa/annotazione, non una trasformazione della geometria. Quindi il
@@ -52,7 +52,7 @@ scala, vedi la nota sotto: qui la frase originale era imprecisa.
 
 | pezzo | di cosa si occupa | dove vive |
 |---|---|---|
-| **forge** | il pezzo fabbricato: geometria, topologia, feature (fori/pieghe/incisioni), conteggi (`cluster.summary`) | `dxf-forge`, maturo |
+| **topo** | il pezzo fabbricato: geometria, topologia, feature (fori/pieghe/incisioni), conteggi (`cluster.summary`) | `dxf-forge`, maturo |
 | **snapdraw** | come il disegno è documentato: cornice, cartiglio, callout, raggruppamento viste | `snapdraw`, pre-alpha, un pezzo su cinque fatto |
 | **l'interprete** | nomenclatura privata del cliente, profili, riempimento buchi da ERP | non esiste ancora un repo — e forse non gli serve nemmeno |
 | **snapbend** (ex bendly) | sviluppo lamiere — direzione opposta (da specifica a DXF), oracolo di verifica in futuro | `unfold_generator`, alpha, già in uso |
@@ -62,12 +62,12 @@ scala, vedi la nota sotto: qui la frase originale era imprecisa.
 > **Risposta:** non "l'interprete non ti serve" (quello ti serve di sicuro:
 > nomenclatura, profili, ERP restano privati per forza). Intendevo: forse non
 > ti serve un **repo/progetto vero e proprio con un orchestratore** —
-> `pipeline.py` che chiama forge poi snapdraw poi traduzione in sequenza
+> `pipeline.py` che chiama topo poi snapdraw poi traduzione in sequenza
 > fissa. Perché una volta tolto tutto quello che è finito in snapdraw, quello
 > che resta dell'interprete è poca roba: un paio di file Python privati
 > (`nomenclature.py`, `profiles/`) con dentro le tue tabelle e i tuoi
 > pattern. È abbastanza sottile che potrebbe bastarti chiamare quelle
-> funzioni direttamente da dove oggi chiami forge, senza costruire un
+> funzioni direttamente da dove oggi chiami topo, senza costruire un
 > pacchetto a parte che le orchestra. Non è deciso, resta
 > intenzionalmente aperto finché non vedi quanto pesa in pratica la parte di
 > traduzione privata.
@@ -79,9 +79,9 @@ manifattura/documentazione/privato) è spiegazione del *perché* questa tabella
 
 ## Scoperta di stasera: il preventivo è più vicino di quanto sembrasse
 
-Rileggendo `forge/tools/inject.py` per rispondere a "cosa fa il parser
+Rileggendo `topo/tools/inject.py` per rispondere a "cosa fa il parser
 regex": **non devi aspettare che snapdraw costruisca `callouts.py`.**
-`forge.inject(result, data_injector=una_tua_funzione)` esiste già, maturo,
+`topo.inject(result, data_injector=una_tua_funzione)` esiste già, maturo,
 testato — raccoglie i testi dentro l'outer di ogni pezzo e li passa a una
 funzione che scrivi tu (privata, mai nel repo), che ritorna
 `{material, thickness, quantity, code}`. Il "parser regex per i callout" di
@@ -99,21 +99,21 @@ sotto, non l'ho toccata senza dirtelo.
 
 ## Ordine consigliato (per il preventivo, non per Pippo intero)
 
-0. **(snapdraw, su dati che forge dà già)** il controllo minimo "preventivo":
+0. **(snapdraw, su dati che topo dà già)** il controllo minimo "preventivo":
    quando c'è almeno una quota scritta, la geometria misurata concorda?
    Spostato qui dal vecchio punto 4 dopo la nota sulla scala sopra — è
-   preventivo, non produzione. ✅ **La parte di forge è fatta** (D66, D69):
+   preventivo, non produzione. ✅ **La parte di topo è fatta** (D66, D69):
    ogni `Dimension` porta `measured_value` (la misura nel disegno),
    `display_text` (il testo come è scritto) e `references` (gli elementi
    quotati). **Il confronto è di snapdraw** (D69, chiusa): leggere il numero
    in `"∅5,3"` o `"M5"` è lettura della notazione, non geometria — un `M5`
    misura il nocciolo (Ø4.13), non 5, e solo chi legge la notazione lo sa.
-1. ✅ **(forge, piccolo, D82)** `snap_distance` anche su `inject()` — stessa logica
+1. ✅ **(topo, piccolo, D82)** `snap_distance` anche su `inject()` — stessa logica
    già scritta per `anchor_annotations`, la stessa piccola tolleranza.
 2. **(tuo, privato)** scrivi il `data_injector` per il primo cliente che ti
    interessa — regex/pattern per material/thickness/qty/code. Non va nel
    repo pubblico (`forge-reports-drawing-never-guesses-no-shop-nomenclature`).
-3. **A questo punto hai già un primo Pippo-per-preventivi**, su forge da
+3. **A questo punto hai già un primo Pippo-per-preventivi**, su topo da
    solo: `heal` (+ `snapbend.flat.heal_and_detect` per fori e pieghe) →
    controllo quota (step 0, in snapdraw) →
    `inject(data_injector=...)` → `cluster.summary` per la complessità.

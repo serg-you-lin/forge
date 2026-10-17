@@ -5,7 +5,7 @@ Fixture tracciati nel repo:
     golden/example_4_polylines.dxf  — 4 parti, un cerchio interno ciascuna
 
 L'overlay (MAP.md D90) si prova con un elemento di prova attaccato a mano:
-forge lo disegna dal suo ruolo e dalla sua geometria, senza sapere cos'è.
+topo lo disegna dal suo ruolo e dalla sua geometria, senza sapere cos'è.
 Fori, pieghe, incisioni veri: snapbend tests/flat/test_view_model_svg.py.
 """
 
@@ -15,8 +15,8 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-import forge
-from forge.model import DetectedFeatures
+import topo
+from topo.model import DetectedFeatures
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "data"
 MULTI_PART   = EXAMPLES / "golden" / "example_4_polylines.dxf"
@@ -36,8 +36,8 @@ class _Mark:
 
 
 def _result(path):
-    doc = forge.load_dxf(str(path), tolerance=0.5)
-    result = forge.heal(doc)
+    doc = topo.load_dxf(str(path), tolerance=0.5)
+    result = topo.heal(doc)
     for cluster in result.clusters:
         marks = []
         for inner in cluster.inners:
@@ -53,7 +53,7 @@ class TestViewModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.result = _result(MULTI_PART)
-        cls.vm = forge.to_view_model(cls.result)
+        cls.vm = topo.to_view_model(cls.result)
 
     def test_json_serializable(self):
         json.dumps(self.vm)
@@ -89,14 +89,14 @@ class TestViewModel(unittest.TestCase):
                 self.assertIsInstance(pt[0], (int, float))
 
     def test_toggles_drop_sections(self):
-        vm = forge.to_view_model(self.result, include_trash=False,
+        vm = topo.to_view_model(self.result, include_trash=False,
                                  include_annotations=False)
         self.assertNotIn("trash", vm)
         self.assertNotIn("annotations", vm)
 
     def test_invalid_result_does_not_raise(self):
-        empty = forge.ForgeResult(clusters=[], is_valid=False, errors=["boom"])
-        vm = forge.to_view_model(empty)
+        empty = topo.Result(clusters=[], is_valid=False, errors=["boom"])
+        vm = topo.to_view_model(empty)
         self.assertFalse(vm["is_valid"])
         self.assertEqual(vm["clusters"], [])
         self.assertIsNone(vm["bbox"])
@@ -106,7 +106,7 @@ class TestToSvg(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.result = _result(MULTI_PART)
-        cls.svg = forge.to_svg(cls.result)
+        cls.svg = topo.to_svg(cls.result)
 
     def test_is_well_formed_xml(self):
         root = ET.fromstring(self.svg)
@@ -120,19 +120,19 @@ class TestToSvg(unittest.TestCase):
         self.assertIn("<circle", self.svg)
 
     def test_overlay_circles_as_polygons_when_disabled(self):
-        svg = forge.to_svg(self.result, true_circles=False)
+        svg = topo.to_svg(self.result, true_circles=False)
         self.assertEqual(svg.count("<circle"), 0)
 
     def test_one_group_per_part(self):
         self.assertEqual(len(re.findall(r'data-cluster="', self.svg)), 4)
 
     def test_transparent_background(self):
-        svg = forge.to_svg(self.result, background=None)
+        svg = topo.to_svg(self.result, background=None)
         self.assertNotIn("<rect", svg.split("<g")[0])
 
     def test_empty_result_returns_valid_svg(self):
-        empty = forge.ForgeResult(clusters=[], is_valid=False)
-        ET.fromstring(forge.to_svg(empty))
+        empty = topo.Result(clusters=[], is_valid=False)
+        ET.fromstring(topo.to_svg(empty))
 
 
 if __name__ == "__main__":

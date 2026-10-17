@@ -10,7 +10,7 @@ import ezdxf
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
+import topo
 
 EDGE_CASES_DIR = project_root / "tests" / "data" / "edge_cases"
 
@@ -39,10 +39,10 @@ def _make_test(dxf_path):
     def test_method(self):
         msp = ezdxf.readfile(str(dxf_path)).modelspace()
 
-        forge_doc = forge.document_from_msp(msp)
-        result = forge.heal(forge_doc)
-        doc_out = forge.to_dxf(result, forge_doc)
-        forge.inject(result)
+        topo_doc = topo.document_from_msp(msp)
+        result = topo.heal(topo_doc)
+        doc_out = topo.to_dxf(result, topo_doc)
+        topo.inject(result)
 
         self.assertIsNotNone(result)
 

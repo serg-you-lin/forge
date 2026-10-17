@@ -4,7 +4,7 @@ generate_rotation_fixture.py
 Genera `try_for_rotation.dxf`: rettangolo alto e stretto (100 x 400, outer
 verticale) con una linea interna inclinata — come fosse una bending line, ma
 in diagonale invece che parallela a un lato — per testare
-`forge.tools.rotate` (allineare il lato OUTER più lungo, ignorando questa
+`topo.tools.rotate` (allineare il lato OUTER più lungo, ignorando questa
 diagonale che è più corta e comunque non outer).
 
     python tests/generate_rotation_fixture.py

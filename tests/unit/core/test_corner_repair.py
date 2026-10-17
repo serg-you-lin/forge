@@ -9,14 +9,14 @@ intersezione reale — non solo tollerati nel grafo.
 import math
 import unittest
 
-from forge.model.document import ForgeDocument
-from forge.model.role import ContourRole
-from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg, CircleSeg
-from forge.core.heal import heal
-from forge.core.healing.steps import repair_merged_corners
-from forge.core.topology.graph import build_node_graph
-from forge.core.topology.loop_finder import LoopFinder
+from topo.model.document import Document
+from topo.model.role import ContourRole
+from topo.core.topology.edge import Edge
+from topo.core.primitives.segments import LineSeg, CircleSeg
+from topo.core.heal import heal
+from topo.core.healing.steps import repair_merged_corners
+from topo.core.topology.graph import build_node_graph
+from topo.core.topology.loop_finder import LoopFinder
 
 
 def _edge(seg: LineSeg, decimals: int = 1) -> Edge:
@@ -100,7 +100,7 @@ class TestRepairWithOtherLoopClosed(unittest.TestCase):
             Edge(role=ContourRole.UNKNOWN, start=(52.0, 5.0), end=(52.0, 5.0),
                  segment=CircleSeg(center=(50.0, 5.0), radius=2.0)),
         ]
-        doc = ForgeDocument(edges=edges, annotations=[],
+        doc = Document(edges=edges, annotations=[],
                             source_meta={"tolerance": 0.1}, source_path="")
         result = heal(doc)
         self.assertEqual(len(result.clusters), 2)

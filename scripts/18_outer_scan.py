@@ -2,8 +2,8 @@
 18_outer_scan.py — candidati a bordo esterno per ray casting, verifica visiva
 ============================================================================
 
-API forge usate (sperimentali — non ancora in __all__/docs):
-    forge.core.healing.outer_scan.outer_candidate_edges
+API topo usate (sperimentali — non ancora in __all__/docs):
+    topo.core.healing.outer_scan.outer_candidate_edges
         edges -> OuterCandidates (.edges, .ids, .hits_of(edge), .n_rays)
 
 Per ogni file: tutti gli edge in grigio, i candidati in rosso. Se il file ha
@@ -16,12 +16,12 @@ in ciano spesso e in console escono presi / mancati / in più.
 import _paths  # noqa: F401  — chdir alla radice del repo
 
 import os
-import forge
+import topo
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from forge.core.healing.outer_scan import outer_candidate_edges
+from topo.core.healing.outer_scan import outer_candidate_edges
 
 # --- CONFIG ----------------------------------------------------------------
 # Default sui fogli di vista anonimizzati che stanno in git. Per girare su un
@@ -49,7 +49,7 @@ def _plot_edges(ax, edges, **kw):
 def main():
     os.makedirs(OUTDIR, exist_ok=True)
     for path in INPUTS:
-        doc = forge.load_dxf(path)
+        doc = topo.load_dxf(path)
         oc = outer_candidate_edges(doc.edges)
         stem = os.path.splitext(os.path.basename(path))[0]
 

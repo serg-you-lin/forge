@@ -18,7 +18,7 @@ import _paths  # noqa: F401  — chdir alla radice del repo
 import sys
 from pathlib import Path
 
-import forge
+import topo
 
 # --- CONFIG ----------------------------------------------------------------
 DEFAULT_DIR = r"tests/data"
@@ -65,27 +65,27 @@ def main(argv):
         out_dxf  = src.with_name(f"{src.stem}_healed.dxf")
         out_json = src.with_name(f"{src.stem}_healed.json")
         try:
-            doc = forge.load_dxf(
+            doc = topo.load_dxf(
                 str(src),
                 explode_inserts=True,
                 flatten_z_flag=True,
-                role_rules=forge.name_rules(NAME_ROLES),
+                role_rules=topo.name_rules(NAME_ROLES),
                 tolerance=tol,
                 verbose=False,
             )
-            result = forge.heal(
+            result = topo.heal(
                 doc,
                 tolerance=tol,
                 label=src.stem,
                 source_file=src.name,
             )
-            forge.save_json(result, str(out_json))
+            topo.save_json(result, str(out_json))
 
             if not result.is_valid:
                 failed.append((src.name, "; ".join(result.errors) or "result non valido"))
                 continue
 
-            forge.to_dxf(result, doc).saveas(str(out_dxf))
+            topo.to_dxf(result, doc).saveas(str(out_dxf))
             ok += 1
             print(f"OK   {src.name} -> {out_dxf.name}  ({result.cluster_count} parti)")
 

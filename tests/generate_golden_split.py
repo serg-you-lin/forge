@@ -30,8 +30,8 @@ import traceback
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-import forge
-from forge.adapters.dxf.layers import role_to_dxf_layer
+import topo
+from topo.adapters.dxf.layers import role_to_dxf_layer
 
 MULTIPLI_DIR      = project_root / "tests" / "data" / "golden_multipli"
 GOLDEN_DIR        = MULTIPLI_DIR / "golden"
@@ -70,15 +70,15 @@ def generate(force: bool = False, only: str = None):
         tolerance = config.get("tolerance", DEFAULT_TOLERANCE)
 
         try:
-            doc = forge.load_dxf(parent_path, upgrade=True, explode_inserts=True)
-            result = forge.heal(doc, tolerance=tolerance)
+            doc = topo.load_dxf(parent_path, upgrade=True, explode_inserts=True)
+            result = topo.heal(doc, tolerance=tolerance)
 
             if not result.is_valid or not result.clusters:
                 print(f"  SKIP (non valido): {parent_path.name}")
                 skipped += 1
                 continue
 
-            forge.split(
+            topo.split(
                 result,
                 doc,
                 namer=lambda i, cluster: f"{cluster.label}_P{i + 1:03d}",

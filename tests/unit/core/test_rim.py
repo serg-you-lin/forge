@@ -10,11 +10,11 @@ import unittest
 
 from shapely.geometry import Polygon, box
 
-from forge.core.island import _loop_faces
-from forge.core.primitives.polygon_builder import build_polygon
-from forge.core.primitives.segments import ArcSeg, LineSeg, segment_endpoints
-from forge.core.topology.edge import Edge
-from forge.core.topology.rim import face_segments
+from topo.core.island import _loop_faces
+from topo.core.primitives.polygon_builder import build_polygon
+from topo.core.primitives.segments import ArcSeg, LineSeg, segment_endpoints
+from topo.core.topology.edge import Edge
+from topo.core.topology.rim import face_segments
 
 BAND = 0.02
 

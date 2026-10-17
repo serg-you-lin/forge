@@ -2,13 +2,13 @@
 01_load_and_validate.py — aprire un file e controllarlo
 ======================================================
 
-API forge usate:
-    load_dxf            unico punto che legge ezdxf → ForgeDocument
-    document_from_msp   costruisce un ForgeDocument da un msp già aperto (test / geometria a mano)
+API topo usate:
+    load_dxf            unico punto che legge ezdxf → Document
+    document_from_msp   costruisce un Document da un msp già aperto (test / geometria a mano)
     validate           valida l'INPUT prima di heal() — non modifica niente
 
 Dopo load_dxf il documento ezdxf sorgente sparisce: heal() lavora
-solo su ForgeDocument.edges (primitive pure) e ForgeDocument.annotations.
+solo su Document.edges (primitive pure) e Document.annotations.
 
     python 01_load_and_validate.py
 """
@@ -16,7 +16,7 @@ solo su ForgeDocument.edges (primitive pure) e ForgeDocument.annotations.
 import _paths  # noqa: F401  — chdir alla radice del repo
 
 import ezdxf
-import forge
+import topo
 
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/data/Linee_piegatura.dxf"
@@ -25,10 +25,10 @@ NAME_ROLES = {"Piega": "bending", "MARK": "engrave"}   # {nome: ruolo}, maiuscol
 # -------------------------------------------------------------------------
 
 # 1. load_dxf --------------------------------------------------------------
-doc = forge.load_dxf(
+doc = topo.load_dxf(
     INPUT,
     tolerance=TOLERANCE,        # salvata in source_meta, riusata da heal()
-    role_rules=forge.name_rules(NAME_ROLES),        # assegna il ruolo agli Edge già in fase di traduzione
+    role_rules=topo.name_rules(NAME_ROLES),        # assegna il ruolo agli Edge già in fase di traduzione
     explode_inserts=True,
     flatten_z_flag=True,
     verbose=False,
@@ -49,7 +49,7 @@ for e in doc.edges[:5]:
           f"{tuple(round(c, 1) for c in e.start)} -> {tuple(round(c, 1) for c in e.end)}")
 
 # 2. validate (input) ----------------------------------------------------
-check = forge.validate(doc)
+check = topo.validate(doc)
 print(f"\nvalidate.is_valid : {check.is_valid}")
 for e in check.errors:
     print(f"   ERROR: {e}")
@@ -62,5 +62,5 @@ if not check.is_valid:
 ez = ezdxf.new("R2010")
 msp = ez.modelspace()
 msp.add_lwpolyline([(0, 0), (100, 0), (100, 50), (0, 50)], close=True)
-doc2 = forge.document_from_msp(msp, tolerance=0.5, source_path="<generato a mano>")
+doc2 = topo.document_from_msp(msp, tolerance=0.5, source_path="<generato a mano>")
 print(f"\ndocument_from_msp : {len(doc2.edges)} edge da un rettangolo costruito a mano")

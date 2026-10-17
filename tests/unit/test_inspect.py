@@ -1,7 +1,7 @@
 """
 tests/unit/test_inspect.py
 --------------------------
-Smoke test dei tre livelli di forge.inspect: non devono sollevare e devono
+Smoke test dei tre livelli di topo.inspect: non devono sollevare e devono
 stampare qualcosa di sensato.
 """
 
@@ -11,7 +11,7 @@ from contextlib import redirect_stdout
 
 import ezdxf
 
-import forge
+import topo
 
 
 def _square_msp(side: float = 100.0):
@@ -27,10 +27,10 @@ class TestInspectLevels(unittest.TestCase):
 
     def test_level2_document(self):
         _, msp = _square_msp()
-        doc = forge.document_from_msp(msp, tolerance=0.5)
+        doc = topo.document_from_msp(msp, tolerance=0.5)
         buf = io.StringIO()
         with redirect_stdout(buf):
-            forge.inspect_document(doc)
+            topo.inspect_document(doc)
         out = buf.getvalue()
         self.assertIn("LIVELLO 2", out)
         self.assertIn("edge: 4", out)
@@ -38,11 +38,11 @@ class TestInspectLevels(unittest.TestCase):
 
     def test_level3_result(self):
         _, msp = _square_msp()
-        doc = forge.document_from_msp(msp, tolerance=0.5)
-        result = forge.heal(doc, tolerance=0.5)
+        doc = topo.document_from_msp(msp, tolerance=0.5)
+        result = topo.heal(doc, tolerance=0.5)
         buf = io.StringIO()
         with redirect_stdout(buf):
-            forge.inspect_result(result)
+            topo.inspect_result(result)
         out = buf.getvalue()
         self.assertIn("LIVELLO 3", out)
         self.assertIn("PARTE 0", out)
@@ -50,8 +50,8 @@ class TestInspectLevels(unittest.TestCase):
 
     def test_inspect_functions_exported(self):
         for name in ("inspect_dxf", "inspect_document", "inspect_result", "inspect_file"):
-            self.assertIn(name, forge.__all__)
-            self.assertTrue(callable(getattr(forge, name)))
+            self.assertIn(name, topo.__all__)
+            self.assertTrue(callable(getattr(topo, name)))
 
 
 if __name__ == "__main__":

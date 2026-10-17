@@ -4,7 +4,7 @@ tests/unit/core/test_hierarchy_builder.py
 Test per HierarchyBuilder.
 
 D15: HierarchyBuilder costruisce SOLO l'albero di contenimento —
-`ForgeCluster(outer, inners=[ForgeContour...])`, zero `Hole`. La classificazione
+`Cluster(outer, inners=[Contour...])`, zero `Hole`. La classificazione
 hole / countersink è di `detect_flat()` (vedi tests/unit/test_detect.py).
 
 I proxy ClosedCurve/OpenCurve vengono costruiti direttamente con Polygon
@@ -15,10 +15,10 @@ import math
 import unittest
 from shapely.geometry import Polygon
 
-from forge.core.primitives.segments import LineSeg
-from forge.model.curve import ClosedCurve, OpenCurve
-from forge.model.role import ContourRole
-from forge.core.healing.hierarchy import HierarchyBuilder
+from topo.core.primitives.segments import LineSeg
+from topo.model.curve import ClosedCurve, OpenCurve
+from topo.model.role import ContourRole
+from topo.core.healing.hierarchy import HierarchyBuilder
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ class TestOuterConInner(unittest.TestCase):
     - 1 proxy grande (100×100) → OUTER
     - 1 proxy circolare d=5 contenuto → inner (heal NON lo promuove a foro)
 
-    Atteso: 1 ForgeCluster, 0 holes, 1 inner, trash vuoto.
+    Atteso: 1 Cluster, 0 holes, 1 inner, trash vuoto.
     """
 
     def setUp(self):
@@ -137,7 +137,7 @@ class TestNestingDepthAndParent(unittest.TestCase):
     """
     Stessa gerarchia a tre livelli di TestNestingFlattened: outer (100x100) →
     medio (d=20) → piccolo (d=8). heal() appiattisce comunque tutto in
-    `cluster.inners`, ma ogni ForgeContour porta con sé `depth`/`parent` — il
+    `cluster.inners`, ma ogni Contour porta con sé `depth`/`parent` — il
     dato che uno strumento di linguette (Smoother) legge per sapere chi è
     nipote di chi, invece di ricalcolare il contenimento da solo.
     """
@@ -177,7 +177,7 @@ class TestTrash(unittest.TestCase):
     - 1 proxy outer (100×100)
     - 1 OpenCurve role=UNKNOWN fuori dall'outer
 
-    Atteso: il proxy aperto flottante finisce in trash, l'outer produce 1 ForgeCluster.
+    Atteso: il proxy aperto flottante finisce in trash, l'outer produce 1 Cluster.
     """
 
     def setUp(self):
@@ -213,7 +213,7 @@ class TestSegmentsCopiati(unittest.TestCase):
     """
 
     def setUp(self):
-        from forge.core.primitives import LineSeg, ArcSeg
+        from topo.core.primitives import LineSeg, ArcSeg
 
         self.seg_outer = [
             LineSeg(start=(0, 0),   end=(100, 0)),

@@ -2,7 +2,7 @@
 08_inject.py — arricchimento CAM dai testi del disegno
 =====================================================
 
-API forge usate:
+API topo usate:
     inject    passa a un `data_injector` esterno i testi che ricadono dentro
               l'outer di ogni cluster, e mette il dict risultante in cluster.custom
 
@@ -24,7 +24,7 @@ derivata dal modello).
 
 import _paths  # noqa: F401  — chdir alla radice del repo
 
-import forge
+import topo
 
 # --- CONFIG ----------------------------------------------------------------
 INPUT     = r"tests/data/Multifeature.dxf"
@@ -33,8 +33,8 @@ NAME_ROLES = {"Filettati": "threaded_hole", "Svasati": "countersink",
              "Piega": "bending", "MARK": "engrave"}
 # -------------------------------------------------------------------------
 
-doc = forge.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=forge.name_rules(NAME_ROLES))
-result = forge.heal(doc, label="P-1024")
+doc = topo.load_dxf(INPUT, tolerance=TOLERANCE, role_rules=topo.name_rules(NAME_ROLES))
+result = topo.heal(doc, label="P-1024")
 
 # Le annotazioni sono già nel modello, tipate e con posizione. `display_text` è
 # il testo pulito (MTEXT senza codici di formato, quote con il loro valore).
@@ -61,7 +61,7 @@ def leggi_cartiglio(cluster, testi_nel_cluster):
     }
 
 
-forge.inject(result, data_injector=leggi_cartiglio)
+topo.inject(result, data_injector=leggi_cartiglio)
 
 for i, cluster in enumerate(result.clusters):
     print(f"\nCluster {i}  {cluster.label!r}")

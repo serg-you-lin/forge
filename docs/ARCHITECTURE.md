@@ -1,4 +1,4 @@
-# forge — architettura
+# topo — architettura
 
 Questo documento spiega *come è fatto dentro* e *perché*. Per l'uso pratico
 dell'API vedi [`API.md`](API.md).
@@ -7,7 +7,7 @@ dell'API vedi [`API.md`](API.md).
 
 ## L'idea in una frase
 
-`forge` non è una libreria DXF. È un **motore di ricostruzione topologica** con
+`topo` non è una libreria DXF. È un **motore di ricostruzione topologica** con
 un adapter DXF davanti. Prende geometria 2D rumorosa e produce un modello
 geometrico consistente e senza perdite: contorni chiusi, gerarchia di
 contenimento, annotazioni, e un overlay aperto per le feature rilevate. Non sa
@@ -26,20 +26,20 @@ primitive geometriche pure.
 ```
                     ┌─────────────────┐
    DXF / DWG  ──────►                 ├──────►  DXF (to_dxf, split)
-   PDF (sperim.) ───►   ForgeResult   ├──────►  JSON / XML (save_json, save_xml)
+   PDF (sperim.) ───►   Result   ├──────►  JSON / XML (save_json, save_xml)
    SVG (futuro) ─────►   il modello   ├──────►  view model JSON (to_view_model)
                     │                 ├──────►  SVG (to_svg, save_svg)
                     │                 ├──────►  testo per un agente AI (to_text, sperim.)
                     └─────────────────┘
 ```
 
-Il `ForgeResult` è **il prodotto**. Tutti i `to_*` sono renderer del modello.
+Il `Result` è **il prodotto**. Tutti i `to_*` sono renderer del modello.
 `to_dxf` **non rilegge mai il file sorgente** — disegna dal modello. Questo è il
 motivo per cui `to_svg` produce la stessa identica immagine senza una riga di
 codice nuova nel core.
 
 Conseguenza pratica: **niente si perde**. Si importa tutto — quote, centerline, spazzatura. 
-Perché `forge` non perda
+Perché `topo` non perda
 niente, il modello è abbastanza ricco da tenere anche ciò che non ha classificato:
 
 - geometria chiusa ricostruita → parti / contorni interni / feature (se una lettura le aggiunge)
@@ -49,7 +49,7 @@ niente, il modello è abbastanza ricco da tenere anche ciò che non ha classific
 - testi e quote → `result.annotations` (oggetti di dominio, con sia il valore
   semantico sia la forma renderizzata come primitive)
 
-I tipi di entità che `forge` non modella (`HATCH`, `IMAGE`, `TABLE`, `3DFACE`,
+I tipi di entità che `topo` non modella (`HATCH`, `IMAGE`, `TABLE`, `3DFACE`,
 `XLINE`…) restano fuori, ma `load_dxf` emette un warning che li elenca — nessuna
 perdita silenziosa.
 
@@ -58,7 +58,7 @@ perdita silenziosa.
 ## La struttura
 
 ```
-forge/
+topo/
 ├── adapters/     TRADUZIONE formato → primitive       (conosce ezdxf)
 │   ├── dxf/          load_dxf, DxfAdapter, exporter, annotation_extractor, layers
 │   ├── pdf/          load_pdf — sperimentale, congelato
@@ -71,17 +71,17 @@ forge/
 │   │                 noding.py (rete piana), outer_face.py (faccia esterna)
 │   ├── healing/      chiusura gap, normalizzazione (+ tassellature), gerarchia,
 │   │                 islands.py (isole per vicinanza), steps.py (i passi di heal)
-│   ├── geometry/     LA GEOMETRIA, `forge.geometry` (D95): fatti con nomi geometrici
+│   ├── geometry/     LA GEOMETRIA, `topo.geometry` (D95): fatti con nomi geometrici
 │   │                 — shape (forma, cerchi concentrici, archi attorno), lines
 │   │                 (corde, file collineari), axis (rettangoli coperti) — e i
 │   │                 mattoni measure / points / intersections
 │   ├── heal.py       heal()             — lettura dall'interno: file → modello
 │   └── island.py     island()           — lettura per isole, dall'esterno
 │
-├── model/        IL DOMINIO forge                     (dataclass pure + shapely)
-│   ├── document.py   ForgeDocument
-│   ├── result.py     ForgeResult
-│   ├── cluster.py    ForgeCluster — il contenitore, `detected` è l'overlay
+├── model/        IL DOMINIO topo                     (dataclass pure + shapely)
+│   ├── document.py   Document
+│   ├── result.py     Result
+│   ├── cluster.py    Cluster — il contenitore, `detected` è l'overlay
 │   │                 di un consumatore (vocabolario aperto per nome — D44)
 │   ├── detected.py   DetectedFeatures — il contenitore dell'overlay (D44, D90)
 │   ├── curve.py      Curve → ClosedCurve / OpenCurve
@@ -91,12 +91,12 @@ forge/
 │                      che il motore usa. Nessun ruolo manifatturiero qui
 │                      (D47, "roles out of core")
 │
-├── tools/        STADI opzionali su un ForgeDocument/ForgeResult (il caller sceglie quali e in che ordine)
+├── tools/        STADI opzionali su un Document/Result (il caller sceglie quali e in che ordine)
 │   ├── anchor.py         anchor_annotations()   — àncora le annotazioni ai cluster
 │   ├── inject.py         inject()                — testi del cluster → data_injector esterno
 │   ├── non_contour.py    non_contour_candidates() — stesso criterio non-contorno
 │   │                     di heal() (D49), esposto per decidere `edge.role`
-│   │                     PRIMA di heal() (D55) — lavora su ForgeDocument
+│   │                     PRIMA di heal() (D55) — lavora su Document
 │   ├── rotate.py         rotate_*() (sperimentale, D46)
 │   └── tabs.py           bridge_tabs() (D40)
 │
@@ -124,7 +124,7 @@ una delle due ricette.
 `tools`** (D44 — stesso principio, `tools` è un pacchetto pari-grado di
 `adapters`/`io`, mai sotto `model`). `adapters`, `tools` e `io` importano
 `core` / `model` / `rules`. Quando `model/` deve comunque annotare un tipo che
-vive in `tools/` (es. `ForgeCluster.detected`), lo fa solo sotto
+vive in `tools/` (es. `Cluster.detected`), lo fa solo sotto
 `TYPE_CHECKING` — zero import a runtime, `from __future__ import annotations`
 rende l'annotazione una stringa pigra. `recipes` mette in fila `core.heal` +
 `tools` + `io`. Il core non sa da dove viene la geometria.
@@ -133,7 +133,7 @@ rende l'annotazione una stringa pigra. `recipes` mette in fila `core.heal` +
 
 ## Il flusso, passo per passo
 
-### 1. `load_dxf` → `ForgeDocument`
+### 1. `load_dxf` → `Document`
 
 Unico punto che legge `ezdxf`. In ordine:
 
@@ -148,9 +148,9 @@ Unico punto che legge `ezdxf`. In ordine:
 7. traduzione: ogni entità → uno o più `Edge`; ogni testo/quota → un `Annotation`
 
 Dopo questa funzione l'oggetto `ezdxf` sorgente **sparisce**. Tutto il resto
-lavora sul `ForgeDocument`.
+lavora sul `Document`.
 
-### 2. `heal` → `ForgeResult` (topologia)
+### 2. `heal` → `Result` (topologia)
 
 Il passo difficile. Lavora su `doc.edges`, zero `ezdxf`. `heal()` è una
 ricetta: ogni passo è una funzione pubblica in `core/healing/steps.py` (D62),
@@ -166,7 +166,7 @@ consumatore (snapdraw) compone gli stessi passi come gli serve.
    marcatura o arredo del disegno, non contorno. Il predicato è
    `model/role.is_structural_role` (D30); è il punto d'aggancio per un
    consumatore che marca la geometria prima di `heal` (snapdraw) —
-   `forge.non_contour_candidates(doc)` (D55) espone lo stesso criterio del
+   `topo.non_contour_candidates(doc)` (D55) espone lo stesso criterio del
    passo 4 sotto, per decidere QUALI edge marcare qui
 3. **chiude i gap**: prima un arco quasi completo coi capi liberi diventa
    cerchio (`close_near_full_arcs`: gap entro `tolerance` e angolo mancante
@@ -196,18 +196,18 @@ consumatore (snapdraw) compone gli stessi passi come gli serve.
    edge di ruolo non strutturale non è contorno
 7. **costruzione gerarchia** (`build_hierarchy`): quale loop contiene quale →
    albero di contenimento `outer` / `inner`. `heal` si ferma qui: **non** decide
-   hole vs inner (D15) — ogni loop contenuto è un `ForgeContour` in
+   hole vs inner (D15) — ogni loop contenuto è un `Contour` in
    `cluster.inners`.
 
 Se non si forma **nessun** contorno esterno chiuso, il risultato è dichiarato
 **non valido** (`is_valid = False`) — come il modelspace vuoto. `to_dxf` e
 `to_svg` lo disegnano lo stesso (tutto in trash) per farti vedere cosa ha capito
-forge; rifiutarlo è scelta del chiamante che consegna a una macchina
+topo; rifiutarlo è scelta del chiamante che consegna a una macchina
 (`allow_invalid=False`, D83).
 
 `validate_result` viene chiamata automaticamente alla fine.
 
-### 2b. `island` → `ForgeResult` (lettura per isole)
+### 2b. `island` → `Result` (lettura per isole)
 
 L'alternativa a `heal` per un disegno di **viste** (più viste su un foglio,
 isometriche, 3D proiettato). `heal` cerca il pezzo dall'interno, per
@@ -220,7 +220,7 @@ come contorno. `island` parte da un fatto globale, cosa sta fuori:
 2. **pezzi**: gli edge che si toccano entro `max_gap` (`spatial_islands`):
    nessuna nozione di chiusura, quindi nessuna ambiguità di grafo. Nessuna
    distanza fra le viste: quella dipendeva da come è impaginato il disegno,
-   che forge non conosce (D99)
+   che topo non conosce (D99)
 3. per ogni pezzo **normalizza** sulla griglia fine della rete: nodi dagli
    estremi reali, catene tassellate rifittate come archi/spline, merge/weld di
    `heal`, gap fino a `max_gap` senza mai spostare un estremo più di così
@@ -233,16 +233,16 @@ come contorno. `island` parte da un fatto globale, cosa sta fuori:
    il cui contorno sta dentro quello di un'altra non è un cluster: diventa
    interno della più esterna che la contiene
 
-Stesso contratto di `heal`: un `ForgeResult`, un `ForgeCluster` per isola, e
+Stesso contratto di `heal`: un `Result`, un `Cluster` per isola, e
 `to_dxf` / `split` non sanno quale lettura l'ha prodotto. Cosa sia
 un'isola (vista, pezzo, cornice) lo decide chi chiama (D21). `island` non
 chiama mai `heal`.
 
-### 3. la lettura di un consumatore (fuori da forge)
+### 3. la lettura di un consumatore (fuori da topo)
 
 Fori, pieghe, incisioni sono una lettura di processo: le fa snapbend
-(`snapbend.flat.detect_flat`, MAP.md D88) sopra il `ForgeResult`, e le attacca
-a `cluster.detected` (D44) — non a campi fissi del cluster. forge non conosce
+(`snapbend.flat.detect_flat`, MAP.md D88) sopra il `Result`, e le attacca
+a `cluster.detected` (D44) — non a campi fissi del cluster. topo non conosce
 nessun nome dell'overlay: `cluster.features(name)` legge una collezione per
 nome, `[]` se `detected` è `None` o quel nome non è stato scritto. I renderer
 disegnano ogni elemento dal suo `role` e dalla sua geometria (D90), e l'area
@@ -251,7 +251,7 @@ netta toglie gli elementi che si dichiarano vuoti del pezzo (`is_void`).
 ### 4. render — `to_dxf` / `split`
 
 Costruiscono un documento `ezdxf` **nuovo** (mai il sorgente) e ci scrivono i
-segmenti puri del modello, ognuno sul suo layer forge (vedi tabella in
+segmenti puri del modello, ognuno sul suo layer topo (vedi tabella in
 [`API.md`](API.md#output-dxf-layers) e nel README). Regole di fedeltà:
 
 - **le spline** si riemettono come `SPLINE` native, ricostruite da control points
@@ -271,7 +271,7 @@ segmenti puri del modello, ognuno sul suo layer forge (vedi tabella in
 collezione attaccata a `cluster.detected`), `cluster.custom`, ed
 `extra`/`extra_metadata` — un
 dizionario o una callback esplicita del chiamante (stesso idioma di
-`data_injector`) per una detection propria che forge non può conoscere.
+`data_injector`) per una detection propria che topo non può conoscere.
 `inject` serve solo a passare i testi dentro l'outer a un `data_injector`
 esterno che restituisce codice / materiale / spessore, e a metterli in
 `cluster.custom`.
@@ -282,7 +282,7 @@ esterno che restituisce codice / materiale / spessore, e a metterli in
 
 ### La tolleranza
 
-`tolerance` (default 0.05, i golden usano 0.5) è il gap più largo che forge può
+`tolerance` (default 0.05, i golden usano 0.5) è il gap più largo che topo può
 chiudere. **Non** arrotonda i nodi: ogni endpoint va su una griglia unica
 (`NODE_DECIMALS` = 3 decimali, MAP.md D113), la stessa per `heal()` e `island()`
 e per qualunque tolleranza, così due capi diventano lo stesso nodo solo se
@@ -317,7 +317,7 @@ seconda è di snapbend, D88):
   o "le tratteggiate con `constr` nel nome sono costruzione". Il ruolo è
   assegnato al load, è **autoritativo**, a valle non si rimette in discussione
   (`source="labeled"`, `confidence=1.0`). Il vocabolario dei ruoli è aperto —
-  passa per `normalize_role` e non è un errore che forge (cioè il motore)
+  passa per `normalize_role` e non è un errore che topo (cioè il motore)
   non lo conosca. Cosa succede in `heal` dipende da `is_structural=...`
   (D47): senza, qualunque work_type — manifatturiero incluso — resta fuori
   dal grafo, come `frame`/`title_block`; con il predicato di snapbend
@@ -328,8 +328,8 @@ seconda è di snapbend, D88):
   `Trash` — non è spazzatura), geometria intatta (D27, D30, D31, D47).
   Una regola combina segnali neutri — nome del gruppo sorgente, tratteggio,
   colore — tutti veri insieme; le regole sono in ordine e vince la prima
-  (D63). forge dà il meccanismo, il contenuto lo scrive il chiamante: nessun
-  vocabolario di nomi vive in forge. Il nome resta nell'adapter, l'`Edge`
+  (D63). topo dà il meccanismo, il contenuto lo scrive il chiamante: nessun
+  vocabolario di nomi vive in topo. Il nome resta nell'adapter, l'`Edge`
   riceve solo il ruolo. Tratteggio e colore sono quelli **effettivi**: un'entità
   `ByLayer` eredita lo stile dal layer che la contiene, e `DxfAdapter` lo
   risolve prima del confronto. "Tratteggiata" vuol dire che il pattern ha
@@ -344,7 +344,7 @@ seconda è di snapbend, D88):
 Onestà sullo stato — dettagli e motivazioni sono in `MAP.md` (sezione
 "Closed decisions"), non ripetuti qui:
 
-- **`load_pdf`** ritorna `list[Edge]` invece di un `ForgeDocument` → non si
+- **`load_pdf`** ritorna `list[Edge]` invece di un `Document` → non si
   aggancia a `heal()`. Congelato (MAP.md D10).
 - **`heal()` con solo edge etichettati** (tutti con ruolo non strutturale):
   errore "Nessuna geometria chiusa trovata" e `trash_entities` **vuota** — gli

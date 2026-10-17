@@ -1,7 +1,7 @@
-# forge — riferimento API
+# topo — riferimento API
 
-Tutto quello che serve è in `import forge`. I moduli interni non si importano
-direttamente. Questo documento copre ogni nome esportato in `forge.__all__`.
+Tutto quello che serve è in `import topo`. I moduli interni non si importano
+direttamente. Questo documento copre ogni nome esportato in `topo.__all__`.
 
 Convenzioni di questo documento:
 
@@ -11,7 +11,7 @@ Convenzioni di questo documento:
   elaborazione lavorano per effetto collaterale)
 - **solleva** — le eccezioni che il chiamante deve prevedere
 
-I tipi di dominio (`ForgeDocument`, `ForgeResult`, `ForgeCluster`, …) sono descritti
+I tipi di dominio (`Document`, `Result`, `Cluster`, …) sono descritti
 in fondo.
 
 ---
@@ -34,7 +34,7 @@ in fondo.
 ### `load_dxf`
 
 ```python
-forge.load_dxf(
+topo.load_dxf(
     path,
     upgrade=False,
     explode_inserts=True,
@@ -43,7 +43,7 @@ forge.load_dxf(
     tolerance=0.05,
     role_rules=(),
     ignore_layers=None,
-) -> ForgeDocument
+) -> Document
 ```
 
 Unico punto in cui `ezdxf` viene usato per **leggere**. Apre un `.dxf` o `.dwg`,
@@ -61,16 +61,16 @@ funzione il documento `ezdxf` sorgente sparisce.
 | `role_rules` | lista di `RoleRule` — assegnano il **ruolo** agli `Edge` già in fase di traduzione. Valutate in ordine, vince la prima che matcha, nessuna → `unknown`. Il nome valutato da `name`/`name_contains` è il layer; `dashed` e `color` guardano l'aspetto **effettivo** (un'entità `ByLayer` viene risolta al linetype/colore del suo layer). Il layer non esce dall'adapter: l'`Edge` porta solo il ruolo (MAP.md D63). Vedi **`RoleRule`** sotto. |
 | `ignore_layers` | lista di layer da escludere dalla geometria. |
 
-**Ritorna** un `ForgeDocument`. La diagnostica sul file grezzo (audit, INSERT non
+**Ritorna** un `Document`. La diagnostica sul file grezzo (audit, INSERT non
 esplosi, Z≠0, duplicati rimossi, tipi non ri-materializzabili in output) finisce
-in `doc.warnings`; `forge.validate(doc)` la rilancia.
+in `doc.warnings`; `topo.validate(doc)` la rilancia.
 
 **Solleva** `FileNotFoundError`, `EnvironmentError` (DWG senza `ODA_PATH`),
 `RuntimeError` (conversione DWG fallita), o le eccezioni di lettura di `ezdxf`.
 
 ```python
-doc = forge.load_dxf("pezzo.dxf", tolerance=0.5,
-                     role_rules=forge.name_rules({"Piega": "bending", "MARK": "engrave"}))
+doc = topo.load_dxf("pezzo.dxf", tolerance=0.5,
+                     role_rules=topo.name_rules({"Piega": "bending", "MARK": "engrave"}))
 for w in doc.warnings:
     print("loader:", w)
 ```
@@ -79,10 +79,10 @@ Quando l'intenzione sta nello stile della linea, o in una combinazione di
 nome e stile:
 
 ```python
-doc = forge.load_dxf("pezzo.dxf", role_rules=[
-    forge.RoleRule("construction", name_contains="constr", dashed=True),
-    forge.RoleRule("bending", dashed=True),
-    forge.RoleRule("engrave", color="cyan"),
+doc = topo.load_dxf("pezzo.dxf", role_rules=[
+    topo.RoleRule("construction", name_contains="constr", dashed=True),
+    topo.RoleRule("bending", dashed=True),
+    topo.RoleRule("engrave", color="cyan"),
 ])
 ```
 
@@ -92,16 +92,16 @@ step, su un file reale in `tests/examples/`).
 ### `RoleRule`
 
 ```python
-forge.RoleRule(role, name=None, name_contains=None, dashed=None, dash=None, color=None)
+topo.RoleRule(role, name=None, name_contains=None, dashed=None, dash=None, color=None)
 ```
 
 Una regola: se **tutte** le condizioni date sono vere, la linea prende `role`.
-forge fornisce il meccanismo; il contenuto (quali nomi, quali stili, quale
+topo fornisce il meccanismo; il contenuto (quali nomi, quali stili, quale
 ruolo) lo scrive il chiamante (MAP.md D63).
 
 | campo | significato |
 |---|---|
-| `role` | ruolo assegnato, ripulito da `normalize_role`. Vocabolario aperto: forge conosce solo `outer`, `inner`, `unknown`; `hole`, `bending`, `engrave`, … sono di snapbend (MAP.md D88); qualunque altro slug (`frame`, `title_block`, …) è conservato, trattato come non strutturale e scritto in output su un layer col suo nome (MAP.md D27 / D31). |
+| `role` | ruolo assegnato, ripulito da `normalize_role`. Vocabolario aperto: topo conosce solo `outer`, `inner`, `unknown`; `hole`, `bending`, `engrave`, … sono di snapbend (MAP.md D88); qualunque altro slug (`frame`, `title_block`, …) è conservato, trattato come non strutturale e scritto in output su un layer col suo nome (MAP.md D27 / D31). |
 | `name` | nome del gruppo sorgente, uguale (maiuscole ignorate). |
 | `name_contains` | sottostringa del nome del gruppo (maiuscole ignorate). |
 | `dashed` | `True` solo tratteggiate, `False` solo continue. Tratteggiata = il pattern del linetype ha almeno un vuoto (`EdgeStyle.is_dashed`), non il nome del linetype. Vale anche per le catene. |
@@ -116,37 +116,37 @@ il nome del colore non è riconosciuto o se `dash` non è una delle tre forme.
 
 ```python
 rules = [
-    forge.RoleRule("bending", name="Piega"),         # una piega a catena resta piega
-    forge.RoleRule("construction", dash="chain"),    # assi e linee di costruzione
+    topo.RoleRule("bending", name="Piega"),         # una piega a catena resta piega
+    topo.RoleRule("construction", dash="chain"),    # assi e linee di costruzione
 ]
 ```
 
 ### `name_rules`
 
 ```python
-forge.name_rules(mapping: dict[str, str]) -> list[RoleRule]
+topo.name_rules(mapping: dict[str, str]) -> list[RoleRule]
 ```
 
 Scorciatoia: `{nome: ruolo}` → una `RoleRule(role, name=nome)` per voce, nello
 stesso ordine.
 
 ```python
-rules = forge.name_rules({"Piega": "bending", "MARK": "engrave"})
-rules.append(forge.RoleRule("bending", dashed=True))   # dopo i nomi
+rules = topo.name_rules({"Piega": "bending", "MARK": "engrave"})
+rules.append(topo.RoleRule("bending", dashed=True))   # dopo i nomi
 ```
 
 #### DWG
 
-**`forge` non legge il DWG da solo, e nemmeno `ezdxf`.** Il DWG è un formato
+**`topo` non legge il DWG da solo, e nemmeno `ezdxf`.** Il DWG è un formato
 chiuso: il "supporto DWG" di `ezdxf` è l'addon `odafc`, che è un wrapper attorno
 a **ODA File Converter** — converte il `.dwg` in un `.dxf` temporaneo e `ezdxf`
-rilegge quello. `forge` usa esattamente questo (`adapters/dxf/loader.py`).
+rilegge quello. `topo` usa esattamente questo (`adapters/dxf/loader.py`).
 
 Per aprire un `.dwg` serve quindi:
 
 1. **ODA File Converter** installato — download gratuito:
    <https://www.opendesign.com/guestfiles/oda_file_converter>
-2. `forge` deve trovare l'eseguibile. Due modi:
+2. `topo` deve trovare l'eseguibile. Due modi:
    - variabile d'ambiente **`ODA_PATH`** = *full path dell'eseguibile*
      (non la cartella — se ODA è in `ODAFileConverter X.Y.Z\`, il path deve
      includere `\ODAFileConverter.exe`);
@@ -174,16 +174,16 @@ questa stessa guida nel messaggio.
 ### `document_from_msp`
 
 ```python
-forge.document_from_msp(
+topo.document_from_msp(
     msp,
     tolerance=0.05,
     role_rules=(),
     ignore_layers=None,
     source_path="",
-) -> ForgeDocument
+) -> Document
 ```
 
-Costruisce un `ForgeDocument` da un `modelspace` `ezdxf` **già aperto**. Utile per
+Costruisce un `Document` da un `modelspace` `ezdxf` **già aperto**. Utile per
 i test o per geometria generata a mano. **Non** fa audit / upgrade / sanitize: si
 assume che il `msp` sia già pronto. `role_rules` funziona come in `load_dxf()`
 — vedi sopra.
@@ -193,24 +193,24 @@ import ezdxf
 doc_ez = ezdxf.new("R2010"); msp = doc_ez.modelspace()
 msp.add_line((0, 0), (100, 0)); msp.add_line((100, 0), (100, 50))
 # ...
-document = forge.document_from_msp(msp, tolerance=0.5)
+document = topo.document_from_msp(msp, tolerance=0.5)
 ```
 
 ### `load_segments`
 
 ```python
-forge.load_segments(segments, tolerance=0.05, role="unknown", source_path="") -> ForgeDocument
+topo.load_segments(segments, tolerance=0.05, role="unknown", source_path="") -> Document
 ```
 
-Un `ForgeDocument` da segmenti di forge (`LineSeg`, `ArcSeg`, `CircleSeg`, …) o
+Un `Document` da segmenti di topo (`LineSeg`, `ArcSeg`, `CircleSeg`, …) o
 da liste di segmenti — quelle che restituiscono i costruttori di
-`forge.geometry`. Tutti gli edge prendono `role`. È il modo per disegnare con
-forge in mano; `load_geometry` resta per chi non importa forge (D96).
+`topo.geometry`. Tutti gli edge prendono `role`. È il modo per disegnare con
+topo in mano; `load_geometry` resta per chi non importa topo (D96).
 
 ```python
-fg = forge.geometry
-doc = forge.load_segments(fg.rectangle(200, 100) + fg.rectangle(100, 50))
-result = forge.heal(doc)     # un pezzo: outer 200×100, un inner 100×50
+fg = topo.geometry
+doc = topo.load_segments(fg.rectangle(200, 100) + fg.rectangle(100, 50))
+result = topo.heal(doc)     # un pezzo: outer 200×100, un inner 100×50
 ```
 
 ---
@@ -218,27 +218,27 @@ result = forge.heal(doc)     # un pezzo: outer 200×100, un inner 100×50
 ### `load_geometry`
 
 ```python
-forge.load_geometry(
+topo.load_geometry(
     entities,
     tolerance=0.05,
     source_path="",
-) -> ForgeDocument
+) -> Document
 ```
 
-Costruisce un `ForgeDocument` da geometria pura — dict Python, non un file.
+Costruisce un `Document` da geometria pura — dict Python, non un file.
 Stesso contratto di ritorno di `load_dxf`/`document_from_msp`, ma la sorgente è
 chi chiama: un generatore parametrico (uno sviluppo cono/cilindro calcolato
 altrove) o un ricostruttore di contorni da punti (una traccia vettorializzata da
-computer vision). Chi chiama non importa nessun tipo interno di forge.
+computer vision). Chi chiama non importa nessun tipo interno di topo.
 
 | parametro | significato |
 |---|---|
 | `entities` | lista di dict, uno per entità geometrica. `type` supportati: `line` (`start`, `end`), `arc` (`center`, `radius`, `start_angle`/`end_angle` **in gradi**, `ccw`), `circle` (`center`, `radius`), `polygon` (`points` — sempre chiuso, D96), `spline` (`control_points`, `knots`, `degree`, più `weights`/`fit_points`/`closed` opzionali — stessi campi di `SplineSeg`), `ellipse` (`center`, `major_axis` come **vettore** dal centro, più `ratio`/`start_param`/`end_param`/`ccw` opzionali — stessi campi di `EllipseSeg`, stessa parametrizzazione del gruppo DXF ELLIPSE; default = ellisse piena). `role` è opzionale su ogni entità — stesso vocabolario di `RoleRule.role` (`outer`, `hole`, `bending`, …); un valore diverso è conservato come slug di consumatore, non un errore. |
 | `tolerance` | tolleranza di arrotondamento dei nodi topologici — stesso significato di `load_dxf(tolerance=...)`. |
-| `source_path` | etichetta libera per `ForgeDocument.source_path`; non è un file, serve solo per diagnostica. |
+| `source_path` | etichetta libera per `Document.source_path`; non è un file, serve solo per diagnostica. |
 
 ```python
-doc = forge.load_geometry([
+doc = topo.load_geometry([
     {"type": "arc",  "center": (0, 0), "radius": 50,
      "start_angle": -30, "end_angle": 30, "role": "outer"},
     {"type": "line", "start": (43.3, -25.0), "end": (34.6, -20.0), "role": "outer"},
@@ -246,14 +246,14 @@ doc = forge.load_geometry([
      "start_angle": -30, "end_angle": 30, "role": "outer"},
     {"type": "line", "start": (34.6, 20.0), "end": (43.3, 25.0), "role": "outer"},
 ])
-result = forge.heal(doc, label="sviluppo_cono")
-forge.to_dxf(result)
+result = topo.heal(doc, label="sviluppo_cono")
+topo.to_dxf(result)
 ```
 
 ```python
 # entità "spline" — i campi sono quelli di SplineSeg, presi 1:1
-segments = forge.simplify_points(points, closed=True)
-doc = forge.load_geometry([
+segments = topo.simplify_points(points, closed=True)
+doc = topo.load_geometry([
     {
         "type": "spline",
         "control_points": seg.control_points,
@@ -268,10 +268,10 @@ doc = forge.load_geometry([
 ```
 
 Provato da un caso reale (`snapbend`, ex bendly, che lo usa per portare gli sviluppi che
-genera a `ForgeDocument` senza passare da un file — vedi MAP.md D32; il tipo
+genera a `Document` senza passare da un file — vedi MAP.md D32; il tipo
 `spline` viene da `smoother`, che vi passa l'output di `simplify_points()` —
 vedi MAP.md D35). Il tipo `ellipse` (MAP.md D45) esiste perché `EllipseSeg`
-è una primitiva di forge come le altre — non serve un caso reale a parte,
+è una primitiva di topo come le altre — non serve un caso reale a parte,
 segue lo stesso schema di `spline`/`circle`.
 
 ---
@@ -281,11 +281,11 @@ segue lo stesso schema di `spline`/`circle`.
 ### `validate`
 
 ```python
-forge.validate(doc: ForgeDocument) -> ForgeResult
+topo.validate(doc: Document) -> Result
 ```
 
 Valida l'**input** prima di `heal()`. Non modifica niente. Ritorna un
-`ForgeResult` con solo `warnings` / `errors` / `is_valid` (`clusters` vuoto).
+`Result` con solo `warnings` / `errors` / `is_valid` (`clusters` vuoto).
 
 - **`is_valid = False`** — il file non è lavorabile: nessuna geometria, coordinate
   NaN/inf, tutti i segmenti degeneri.
@@ -293,10 +293,10 @@ Valida l'**input** prima di `heal()`. Non modifica niente. Ritorna un
   contorno chiuso, endpoint che non si toccano nemmeno alla tolleranza dichiarata,
   segmenti di lunghezza nulla. Include anche le `doc.warnings` del loader.
 
-**Solleva** `TypeError` se non gli passi un `ForgeDocument`.
+**Solleva** `TypeError` se non gli passi un `Document`.
 
 ```python
-check = forge.validate(doc)
+check = topo.validate(doc)
 if not check.is_valid:
     raise SystemExit(check.errors)
 for w in check.warnings:
@@ -306,7 +306,7 @@ for w in check.warnings:
 ### `validate_result`
 
 ```python
-forge.validate_result(result: ForgeResult) -> ForgeResult
+topo.validate_result(result: Result) -> Result
 ```
 
 Valida l'**output** dopo `heal()`. **Muta** il `result` passato: aggiunge
@@ -314,25 +314,25 @@ Valida l'**output** dopo `heal()`. **Muta** il `result` passato: aggiunge
 poligono outer valido e non vuoto, area > 0, ogni inner contenuto nell'outer.
 
 Viene **già chiamata automaticamente da `heal()`** — la usi a mano solo se
-costruisci un `ForgeResult` per altre vie.
+costruisci un `Result` per altre vie.
 
 ---
 
 ## 3. Elaborazione e render
 
-`heal` e `island` sono le due letture del motore (`forge/core/`), una
+`heal` e `island` sono le due letture del motore (`topo/core/`), una
 dall'interno e una dall'esterno — il chiamante sceglie quella adatta al
 disegno; `anchor_annotations` / `inject` sono stadi opzionali su un
-`ForgeResult` (`forge/tools/`, il caller sceglie quali e in che ordine);
-`to_dxf` / `split` sono renderer del modello (`forge/io/`); `split_to_files` è
-la scorciatoia multi-pezzo (`forge/recipes.py`). Fori, pieghe, incisioni sono
-una lettura di processo, in snapbend (`snapbend.flat`, MAP.md D88). Tutto resta accessibile come `forge.<nome>`.
+`Result` (`topo/tools/`, il caller sceglie quali e in che ordine);
+`to_dxf` / `split` sono renderer del modello (`topo/io/`); `split_to_files` è
+la scorciatoia multi-pezzo (`topo/recipes.py`). Fori, pieghe, incisioni sono
+una lettura di processo, in snapbend (`snapbend.flat`, MAP.md D88). Tutto resta accessibile come `topo.<nome>`.
 
 ### `heal`
 
 ```python
-forge.heal(doc: ForgeDocument, tolerance=None, label="", source_file="",
-           is_structural=None) -> ForgeResult
+topo.heal(doc: Document, tolerance=None, label="", source_file="",
+           is_structural=None) -> Result
 ```
 
 Il passo difficile: ricostruzione della topologia. Lavora su `doc.edges`, zero
@@ -341,8 +341,8 @@ Il passo difficile: ricostruzione della topologia. Lavora su `doc.edges`, zero
 criterio a un consumatore, vedi sezione 8), trova i loop chiusi, costruisce
 l'albero di contenimento outer / inner.
 
-`heal()` **non classifica i fori** (D15): consegna solo `ForgeCluster(outer,
-inners=[ForgeContour...])`. Chiamare foro un cerchio è una lettura di processo (snapbend, MAP.md D88).
+`heal()` **non classifica i fori** (D15): consegna solo `Cluster(outer,
+inners=[Contour...])`. Chiamare foro un cerchio è una lettura di processo (snapbend, MAP.md D88).
 
 | parametro | significato |
 |---|---|
@@ -354,14 +354,14 @@ inners=[ForgeContour...])`. Chiamare foro un cerchio è una lettura di processo 
 `role_rules` **non è un parametro di `heal`** — va passato a `load_dxf()`, che
 assegna i ruoli agli `Edge`.
 
-**Ritorna** un `ForgeResult`. Se non si forma nessun contorno esterno chiuso,
+**Ritorna** un `Result`. Se non si forma nessun contorno esterno chiuso,
 `result.is_valid` è `False` e `result.errors` è popolato (la `trash_entities`
 resta piena per la diagnostica).
 
-**Solleva** `TypeError` se non gli passi un `ForgeDocument`.
+**Solleva** `TypeError` se non gli passi un `Document`.
 
 ```python
-result = forge.heal(doc, tolerance=0.5, label="P-1024")
+result = topo.heal(doc, tolerance=0.5, label="P-1024")
 ```
 
 #### I passi di `heal()`
@@ -373,28 +373,28 @@ un contorno dentro un altro — D62). Stessi pezzi di `heal()`, nessun criterio
 duplicato.
 
 ```python
-forge.merge_collinear_overlaps(edges) -> list[Edge]
-forge.merge_cocircular_overlaps(edges) -> list[Edge]
-forge.weld_degenerate_linesegs(edges) -> list[Edge]
-forge.split_non_finite(edges) -> tuple[list[Edge], list[Edge]]
-forge.split_labeled(edges, is_structural=None) -> tuple[list[Edge], list[Edge]]
-forge.close_near_full_arcs(edges, tolerance, max_missing_angle=NEAR_FULL_ARC_MISSING)
+topo.steps.merge_collinear_overlaps(edges) -> list[Edge]
+topo.steps.merge_cocircular_overlaps(edges) -> list[Edge]
+topo.steps.weld_degenerate_linesegs(edges) -> list[Edge]
+topo.steps.split_non_finite(edges) -> tuple[list[Edge], list[Edge]]
+topo.steps.split_labeled(edges, is_structural=None) -> tuple[list[Edge], list[Edge]]
+topo.steps.close_near_full_arcs(edges, tolerance, max_missing_angle=NEAR_FULL_ARC_MISSING)
     -> tuple[list[Edge], int]
-forge.close_free_gaps(edges, tolerance) -> list[Edge]
-forge.dangling_splines(edges) -> list[Edge]
-forge.find_non_contour_edges(edges, tolerance) -> set[int]
-forge.find_joining_edges(edges, candidate_ids) -> list[Edge]
-forge.free_ends(edges, epsilon=0.0) -> list[tuple[point, float]]
-forge.find_loops(edges, non_contour_ids, tolerance) -> LoopSearch
-forge.repair_merged_corners(edges, tolerance, exclude_ids=frozenset()) -> tuple[list[Edge], int, list]
-forge.structural_loops(loops, is_structural=None) -> list[loop]
-forge.loops_to_curves(loops) -> list[ClosedCurve]
-forge.polygonize_edges(edges, tolerance) -> list[Polygon]
-forge.polygons_to_curves(polygons) -> list[ClosedCurve]
-forge.edges_to_open_curves(edges, exclude_ids) -> list[OpenCurve | ClosedCurve]
-forge.labeled_curves(edges) -> list[OpenCurve | ClosedCurve]
-forge.build_hierarchy(features, label="", source_file="", is_structural=None)
-    -> tuple[list[ForgeCluster], list]
+topo.steps.close_free_gaps(edges, tolerance) -> list[Edge]
+topo.steps.dangling_splines(edges) -> list[Edge]
+topo.steps.find_non_contour_edges(edges, tolerance) -> set[int]
+topo.steps.find_joining_edges(edges, candidate_ids) -> list[Edge]
+topo.steps.free_ends(edges, epsilon=0.0) -> list[tuple[point, float]]
+topo.steps.find_loops(edges, non_contour_ids, tolerance) -> LoopSearch
+topo.steps.repair_merged_corners(edges, tolerance, exclude_ids=frozenset()) -> tuple[list[Edge], int, list]
+topo.steps.structural_loops(loops, is_structural=None) -> list[loop]
+topo.steps.loops_to_curves(loops) -> list[ClosedCurve]
+topo.steps.polygonize_edges(edges, tolerance) -> list[Polygon]
+topo.steps.polygons_to_curves(polygons) -> list[ClosedCurve]
+topo.steps.edges_to_open_curves(edges, exclude_ids) -> list[OpenCurve | ClosedCurve]
+topo.steps.labeled_curves(edges) -> list[OpenCurve | ClosedCurve]
+topo.steps.build_hierarchy(features, label="", source_file="", is_structural=None)
+    -> tuple[list[Cluster], list]
 ```
 
 | passo | prende → ritorna | cosa fa |
@@ -418,7 +418,7 @@ forge.build_hierarchy(features, label="", source_file="", is_structural=None)
 | `polygons_to_curves` | `list[Polygon]` → `list[ClosedCurve]` | OUTER dal bordo, INNER dai buchi, a `LineSeg` (la geometria nativa è persa). |
 | `edges_to_open_curves` | `list[Edge]` → feature | gli edge non assorbiti da un loop (`exclude_ids`) come feature aperte. |
 | `labeled_curves` | `list[Edge]` → feature | gli etichettati di `split_labeled`, col ruolo intatto. |
-| `build_hierarchy` | feature → `(cluster, trash)` | albero di contenimento: ogni radice un `ForgeCluster`, i discendenti `inners` con `depth`/`parent`. |
+| `build_hierarchy` | feature → `(cluster, trash)` | albero di contenimento: ogni radice un `Cluster`, i discendenti `inners` con `depth`/`parent`. |
 
 Nessuno **muta** l'input: ritornano liste/oggetti nuovi.
 
@@ -436,11 +436,11 @@ Nessuno **muta** l'input: ritornano liste/oggetti nuovi.
 
 ```python
 # la ricetta di heal() fino ai contorni chiusi, senza gerarchia
-edges, labeled = forge.split_labeled(doc.edges, is_structural)
-edges = forge.close_free_gaps(edges, 0.1)
-search = forge.find_loops(edges, forge.find_non_contour_edges(edges, 0.1), 0.1)
+edges, labeled = topo.steps.split_labeled(doc.edges, is_structural)
+edges = topo.steps.close_free_gaps(edges, 0.1)
+search = topo.steps.find_loops(edges, topo.steps.find_non_contour_edges(edges, 0.1), 0.1)
 print(search.method, len(search.loops))
-closed = forge.loops_to_curves(forge.structural_loops(search.loops, is_structural))
+closed = topo.steps.loops_to_curves(topo.steps.structural_loops(search.loops, is_structural))
 ```
 
 ---
@@ -448,8 +448,8 @@ closed = forge.loops_to_curves(forge.structural_loops(search.loops, is_structura
 ### `island`
 
 ```python
-forge.island(doc: ForgeDocument, *, max_gap: float,
-             tolerance=None, is_structural=None) -> ForgeResult
+topo.island(doc: Document, *, max_gap: float,
+             tolerance=None, is_structural=None) -> Result
 ```
 
 La seconda lettura di un documento, accanto a `heal()`: **per isole**.
@@ -490,16 +490,16 @@ Cosa sia un cluster — vista, pezzo — lo decide chi lo usa (D21).
 | `tolerance` | se `None`, ripresa da `doc.source_meta["tolerance"]` — come `heal()`. |
 | `is_structural` | come in `heal()` (D30): un `Edge` con un ruolo già deciso e non strutturale (`frame`, `title_block`, ...) resta **fuori** dalla lettura e va in `trash_entities` col suo ruolo. È così che un consumatore toglie cornice e cartiglio prima di leggere le viste. Senza, solo `outer`/`inner` sono strutturali. |
 
-**Ritorna** un `ForgeResult` con un `ForgeCluster` per isola,
+**Ritorna** un `Result` con un `Cluster` per isola,
 ordinati per area del contorno esterno. Nessun giro chiuso in nessuna isola →
 `is_valid=False`, `errors` popolato.
 
-**Solleva** `TypeError` se non gli passi un `ForgeDocument`, o se manca
+**Solleva** `TypeError` se non gli passi un `Document`, o se manca
 `max_gap`.
 
 ```python
-doc = forge.load_dxf("tavola.dxf")
-result = forge.island(doc, max_gap=0.5)
+doc = topo.load_dxf("tavola.dxf")
+result = topo.island(doc, max_gap=0.5)
 for cluster in result.clusters:          # una vista / un pezzo per cluster
     print(cluster.outer.polygon.area, len(cluster.inners))
 ```
@@ -510,18 +510,18 @@ Esposti per chi compone la sua ricetta (snapdraw: togliere cornice e cartiglio
 per ruolo, poi leggere le viste) — stessi pezzi, nessun criterio duplicato.
 
 ```python
-forge.read_islands(edges, tolerance, max_gap) -> list[IslandReading]
-forge.read_island(edges, tolerance, max_gap) -> IslandReading
-forge.spatial_islands(edges, gap_tolerance) -> list[Island]
-forge.split_at_crossings(edges, tolerance, decimals=3) -> NodedEdges
-forge.outer_face(edges, epsilon=0.0) -> OuterFace | None
-forge.refit_tessellations(edges, max_segment=0.1, min_run=10,
+topo.read_islands(edges, tolerance, max_gap) -> list[IslandReading]
+topo.read_island(edges, tolerance, max_gap) -> IslandReading
+topo.steps.spatial_islands(edges, gap_tolerance) -> list[Island]
+topo.steps.split_at_crossings(edges, tolerance, decimals=3) -> NodedEdges
+topo.steps.outer_face(edges, epsilon=0.0) -> OuterFace | None
+topo.steps.refit_tessellations(edges, max_segment=0.1, min_run=10,
                           arc_fit_tolerance=0.02, node_decimals=3) -> list[Edge]
 ```
 
 | funzione | prende → ritorna | cosa fa |
 |---|---|---|
-| `read_islands` | `list[Edge]` → `list[IslandReading]` | pezzi a contatto + `read_island` per ognuno + annidamento (`nested_in`, anche per un pezzo senza contorno tutto dentro un'isola). È `island()` prima di diventare `ForgeResult`. |
+| `read_islands` | `list[Edge]` → `list[IslandReading]` | pezzi a contatto + `read_island` per ognuno + annidamento (`nested_in`, anche per un pezzo senza contorno tutto dentro un'isola). È `island()` prima di diventare `Result`. |
 | `read_island` | `list[Edge]` → `IslandReading` | un'isola: normalizza, rete piana, faccia esterna, classificazione dell'interno. |
 | `spatial_islands` | `list[Edge]` → `list[Island]` | union-find sulle coppie di edge a distanza vera `<= gap_tolerance` (STRtree). Nessuna nozione di chiusura. |
 | `split_at_crossings` | `list[Edge]` → `NodedEdges` | spezza `LineSeg`/`ArcSeg`/`CircleSeg` dove incrociano o toccano a T un altro edge, entro `tolerance`; due tagli entro `tolerance` l'uno dall'altro sono lo stesso nodo, non due (D101 — una quasi-tangenza incrocia in due radici matematicamente distinte ma vicinissime). `NodedEdges.parent_of(pezzo)` dà l'`Edge` originale. `SplineSeg`/`EllipseSeg` restano interi. |
@@ -545,10 +545,10 @@ Nessuna **muta** l'input: ritornano liste/oggetti nuovi.
 
 ---
 
-## La geometria — `forge.geometry`
+## La geometria — `topo.geometry`
 
-**Costruire** (`forge.geometry.<nome>`, restituiscono una lista di segmenti,
-un giro chiuso, da passare a `forge.load_segments`). Gli argomenti sono le
+**Costruire** (`topo.geometry.<nome>`, restituiscono una lista di segmenti,
+un giro chiuso, da passare a `topo.load_segments`). Gli argomenti sono le
 misure che `contour_shape` restituisce, così `contour_shape(rectangle(80, 30,
 angle=20))` ridà 80, 30, 20 (D96):
 
@@ -564,9 +564,9 @@ Rombi, trapezi e ogni altra forma con lati dritti sono un `polygon`.
 
 **Leggere**:
 
-I fatti geometrici stanno tutti in `forge.geometry` (il package
-`forge/core/geometry/`, D95): si chiamano `forge.geometry.<nome>(...)` e si
-importano con `from forge.core.geometry import <nome>` (`forge.geometry` è un
+I fatti geometrici stanno tutti in `topo.geometry` (il package
+`topo/core/geometry/`, D95): si chiamano `topo.geometry.<nome>(...)` e si
+importano con `from topo.core.geometry import <nome>` (`topo.geometry` è un
 attributo, non un percorso di import). Nomi geometrici: "cerchio", mai "foro".
 I mattoni (`measure`, `points`, `intersections`, e gli helper di `lines` /
 `axis`) si importano dal sottomodulo; l'elenco con `file:riga` è in
@@ -575,10 +575,10 @@ I mattoni (`measure`, `points`, `intersections`, e gli helper di `lines` /
 ### `contour_shape`
 
 ```python
-forge.geometry.contour_shape(item, tolerance=0.01, angle_tolerance=1.0) -> ContourShape | None
+topo.geometry.contour_shape(item, tolerance=0.01, angle_tolerance=1.0) -> ContourShape | None
 ```
 
-La forma di un contorno chiuso (`ForgeContour`, un oggetto con `.segments`
+La forma di un contorno chiuso (`Contour`, un oggetto con `.segments`
 o la lista dei segmenti): `circle`, `stadium` (stadio: due semicerchi uguali
 e due rette parallele — nome geometrico, non "asola"), `rectangle`, `polygon` (solo rette), `other`. Fatto
 geometrico, non feature: `circle` non vuol dire foro, lo decide chi legge il
@@ -598,7 +598,7 @@ ricomposizione), `diameter` (solo cerchio), `.to_dict()`.
 ### `concentric_groups`
 
 ```python
-forge.geometry.concentric_groups(items, tolerance=0.1) -> list[ConcentricGroup]
+topo.geometry.concentric_groups(items, tolerance=0.1) -> list[ConcentricGroup]
 ```
 
 I contorni circolari di `items` (come per `contour_shape`) raggruppati per
@@ -617,7 +617,7 @@ come accoppiarli lo decide il consumatore (D91).
 ### `arcs_around`
 
 ```python
-forge.geometry.arcs_around(center, radius, arcs, tolerance=0.1) -> list[ArcAround]
+topo.geometry.arcs_around(center, radius, arcs, tolerance=0.1) -> list[ArcAround]
 ```
 
 Gli `ArcSeg` di `arcs` concentrici al cerchio (`center`, `radius`) entro
@@ -635,7 +635,7 @@ lo applica il consumatore (D91).
 ### `splits_polygon`
 
 ```python
-forge.geometry.splits_polygon(polygon, start, end, reach=0.0) -> bool
+topo.geometry.splits_polygon(polygon, start, end, reach=0.0) -> bool
 ```
 
 La corda `start`-`end`, prolungata di `reach` ai due capi, divide il poligono
@@ -649,7 +649,7 @@ lo decide il consumatore (snapbend la prolunga di 1 mm, D93).
 ### `bridged_runs`
 
 ```python
-forge.geometry.bridged_runs(segments, bridges, tolerance=0.1, angle_tolerance=1e-6) -> list[CollinearRun]
+topo.geometry.bridged_runs(segments, bridges, tolerance=0.1, angle_tolerance=1e-6) -> list[CollinearRun]
 ```
 
 File di due o più tratti sulla stessa retta in cui lo spazio fra un tratto e il
@@ -668,7 +668,7 @@ di direzione in radianti. I tratti rimasti da soli non compaiono.
 ### `intersections`
 
 ```python
-forge.geometry.intersections(a, b) -> list[Point]
+topo.geometry.intersections(a, b) -> list[Point]
 ```
 
 I punti dove due primitive si incontrano: incroci e tocchi, capi compresi.
@@ -684,7 +684,7 @@ loro incontro è un tratto (D118).
 ### `point_on_contour`, `ContourPoint`
 
 ```python
-forge.geometry.point_on_contour(segments, point, tolerance=0.01, angle_tolerance=1e-3) -> ContourPoint | None
+topo.geometry.point_on_contour(segments, point, tolerance=0.01, angle_tolerance=1e-3) -> ContourPoint | None
 ```
 
 Dove cade `point` sull'anello `segments` (testa-coda, come `contour.segments`).
@@ -702,13 +702,13 @@ dista più di `tolerance` (D118).
 ### `cut_by`
 
 ```python
-forge.geometry.cut_by(segment, region, keep="outside") -> list
+topo.geometry.cut_by(segment, region, keep="outside") -> list
 ```
 
 I pezzi di `segment` fuori (`"outside"`) o dentro (`"inside"`) la regione
 chiusa `region`, nel verso di `segment`, tagliati nei punti di
 `intersections`. Una regione è un anello di primitive qualunque
-(`forge.geometry.circle`, `rectangle`, `polygon`, `contour.segments`). I pezzi
+(`topo.geometry.circle`, `rectangle`, `polygon`, `contour.segments`). I pezzi
 restano primitive dello stesso tipo: un arco tagliato è un arco (D118).
 
 **Non muta** niente. **Solleva** `ValueError` se un pezzo corre lungo il bordo
@@ -719,7 +719,7 @@ della regione (né dentro né fuori).
 ### `contour_minus`
 
 ```python
-forge.geometry.contour_minus(contour, region) -> list[list]
+topo.geometry.contour_minus(contour, region) -> list[list]
 ```
 
 L'anello `contour` meno la regione chiusa `region`: gli anelli del bordo che
@@ -727,7 +727,7 @@ resta, ognuno testa-coda. Un anello esterno ha il verso di `contour`, un foro
 (regione tutta dentro) quello opposto. `[]` se la regione copre tutto,
 `[contour]` se non lo tocca. Tanti anelli quanti ne vengono: un taglio che
 stacca un pezzo ne dà due, e quale tenere lo decide il chiamante. Un tocco
-solo (tangenza) non cambia la forma. Da passare a `ForgeContour.from_segments`
+solo (tangenza) non cambia la forma. Da passare a `Contour.from_segments`
 (D118).
 
 **Non muta** niente. **Solleva** `ValueError` se i due bordi corrono uno
@@ -738,7 +738,7 @@ sull'altro.
 ### `dash_line`
 
 ```python
-forge.geometry.dash_line(start, end, head, tail, middle=0.0, n_middle=0) -> list[tuple[Point, Point]]
+topo.geometry.dash_line(start, end, head, tail, middle=0.0, n_middle=0) -> list[tuple[Point, Point]]
 ```
 
 Il segmento `start`→`end` ridotto a tratti: uno lungo `head` attaccato a
@@ -755,7 +755,7 @@ sia una piega lo decide il consumatore (D115).
 ### `covered_rectangles`
 
 ```python
-forge.geometry.covered_rectangles(items, min_side, eps=0.5, cluster_tolerance=1.5, coverage=0.85) -> list[CoveredRectangle]
+topo.geometry.covered_rectangles(items, min_side, eps=0.5, cluster_tolerance=1.5, coverage=0.85) -> list[CoveredRectangle]
 ```
 
 I rettangoli allineati agli assi i cui quattro lati sono coperti almeno per
@@ -775,7 +775,7 @@ cornice o un cartiglio lo decide il consumatore (snapdraw, D94).
 ### `spanning_lines`
 
 ```python
-forge.geometry.spanning_lines(bounds, items, coverage=0.85, eps=0.5, cluster_tolerance=1.5) -> (list[float], list[float])
+topo.geometry.spanning_lines(bounds, items, coverage=0.85, eps=0.5, cluster_tolerance=1.5) -> (list[float], list[float])
 ```
 
 `(ys, xs)`: le linee strettamente interne a `bounds` che lo attraversano per
@@ -788,7 +788,7 @@ almeno `coverage` della larghezza (orizzontali) o dell'altezza (verticali).
 ### `sides_on_border`
 
 ```python
-forge.geometry.sides_on_border(bounds, border, tolerance) -> list[str]
+topo.geometry.sides_on_border(bounds, border, tolerance) -> list[str]
 ```
 
 I lati di `bounds` (`"left"`, `"bottom"`, `"right"`, `"top"`) che stanno sul
@@ -802,13 +802,13 @@ un altro. Lista vuota se non ne tocca nessuno.
 ### `axis_aligned_share`
 
 ```python
-forge.geometry.axis_aligned_share(segments, angle_tolerance) -> float | None
+topo.geometry.axis_aligned_share(segments, angle_tolerance) -> float | None
 ```
 
 Frazione della lunghezza dei `LineSeg` orizzontale o verticale entro
 `angle_tolerance` gradi; `None` senza `LineSeg`. Gli altri fatti del modulo
 (`merge_intervals`, `interval_coverage`, `cluster_values`, `axis_lines`,
-`items_inside`) si importano da `forge.core.geometry.axis`.
+`items_inside`) si importano da `topo.core.geometry.axis`.
 
 **Non muta** niente.
 
@@ -818,9 +818,9 @@ Frazione della lunghezza dei `LineSeg` orizzontale o verticale entro
 ### `to_dxf`
 
 ```python
-forge.to_dxf(
-    result: ForgeResult,
-    source_doc: ForgeDocument = None,
+topo.to_dxf(
+    result: Result,
+    source_doc: Document = None,
     filter_cluster=None,
     include_annotations=True,
     include_trash=True,
@@ -836,15 +836,15 @@ entità dalla sorgente: `source_doc` serve solo a riportare gli header
 
 | parametro | significato |
 |---|---|
-| `filter_cluster` | `callable(ForgeCluster) -> bool` — scrive solo le parti che passano. |
+| `filter_cluster` | `callable(Cluster) -> bool` — scrive solo le parti che passano. |
 | `include_trash` | `True` (default): la geometria non classificata va sul layer `Trash`. Chi apre il file deve poter vedere ogni entità del disegno di partenza. |
 | `allow_invalid` | `True` (default): un `result` non valido viene scritto lo stesso (trash e annotazioni), come fa `to_svg`. `False` → `ValueError`: per il chiamante che consegna il file a una macchina (D83). |
-| `annotation_layer` | `"Annotation"` → layer forge dedicato; `"Trash"` o altro nome → quel layer; `None` → layer originale della sorgente. Nessuna annotazione viene mai scartata. |
-| `role_styles` | override esplicito, per ruolo, di colore/linetype/lineweight (vedi `RoleStyle` sotto). Agisce sul layer — tutto ciò che forge scrive è BYLAYER. `None` (default) = nessun cambiamento rispetto alla palette di `rules/palette.py`. |
+| `annotation_layer` | `"Annotation"` → layer topo dedicato; `"Trash"` o altro nome → quel layer; `None` → layer originale della sorgente. Nessuna annotazione viene mai scartata. |
+| `role_styles` | override esplicito, per ruolo, di colore/linetype/lineweight (vedi `RoleStyle` sotto). Agisce sul layer — tutto ciò che topo scrive è BYLAYER. `None` (default) = nessun cambiamento rispetto alla palette di `rules/palette.py`. |
 
 ```python
 # la cornice (ruolo "frame", assegnato da un consumatore come snapdraw) in nero
-forge.to_dxf(result, doc, role_styles={"frame": forge.RoleStyle(color=(0, 0, 0))})
+topo.to_dxf(result, doc, role_styles={"frame": topo.RoleStyle(color=(0, 0, 0))})
 ```
 
 **L'overlay** (D70, D90): scrive ogni collezione di `cluster.detected`,
@@ -863,8 +863,8 @@ Senza ruolo o senza geometria si salta.
 quel chiamante lo chiede esplicitamente.
 
 ```python
-forge.to_dxf(result, doc).saveas("guarda.dxf")                         # sempre
-forge.to_dxf(result, doc, allow_invalid=False).saveas("macchina.dxf")  # solo se valido
+topo.to_dxf(result, doc).saveas("guarda.dxf")                         # sempre
+topo.to_dxf(result, doc, allow_invalid=False).saveas("macchina.dxf")  # solo se valido
 ```
 
 ---
@@ -872,9 +872,9 @@ forge.to_dxf(result, doc, allow_invalid=False).saveas("macchina.dxf")  # solo se
 ### `split`
 
 ```python
-forge.split(
-    result: ForgeResult,
-    source_doc: ForgeDocument = None,
+topo.split(
+    result: Result,
+    source_doc: Document = None,
     namer=None,
     include_annotations=True,
     min_area=50.0,
@@ -899,7 +899,7 @@ il disco. Le parti sotto `min_area` (mm²) vengono scartate (con warning nel
 **Solleva `ValueError`** se `result.is_valid` è `False`.
 
 ```python
-docs = forge.split(result, doc, min_area=100.0)
+docs = topo.split(result, doc, min_area=100.0)
 for d, cluster in zip(docs, [p for p in result.clusters if p.outer.polygon.area >= 100]):
     d.saveas(f"{cluster.label}.dxf")
 ```
@@ -921,7 +921,7 @@ Override, indipendente dal formato, dell'aspetto visivo di un ruolo in
 output — noto al motore (`"outer"`, `"inner"`) o assegnato da chiunque
 altro — snapbend (`"hole"`, ...), snapdraw (`"frame"`, `"title_block"`,
 ...) — nessuno è privilegiato. Ogni
-campo lasciato `None` resta il default di forge per quel ruolo. Passato a
+campo lasciato `None` resta il default di topo per quel ruolo. Passato a
 `to_dxf`/`split` come `role_styles={ruolo: RoleStyle(...)}` — dizionario
 esplicito del chiamante, stesso idioma di `role_rules`, riusabile su più
 chiamate/formati; vince sempre su un eventuale stile registrato (sotto).
@@ -931,28 +931,28 @@ dataclass senza toccare la firma di `to_dxf`/`split` né rompere chi già
 passa un `RoleStyle` con meno campi.
 
 ```python
-forge.to_dxf(result, doc, role_styles={
-    "frame":   forge.RoleStyle(color=(0, 0, 0)),          # cornice: nero
-    "unknown": forge.RoleStyle(lineweight=0.05),          # trash: linea sottilissima
+topo.to_dxf(result, doc, role_styles={
+    "frame":   topo.RoleStyle(color=(0, 0, 0)),          # cornice: nero
+    "unknown": topo.RoleStyle(lineweight=0.05),          # trash: linea sottilissima
 })
 ```
 
 ### `register_role_style`
 
 ```python
-forge.register_role_style(role, style: RoleStyle) -> None
+topo.register_role_style(role, style: RoleStyle) -> None
 ```
 
 Registra uno `RoleStyle` per `role` **una volta sola**, valido per ogni
 `to_dxf`/`split` successivo senza doverlo ripassare — stesso idioma di
-`forge.set_schema()` per i metadati. Un consumatore lo chiama una volta al
+`topo.set_schema()` per i metadati. Un consumatore lo chiama una volta al
 proprio setup invece di ricostruire `role_styles=` a ogni chiamata —
 `snapbend.flat` lo fa per i suoi colori (`hole` magenta, `bending` rosa, ...).
 `role_styles=` passato a una singola chiamata resta possibile e
 vince comunque su quanto registrato qui.
 
 ```python
-forge.register_role_style("frame", forge.RoleStyle(color=(0, 0, 0)))
+topo.register_role_style("frame", topo.RoleStyle(color=(0, 0, 0)))
 # ogni to_dxf/split successivo applica il nero al layer "frame" da solo
 ```
 
@@ -961,8 +961,8 @@ forge.register_role_style("frame", forge.RoleStyle(color=(0, 0, 0)))
 ### `split_to_files`
 
 ```python
-forge.split_to_files(
-    doc: ForgeDocument,
+topo.split_to_files(
+    doc: Document,
     output_folder,
     label="",
     source_file="",
@@ -973,21 +973,21 @@ forge.split_to_files(
     exclude_types=None,
     annotation_layer="Annotation",
     is_structural=None,
-) -> ForgeResult
+) -> Result
 ```
 
 Flusso multi-pezzo + salvataggio su disco: `heal → split → .saveas()` per
 cluster (`is_structural` passa a `heal`). Una lettura di processo (fori,
-pieghe) si fa sul result con `heal` + la detection + `split`, non qui. **È l'unica funzione di forge che scrive su disco.**
+pieghe) si fa sul result con `heal` + la detection + `split`, non qui. **È l'unica funzione di topo che scrive su disco.**
 Il nome file è `f"{cluster.label}.dxf"`, dove `cluster.label` è quello che assegna
 `namer(i, cluster)`; senza `namer` diventa `f"{label}_P{i+1}"` (es. `batch_P1.dxf`).
 
-**Ritorna** il `ForgeResult` (per poterci fare `save_json` dopo). Se il risultato
+**Ritorna** il `Result` (per poterci fare `save_json` dopo). Se il risultato
 non è valido, ritorna il result senza scrivere niente.
 
 ```python
-result = forge.split_to_files(doc, "output/", label="batch")
-forge.save_json(result, "batch.json")
+result = topo.split_to_files(doc, "output/", label="batch")
+topo.save_json(result, "batch.json")
 ```
 
 ---
@@ -995,8 +995,8 @@ forge.save_json(result, "batch.json")
 ### `anchor_annotations`
 
 ```python
-forge.anchor_annotations(result: ForgeResult, snap_distance=0.0,
-                         leader_distance=0.5) -> ForgeResult
+topo.anchor_annotations(result: Result, snap_distance=0.0,
+                         leader_distance=0.5) -> Result
 ```
 
 Collega le annotazioni alla geometria. Per ogni annotazione `cluster_ref` =
@@ -1010,7 +1010,7 @@ indice del cluster il cui contorno esterno ne contiene la posizione (con
 ### `leader_target`
 
 ```python
-forge.leader_target(result: ForgeResult, leader: Leader,
+topo.leader_target(result: Result, leader: Leader,
                     distance=0.5) -> str | None
 ```
 
@@ -1029,7 +1029,7 @@ altrimenti `None` (freccia di sezione, fuori dal pezzo). Non legge il testo.
 ### `dimension_references`
 
 ```python
-forge.dimension_references(result: ForgeResult, dimension: Dimension,
+topo.dimension_references(result: Result, dimension: Dimension,
                            distance=0.5) -> list[str]
 ```
 
@@ -1044,7 +1044,7 @@ elementi. Non legge il testo.
 ### `resolve_target`
 
 ```python
-forge.resolve_target(result: ForgeResult, target: str | None) -> Any
+topo.resolve_target(result: Result, target: str | None) -> Any
 ```
 
 Il passo inverso: il contorno o la feature a cui punta un `target`, o `None`
@@ -1056,11 +1056,11 @@ spostato i fori da `inners` a `holes`: ancorare dopo aver scelto le feature).
 ### `inject`
 
 ```python
-forge.inject(
-    result: ForgeResult,
+topo.inject(
+    result: Result,
     data_injector=None,
     snap_distance: float = 0.0,
-) -> ForgeResult
+) -> Result
 ```
 
 Arricchimento **opzionale** dai testi. **Muta** `result.clusters[i].custom` in-place e
@@ -1084,27 +1084,27 @@ nell'export passa `extra_metadata` (vedi sotto).
 def leggi_cartiglio(cluster, testi):
     return {"material": next((t for t in testi if t.startswith("S")), "S275JR")}
 
-forge.inject(result, data_injector=leggi_cartiglio, snap_distance=5.0)
+topo.inject(result, data_injector=leggi_cartiglio, snap_distance=5.0)
 ```
 
 ---
 
 ## 4. Export
 
-Tutti leggono lo schema da `forge/rules/metadata_schema.py` — **una sola fonte**
+Tutti leggono lo schema da `topo/rules/metadata_schema.py` — **una sola fonte**
 per i nomi dei campi. Cambia quel file (o usa `set_schema`) per adattarti al tuo
 CAM.
 
 ### `save_json` / `to_json`
 
 ```python
-forge.save_json(
-    result: ForgeResult, path, indent=2,
-    extra_metadata: Callable[[ForgeCluster], dict] = None,
+topo.save_json(
+    result: Result, path, indent=2,
+    extra_metadata: Callable[[Cluster], dict] = None,
 ) -> None   # scrive su file
-forge.to_json(
-    result: ForgeResult, indent=2,
-    extra_metadata: Callable[[ForgeCluster], dict] = None,
+topo.to_json(
+    result: Result, indent=2,
+    extra_metadata: Callable[[Cluster], dict] = None,
 ) -> str    # ritorna la stringa
 ```
 
@@ -1112,7 +1112,7 @@ Metadati per parte secondo schema — **niente coordinate**. `extra_metadata`
 (D44), se passata, viene chiamata una volta per cluster e i campi che
 ritorna finiscono nell'output **fuori dallo schema** — passarla è già la
 scelta esplicita del chiamante, stesso idioma di `data_injector`. Serve per
-una detection tua (fori per tipo, una `FlangeViewHint`) che forge non può
+una detection tua (fori per tipo, una `FlangeViewHint`) che topo non può
 conoscere. Struttura:
 
 ```json
@@ -1137,33 +1137,33 @@ conoscere. Struttura:
 ### `save_xml`
 
 ```python
-forge.save_xml(
-    result: ForgeResult, path,
-    extra_metadata: Callable[[ForgeCluster], dict] = None,
+topo.save_xml(
+    result: Result, path,
+    extra_metadata: Callable[[Cluster], dict] = None,
 ) -> None
 ```
 
 Stessi campi di `save_json` (`extra_metadata` incluso), in XML
-(`<forge><clusters><cluster>…`).
+(`<topo><clusters><cluster>…`).
 
 ### `to_view_model`
 
 ```python
-forge.to_view_model(
-    result: ForgeResult,
+topo.to_view_model(
+    result: Result,
     tolerance=0.05,
     include_trash=True,
     include_annotations=True,
 ) -> dict
 ```
 
-`ForgeResult` → dizionario JSON **orientato al rendering**: le coordinate di
+`Result` → dizionario JSON **orientato al rendering**: le coordinate di
 *ogni* feature + ruolo + colore hex. È il pendant geometrico di `to_json` (che dà
 solo metadati). Lo consuma `to_svg` e lo consumerebbe un front-end esterno
 (dashboard JS che disegna con SVG/Canvas).
 
 > `to_text(result) -> str` / `save_text(result, path)` — la lettura per un
-> modello linguistico (`<nome>.forge.md`) — è **sperimentale**, fuori da
+> modello linguistico (`<nome>.topo.md`) — è **sperimentale**, fuori da
 > `__all__` finché non ha un chiamante vero (MAP.md D84). Firma e sezioni in
 > `docs/LLM.md`, insieme a una tabella di cosa dà ogni uscita.
 
@@ -1179,7 +1179,7 @@ scalari del `to_dict()` dell'elemento — chi porta `center` + `diameter` si pu�
 disegnare come cerchio vero. Coordinate nel sistema del sorgente (Y in alto).
 
 ```python
-vm = forge.to_view_model(result)
+vm = topo.to_view_model(result)
 vm["clusters"][0]["outer"]        # {"role": "outer", "color": "#00ff00", "points": [...], "closed": true}
 vm["clusters"][0]["features"]     # {"holes": [{"role": "hole", "points": [...], "diameter": ..., ...}], ...}
 vm["palette"]                  # {"outer": "#00ff00", ...} + i ruoli registrati
@@ -1191,8 +1191,8 @@ Non muta `result`, non solleva su `result` non valido (torna il dict con
 ### `to_svg` / `save_svg`
 
 ```python
-forge.to_svg(
-    result: ForgeResult,
+topo.to_svg(
+    result: Result,
     tolerance=0.05,
     include_trash=True,
     include_annotations=True,
@@ -1204,7 +1204,7 @@ forge.to_svg(
     units=None,               # "mm" = SVG in scala reale, 1 unità = 1 mm
     allow_invalid=True,       # False → ValueError su un result non valido
 ) -> str
-forge.save_svg(result, path, **kwargs) -> None
+topo.save_svg(result, path, **kwargs) -> None
 ```
 
 Renderer SVG del modello (MAP.md D12) — per visualizzazione (UI/report/
@@ -1225,7 +1225,7 @@ Un `result` non valido viene disegnato lo stesso. `allow_invalid=False` →
 `ValueError`, stesso contratto di `to_dxf` (D83).
 
 ```python
-forge.save_svg(result, "pezzo.svg")
+topo.save_svg(result, "pezzo.svg")
 ```
 
 ---
@@ -1235,31 +1235,31 @@ forge.save_svg(result, "pezzo.svg")
 ### `write_metadata_to_dxf` / `read_metadata_from_dxf`
 
 ```python
-forge.write_metadata_to_dxf(doc, cluster: ForgeCluster, extra: dict = None) -> None
-forge.read_metadata_from_dxf(doc) -> dict
+topo.write_metadata_to_dxf(doc, cluster: Cluster, extra: dict = None) -> None
+topo.read_metadata_from_dxf(doc) -> dict
 ```
 
 Scrive / rilegge i metadati (stessi campi di `save_json`, `extra` incluso —
 un dict diretto qui, non una callback, perché opera già su un singolo
-cluster) come XDATA `FORGE` sull'entità del layer `OuterContour`. `doc` è un
+cluster) come XDATA `TOPO` sull'entità del layer `OuterContour`. `doc` è un
 `Drawing` `ezdxf` (tipicamente quello restituito da `to_dxf`). `read_`
 ritorna `{}` se non trova niente.
 
 ```python
-doc_out = forge.to_dxf(result, doc)
-forge.write_metadata_to_dxf(doc_out, result.clusters[0])
+doc_out = topo.to_dxf(result, doc)
+topo.write_metadata_to_dxf(doc_out, result.clusters[0])
 doc_out.saveas("out.dxf")
 # più tardi:
-meta = forge.read_metadata_from_dxf(ezdxf.readfile("out.dxf"))
+meta = topo.read_metadata_from_dxf(ezdxf.readfile("out.dxf"))
 ```
 
 ### `set_schema`
 
 ```python
-forge.set_schema(schema: dict) -> None
+topo.set_schema(schema: dict) -> None
 ```
 
-Sostituisce lo schema metadati attivo a runtime. Da usare quando `forge` è
+Sostituisce lo schema metadati attivo a runtime. Da usare quando `topo` è
 installato con pip e non puoi editare `metadata_schema.py`. Struttura:
 `{chiave_interna: (nome_output, default, sorgente)}` con `sorgente` ∈
 `{"cluster", "custom", "calculated"}`.
@@ -1271,45 +1271,45 @@ installato con pip e non puoi editare `metadata_schema.py`. Struttura:
 Tre livelli, in ordine di elaborazione. Tutti stampano su stdout.
 
 ```python
-forge.inspect_dxf(path, entities=True, limit=40) -> None
+topo.inspect_dxf(path, entities=True, limit=40) -> None
 ```
 **Livello 1** — entità DXF grezze: versione, header, conteggio per tipo e per
-layer, dettaglio di ogni entità. Non tocca `forge`.
+layer, dettaglio di ogni entità. Non tocca `topo`.
 
 ```python
-forge.inspect_document(doc, graph=True, limit=60) -> None
+topo.inspect_document(doc, graph=True, limit=60) -> None
 ```
-**Livello 2** — un `ForgeDocument` (o un path): `source_meta`, warning del loader,
+**Livello 2** — un `Document` (o un path): `source_meta`, warning del loader,
 gli `Edge` (ruolo, primitiva, endpoint), le annotazioni, e il
 grafo dei nodi (nodi totali, loop degeneri, nodi di branching, estremi liberi).
 "Cosa ha capito l'adapter."
 
 ```python
-forge.inspect_result(result, coords=False) -> None
+topo.inspect_result(result, coords=False) -> None
 ```
-**Livello 3** — un `ForgeResult`: validità, warning/errori, e per ogni parte
+**Livello 3** — un `Result`: validità, warning/errori, e per ogni parte
 outer/inner, le collezioni di `cluster.detected` (quello che un consumatore ha
 attaccato), custom, più `trash_entities`,
-`classified_entities`, annotazioni. "Cosa ha prodotto forge."
+`classified_entities`, annotazioni. "Cosa ha prodotto topo."
 
 ```python
-forge.inspect_file(path, tolerance=0.05, role_rules=(),
+topo.inspect_file(path, tolerance=0.05, role_rules=(),
                    run_heal=True, entities=True, coords=False) -> None
 ```
 Orchestratore: apre il file e stampa i tre livelli in fila. `run_heal=False` per
-fermarti al `ForgeDocument`. `role_rules` come in
+fermarti al `Document`. `role_rules` come in
 `load_dxf()`.
 
 ```python
-forge.inspect_file("pezzo.dxf", role_rules=forge.name_rules({"Piega": "bending"}))
-forge.inspect_file("pezzo.dxf", role_rules=[forge.RoleRule("bending", dashed=True)])
+topo.inspect_file("pezzo.dxf", role_rules=topo.name_rules({"Piega": "bending"}))
+topo.inspect_file("pezzo.dxf", role_rules=[topo.RoleRule("bending", dashed=True)])
 ```
 
 ---
 
 ## 7. Tipi di dominio
 
-### `ForgeDocument`
+### `Document`
 
 Prodotto da `load_dxf` / `document_from_msp`. È il contratto tra l'adapter e il
 core: dopo di lui, `ezdxf` non si tocca più.
@@ -1341,29 +1341,29 @@ che usano `heal`, `island` e `validate` quando `tolerance` non è passata (D86).
   sostituito dalla misura come è scritta nel disegno.
 - `Leader`: `text`, `vertices` (`[0]` = punta), `target`.
 
-### `ForgeResult`
+### `Result`
 
 Prodotto da `heal()`, arricchito da un consumatore / `inject()`.
 
 | campo | tipo | contenuto |
 |---|---|---|
-| `clusters` | `list[ForgeCluster]` | un elemento per contorno esterno chiuso |
+| `clusters` | `list[Cluster]` | un elemento per contorno esterno chiuso |
 | `is_valid` | `bool` | **controllalo prima di `to_dxf` / `split`** |
 | `warnings` / `errors` | `list[str]` | diagnostica |
 | `trash_entities` | `list` | geometria non classificata (proxy con `segments`, formato-indipendenti) |
-| `annotations` | `list[Annotation]` | copiate da `heal()` dal `ForgeDocument` |
+| `annotations` | `list[Annotation]` | copiate da `heal()` dal `Document` |
 | `classified_entities` | `list` | di un consumatore (snapbend: marking, work_type custom) |
 | `all_arcs` | `list[ArcSeg]` | tutti gli archi del disegno (snapbend li usa per i fori filettati) |
 | `cluster_count` | property | `len(clusters)` |
 
 Metodo `to_dict()` → dizionario JSON-ready (usato internamente dagli export).
 
-### `ForgeCluster`
+### `Cluster`
 
 | campo | tipo | contenuto |
 |---|---|---|
-| `outer` | `ForgeContour` | profilo esterno (ha `polygon`, `segments`, `role`, `area`, `bbox`) |
-| `inners` | `list[ForgeContour]` | contorni chiusi dentro l'outer, senza lettura (un cerchio non è un foro, D15) |
+| `outer` | `Contour` | profilo esterno (ha `polygon`, `segments`, `role`, `area`, `bbox`) |
+| `inners` | `list[Contour]` | contorni chiusi dentro l'outer, senza lettura (un cerchio non è un foro, D15) |
 | `label` | `str` | etichetta, base del nome file |
 | `custom` | `dict` | dati aggiunti da un `data_injector` esterno (materiale, spessore, codice) |
 | `detected` | `Optional[DetectedFeatures]` | overlay di un consumatore — `None` finché nessuno ci ha scritto (D44, D90) |
@@ -1373,19 +1373,19 @@ Metodo `to_dict()` → dizionario JSON-ready (usato internamente dagli export).
 | `area` | property | outer − vuoti dell'overlay − inner a depth dispari + inner a depth pari (D89, D90) |
 | `bbox` | property | `(minx, miny, maxx, maxy)` |
 
-Un consumatore attacca la sua detection così (`forge.DetectedFeatures`):
+Un consumatore attacca la sua detection così (`topo.DetectedFeatures`):
 `cluster.detected = cluster.detected or DetectedFeatures();
 cluster.detected.attach("flange_view_hint", [...])`, poi la legge con
 `cluster.features("flange_view_hint")`. Nessun nome è privilegiato (D44) — `DetectedFeature` (`typing.Protocol`, `source`/`confidence`)
 è il contratto minimo, non imposto a runtime.
 
-### `ForgeContour`
+### `Contour`
 
 `role` (`ContourRole`), `polygon` (shapely), `segments` (primitive native, un
 anello testa-coda), `depth`, `parent`, proprietà `area` e `bbox`.
 
 ```python
-forge.ForgeContour.from_segments(segments, role, depth=0, parent=None, tolerance=0.01) -> ForgeContour
+topo.Contour.from_segments(segments, role, depth=0, parent=None, tolerance=0.01) -> Contour
 ```
 
 Contorno da un anello di primitive scritto da un chiamante (per esempio il
@@ -1400,18 +1400,18 @@ Il motore conosce solo tre ruoli: `unknown`, `outer`, `inner` (MAP.md D47,
 "roles out of core"; i ruoli di processo sono di snapbend, D88).
 **Non è un universo chiuso**: chiunque può assegnare un ruolo che il motore non conosce (`hole`,
 `frame`, `title_block`, `section`, …). Passa per `normalize_role()` — ripulito
-in uno slug `[a-z0-9_-]` ≤ 64 char — e forge lo conserva senza sollevare; in
+in uno slug `[a-z0-9_-]` ≤ 64 char — e topo lo conserva senza sollevare; in
 output lo scrive su un layer DXF **col nome dello slug** (o quello registrato
 con `register_role_style`), colore grigio salvo override (`unknown` →
 `Trash`, rosso). `role_str(role)` dà il valore stringa che il ruolo sia una
 costante o uno slug (MAP.md D27 / D31).
 
-**`forge.normalize_role(value) -> str`** e **`forge.is_structural_role(role) ->
+**`topo.normalize_role(value) -> str`** e **`topo.is_structural_role(role) ->
 bool`** sono pubbliche (MAP.md D30). `is_structural_role` (il predicato del
 motore, solo `outer`/`inner`) è quello che `heal()` usa di default se non gli
 passi `is_structural=...` — vedi `heal()` sopra. Un consumatore che marca la geometria **prima
 di `heal`**: tiene i riferimenti agli `Edge` di `doc.edges`, imposta
-`edge.role = forge.normalize_role("frame")` — resta fuori dal grafo per
+`edge.role = topo.normalize_role("frame")` — resta fuori dal grafo per
 default (nessun predicato lo riconosce strutturale), la geometria marcata
 finisce in `trash_entities` col ruolo intatto e l'output la scrive sul layer
 `frame`. È l'aggancio usato da `snapdraw` per cornice e cartiglio.
@@ -1419,7 +1419,7 @@ finisce in `trash_entities` col ruolo intatto e l'output la scrive sul layer
 ### `non_contour_candidates`
 
 ```python
-forge.non_contour_candidates(doc: ForgeDocument, tolerance=None) -> list[Edge]
+topo.non_contour_candidates(doc: Document, tolerance=None) -> list[Edge]
 ```
 
 Edge di `doc.edges` che il criterio topologico di `heal()` escluderebbe dal
@@ -1449,11 +1449,11 @@ problema per l'uso previsto — decidere `edge.role` prima di `heal()` — perch
 la parola finale su cosa resta nel grafo la dice comunque `heal()` stesso.
 
 ```python
-for edge in forge.non_contour_candidates(doc):
+for edge in topo.non_contour_candidates(doc):
     if <la tua logica decide che è un bordo di feature in rilievo>:
-        edge.role = forge.normalize_role("flange_up")
+        edge.role = topo.normalize_role("flange_up")
 
-result = forge.heal(doc)   # "flange_up" è già fuori dal grafo, mai indovinato "bending"
+result = topo.heal(doc)   # "flange_up" è già fuori dal grafo, mai indovinato "bending"
 ```
 
 ---
@@ -1461,19 +1461,19 @@ result = forge.heal(doc)   # "flange_up" è già fuori dal grafo, mai indovinato
 ## 8. Il flusso completo, in ordine
 
 ```python
-import forge, ezdxf
+import topo, ezdxf
 
 # 1. apri — unico punto che legge ezdxf
-doc = forge.load_dxf("pezzo.dxf", tolerance=0.5)
+doc = topo.load_dxf("pezzo.dxf", tolerance=0.5)
 
 # 2. valida l'input (opzionale ma consigliato)
-check = forge.validate(doc)
+check = topo.validate(doc)
 if not check.is_valid:
     raise SystemExit(check.errors)
 
 # 3. topologia
-result = forge.heal(doc, label="P-1024")
-# 4. (opzionale) una lettura di processo, fuori da forge — es. snapbend:
+result = topo.heal(doc, label="P-1024")
+# 4. (opzionale) una lettura di processo, fuori da topo — es. snapbend:
 #   from snapbend.flat import detect_flat
 #   detect_flat(result, "all")
 
@@ -1482,16 +1482,16 @@ if not result.is_valid:
     raise SystemExit(result.errors)
 
 # 6. arricchimento CAM (opzionale — solo se hai un data_injector per i testi)
-result = forge.inject(result, data_injector=leggi_cartiglio, snap_distance=5.0)
+result = topo.inject(result, data_injector=leggi_cartiglio, snap_distance=5.0)
 
 # 7a. render — un documento con tutte le parti
-forge.to_dxf(result, doc).saveas("pezzo_healed.dxf")
+topo.to_dxf(result, doc).saveas("pezzo_healed.dxf")
 
 # 7b. oppure render — un file per parte
-result2 = forge.split_to_files(doc, "output/", label="P-1024")
+result2 = topo.split_to_files(doc, "output/", label="P-1024")
 
 # 8. metadati
-forge.save_json(result, "pezzo.json")
+topo.save_json(result, "pezzo.json")
 ```
 
-Se qualcosa non torna su un file reale: `forge.inspect_file("pezzo.dxf")`.
+Se qualcosa non torna su un file reale: `topo.inspect_file("pezzo.dxf")`.

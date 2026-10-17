@@ -23,11 +23,11 @@ from shapely.geometry import LinearRing, Polygon, LineString
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from forge.core.topology.graph import Graph, build_node_graph
-from forge.core.topology.loop_finder import LoopFinder
-from forge.core.topology.edge import Edge
-from forge.core.primitives.segments import LineSeg, ArcSeg
-from forge.model.role import ContourRole
+from topo.core.topology.graph import Graph, build_node_graph
+from topo.core.topology.loop_finder import LoopFinder
+from topo.core.topology.edge import Edge
+from topo.core.primitives.segments import LineSeg, ArcSeg
+from topo.model.role import ContourRole
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ def _edge(start, end):
 def _arc_edge(start, end, arc_pts):
     """Crea un Edge che discretizza un arco (arc_pts da start a end)."""
     # Usiamo SplineSeg per rappresentare la discretizzazione dell'arco
-    from forge.core.primitives.segments import SplineSeg
+    from topo.core.primitives.segments import SplineSeg
     return Edge(
         role=ContourRole.UNKNOWN,
         start=start,
@@ -334,10 +334,10 @@ class TestSplitArcStubs(unittest.TestCase):
     """
 
     def setUp(self):
-        import forge
-        from forge.model.document import ForgeDocument
+        import topo
+        from topo.model.document import Document
         edges = _make_rect_with_split_arcs_and_stubs()
-        self.result = forge.heal(ForgeDocument(edges=edges), tolerance=1.0)
+        self.result = topo.heal(Document(edges=edges), tolerance=1.0)
 
     def test_un_solo_part(self):
         self.assertEqual(self.result.cluster_count, 1)

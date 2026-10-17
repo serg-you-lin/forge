@@ -1,14 +1,14 @@
 """
 tests/unit/test_cluster_area.py
 -------------------------------
-`ForgeCluster.area` sui contorni annidati (MAP.md D89): depth dispari è vuoto,
+`Cluster.area` sui contorni annidati (MAP.md D89): depth dispari è vuoto,
 depth pari è materiale, i segni alternano col livello.
 """
 
 import math
 import unittest
 
-import forge
+import topo
 
 # i cerchi diventano poligoni: ~1.3 mm² di scarto su r=30
 DELTA = 3.0
@@ -20,7 +20,7 @@ def _nested_circles(*radii):
               ((100, 100), (0, 100)), ((0, 100), (0, 0))]
     entities = [{"type": "line", "start": a, "end": b} for a, b in square]
     entities += [{"type": "circle", "center": (50, 50), "radius": r} for r in radii]
-    return forge.heal(forge.load_geometry(entities))
+    return topo.heal(topo.load_geometry(entities))
 
 
 class TestClusterAreaNested(unittest.TestCase):

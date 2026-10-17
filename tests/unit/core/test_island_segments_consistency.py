@@ -16,10 +16,10 @@ sempre vera per definizione — non va mai rigenerato, va solo fatto passare.
 import unittest
 from pathlib import Path
 
-import forge
-from forge.core.island import GRAPH_EPSILON
-from forge.core.primitives.polygon_builder import build_polygon
-from forge.core.primitives.segments import DEFAULT_TOLERANCE
+import topo
+from topo.core.island import GRAPH_EPSILON
+from topo.core.primitives.polygon_builder import build_polygon
+from topo.core.primitives.segments import DEFAULT_TOLERANCE
 
 SOURCE_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "golden_islands"
 MAX_GAP = 0.5
@@ -45,7 +45,7 @@ class TestIslandSegmentsConsistency(unittest.TestCase):
 
 def _make_test(dxf: Path):
     def test(self):
-        result = forge.island(forge.load_dxf(str(dxf)), max_gap=MAX_GAP)
+        result = topo.island(topo.load_dxf(str(dxf)), max_gap=MAX_GAP)
         for ci, cluster in enumerate(result.clusters):
             self._assert_same_shape(cluster.outer, f"{dxf.stem}.cluster[{ci}].outer")
             for ii, inner in enumerate(cluster.inners):

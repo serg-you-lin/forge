@@ -4,13 +4,13 @@ scripts/gen_index.py
 Genera `docs/INDEX.md`: l'inventario completo di cosa esiste già nel package.
 
 Perché esiste: `docs/API.md` documenta la superficie pubblica (i nomi
-`forge.<name>`), ma la maggior parte delle funzioni del package è interna, e
+`topo.<name>`), ma la maggior parte delle funzioni del package è interna, e
 una funzione che nessuno sa di avere viene riscritta. Questo indice è la
 tabella di lookup — "esiste già qualcosa che calcola una distanza punto-retta?"
 — e va rigenerato, non scritto a mano, perché un elenco scritto a mano mente al
 primo commit successivo.
 
-Legge i sorgenti con `ast`: non importa `forge`, quindi nessun side effect e
+Legge i sorgenti con `ast`: non importa `topo`, quindi nessun side effect e
 nessuna dipendenza oltre la standard library.
 
 Uso (da qualsiasi cartella; `scripts/` o `tests/`, dove il progetto tiene i generatori)::
@@ -21,7 +21,7 @@ Uso (da qualsiasi cartella; `scripts/` o `tests/`, dove il progetto tiene i gene
 
 Oltre all'inventario produce due controlli automatici:
     - nomi definiti a livello di modulo in più di un modulo (candidati doppioni)
-    - violazioni della regola di dipendenza del package (per forge: `core` e
+    - violazioni della regola di dipendenza del package (per topo: `core` e
       `model` non importano `adapters`/`tools`/`io`)
 
 `--similar` non scrive l'indice: confronta i corpi invece dei nomi (variabili
@@ -33,7 +33,7 @@ Uguale in ogni progetto (la copia di riferimento sta nella skill
 `code-guardrails`): si copia in `scripts/` così com'è e trova da sé il package
 da indicizzare (la cartella con `__init__.py` nella radice del repo). La regola
 dei layer è del progetto e sta nel suo `pyproject.toml`; un nome vietato può
-essere un layer interno o un pacchetto esterno (`forge` per snapbend):
+essere un layer interno o un pacchetto esterno (`topo` per snapbend):
 
     [tool.gen_index.layers]
     core  = ["adapters", "tools", "io"]

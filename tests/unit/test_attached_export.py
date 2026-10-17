@@ -2,7 +2,7 @@
 tests/unit/test_attached_export.py
 ----------------------------------
 D70: `to_dxf` scrive ogni collezione attaccata a `cluster.detected` da un
-consumatore (D90: tutte, forge non ne conosce nessuna per nome). Un elemento
+consumatore (D90: tutte, topo non ne conosce nessuna per nome). Un elemento
 con `role` va sul layer del suo ruolo: i suoi `contours` se ne ha, altrimenti
 i suoi `segments`. Senza ruolo o senza geometria si salta.
 """
@@ -10,8 +10,8 @@ i suoi `segments`. Senza ruolo o senza geometria si salta.
 import unittest
 from dataclasses import dataclass, field
 
-import forge
-from forge.model import DetectedFeatures
+import topo
+from topo.model import DetectedFeatures
 
 
 @dataclass
@@ -35,13 +35,13 @@ class _Composite:
 
 def _plate():
     # piastra 100x50 con due fori concentrici e uno singolo
-    doc = forge.load_geometry([
+    doc = topo.load_geometry([
         {"type": "polygon", "points": [(0, 0), (100, 0), (100, 50), (0, 50)]},
         {"type": "circle", "center": (20, 25), "radius": 3},
         {"type": "circle", "center": (20, 25), "radius": 6},
         {"type": "circle", "center": (70, 25), "radius": 4},
     ])
-    return doc, forge.heal(doc)
+    return doc, topo.heal(doc)
 
 
 def _layers(out):
@@ -56,7 +56,7 @@ class TestAttachedExport(unittest.TestCase):
         single = next(i for i in cluster.inners if abs(i.polygon.area - 3.1416 * 16) < 1)
         cluster.detected = DetectedFeatures()
         cluster.detected.attach("my_marks", [_Mark(role="my_role", segments=single.segments)])
-        layers = _layers(forge.to_dxf(result, doc))
+        layers = _layers(topo.to_dxf(result, doc))
         self.assertEqual(layers.count("my_role"), 1)
 
     def test_elemento_con_contours_scrive_ogni_contorno(self):
@@ -66,16 +66,16 @@ class TestAttachedExport(unittest.TestCase):
         self.assertEqual(len(pair), 2)
         cluster.detected = DetectedFeatures()
         cluster.detected.attach("my_marks", [_Composite(role="my_seat", contours=pair)])
-        self.assertEqual(_layers(forge.to_dxf(result, doc)).count("my_seat"), 2)
+        self.assertEqual(_layers(topo.to_dxf(result, doc)).count("my_seat"), 2)
 
     def test_senza_ruolo_o_senza_geometria_si_salta(self):
         doc, result = _plate()
         cluster = result.clusters[0]
-        before = len(_layers(forge.to_dxf(result, doc)))
+        before = len(_layers(topo.to_dxf(result, doc)))
         cluster.detected = DetectedFeatures()
         cluster.detected.attach("my_marks", [_Mark(role="", segments=cluster.inners[0].segments),
                                              _Mark(role="my_role"), object()])
-        self.assertEqual(len(_layers(forge.to_dxf(result, doc))), before)
+        self.assertEqual(len(_layers(topo.to_dxf(result, doc))), before)
 
 
 if __name__ == "__main__":
