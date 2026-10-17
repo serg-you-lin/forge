@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`forge.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`74` modules · `380` module-level functions · `56` classes · `13658` lines of code.
+`74` modules · `381` module-level functions · `56` classes · `13688` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -109,6 +109,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `Curve` | class | `forge/model/curve.py:38` | Radice della gerarchia. Porta solo identità semantica e traceability. |
 | `_cutters` | func | `forge/core/topology/noding.py:142` |  |
 | `dangling_splines` | func | `forge/core/healing/steps.py:149` | SplineSeg aperte con almeno un estremo non collegato a nient'altro. |
+| `dash_line` | func | `forge/core/geometry/lines.py:143` | Il segmento `start`→`end` ridotto a tratti: uno lungo `head` che parte da |
 | `deduplicate` | func | `forge/adapters/dxf/sanitize.py:216` | Shortcut: estrae chiavi, trova duplicati, li elimina. |
 | `delete_entities` | func | `forge/adapters/dxf/sanitize.py:210` | Elimina le entità dal msp in-place. |
 | `_describe_dxf_entity` | func | `forge/inspect.py:104` |  |
@@ -703,7 +704,7 @@ _forge/core/geometry/intersections.py_
 - `_closest_to(candidates: List[Point], ref: Point) -> Optional[Point]` — L91 — Restituisce il punto più vicino a ref tra i candidati.
 - `polyline_line_intersections(points: List[Point], closed: bool, p1: Point, p2: Point) -> List[Tuple[Point, int]]` — L98 — Intersezioni fra la retta infinita (p1, p2) e la spezzata `points` (ogni
 
-#### `forge/core/geometry/lines.py` — 140 lines
+#### `forge/core/geometry/lines.py` — 170 lines
 
 _forge/core/geometry/lines.py_
 
@@ -714,6 +715,7 @@ _forge/core/geometry/lines.py_
 - `splits_polygon(polygon, start: Point, end: Point, reach: float=0.0) -> bool` — L82 — La corda `start`-`end`, prolungata di `reach` ai due capi, divide `polygon` in due o più parti.
 - **class** `CollinearRun` — L94 — Tratti sulla stessa retta, in fila lungo di essa.
 - `bridged_runs(segments: Sequence, bridges: Sequence, tolerance: float=COLLINEAR_TOLERANCE, angle_tolerance: float=COLLINEAR_ANGLE_TOLERANCE) -> list[CollinearRun]` — L106 — File di due o più tratti sulla stessa retta in cui lo spazio fra un tratto
+- `dash_line(start: Point, end: Point, head: float, tail: float, middle: float=0.0, n_middle: int=0) -> list[Tuple[Point, Point]]` — L143 — Il segmento `start`→`end` ridotto a tratti: uno lungo `head` che parte da
 
 #### `forge/core/geometry/measure.py` — 179 lines
 

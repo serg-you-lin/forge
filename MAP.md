@@ -4078,3 +4078,21 @@ they were written.
 `rotate_document` without `tolerance`, `apply_gap_fixes` without
 `node_decimals`, `node_decimals_for` removed, the `Feature` names above; in
 0.x a breaking change is a minor bump).
+
+### D115 — `forge.geometry.dash_line`: a segment cut into dashes with anchored ends and equal gaps ✅
+A consumer that marks a line instead of drawing it whole (snapbend's bend
+lines, first) needs the same construction every time: one dash glued to each
+end, `n` equal dashes in the middle, all gaps equal. It is arithmetic along a
+segment, no process in it, so it is forge's (D91): a consumer that wrote it
+privately would be the second copy of a geometric fact.
+
+`dash_line(start, end, head, tail, middle=0.0, n_middle=0)` returns
+`(start, end)` pairs in the segment's direction, like the other line facts in
+`lines.py`. The dashes are placed from the two ends inward because the ends are
+the points a reader of the line must see: where it starts and where it stops.
+When the dashes cover the whole length there is no gap left to leave, so the
+segment comes back whole rather than as overlapping dashes. Straight segments
+only: no consumer needs dashes along an arc, and `sub_segment` is there when
+one does.
+
+`main` → **0.15.1** (additive).

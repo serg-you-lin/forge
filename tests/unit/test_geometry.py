@@ -6,6 +6,7 @@ Test unitari per le funzioni pure di forge.core.geometry.
 Copre:
   - are_collinear         : verifica collinearità di due LineString (forge/core/lines.py, D93)
   - group_collinear_lines : raggruppa LineString collineari
+  - dash_line             : tratteggio di un segmento, capi ancorati e vuoti uguali
 """
 
 import unittest
@@ -19,7 +20,7 @@ sys.path.insert(0, str(project_root))
 from shapely.geometry import LineString
 
 from forge.core.primitives.segments import ArcSeg, LineSeg
-from forge.core.geometry.lines import are_collinear, group_collinear_lines
+from forge.core.geometry.lines import are_collinear, group_collinear_lines, dash_line
 from forge.core.geometry.measure import (
     track_points, track_length, track_shape_type, segment_length, longest_segment,
     chord_angle_deg, length_inside,
@@ -385,3 +386,42 @@ class TestInterpolateBspline(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+class TestDashLine(unittest.TestCase):
+    """Tratteggio di un segmento: capi ancorati, vuoti uguali, segmento intero se coperto."""
+
+    def _lengths(self, dashes):
+        return [round(math.dist(a, b), 9) for a, b in dashes]
+
+    def test_head_tail_and_middle_with_equal_gaps(self):
+        # 100 lungo, tratti 10: due capi + 2 centrali = 40 coperti, 3 vuoti da 20
+        dashes = dash_line((0, 0), (100, 0), head=10, tail=10, middle=10, n_middle=2)
+        self.assertEqual([(round(a[0], 9), round(b[0], 9)) for a, b in dashes],
+                         [(0, 10), (30, 40), (60, 70), (90, 100)])
+
+    def test_only_head_and_tail(self):
+        dashes = dash_line((0, 0), (100, 0), head=15, tail=5)
+        self.assertEqual(self._lengths(dashes), [15, 5])
+        self.assertEqual(dashes[0][0], (0, 0))
+        self.assertEqual(dashes[-1][1], (100.0, 0.0))
+
+    def test_follows_the_direction_of_a_slanted_segment(self):
+        dashes = dash_line((10, 10), (10 + 60, 10 + 80), head=10, tail=10, middle=10, n_middle=1)
+        self.assertEqual(self._lengths(dashes), [10, 10, 10])
+        for a, b in dashes:
+            self.assertAlmostEqual((b[1] - a[1]) / (b[0] - a[0]), 80 / 60)
+
+    def test_covered_segment_stays_whole(self):
+        self.assertEqual(dash_line((0, 0), (30, 0), head=10, tail=10, middle=10, n_middle=1),
+                         [((0, 0), (30, 0))])
+        self.assertEqual(dash_line((0, 0), (30, 0), head=20, tail=20), [((0, 0), (30, 0))])
+
+    def test_zero_length_dash_is_dropped(self):
+        dashes = dash_line((0, 0), (100, 0), head=0, tail=10, middle=10, n_middle=1)
+        self.assertEqual(self._lengths(dashes), [10, 10])
+
+    def test_negative_length_raises(self):
+        with self.assertRaises(ValueError):
+            dash_line((0, 0), (100, 0), head=-1, tail=10)
+        with self.assertRaises(ValueError):
+            dash_line((0, 0), (100, 0), head=1, tail=1, middle=1, n_middle=-1)

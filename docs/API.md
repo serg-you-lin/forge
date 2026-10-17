@@ -665,6 +665,23 @@ di direzione in radianti. I tratti rimasti da soli non compaiono.
 
 ---
 
+### `dash_line`
+
+```python
+forge.geometry.dash_line(start, end, head, tail, middle=0.0, n_middle=0) -> list[tuple[Point, Point]]
+```
+
+Il segmento `start`→`end` ridotto a tratti: uno lungo `head` attaccato a
+`start`, uno lungo `tail` attaccato a `end`, e `n_middle` tratti lunghi
+`middle` fra i due, con tutti i vuoti uguali. Ogni tratto è `(start, end)` nel
+verso del segmento; un tratto lungo zero non compare. Se i tratti coprono tutto
+il segmento torna `[(start, end)]`, intero. Fatto geometrico: che quel segmento
+sia una piega lo decide il consumatore (D115).
+
+**Non muta** niente. **Solleva** `ValueError` su lunghezze o `n_middle` negativi.
+
+---
+
 ### `covered_rectangles`
 
 ```python

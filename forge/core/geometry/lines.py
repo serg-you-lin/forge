@@ -3,7 +3,7 @@ forge/core/geometry/lines.py
 ----------------------------
 Fatti fra rette e poligoni: distanza da una retta, tratti sulla stessa retta,
 file di tratti unite attraverso dei poligoni, una corda che divide un
-poligono. Geometria pura: che quella corda sia una piega lo dice il
+poligono, il tratteggio di un segmento. Geometria pura: che quella corda sia una piega lo dice il
 consumatore (MAP.md D93).
 
 Un tratto è una `LineString` o una coppia di punti `(start, end)`.
@@ -138,3 +138,33 @@ def bridged_runs(segments: Sequence, bridges: Sequence, tolerance: float = COLLI
         if len(chain) >= 2:
             runs.append(CollinearRun(chain[0][1], chain[-1][2], tuple(t[3] for t in chain)))
     return runs
+
+
+def dash_line(start: Point, end: Point, head: float, tail: float,
+              middle: float = 0.0, n_middle: int = 0) -> list[Tuple[Point, Point]]:
+    """
+    Il segmento `start`→`end` ridotto a tratti: uno lungo `head` che parte da
+    `start`, uno lungo `tail` che finisce in `end`, e `n_middle` tratti lunghi
+    `middle` fra i due, con tutti i vuoti uguali. Ogni tratto è `(start, end)`
+    nel verso del segmento; un tratto lungo zero non compare.
+
+    Se i tratti coprono tutto il segmento (o di più) il segmento torna intero:
+    non resta nessun vuoto da lasciare. Lunghezze negative → ValueError.
+    """
+    if min(head, tail, middle) < 0 or n_middle < 0:
+        raise ValueError("dash_line: lunghezze e numero di tratti devono essere ≥ 0")
+    length = math.dist(start, end)
+    covered = head + tail + n_middle * middle
+    if covered >= length:
+        return [(start, end)]
+    ux, uy = (end[0] - start[0]) / length, (end[1] - start[1]) / length
+    at = lambda t: (start[0] + ux * t, start[1] + uy * t)
+    gap = (length - covered) / (n_middle + 1)
+    spans = [(0.0, head)]
+    t = head
+    for _ in range(n_middle):
+        t += gap
+        spans.append((t, t + middle))
+        t += middle
+    spans.append((length - tail, length))
+    return [(at(a), at(b)) for a, b in spans if b > a]

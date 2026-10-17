@@ -8,7 +8,7 @@ decide il consumatore.
 Pubblici (qui sotto):
     build.py          costruire forme come segmenti: polygon, rectangle, regular_polygon, circle, stadium
     shape.py          forma di un contorno chiuso; cerchi concentrici; archi attorno a un cerchio
-    lines.py          una corda che divide un poligono; file di tratti collineari unite attraverso dei poligoni
+    lines.py          una corda che divide un poligono; file di tratti collineari unite attraverso dei poligoni; tratteggio di un segmento
     axis.py           rettangoli coperti da tratti, linee che li attraversano, lati sul bordo di un altro, quota sugli assi
 
 Mattoni (si importano dal sottomodulo):
@@ -24,7 +24,7 @@ from .shape import (
     concentric_groups, ConcentricGroup,
     arcs_around, ArcAround,
 )
-from .lines import splits_polygon, bridged_runs, CollinearRun
+from .lines import splits_polygon, bridged_runs, CollinearRun, dash_line
 from .axis import covered_rectangles, CoveredRectangle, spanning_lines, sides_on_border, axis_aligned_share
 
 __all__ = [
@@ -32,6 +32,6 @@ __all__ = [
     "contour_shape", "ContourShape",
     "concentric_groups", "ConcentricGroup",
     "arcs_around", "ArcAround",
-    "splits_polygon", "bridged_runs", "CollinearRun",
+    "splits_polygon", "bridged_runs", "CollinearRun", "dash_line",
     "covered_rectangles", "CoveredRectangle", "spanning_lines", "sides_on_border", "axis_aligned_share",
 ]
