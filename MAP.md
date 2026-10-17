@@ -4213,3 +4213,36 @@ and docstrings uses the one form, and the rule is written at the top of
 imports them bare anyway.
 
 `main` → **0.17.0**.
+
+### D120 — the public surface, first half: `topo.primitives`, `topo.model` ✅
+`topo.primitives` holds the five native segments (`LineSeg`, `ArcSeg`,
+`CircleSeg`, `SplineSeg`, `EllipseSeg`) and `sub_segment`: pure math, no
+role. `topo.model` becomes the full public home of the model types, roles
+included (`ContourRole`, `role_str`, `normalize_role`, `is_structural_role`)
+and `Edge` — not in `primitives`, because an `Edge` is a segment *with* a
+role, style and provenance (`core/topology/edge.py` says so), a model fact.
+The four most used types stay on the top level too (`topo.Result`, …).
+Everything under `topo.core` is internal, without guarantee.
+
+Consumers moved to the full form of D119 (`import topo`, then
+`topo.primitives.LineSeg`, `topo.model.ClosedCurve`, `topo.geometry.<fact>`
+when the fact is already exported there): snapbend (its D65), snapdraw,
+smoother, the numbered scripts here. Nothing changed in behaviour: the suites
+are as before, a third-party pipeline's output is identical to the decimal.
+
+`scripts/gen_index.py` learns two things, for the consumers: a `"*"` layer
+(every module) and dotted names (`"topo.core"` forbids that path and all under
+it). Not switched on in any consumer yet: what they still import from inside
+is the second half, below.
+
+**The second half (open, TODO.md)**: names consumers still reach inside for,
+each a decision rather than a move — the track helpers of
+`core.geometry.measure`, `group_collinear_lines`, `merge_intervals`,
+`length_inside`, `segment_length`, `items_inside`, `axis_lines` (geometry not
+exported in `topo.geometry`); the DXF layer table (`adapters.dxf.layers`);
+in snapdraw's lab `edge_geometry`, `build_node_graph`, `LoopFinder` and the
+private `_outer_face_walk`; in smoother `tools.tabs.bridge_nested_tabs`.
+Then the `"*"` rule in every consumer.
+
+`main` → **0.18.0** (new public namespaces; `topo.model.Edge` unchanged).
+

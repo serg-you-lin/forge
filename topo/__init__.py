@@ -124,6 +124,9 @@ from .core import geometry
 # I passi di heal() e della lettura per isole, uno per funzione, per chi
 # compone la sua ricetta: `topo.steps` (MAP.md D62, D117).
 from . import steps
+# Le primitive geometriche e i tipi del modello, pubblici: `topo.primitives`,
+# `topo.model`. Sotto `topo.core` è interno (MAP.md D120).
+from . import primitives, model
 from .inspect             import (
     inspect_dxf, inspect_document, inspect_result, inspect_file,
 )
@@ -158,6 +161,8 @@ __all__ = [
     "resolve_target",
     "geometry",
     "steps",
+    "primitives",
+    "model",
     "split_to_files",
     # Export
     "to_json",

@@ -144,6 +144,21 @@ topo.inspect_file(path, tolerance=0.05, role_rules=(),
 
 ## Domain types
 
+Three public namespaces besides the top level (D120); everything under `topo.core` is internal, no guarantee:
+
+| namespace | holds |
+|---|---|
+| `topo.primitives` | the native segments `LineSeg`, `ArcSeg`, `CircleSeg`, `SplineSeg`, `EllipseSeg` (pure math, no role) and `sub_segment(seg, a, b, via)` — the piece of `seg` from `a` to `b` |
+| `topo.model` | the model types: `Document`, `Result`, `Cluster`, `Contour`, `Curve`, `ClosedCurve`, `OpenCurve`, `Edge` (a segment + role + style), `EdgeStyle`, `Annotation`/`Note`/`Dimension`/`Leader`, `DetectedFeature(s)`, and the roles: `ContourRole`, `role_str`, `normalize_role`, `is_structural_role`. The four most used are also `topo.Document/Result/Cluster/Contour`. |
+| `topo.steps` | the steps of `heal()` and of the island reading (see Functions) |
+
+```python
+import topo
+
+side = topo.primitives.LineSeg(start=(0, 0), end=(100, 0))
+class Hole(topo.model.ClosedCurve): ...
+```
+
 **`Document`** (from `load_dxf`/`document_from_msp`/`load_geometry`): `edges: list[Edge]`, `annotations: list[Annotation]`, `source_meta: dict`, `source_path: str`, `warnings: list[str]`.
 
 **`Result`** (from `heal`, enriched by a consumer/`inject`): `clusters: list[Cluster]`, `is_valid: bool` (**check before handing output to a machine**), `warnings`/`errors: list[str]`, `trash_entities: list`, `annotations: list[Annotation]`, `classified_entities: list`, `all_arcs: list[ArcSeg]`, `cluster_count` (property). `.to_dict()` for JSON.

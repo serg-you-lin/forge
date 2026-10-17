@@ -26,14 +26,22 @@ primitive di topo. In ordine (i passi che rompono vanno tutti in una minor):
    repo GitHub `forge` → `topo`; dopo, reinstallare l'editable
    (`pip install -e ../topo --no-deps`), `git remote set-url` e
    `git worktree repair` per `forge-pdf-adapter`.
-2. **Superficie pubblica esplicita**: `topo` (pipeline), `topo.geometry`
-   (fatti, D95), un `topo.primitives` nuovo (segmenti, `Edge`, `sub_segment`,
-   un costruttore "contorno da segmenti" che valida, al posto di un
-   `Contour` costruito a mano con `depth`/`parent`), `topo.model` (tipi).
-   Sotto `core.*` è interno, senza garanzie. Oggi i consumer importano dai
-   sottomoduli (snapbend 41 import, snapdraw 35, forge-pdf-adapter 170):
-   migrarli, poi un controllo di `gen_index` nei consumer che vieta `core`
-   (in snapbend vuol dire riaprire il suo D57).
+2. **Superficie pubblica esplicita** — prima metà fatta, D120 (0.18.0):
+   `topo.primitives` (segmenti, `sub_segment`), `topo.model` completo (ruoli,
+   `Edge`), consumer migrati alla forma intera di D119, `gen_index` sa vietare
+   `topo.core` (layer `"*"`, nomi col punto).
+   **Seconda metà (da fare, 18 ottobre)**: per ogni nome che un consumer
+   prende ancora da dentro, decidere — nome pubblico, nome esistente, o una
+   primitiva che manca. Lista in D120: helper di `core.geometry.measure`
+   (track_*, `circular_geometry`, `chord_angle_deg`, `length_inside`,
+   `segment_length`), `group_collinear_lines`, `merge_intervals`,
+   `items_inside`, `axis_lines`; la tabella dei layer DXF
+   (`adapters.dxf.layers`: `role_to_dxf_layer`, `LAYER_*`, `TRASH_LAYER`,
+   `ALL_LAYERS`, `ROLE_TO_LAYER`); nel lab di snapdraw `edge_geometry`,
+   `build_node_graph`, `LoopFinder`, `segments_from_loop`,
+   `edge_styles_from_loop` e la privata `_outer_face_walk` (prima questa);
+   in smoother `tools.tabs.bridge_nested_tabs`. Poi
+   `"*" = ["topo.core", "topo.adapters"]` nel pyproject di ogni consumer.
 3. ~~**Le primitive di D109**~~ — fatte, D118. Criterio: un algoritmo esterno
    (le scantonature a disco del prototipo) tiene private solo le scelte di
    processo — quali spigoli, che raggio, come raggruppare — e nessuna

@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`topo.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`76` modules · `405` module-level functions · `57` classes · `14151` lines of code.
+`77` modules · `405` module-level functions · `57` classes · `14190` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -201,7 +201,7 @@ Every module-level name in the package, alphabetically. **Search here before wri
 | `_generic` | func | `topo/core/geometry/shape.py:139` |  |
 | `GeometryAdapter` | class | `topo/adapters/geometry/loader.py:49` | Traduce descrizioni geometriche pure (dict) in Edge del dominio topo. |
 | `_get_solver` | func | `topo/core/healing/gap_solver.py:162` |  |
-| `__getattr__` | func | `topo/model/__init__.py:33` |  |
+| `__getattr__` | func | `topo/model/__init__.py:46` |  |
 | `_graph` | func | `topo/core/healing/steps.py:389` |  |
 | `Graph` | class | `topo/core/topology/graph.py:59` | Grafo topologico interrogabile. |
 | `group_collinear_lines` | func | `topo/core/geometry/lines.py:61` | Tratti raggruppati per retta: [[L1, L2], [L3], ...]. Ogni gruppo prende la |
@@ -511,7 +511,7 @@ Same name defined at module level in different modules. Not automatically a bug 
 
 ### `topo/` (root)
 
-#### `topo/__init__.py` — 203 lines
+#### `topo/__init__.py` — 208 lines
 
 _topo_
 
@@ -1202,9 +1202,11 @@ _io/view_model.py_
 
 ### `topo/model/`
 
-#### `topo/model/__init__.py` — 37 lines
+#### `topo/model/__init__.py` — 52 lines
 
-- `__getattr__(name)` — L33
+_topo/model/__init__.py_
+
+- `__getattr__(name)` — L46
 
 #### `topo/model/annotation.py` — 156 lines
 
@@ -1293,6 +1295,12 @@ _model/style.py_
   - methods: `is_dashed`, `dash_kind`
 
 ### `topo/` (root)
+
+#### `topo/primitives.py` — 19 lines
+
+_topo/primitives.py_
+
+No module-level function or class.
 
 #### `topo/recipes.py` — 52 lines
 
@@ -1453,13 +1461,14 @@ Which `topo` modules each module imports — "what works with what". Modules wit
 | `topo/io/svg.py` | `topo.io.view_model` · `topo.model` |
 | `topo/io/text.py` | `topo.core.geometry.shape` · `topo.core.primitives.segments` · `topo.model` · `topo.model.annotation` |
 | `topo/io/view_model.py` | `topo.core.geometry.measure` · `topo.model` · `topo.model.role` · `topo.rules.palette` |
-| `topo/model/__init__.py` | `topo.core.topology.edge` · `topo.model.annotation` · `topo.model.cluster` · `topo.model.contour` · `topo.model.curve` · `topo.model.detected` · `topo.model.document` · `topo.model.result` · `topo.model.style` |
+| `topo/model/__init__.py` | `topo.core.topology.edge` · `topo.model.annotation` · `topo.model.cluster` · `topo.model.contour` · `topo.model.curve` · `topo.model.detected` · `topo.model.document` · `topo.model.result` · `topo.model.role` · `topo.model.style` |
 | `topo/model/cluster.py` | `topo.model.contour` |
 | `topo/model/contour.py` | `topo.core.primitives.polygon_builder` · `topo.core.primitives.segments` · `topo.model.curve` |
 | `topo/model/curve.py` | `topo.core.primitives.segments` · `topo.model.style` |
 | `topo/model/document.py` | `topo.core.topology.edge` · `topo.model.annotation` |
 | `topo/model/result.py` | `topo.model.annotation` · `topo.model.cluster` |
 | `topo/model/role_rule.py` | `topo.model.role` · `topo.model.style` |
+| `topo/primitives.py` | `topo.core.primitives.segments` · `topo.core.primitives.trim` |
 | `topo/recipes.py` | `topo.adapters.dxf.layers` · `topo.core.heal` · `topo.io.dxf` · `topo.model.document` · `topo.model.result` |
 | `topo/rules/palette.py` | `topo.model.role` |
 | `topo/rules/validator.py` | `topo.core.primitives.segments` · `topo.core.topology.graph` · `topo.model` · `topo.model.document` |

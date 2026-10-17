@@ -20,7 +20,6 @@ import os
 import ezdxf
 
 import topo
-from topo.core.primitives.segments import LineSeg, ArcSeg, CircleSeg
 from topo.tools.tabs import bridge_nested_tabs
 
 # --- CONFIG ------------------------------------------------------------
@@ -34,15 +33,15 @@ OUTDIR = "pipeline_output"
 
 
 def write_native(msp, seg):
-    if isinstance(seg, LineSeg):
+    if isinstance(seg, topo.primitives.LineSeg):
         msp.add_line(seg.start, seg.end)
-    elif isinstance(seg, ArcSeg):
+    elif isinstance(seg, topo.primitives.ArcSeg):
         msp.add_arc(
             center=seg.center, radius=seg.radius,
             start_angle=math.degrees(seg.start_angle),
             end_angle=math.degrees(seg.end_angle),
         )
-    elif isinstance(seg, CircleSeg):
+    elif isinstance(seg, topo.primitives.CircleSeg):
         msp.add_circle(center=seg.center, radius=seg.radius)
     else:
         raise TypeError(f"tipo non gestito in questo script: {type(seg)}")

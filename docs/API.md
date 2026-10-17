@@ -1317,6 +1317,28 @@ topo.inspect_file("pezzo.dxf", role_rules=[topo.RoleRule("bending", dashed=True)
 
 ## 7. Tipi di dominio
 
+Oltre alla top-level ci sono tre namespace pubblici (MAP.md D120); quello che
+sta sotto `topo.core` è interno, senza garanzie:
+
+- **`topo.primitives`** — i segmenti nativi `LineSeg`, `ArcSeg`, `CircleSeg`,
+  `SplineSeg`, `EllipseSeg` (math puro, nessun ruolo) e
+  `sub_segment(seg, a, b, via)`, il tratto di `seg` da `a` a `b` (`via`, un
+  punto interno, serve solo su una curva chiusa).
+- **`topo.model`** — i tipi qui sotto (`Document`, `Result`, `Cluster`,
+  `Contour`), le curve (`Curve`, `ClosedCurve`, `OpenCurve`), `Edge` (un
+  segmento con ruolo e stile), `EdgeStyle`, le annotazioni, le feature
+  rilevate e i ruoli: `ContourRole`, `role_str`, `normalize_role`,
+  `is_structural_role`. I quattro più usati stanno anche in `topo.<Nome>`.
+- **`topo.steps`** — i passi di `heal()` e della lettura per isole (§3).
+
+```python
+import topo
+
+side = topo.primitives.LineSeg(start=(0, 0), end=(100, 0))
+
+class Hole(topo.model.ClosedCurve): ...
+```
+
 ### `Document`
 
 Prodotto da `load_dxf` / `document_from_msp`. È il contratto tra l'adapter e il

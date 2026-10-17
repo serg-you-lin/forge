@@ -39,6 +39,12 @@ essere un layer interno o un pacchetto esterno (`topo` per snapbend):
     core  = ["adapters", "tools", "io"]
     model = ["adapters", "tools", "io"]
 
+Il layer `"*"` vale per ogni modulo; un nome con il punto vieta un percorso
+di un pacchetto esterno e tutto quello che ci sta sotto (un consumer di topo
+che non entra negli interni):
+
+    "*" = ["topo.core"]
+
 Senza sezione l'indice si genera comunque e dice che non c'è nessuna regola.
 """
 
@@ -136,6 +142,7 @@ class Module:
     symbols: list[Symbol] = field(default_factory=list)
     imports: set[str] = field(default_factory=set)   # moduli interni importati
     external: set[str] = field(default_factory=set)  # pacchetti esterni, primo livello
+    external_paths: set[str] = field(default_factory=set)  # gli stessi, percorso intero
     loc: int = 0
 
     @property
@@ -234,6 +241,17 @@ def external_imports(node: ast.Import | ast.ImportFrom, pkg_name: str) -> set[st
     return {n.split(".")[0] for n in names if n.split(".")[0] != pkg_name}
 
 
+def external_import_paths(node: ast.Import | ast.ImportFrom, pkg_name: str) -> set[str]:
+    """I moduli esterni importati da uno statement assoluto, con il percorso intero."""
+    if isinstance(node, ast.Import):
+        names = [alias.name for alias in node.names]
+    elif node.level == 0 and node.module:
+        names = [node.module]
+    else:
+        return set()
+    return {n for n in names if n.split(".")[0] != pkg_name}
+
+
 def read_module(path: Path, pkg_name: str) -> Module:
     """Estrae simboli e dipendenze di un file, senza importarlo."""
     source = path.read_text(encoding="utf-8")
@@ -268,6 +286,7 @@ def read_module(path: Path, pkg_name: str) -> Module:
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             module.imports |= resolve_import(node, rel, pkg_name)
             module.external |= external_imports(node, pkg_name)
+            module.external_paths |= external_import_paths(node, pkg_name)
 
     return module
 
@@ -306,7 +325,7 @@ def find_layer_violations(modules: Iterable[Module],
     """Import che violano la regola di dipendenza, come (modulo, import)."""
     violations: list[tuple[str, str]] = []
     for module in modules:
-        forbidden = LAYER_RULE.get(module.layer)
+        forbidden = LAYER_RULE.get(module.layer, ()) + LAYER_RULE.get("*", ())
         if not forbidden:
             continue
         for imported in sorted(module.imports):
@@ -315,6 +334,10 @@ def find_layer_violations(modules: Iterable[Module],
                 violations.append((module.path, imported))
         for package in sorted(module.external & set(forbidden)):
             violations.append((module.path, package))
+        dotted = [f for f in forbidden if "." in f]
+        for path in sorted(module.external_paths):
+            if any(path == f or path.startswith(f + ".") for f in dotted):
+                violations.append((module.path, path))
     return violations
 
 
@@ -608,7 +631,8 @@ def render(modules: list[Module], pkg_name: str) -> str:
     else:
         for layer, forbidden in layer_rule.items():
             forbidden_list = ", ".join(f"`{f}`" for f in forbidden)
-            w(f"- `{layer}` never imports {forbidden_list}")
+            who = "every module" if layer == "*" else f"`{layer}`"
+            w(f"- {who} never imports {forbidden_list}")
         w("")
         w("`TYPE_CHECKING`-only imports count as violations here and must be "
           "verified by hand.")
