@@ -52,6 +52,15 @@ it directly and render only what you hand on.
 
 `split_to_files(doc, folder)` = `heal` + `split` + `.saveas()` per part — the only function that writes to disk on its own.
 
+## How to write a call
+
+One `import topo`, then every name with its full path: `topo.heal(...)`,
+`topo.Result`, `topo.geometry.contour_shape(...)`, `topo.steps.find_loops(...)`.
+Never `from topo.steps import find_loops` or `from topo import steps`: a name
+read alone in the middle of a script doesn't say whose it is;
+`topo.steps.find_loops` does. Every example in this file follows it — write
+your code the same way (D119).
+
 ## Golden path
 
 ```python
@@ -94,7 +103,7 @@ topo.save_json(result, "out.json")
 | `leader_target` | `(result, leader, distance=0.5) -> str\|None` | element the arrow tip (`leader.vertices[0]`) lands on, as a path in `result`: `"clusters[0].outer"`, `"clusters[0].inners[3]"`, `"clusters[1].holes[2]"` (any `cluster.detected` collection). Nearest boundary within `distance` (tie → smaller element); else smallest closed non-outer element covering the tip; else `None` (e.g. section arrows outside the view). Geometry only, never reads the text (D66). |
 | `dimension_references` | `(result, dimension, distance=0.5) -> list[str]` | elements a dimension measures, as `target`-style paths: for each of `measured_points`, the element whose boundary passes within `distance` (tie → smaller). No duplicates, in point order: a diameter gives the circle, a linear one or two elements. Pure geometry — reading `"M5"` as a thread is the reader's job. |
 | `resolve_target` | `(result, target) -> Any` | inverse of `leader_target`: the contour/feature object, or `None` if the path no longer exists. |
-| — | — | **Geometry facts live in `topo.geometry`** (package `topo/core/geometry/`, D95): call `topo.geometry.contour_shape(...)` etc., never `topo.contour_shape`; to import a name, `from topo.core.geometry import contour_shape` (`topo.geometry` is an attribute, not an import path). Building blocks (`measure`, `points`, `intersections`, and the helpers of `lines`/`axis`) are imported from the submodule, e.g. `from topo.core.geometry.measure import track_points`. |
+| — | — | **Geometry facts live in `topo.geometry`** (package `topo/core/geometry/`, D95): call `topo.geometry.contour_shape(...)` etc. with the full path — never `topo.contour_shape`, never the name imported bare (D119). Helpers not exported in `topo.geometry` (in `measure`, `points`, `lines`, `axis`) still live in the submodules of `topo.core.geometry`: internal, no guarantee until the 1.0 public surface. |
 | `geometry.polygon` / `rectangle` / `regular_polygon` / `circle` / `stadium` | `polygon(points)`, `rectangle(length, width, center=(0,0), angle=0)`, `regular_polygon(sides, radius, center, angle)`, `circle(radius, center)`, `stadium(length, width, center, angle)` -> list of segments | build a closed loop as topo segments (stadium with true `ArcSeg`s), feed it to `load_segments`. Arguments are what `contour_shape` reports (angle in degrees), so build and read round-trip. Rhombus, trapezoid, any straight-sided shape = `polygon` (D96). |
 | `geometry.contour_shape` | `(item, tolerance=0.01, angle_tolerance=1.0) -> ContourShape \| None` | shape of a closed contour (`Contour`, anything with `.segments`, or a segment list): `kind` = `circle` / `stadium` / `rectangle` / `polygon` / `other`, plus `center`, `length`, `width` (circle: both = diameter; stadium (two equal semicircles + two parallel lines — geometric name, not "slot"): overall length, 2r), `angle` (deg [0,180) of the long axis, `None` for circle), `sides`, `diameter`. A geometric fact, **not** a feature: `circle` does not mean hole. Same on `heal` and `island`. Collinear/co-circular runs are recomposed first (D68). |
 | `geometry.concentric_groups` | `(items, tolerance=0.1) -> list[ConcentricGroup]` | circular contours of `items` partitioned by center (absolute tolerance, drawing units); every circle in exactly one group, singletons too. `ConcentricGroup`: `center` (smallest circle's), `items`, `shapes`, `diameters`, smallest radius first. Geometric fact: pairing circles into countersinks/seats is the consumer's (D91). |
@@ -166,12 +175,14 @@ To mark geometry before `heal` excludes it from the graph: set `edge.role = topo
 
 ### Building your own role + palette (external-tool recipe)
 
-A tool built on top of topo (snapdraw, snapbend, the interpreter, or your own)
+A tool built on top of topo (snapdraw, snapbend, or your own)
 defines its own roles the same way snapbend does for holes and bends — **no
 privileged path exists**, this is the only mechanism. Minimal pattern, one module in your own project:
 
 ```python
 # your_tool/roles.py
+import topo
+
 FLANGE_UP = "flange_up"          # any slug — normalize_role() sanitizes it anyway
 
 def is_structural(role) -> bool:
@@ -182,11 +193,9 @@ def is_structural(role) -> bool:
     topo's default (no predicate) already excludes anything non-outer/inner,
     which is what you want.
     """
-    from topo.model.role import is_structural_role
-    return is_structural_role(role) or role == FLANGE_UP
+    return topo.is_structural_role(role) or role == FLANGE_UP
 
 def register_defaults() -> None:
-    import topo
     topo.register_role_style(FLANGE_UP, topo.RoleStyle(
         color=(255, 165, 0), layer_name="FlangeUp",
     ))

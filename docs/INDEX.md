@@ -8,7 +8,7 @@ python scripts/gen_index.py
 
 What this is: the lookup table of *what already exists* in the package, down to internal helpers. `docs/API.md` documents the public surface (`topo.<name>`) with full cards; this file lists every module-level function and class so nothing gets rewritten because it was not found. Signatures and docstring lines come straight from the source, so they cannot drift.
 
-`76` modules · `405` module-level functions · `57` classes · `14149` lines of code.
+`76` modules · `405` module-level functions · `57` classes · `14151` lines of code.
 
 Sections: [Lookup](#lookup) · [Duplicate names](#duplicate-names) · [Dependency rule](#dependency-rule) · [By module](#by-module) · [Internal dependencies](#internal-dependencies)
 
@@ -1327,7 +1327,7 @@ _rules/validator.py_
 
 ### `topo/` (root)
 
-#### `topo/steps.py` — 50 lines
+#### `topo/steps.py` — 52 lines
 
 _topo/steps.py_
 

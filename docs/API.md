@@ -14,6 +14,13 @@ Convenzioni di questo documento:
 I tipi di dominio (`Document`, `Result`, `Cluster`, …) sono descritti
 in fondo.
 
+**Come si scrive una chiamata.** Un solo `import topo`, poi ogni nome con il
+suo percorso intero: `topo.heal(...)`, `topo.Result`,
+`topo.geometry.contour_shape(...)`, `topo.steps.find_loops(...)`. Mai
+`from topo.steps import find_loops` o `from topo import steps`: un nome letto
+da solo a metà di uno script non dice di chi è, `topo.steps.find_loops` sì.
+Tutti gli esempi di questo documento sono scritti così (MAP.md D119).
+
 ---
 
 ## Indice
@@ -565,11 +572,12 @@ Rombi, trapezi e ogni altra forma con lati dritti sono un `polygon`.
 **Leggere**:
 
 I fatti geometrici stanno tutti in `topo.geometry` (il package
-`topo/core/geometry/`, D95): si chiamano `topo.geometry.<nome>(...)` e si
-importano con `from topo.core.geometry import <nome>` (`topo.geometry` è un
-attributo, non un percorso di import). Nomi geometrici: "cerchio", mai "foro".
-I mattoni (`measure`, `points`, `intersections`, e gli helper di `lines` /
-`axis`) si importano dal sottomodulo; l'elenco con `file:riga` è in
+`topo/core/geometry/`, D95) e si chiamano per intero,
+`topo.geometry.<nome>(...)`, senza importare il nome da solo (D119). Nomi
+geometrici: "cerchio", mai "foro". I mattoni non esportati in `topo.geometry`
+(gli helper di `measure`, `points`, `lines`, `axis`) stanno ancora nei
+sottomoduli di `topo.core.geometry`: interni, senza garanzie finché non c'è
+la superficie pubblica della 1.0 (TODO.md); l'elenco con `file:riga` è in
 `docs/INDEX.md`.
 
 ### `contour_shape`

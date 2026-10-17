@@ -4201,4 +4201,15 @@ Consumers updated in the same pass: snapbend (`to_forge_result` →
 `to_topo_result`), snapdraw, smoother, dxf-anonymize (depends on `g-topo`).
 The local folder and the GitHub repository are renamed by Federico.
 
+How a call is written, for a person and for a language model alike: one
+`import topo`, then the full path — `topo.Result`,
+`topo.geometry.contour_shape(...)`, `topo.steps.find_loops(...)`. Never
+`from topo import steps`: a bare `steps.find_loops` in the middle of a
+150-line script doesn't say whose step it is. A caller can still import as
+they like; what topo controls is what they copy, so every example in the docs
+and docstrings uses the one form, and the rule is written at the top of
+`docs/API.md` and `docs/LLM.md`. The step names themselves (`split_non_finite`,
+`close_free_gaps`, `find_loops`) already read on their own when someone
+imports them bare anyway.
+
 `main` → **0.17.0**.

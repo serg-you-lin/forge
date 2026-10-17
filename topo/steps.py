@@ -9,10 +9,12 @@ la sua ricetta (D58, D62) prende i mattoni da qui — per esempio senza
 dentro un altro:
 
     import topo
-    from topo import steps
 
-    edges = steps.split_non_finite(doc.edges)
+    finite, broken = topo.steps.split_non_finite(doc.edges)
     ...
+
+Si scrive sempre per intero, `topo.steps.<passo>`: "steps" da solo, letto a
+metà di uno script, non dice di chi sono i passi (D119).
 
 La top-level resta per chi usa la pipeline: caricare, heal, island, export,
 validazione, i tipi del modello, `topo.geometry`.
