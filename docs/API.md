@@ -1334,8 +1334,7 @@ di `heal`**: tiene i riferimenti agli `Edge` di `doc.edges`, imposta
 `edge.role = forge.normalize_role("frame")` — resta fuori dal grafo per
 default (nessun predicato lo riconosce strutturale), la geometria marcata
 finisce in `trash_entities` col ruolo intatto e l'output la scrive sul layer
-`frame`. È l'aggancio usato da `snapdraw` per cornice e cartiglio
-(`SNAPDRAW.md`).
+`frame`. È l'aggancio usato da `snapdraw` per cornice e cartiglio.
 
 ### `non_contour_candidates`
 
@@ -1356,7 +1355,7 @@ un'interpretazione propria (un bordo di feature in rilievo vista in pianta non
 di candidati che `heal()` userebbe, senza duplicare il criterio, e decide da
 sé come marcarli — poi assegna `edge.role` sugli `Edge` restituiti (sono
 riferimenti dentro `doc.edges`, mutarli si riflette lì) **prima** di chiamare
-`heal()` (vedi `ContourRole` sopra, SNAPDRAW.md, MAP.md D55).
+`heal()` (vedi `ContourRole` sopra, MAP.md D55).
 
 | parametro | significato |
 |---|---|

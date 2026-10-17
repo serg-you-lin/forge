@@ -1,7 +1,6 @@
 # ROADMAP — la strada verso Pippo, in breve
 
-Non è un doppione di `INTERPRETER.md` (quello resta il "come e perché" di
-ogni pezzo). Questo è il foglio corto: chi fa cosa, cosa c'è già, cosa manca
+Il "come e perché" di ogni pezzo sta in `MAP.md`. Questo è il foglio corto: chi fa cosa, cosa c'è già, cosa manca
 davvero, in che ordine. Se ti perdi tra i dettagli, riparti da qui.
 
 
@@ -27,7 +26,7 @@ scala, vedi la nota sotto: qui la frase originale era imprecisa.
 >
 > 1. **Le coordinate che forge misura sono già a scala reale.** Un file DXF
 >    ben fatto è disegnato in model space 1:1 — la "scala" (Drawing
->    Scale/View Scale/DIMSCALE, vedi `INTERPRETER.md`) è un fattore di
+>    Scale/View Scale/DIMSCALE) è un fattore di
 >    stampa/annotazione, non una trasformazione della geometria. Quindi il
 >    bbox di un cluster che `heal` produce è già la dimensione vera del
 >    pezzo — non c'è un passo "leggi la scala e converti" da fare in più.
@@ -55,7 +54,7 @@ scala, vedi la nota sotto: qui la frase originale era imprecisa.
 |---|---|---|
 | **forge** | il pezzo fabbricato: geometria, topologia, feature (fori/pieghe/incisioni), conteggi (`cluster.summary`) | `dxf-forge`, maturo |
 | **snapdraw** | come il disegno è documentato: cornice, cartiglio, callout, raggruppamento viste | `snapdraw`, pre-alpha, un pezzo su cinque fatto |
-| **l'interprete** | nomenclatura privata del cliente, profili, riempimento buchi da ERP | non esiste ancora un repo — e forse non gli serve nemmeno, vedi `INTERPRETER.md` |
+| **l'interprete** | nomenclatura privata del cliente, profili, riempimento buchi da ERP | non esiste ancora un repo — e forse non gli serve nemmeno |
 | **snapbend** (ex bendly) | sviluppo lamiere — direzione opposta (da specifica a DXF), oracolo di verifica in futuro | `unfold_generator`, alpha, già in uso |
 
 > **Nota (Federico): "forse non gli serve nemmeno [un repo]" — non ho capito
@@ -69,14 +68,13 @@ scala, vedi la nota sotto: qui la frase originale era imprecisa.
 > (`nomenclature.py`, `profiles/`) con dentro le tue tabelle e i tuoi
 > pattern. È abbastanza sottile che potrebbe bastarti chiamare quelle
 > funzioni direttamente da dove oggi chiami forge, senza costruire un
-> pacchetto a parte che le orchestra. Il dettaglio è nella "Domanda aperta"
-> di `INTERPRETER.md`, sezione "L'interprete": non è deciso, resta
+> pacchetto a parte che le orchestra. Non è deciso, resta
 > intenzionalmente aperto finché non vedi quanto pesa in pratica la parte di
 > traduzione privata.
 
 Tutto il resto (Determinismo/Interpretazione/Correzione, il confine
 manifattura/documentazione/privato) è spiegazione del *perché* questa tabella
-è fatta così — sta in `INTERPRETER.md`, non serve ripeterlo qui.
+è fatta così — sta in `MAP.md`, non serve ripeterlo qui.
 
 
 ## Scoperta di stasera: il preventivo è più vicino di quanto sembrasse

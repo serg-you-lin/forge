@@ -15,7 +15,7 @@ contorno esterno → piega, confidence 0.9").
 Un consumatore diverso da `detect_flat()` (snapdraw, l'interprete) può volere la
 stessa lista di candidati SENZA quell'interpretazione, per applicarne una
 propria (un bordo di feature in rilievo vista in pianta non è una piega) e
-assegnare `edge.role` prima di chiamare `heal()` (vedi SNAPDRAW.md, MAP.md D30).
+assegnare `edge.role` prima di chiamare `heal()` (vedi MAP.md D30).
 `non_contour_candidates()` è il punto d'aggancio: stesso criterio, zero
 duplicazione, nessuna fonte di verità seconda che possa divergere da quella
 di `heal()`.

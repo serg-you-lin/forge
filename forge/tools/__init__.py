@@ -9,7 +9,7 @@ sceglie quali eseguire e in che ordine.
 - ``inject``             — passa i testi di un cluster a un data_injector esterno
 
 È il pattern che un interprete di disegno (progetto separato) generalizza e
-orchestra dall'alto (vedi ``INTERPRETER.md``).
+orchestra dall'alto.
 """
 
 from .anchor import anchor_annotations

@@ -97,7 +97,7 @@ from .model         import (
 # Un consumatore che marca la geometria prima di heal() (snapdraw: cornice /
 # cartiglio) setta `edge.role` sugli Edge di `doc.edges` con uno slug ripulito
 # da normalize_role, e is_structural_role dice se quel ruolo è contorno di
-# pezzo o arredo che heal terrà fuori dal grafo. Vedi INTERPRETER.md / D30.
+# pezzo o arredo che heal terrà fuori dal grafo. Vedi MAP.md D30.
 from .model.role      import normalize_role, is_structural_role
 # Regole del chiamante che assegnano il ruolo al load (D63).
 from .model.role_rule import RoleRule, name_rules
@@ -111,7 +111,7 @@ from .rules.palette   import RoleStyle, register_role_style
 # dei contorni (branching + centroide fuori dal hull, D49) — senza dire cosa
 # sia quell'edge. Un consumatore che vuole decidere `edge.role` prima di
 # heal() con un'interpretazione propria (non "bending" come fa detect_flat()) lo
-# chiama su doc.edges. Vedi SNAPDRAW.md, MAP.md D55.
+# chiama su doc.edges. Vedi MAP.md D55.
 from .tools.non_contour import non_contour_candidates
 # Seconda lettura di un documento, accanto a heal(): per isole, contorno
 # esterno come faccia esterna della rete piana (disegni di viste, 3D

@@ -15,6 +15,34 @@ ancora aperto.
 Lista corta e in ordine, scritta perché una sessione nuova non ricominci da capo
 dimenticando quella prima. Il dettaglio di ognuno sta più sotto o in `MAP.md`.
 
+## APERTO (17 ottobre) — la strada verso la 1.0.0
+
+Obiettivo: API stabili su cui un terzo costruisce i suoi algoritmi con le
+primitive di forge. In ordine (i passi che rompono vanno tutti in una minor):
+
+1. **Rename `forge` → `topo` / `g-topo`** (D108, qui sotto).
+2. **Superficie pubblica esplicita**: `topo` (pipeline), `topo.geometry`
+   (fatti, D95), un `topo.primitives` nuovo (segmenti, `Edge`, `sub_segment`,
+   un costruttore "contorno da segmenti" che valida, al posto di un
+   `ForgeContour` costruito a mano con `depth`/`parent`), `topo.model` (tipi).
+   Sotto `core.*` è interno, senza garanzie. Oggi i consumer importano dai
+   sottomoduli (snapbend 41 import, snapdraw 35, forge-pdf-adapter 170):
+   migrarli, poi un controllo di `gen_index` nei consumer che vieta `core`
+   (in snapbend vuol dire riaprire il suo D57).
+3. **Le primitive di D109** (qui sotto). Criterio: un algoritmo esterno
+   (le scantonature a disco del prototipo) tiene private solo le scelte di
+   processo — quali spigoli, che raggio, come raggruppare — e nessuna
+   geometria che un altro consumer riscriverebbe uguale (cerchio × arco
+   esatto, contorno meno disco, anello di segmenti).
+4. **Ordine degli edge** (D111, qui sotto): `TestEdgeOrder` prova solo gli
+   edge al contrario, e `linee_di_piegatura_interne` è `expectedFailure`.
+   Per la 1.0: il caso noto risolto e un rimescolamento (seed fisso, più
+   permutazioni), non solo il contrario.
+5. **Viewer** (punto 9 dei vecchi fili): rifatto prima, o fuori dall'API stabile.
+6. **Audit dati cliente della 1.0** (più sotto): i blocchi nei commit vecchi.
+
+Poi forge 1.0.0, e snapbend 1.0.0 dietro.
+
 ## APERTO (16 ottobre, MAP.md D108) — rename `forge` → `topo`, distribuzione `g-topo`
 
 Da fare: package `forge/` → `topo/`, `pyproject.toml` (`name = "g-topo"`),
@@ -389,13 +417,8 @@ sul codice committato di questo branch, nessuno stash applicato):
    `extract_forge_texts`, che non esiste più: è rotto. **Spostato in snapbend**
    (Federico, 4 ottobre: alla radice, non versionato), da riscrivere lì
    su `inject(snap_distance=...)` — vedi il TODO di snapbend.
-8. **Il rename `forge` → `snapforge`** — `naming_convention.md` (non tracciato) è
-   un piano scritto e **mai eseguito**: nome umano `SnapForge`, identificatore
-   tecnico `snapforge` per repo, cartella, package e `import`, stessa regola per
-   `SnapDraw` e `SnapBend`. Tocca `pyproject.toml`, la cartella del package, ogni
-   `import forge`, i docs, il remoto su GitHub e i consumer. Da decidere se farlo
-   prima della 1.0.0 (dopo è un breaking change per chi importa) e se nel
-   frattempo `naming_convention.md` entra in git come piano o resta locale.
+8. ~~Il rename `forge` → `snapforge`~~ — superato da D108: il package diventa
+   `topo`, distribuito come `g-topo` (Federico, 17 ottobre).
 9. **Rifare il viewer (`to_view_model` + `to_svg`), in una sessione a parte.**
    Federico, 3 ottobre: "ora è davvero bruttino e limitato, non scalabile, fa
    cose che dovrebbe fare il consumer e non fa cose che dovrebbe fare lui".
@@ -665,8 +688,7 @@ Resta aperto, discusso ma non affrontato:
   per farla combaciare con un'altra vista proiettata (per trasferire feature
   da una faccia allo sviluppo) è un problema di matching/registrazione fra
   due insiemi di punti (tipo ICP), non una semplice rotazione — molto più
-  grosso, legato al "raggruppamento viste" di `snapdraw` (`SNAPDRAW.md`, ancora
-  da scrivere) — non deciso se/come affrontarlo.
+  grosso, legato al "raggruppamento viste" di `snapdraw` — non deciso se/come affrontarlo.
 - Le annotazioni (`ForgeDocument.annotations`/`ForgeResult.annotations`) non
   sono ancora ruotate (nessun caso reale l'ha ancora richiesto) — se/quando
   serve, ogni sottoclasse di `Annotation` (`Note`, `Dimension`, `Leader`, ...)
@@ -710,7 +732,7 @@ committato — la storia sta nel git log e in `MAP.md`).
   (a) il pezzo `_1` genera 1 sola bending line dove ce ne sono di più, causa
   non ancora indagata; (b) il cartiglio (`Cartiglio_sviluppo` esploso) viene
   rilevato come un cluster a sé. Il punto (b) non è più "da risolvere in
-  forge": è esattamente il caso d'uso che motiva `snapdraw` (`SNAPDRAW.md`), che
+  forge": è esattamente il caso d'uso che motiva `snapdraw`, che
   lo elimina marcando `role="title_block"` prima di `heal`.
 - **arc/arc oltre tolleranza** — `compute_gap_fixes` scarta ogni coppia con
   `distance > tolerance` anche per gli archi; esentarli quando i loro cerchi

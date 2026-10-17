@@ -101,8 +101,7 @@ direzione, per non chiudere strade con le scelte di Smoother:
 
 Aperto come repo il 2026-09-13, sibling di `dxf-forge`/`snapdraw`. Questo
 documento resta lo spec d'origine (perché); le decisioni vive e il piano di
-lavoro stanno in `smoother/MAP.md` e `smoother/TODO.md`, come `SNAPDRAW.md` sta a
-`snapdraw/DESIGN.md`.
+lavoro stanno in `smoother/MAP.md` e `smoother/TODO.md`.
 
 Fatto: scaffolding del repo, `smoother_5.py` migrato in
 `scripts/00_image_to_dxf.py` (spigoli/refit ora via `forge.simplify_points()`,

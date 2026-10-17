@@ -4096,3 +4096,12 @@ only: no consumer needs dashes along an arc, and `sub_segment` is there when
 one does.
 
 `main` → **0.15.1** (additive).
+
+### D116 — `INTERPRETER.md` and `SNAPDRAW.md` leave the repo ✅
+Federico deleted both: he does not want them in the repo on GitHub any more.
+They were design notes for projects around forge (the drawing interpreter,
+snapdraw), not forge's own documentation. The live references in code,
+`docs/API.md`, `ROADMAP.md`, `SMOOTHER.md`, `TODO.md` and one test now point to
+`MAP.md` or were dropped. Older decisions above still name the two files, as
+they were when written.
+
